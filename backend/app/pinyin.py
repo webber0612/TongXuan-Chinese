@@ -23,7 +23,10 @@ def _decompose(text: str) -> tuple[str, int | None]:
     tone: int | None = None
     for char in unicodedata.normalize("NFD", text.lower()):
         if unicodedata.combining(char):
-            tone = _TONE_MARKS.get(char, tone)
+            if char == "\u0308" and base and base[-1] == "u":
+                base[-1] = "ü"
+            else:
+                tone = _TONE_MARKS.get(char, tone)
         elif char == "ü" or char == "u":
             base.append(char)
         elif char == "v":

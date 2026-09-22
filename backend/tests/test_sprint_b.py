@@ -77,6 +77,22 @@ def test_phase7_school_queue_private_pinyin_bridge_does_not_promote(tmp_path):
         assert len(api.get("/api/sprint-b/words", params={"child_id": child_id}).json()) == 2
 
 
+def test_phase7_pinyin_normalizes_umlaut_and_school_polyphone_requires_context(tmp_path):
+    from app.pinyin import normalize_pinyin
+    assert normalize_pinyin("lü3") == "lǚ"
+    assert normalize_pinyin("lv3") == "lǚ"
+    assert normalize_pinyin("lǚ") == "lǚ"
+    with client(tmp_path) as api:
+        child_id, _ = seed(api)
+        school = api.post("/api/school-queue", params={"child_id": child_id}, json={"character": "行", "school_source": "Polyphone worksheet", "private_content": True, "provenance_status": "PRIVATE_OK"}).json()
+        ambiguous = api.post(f"/api/sprint-b/pinyin/school-queue/{school['id']}", params={"child_id": child_id})
+        assert ambiguous.status_code == 400 and ambiguous.json()["detail"] == "pinyin_reading_ambiguous"
+        bank = api.post(f"/api/sprint-b/pinyin/school-queue/{school['id']}", params={"child_id": child_id}, json={"context": "銀行"}).json()
+        walk = api.post(f"/api/sprint-b/pinyin/school-queue/{school['id']}", params={"child_id": child_id}, json={"reading_id": "reading_行_walk"}).json()
+        assert bank["context"] == "銀行" and bank["notation"] == "háng"
+        assert walk["context"] == "行走" and walk["notation"] == "xíng"
+
+
 def test_phase8_deterministic_grammar_assisted_and_isolation(tmp_path):
     with client(tmp_path) as api:
         child_id, other_id = seed(api)

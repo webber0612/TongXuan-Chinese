@@ -125,6 +125,11 @@ class AnswerRequest(BaseModel):
     assisted: bool = False
 
 
+class SchoolPinyinPromptRequest(BaseModel):
+    reading_id: str | None = None
+    context: str | None = None
+
+
 @app.get("/api/children")
 def get_children() -> list[dict[str, object]]:
     return list_children()
@@ -242,8 +247,8 @@ def post_pronunciation_attempt(reading_id: str, child_id: int, request: AnswerRe
 
 
 @app.post("/api/sprint-b/pinyin/school-queue/{school_queue_item_id}")
-def post_school_pinyin_prompt(school_queue_item_id: str, child_id: int) -> dict[str, object]:
-    try: return create_school_pinyin_prompt(child_id, school_queue_item_id)
+def post_school_pinyin_prompt(school_queue_item_id: str, child_id: int, request: SchoolPinyinPromptRequest | None = None) -> dict[str, object]:
+    try: return create_school_pinyin_prompt(child_id, school_queue_item_id, request.reading_id if request else None, request.context if request else None)
     except ValueError as error: raise HTTPException(status_code=400, detail=str(error)) from error
 
 

@@ -134,13 +134,21 @@ def practice_pronunciation(child_id: int, reading_id: str, answer: str, assisted
         return {"correct": bool(correct), "reading_id": reading_id, "normalized_answer": normalized_answer, "source_type": source_type, "school_queue_item_id": school_queue_item_id, "prompt_id": prompt_id, "state": dict(db.execute("SELECT * FROM pronunciation_states WHERE child_id=? AND reading_id=?", (child_id, reading_id)).fetchone())}
 
 
-def create_school_pinyin_prompt(child_id: int, school_queue_item_id: str) -> dict[str, Any]:
+def create_school_pinyin_prompt(child_id: int, school_queue_item_id: str, reading_id: str | None = None, context: str | None = None) -> dict[str, Any]:
     with connect() as db:
         ensure_child(db, child_id)
         item = db.execute("SELECT * FROM school_queue_items WHERE id=? AND child_id=?", (school_queue_item_id, child_id)).fetchone()
         if item is None: raise ValueError("school_queue_item_not_found")
-        reading = db.execute("SELECT * FROM pronunciation_readings WHERE character=? AND script='SIMPLIFIED' AND notation_system='PINYIN' ORDER BY context,id LIMIT 1", (item["character"],)).fetchone()
-        if reading is None: raise ValueError("simplified_pinyin_not_found")
+        candidates = db.execute("SELECT * FROM pronunciation_readings WHERE character=? AND script='SIMPLIFIED' AND notation_system='PINYIN' ORDER BY context,id", (item["character"],)).fetchall()
+        if not candidates: raise ValueError("simplified_pinyin_not_found")
+        if reading_id:
+            selected = [row for row in candidates if row["id"] == reading_id]
+        elif context:
+            selected = [row for row in candidates if row["context"] == context]
+        else:
+            selected = candidates if len(candidates) == 1 else []
+        if len(selected) != 1: raise ValueError("pinyin_reading_ambiguous")
+        reading = selected[0]
         prompt_id = f"school_pinyin_{school_queue_item_id}_{reading['id']}"
         db.execute("INSERT OR IGNORE INTO school_pinyin_prompts (id,child_id,school_queue_item_id,reading_id,prompted_character,source_name,provenance_status,private_content) VALUES (?,?,?,?,?,?,?,?)", (prompt_id, child_id, school_queue_item_id, reading["id"], item["character"], item["school_source"], item["provenance_status"], item["private_content"]))
         prompt = dict(db.execute("SELECT p.*,r.notation,r.context,r.script,r.notation_system FROM school_pinyin_prompts p JOIN pronunciation_readings r ON r.id=p.reading_id WHERE p.id=?", (prompt_id,)).fetchone())

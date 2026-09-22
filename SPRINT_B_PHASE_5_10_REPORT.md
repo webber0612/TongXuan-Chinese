@@ -35,6 +35,10 @@ Branch: `sprint/phase5-10`
   tone-number input such as `xue2` and scores it against canonical `xué`.
 - Multiple lexical readings use explicit context (`銀行` → `háng`, `行走` → `xíng`);
   notation variants are not stored as separate readings.
+- School Queue Pinyin bridging refuses to choose arbitrarily when a character has multiple
+  readings; the caller must provide an explicit `reading_id` or matching context.
+- Pinyin normalization preserves `ü` through Unicode decomposition and supports deterministic
+  `lü3`, `lv3`, and `lǚ` equivalence.
 - Traditional Zhuyin and Simplified Pinyin state/attempts remain independently auditable;
   assisted answers are persisted and do not increase independent Pinyin mastery.
 
@@ -75,7 +79,7 @@ dimensions. It intentionally remains minimal and unpolished.
 
 ## Tests and build
 
-- Backend: `25 passed` (33 non-blocking dependency deprecation warnings) with `backend/.venv` and `PYTHONPATH=backend`.
+- Backend: `26 passed` (33 non-blocking dependency deprecation warnings) with `backend/.venv` and `PYTHONPATH=backend`.
 - Frontend: `4 passed` with Vitest.
 - Production frontend build: passed; PWA assets generated.
 - Existing Sprint A and Phase 0 tests remain green.
@@ -100,8 +104,8 @@ dimensions. It intentionally remains minimal and unpolished.
 ## Delivery
 
 - Draft PR: [#7](https://github.com/webber0612/TongXuan-Chinese/pull/7), kept Draft.
-- Latest Architect Audit remediation: AUD-B01 through AUD-B10 addressed with regression coverage,
+- Latest Architect Audit remediation: AUD-B01 through AUD-B12 addressed with regression coverage,
   including Simplified Pinyin normalization, script/state separation, context disambiguation,
-  and School Queue private provenance bridging.
+  School Queue private provenance bridging, polyphone ambiguity rejection, and `ü` handling.
 - The final pushed head is the latest commit on `sprint/phase5-10` / PR #7.
 - Phase 11: not started.
