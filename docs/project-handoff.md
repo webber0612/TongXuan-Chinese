@@ -195,7 +195,7 @@ Current baseline known from GitHub:
 - Phase 8 Grammar completed.
 - Phase 9 Idioms completed.
 - Phase 10 Reading completed.
-- Phase 11 has **not** started.
+- Phase 11 TTS implementation is active on the current Phase 11 Draft PR branch.
 - Real-child usability validation is still outstanding before treating Sprints A/B as field-validated.
 
 Relevant completed commits / milestones:
@@ -214,7 +214,7 @@ The active collaboration model is manual trigger + GitHub handoff:
 - Product Owner tells Codex to read GitHub.
 - Product Owner tells ChatGPT to inspect new GitHub changes.
 
-Next product phase is Phase 11 only after explicit Product Owner instruction.
+Phase 11 is authorized by the current Product Owner work order; do not start Phase 12.
 
 ---
 
@@ -357,7 +357,7 @@ Remaining validation:
 - Synology DS723+ deployment/persistence;
 - real-child usability / parent workflow trial.
 
-Do not start Phase 11 without explicit Product Owner authorization.
+Phase 11 was outside Sprint A; current Phase 11 authorization is recorded below.
 
 ## Fast Track Sprint B status
 
@@ -381,7 +381,10 @@ Final state:
 - Phase 10 Reading completed.
 - SQLite remains authoritative.
 - Skill/mastery dimensions remain separated and auditable.
-- Phase 11 has not started.
+- Phase 11 TTS is implemented on the current branch with a replaceable provider boundary,
+  `zh-TW`/`zh-CN` routing, transient browser playback, speed control, and no mastery/state writes.
+- `PHASE_11_TTS_REPORT.md` records the implementation and verification.
+- Phase 12 has not started.
 
 Remaining validation:
 - real iPad Safari;
@@ -389,4 +392,4 @@ Remaining validation:
 - Synology DS723+ deployment/persistence;
 - real-child usability / parent workflow trial.
 
-Do not start Phase 11 without explicit Product Owner authorization.
+Do not start Phase 12 without explicit Product Owner authorization.
