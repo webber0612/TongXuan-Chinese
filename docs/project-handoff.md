@@ -212,7 +212,8 @@ Current baseline known from GitHub:
 - Phase 11 TTS completed, audited PASS, and PR #8 merged to `main`.
 - Phase 12 Reading Aloud completed, audited PASS, and PR #10 merged to `main`.
 - Phase 13 OCR Import completed, audited PASS, and PR #12 merged to `main`.
-- Phase 14 Adaptive Learning has **not** started.
+- Phase 14 Adaptive Learning is authorized by GitHub Issue #13 and is active on the dedicated
+  `phase14/adaptive-learning` branch / Draft PR.
 - Real-child usability validation is still outstanding before treating Sprints A/B as field-validated.
 
 Relevant completed commits / milestones:
@@ -232,7 +233,7 @@ The active collaboration model is manual trigger + GitHub handoff:
 - Product Owner tells Codex to read GitHub.
 - Product Owner tells ChatGPT to inspect new GitHub changes.
 
-Phases 11–13 are complete and merged. Continuous development authorization is active; Phase 14 may start from the published GitHub work order without separate Product Owner confirmation.
+Phases 11–13 are complete and merged. Phase 14 is authorized by GitHub Issue #13; do not start Phase 15.
 
 ---
 
@@ -408,7 +409,10 @@ Final state:
 - Phase 13 OCR Import completed, passed ChatGPT Architect Audit, and PR #12 merged to `main`.
 - Phase 13 includes a replaceable local/mock OCR provider, candidate-review boundary, private School Queue confirmation, provenance tracking, and no raw image persistence.
 - `PHASE_13_OCR_REPORT.md` records the implementation and verification.
-- Phase 14 Adaptive Learning has not started.
+- Phase 14 Adaptive Learning is implemented on `phase14/adaptive-learning` with deterministic/as-of
+  scoring, explainable components, anti-starvation, child isolation, and non-mutating manual overrides.
+- `PHASE_14_ADAPTIVE_REPORT.md` records the implementation and verification.
+- Phase 15 Parent Dashboard has not started.
 
 Remaining validation:
 - real iPad Safari;
@@ -416,4 +420,4 @@ Remaining validation:
 - Synology DS723+ deployment/persistence;
 - real-child usability / parent workflow trial.
 
-Continuous development authorization is active. Phase 14 may start only from the explicit GitHub work order.
+Continuous development authorization is active. Phase 14 is the current assigned Phase; do not start Phase 15.
