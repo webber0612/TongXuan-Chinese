@@ -46,13 +46,13 @@ def seed_sprint_b(child_id: int) -> dict[str, Any]:
         ]
         for reading_id, character, script, system, notation, locale, context in readings:
             db.execute("INSERT OR IGNORE INTO pronunciation_readings (id,character,script,notation_system,notation,locale,context,source_name,license_name,provenance_status,commercial_ready) VALUES (?,?,?,?,?,?,?,?,?,?,?)", (reading_id, character, script, system, notation, locale, context, PROVENANCE["source_name"], PROVENANCE["license_name"], PROVENANCE["provenance_status"], 0))
-        db.execute("INSERT OR IGNORE INTO grammar_concepts VALUES (?,?,?,?,?,?,?,?)", ("grammar_在", "在 + place", "在 marks location.", "我在學校。", PROVENANCE["provenance_status"], PROVENANCE["source_name"], PROVENANCE["license_name"], 0))
-        db.execute("INSERT OR IGNORE INTO grammar_exercises VALUES (?,?,?,?)", ("grammar_ex_在", "grammar_在", "Choose the correct sentence.", "我在學校。"))
-        db.execute("INSERT OR IGNORE INTO idioms VALUES (?,?,?,?,?,?,?,?)", ("idiom_百聞不如一見", "百聞不如一見", "Seeing once is better than hearing many times.", "百聞不如一見。", PROVENANCE["provenance_status"], PROVENANCE["source_name"], PROVENANCE["license_name"], 0))
+        db.execute("INSERT OR IGNORE INTO grammar_concepts (id,concept,explanation,example,provenance_status,source_name,license_name,commercial_ready) VALUES (?,?,?,?,?,?,?,?)", ("grammar_在", "在 + place", "在 marks location.", "我在學校。", PROVENANCE["provenance_status"], PROVENANCE["source_name"], PROVENANCE["license_name"], 0))
+        db.execute("INSERT OR IGNORE INTO grammar_exercises (id,concept_id,prompt,answer_rule) VALUES (?,?,?,?)", ("grammar_ex_在", "grammar_在", "Choose the correct sentence.", "我在學校。"))
+        db.execute("INSERT OR IGNORE INTO idioms (id,idiom,meaning,example,provenance_status,source_name,license_name,commercial_ready) VALUES (?,?,?,?,?,?,?,?)", ("idiom_百聞不如一見", "百聞不如一見", "Seeing once is better than hearing many times.", "百聞不如一見。", PROVENANCE["provenance_status"], PROVENANCE["source_name"], PROVENANCE["license_name"], 0))
         for position, character in enumerate("百聞不如一見"):
             db.execute("INSERT OR IGNORE INTO idiom_characters VALUES (?,?,?)", ("idiom_百聞不如一見", character, position))
         passage_id = f"passage_{child_id}_school"
-        db.execute("INSERT OR IGNORE INTO reading_passages VALUES (?,?,?,?,?,?,?,?)", (passage_id, child_id, "我的學校", "我每天到學校學習。學校裡有圖書館。", PROVENANCE["provenance_status"], PROVENANCE["source_name"], PROVENANCE["license_name"], 0))
+        db.execute("INSERT OR IGNORE INTO reading_passages (id,child_id,title,passage,provenance_status,source_name,license_name,commercial_ready) VALUES (?,?,?,?,?,?,?,?)", (passage_id, child_id, "我的學校", "我每天到學校學習。學校裡有圖書館。", PROVENANCE["provenance_status"], PROVENANCE["source_name"], PROVENANCE["license_name"], 0))
         for word_id, _, _ in word_rows:
             db.execute("INSERT OR IGNORE INTO passage_vocabulary VALUES (?,?)", (passage_id, word_id))
         db.execute("INSERT OR IGNORE INTO reading_questions VALUES (?,?,?,?)", (f"question_{child_id}_school", passage_id, "Where does the child study?", "學校"))

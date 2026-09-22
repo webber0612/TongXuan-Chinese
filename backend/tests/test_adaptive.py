@@ -113,3 +113,33 @@ def test_adaptive_plan_represents_multiple_skill_domains_without_merging_state(t
         assert {"word", "sentence", "writing", "pronunciation", "grammar", "idiom", "reading", "reading_aloud"} <= skills
         assert all(item["priority_score"] == sum(item["components"].values()) for item in plan["items"])
         assert all(item["child_id"] == child_id for item in plan["items"])
+
+
+def test_non_recognition_state_replays_attempts_at_as_of_not_current_snapshot(tmp_path):
+    with client(tmp_path) as api:
+        child_id = api.post("/api/children", json={"name": "Alice"}).json()["id"]
+        api.post("/api/sprint-b/seed", params={"child_id": child_id})
+        from app.database import connect
+        with connect() as db:
+            db.execute("UPDATE words SET created_at=? WHERE id=?", ("2026-01-01 00:00:00", f"word_{child_id}_school"))
+            db.execute("INSERT INTO word_attempts (id,child_id,word_id,result,assisted,created_at) VALUES (?,?,?,?,?,?)", ("word-t1-correct", child_id, f"word_{child_id}_school", "correct", 0, "2026-01-10 00:00:00"))
+            db.execute("INSERT INTO word_attempts (id,child_id,word_id,result,assisted,created_at) VALUES (?,?,?,?,?,?)", ("word-t3-incorrect", child_id, f"word_{child_id}_school", "incorrect", 0, "2026-03-10 00:00:00"))
+            db.execute("INSERT INTO word_states (child_id,word_id,correct_count,incorrect_count,assisted_count,updated_at) VALUES (?,?,?,?,?,?)", (child_id, f"word_{child_id}_school", 1, 1, 0, "2026-03-10 00:00:00"))
+        plan = api.post("/api/adaptive/plan", params={"child_id": child_id}, json={"as_of": "2026-02-01T00:00:00Z", "limit": 50}).json()
+        word = next(item for item in plan["items"] if item["skill"] == "word" and item["source_id"] == f"word_{child_id}_school")
+        assert word["components"]["low_independent"] == 0
+        assert word["components"]["recent_error"] == 0
+        assert word["components"]["novelty"] == 0
+
+
+def test_content_created_at_is_part_of_historical_plan_membership(tmp_path):
+    with client(tmp_path) as api:
+        child_id = api.post("/api/children", json={"name": "Alice"}).json()["id"]
+        from app.database import connect
+        with connect() as db:
+            db.execute("INSERT INTO words (id,child_id,word,provenance_status,source_name,source_url,license_name,commercial_ready,created_at) VALUES (?,?,?,?,?,?,?,?,?)", ("word-t2", child_id, "後來", "PRIVATE_OK", "test", "", "test", 0, "2026-03-01 00:00:00"))
+            db.execute("INSERT INTO word_characters (word_id,character,position) VALUES (?,?,?)", ("word-t2", "後", 0))
+        t1 = api.post("/api/adaptive/plan", params={"child_id": child_id}, json={"as_of": "2026-02-01T00:00:00Z", "limit": 50}).json()
+        t3 = api.post("/api/adaptive/plan", params={"child_id": child_id}, json={"as_of": "2026-04-01T00:00:00Z", "limit": 50}).json()
+        assert "word-t2" not in {item["source_id"] for item in t1["items"]}
+        assert "word-t2" in {item["source_id"] for item in t3["items"]}

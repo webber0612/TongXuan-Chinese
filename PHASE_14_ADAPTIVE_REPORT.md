@@ -19,6 +19,9 @@ Implemented only Phase 14 Adaptive Learning from GitHub Issue #13. Phase 15 Pare
   preference, source representation, and cross-skill representation.
 - School and Review membership now has lifecycle timestamps (`completed_at` / `deactivated_at`)
   and is evaluated as-of; a historical plan retains items that were completed/deactivated later.
+- Every adaptive-visible content domain now carries `created_at` and is filtered with
+  `created_at <= as_of`. Existing rows are backfilled at migration time with their migration-time
+  effective timestamp; future content therefore cannot enter an earlier replay.
 - `recent_error` is derived only from incorrect events whose own event timestamps fall within the
   recent window. Old incorrect events followed by a recent correct event do not trigger it.
 
@@ -38,6 +41,9 @@ Implemented only Phase 14 Adaptive Learning from GitHub Issue #13. Phase 15 Pare
 - A cross-skill representation pass and explainable `skill_balance` component prevent weaker existing
   domains from being permanently starved; final ordering uses the returned `ranking_score` whose
   components include every preference/source/skill adjustment.
+- Word, Sentence, Writing, Pronunciation, Grammar, Idiom, and Reading states are reconstructed from
+  timestamped attempts through `as_of` for independent correct, incorrect, assisted, and latest;
+  current cumulative state rows are used only for time-versioned due metadata where applicable.
 - Parent-facing controls support refresh/recompute, source preference for the current plan, and an
   adaptive-off deterministic fallback.
 - Overrides affect only the returned plan and never permanently mutate learning state.
@@ -50,14 +56,14 @@ Implemented only Phase 14 Adaptive Learning from GitHub Issue #13. Phase 15 Pare
 
 ## Verification
 
-- Backend: `50 passed` with `PYTHONPATH=backend`.
+- Backend: `52 passed` with `PYTHONPATH=backend`.
 - Frontend: `15 passed` with Vitest.
 - Production build: passed with Vite/PWA assets generated.
 - Regression coverage includes deterministic replay, explicit as-of semantics, no look-ahead,
   historical School/Review lifecycle membership, recent-error event filtering, overdue/assisted/
   novelty priority, School Queue urgency, source and cross-skill anti-starvation, child isolation,
   source/skill provenance, score composition for all ranking adjustments, manual fallback/preference,
-  and no mutation.
+  no mutation, T1/T3 state replay queried at T2, and T2-created content excluded from T1 plans.
 
 ### Architect Audit resolution
 
@@ -65,6 +71,10 @@ Implemented only Phase 14 Adaptive Learning from GitHub Issue #13. Phase 15 Pare
 - AUD-T14-02: resolved with explicit preference/source/skill score components and ranking-score tests.
 - AUD-T14-03: resolved by filtering only recent incorrect events, with old-error/recent-correct coverage.
 - AUD-T14-04: resolved with independent multi-skill candidates and cross-skill anti-starvation tests.
+- AUD-T14-05: resolved with created/effective timestamps and `created_at <= as_of` filtering for all
+  adaptive-visible content.
+- AUD-T14-06: resolved by rebuilding non-Recognition state from timestamped attempts through `as_of`.
+- AUD-T14-07: resolved by deriving novelty/low-independent components from the reconstructed history.
 
 ## Manual validation outstanding
 

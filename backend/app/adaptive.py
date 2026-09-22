@@ -31,12 +31,31 @@ def _dt(value: str | None) -> datetime | None:
         return None
 
 
-def _row_state(db: Any, child_id: int, state_table: str, key_column: str, key: str, as_of: datetime) -> dict[str, Any]:
-    row = db.execute(f"SELECT * FROM {state_table} WHERE child_id=? AND {key_column}=?", (child_id, key)).fetchone()
-    if row is None or (_dt(row["updated_at"]) and _dt(row["updated_at"]) > as_of):
-        return {"independent_correct": 0, "incorrect": 0, "assisted": 0, "latest": None, "due_at": None}
-    data = dict(row)
-    return {"independent_correct": data.get("correct_count", data.get("independent_success_count", 0)), "incorrect": data.get("incorrect_count", 0), "assisted": data.get("assisted_count", 0), "latest": _dt(data.get("updated_at")), "due_at": _dt(data.get("due_at"))}
+ATTEMPTS = {
+    "recognition": ("recognition_attempts", "item_id", "timestamp", "result='correct'", "result='incorrect'"),
+    "word": ("word_attempts", "word_id", "created_at", "result='correct'", "result='incorrect'"),
+    "sentence": ("sentence_attempts", "sentence_id", "created_at", "correct=1", "correct=0"),
+    "writing": ("writing_attempts", "character", "created_at", "trace_result='correct'", "trace_result='incorrect'"),
+    "pronunciation": ("pronunciation_attempts", "reading_id", "created_at", "correct=1", "correct=0"),
+    "grammar": ("grammar_attempts", "exercise_id", "created_at", "correct=1", "correct=0"),
+    "idiom": ("idiom_attempts", "idiom_id", "created_at", "correct=1", "correct=0"),
+    "reading": ("reading_attempts", "passage_id", "created_at", "score=total", "score<total"),
+}
+
+
+def _historical_state(db: Any, child_id: int, domain: str, key: str, as_of: datetime) -> dict[str, Any]:
+    table, key_column, timestamp, correct_sql, incorrect_sql = ATTEMPTS[domain]
+    cutoff = as_of.strftime("%Y-%m-%d %H:%M:%S")
+    rows = db.execute(f"SELECT * FROM {table} WHERE child_id=? AND {key_column}=? AND {timestamp}<=? ORDER BY {timestamp},id", (child_id, key, cutoff)).fetchall()
+    independent = sum(1 for row in rows if (row["result"] == "correct" if domain in {"recognition", "word"} else row["correct"] == 1 if domain in {"sentence", "pronunciation", "grammar", "idiom"} else row["trace_result"] == "correct" if domain == "writing" else row["score"] == row["total"]) and not (row["assisted"] if "assisted" in row.keys() else 0))
+    incorrect = sum(1 for row in rows if (row["result"] == "incorrect" if domain in {"recognition", "word"} else row["correct"] == 0 if domain in {"sentence", "pronunciation", "grammar", "idiom"} else row["trace_result"] == "incorrect" if domain == "writing" else row["score"] < row["total"]))
+    assisted = sum(int(row["assisted"]) for row in rows if "assisted" in row.keys())
+    state_table = {"recognition":"recognition_states", "word":"word_states", "sentence":"sentence_states", "writing":"writing_states", "pronunciation":"pronunciation_states", "grammar":"grammar_states", "idiom":"idiom_states", "reading":"reading_states"}[domain]
+    state_key = {"recognition":"item_id", "word":"word_id", "sentence":"sentence_id", "writing":"character", "pronunciation":"reading_id", "grammar":"exercise_id", "idiom":"idiom_id", "reading":"passage_id"}[domain]
+    state = db.execute(f"SELECT * FROM {state_table} WHERE child_id=? AND {state_key}=?", (child_id, key)).fetchone()
+    due_at = _dt(state["due_at"]) if state and "due_at" in state.keys() and (not _dt(state["updated_at"]) or _dt(state["updated_at"]) <= as_of) else None
+    latest = _dt(rows[-1][timestamp]) if rows else None
+    return {"independent_correct": independent, "incorrect": incorrect, "assisted": assisted, "latest": latest, "due_at": due_at}
 
 
 def _recent_incorrect(db: Any, table: str, key_column: str, key: str, timestamp_column: str, incorrect_sql: str, child_id: int, as_of: datetime) -> tuple[int, datetime | None]:
@@ -106,7 +125,7 @@ def build_adaptive_plan(*, child_id: int, as_of: str, limit: int, adaptive: bool
         ensure_child(db, child_id)
         candidates: list[dict[str, Any]] = []
         for row in db.execute("SELECT * FROM learning_items WHERE child_id=? AND created_at<=? ORDER BY id", (child_id, as_of_text)):
-            state = _row_state(db, child_id, "recognition_states", "item_id", row["id"], as_of_dt)
+            state = _historical_state(db, child_id, "recognition", row["id"], as_of_dt)
             recent = _recent_incorrect(db, "recognition_attempts", "item_id", row["id"], "timestamp", "result='incorrect'", child_id, as_of_dt)
             candidates.append(_candidate(item_id=row["id"], child_id=child_id, source="CURRICULUM", skill="recognition", text=row["character"], source_id=row["id"], source_detail=row["curriculum_source"], state=state, as_of=as_of_dt, preference=preference, recent=recent, item_created=row["created_at"]))
         for row in db.execute("""SELECT * FROM school_queue_items WHERE child_id=? AND created_at<=?
@@ -116,35 +135,35 @@ def build_adaptive_plan(*, child_id: int, as_of: str, limit: int, adaptive: bool
             candidates.append(_candidate(item_id=row["id"], child_id=child_id, source="SCHOOL_QUEUE", skill="recognition", text=row["character"], source_id=row["id"], source_detail=row["school_source"], state=empty, as_of=as_of_dt, preference=preference, school_due=row["due_date"], school_priority=row["priority"], item_created=row["created_at"]))
         for row in db.execute("""SELECT * FROM review_queue_items WHERE child_id=? AND created_at<=?
           AND (active=1 OR (deactivated_at IS NOT NULL AND deactivated_at>?)) ORDER BY id""", (child_id, as_of_text, as_of_text)):
-            state = _row_state(db, child_id, "recognition_states", "item_id", row["item_id"], as_of_dt)
+            state = _historical_state(db, child_id, "recognition", row["item_id"], as_of_dt)
             recent = _recent_incorrect(db, "recognition_attempts", "item_id", row["item_id"], "timestamp", "result='incorrect'", child_id, as_of_dt)
             candidates.append(_candidate(item_id=row["id"], child_id=child_id, source="REVIEW", skill="recognition", text=row["character"], source_id=row["id"], source_detail=row["source_detail"], state=state, as_of=as_of_dt, preference=preference, review_reason=row["reason"], recent=recent, item_created=row["created_at"]))
 
         for row in db.execute("""SELECT wc.character, wc.position, w.id AS word_id, w.source_name
-          FROM word_characters wc JOIN words w ON w.id=wc.word_id WHERE w.child_id=? ORDER BY w.id, wc.position""", (child_id,)):
-            state = _row_state(db, child_id, "writing_states", "character", row["character"], as_of_dt)
+          FROM word_characters wc JOIN words w ON w.id=wc.word_id WHERE w.child_id=? AND w.created_at<=? ORDER BY w.id, wc.position""", (child_id, as_of_text)):
+            state = _historical_state(db, child_id, "writing", row["character"], as_of_dt)
             recent = _recent_incorrect(db, "writing_attempts", "character", row["character"], "created_at", "trace_result='incorrect'", child_id, as_of_dt)
             source_id = f"{row['word_id']}:{row['position']}"
             candidates.append(_candidate(item_id=f"writing:{source_id}", child_id=child_id, source="CURRICULUM", skill="writing", text=row["character"], source_id=source_id, source_detail=row["source_name"], state=state, as_of=as_of_dt, preference=preference, recent=recent))
 
         specs = [
-            ("word", "words", "word_id", "word", "word_states", "word_attempts", "word_id", "created_at", "result='incorrect'"),
-            ("sentence", "sentences", "sentence_id", "sentence", "sentence_states", "sentence_attempts", "sentence_id", "created_at", "correct=0"),
-            ("pronunciation", "pronunciation_readings", "reading_id", "character", "pronunciation_states", "pronunciation_attempts", "reading_id", "created_at", "correct=0"),
-            ("grammar", "grammar_exercises", "exercise_id", "prompt", "grammar_states", "grammar_attempts", "exercise_id", "created_at", "correct=0"),
-            ("idiom", "idioms", "idiom_id", "idiom", "idiom_states", "idiom_attempts", "idiom_id", "created_at", "correct=0"),
-            ("reading", "reading_passages", "passage_id", "passage", "reading_states", "reading_attempts", "passage_id", "created_at", "score<total"),
-            ("reading_aloud", "reading_passages", "passage_id", "passage", None, None, None, None, None),
+            ("word", "words", "id", "word", "word"),
+            ("sentence", "sentences", "id", "sentence", "sentence"),
+            ("pronunciation", "pronunciation_readings", "id", "character", "pronunciation"),
+            ("grammar", "grammar_exercises", "id", "prompt", "grammar"),
+            ("idiom", "idioms", "id", "idiom", "idiom"),
+            ("reading", "reading_passages", "id", "passage", "reading"),
+            ("reading_aloud", "reading_passages", "id", "passage", "reading_aloud"),
         ]
-        for skill, table, key_column, text_column, state_table, attempt_table, attempt_key, timestamp_column, incorrect_sql in specs:
+        for skill, table, key_column, text_column, domain in specs:
             columns = {info[1] for info in db.execute(f"PRAGMA table_info({table})")}
             has_child = "child_id" in columns
-            created_filter = "created_at<=?" if "created_at" in columns else "1=1"
-            sql = f"SELECT * FROM {table} WHERE {'child_id=? AND ' if has_child else ''}{created_filter} ORDER BY id"
-            args = (child_id, as_of_text) if has_child and created_filter != "1=1" else ((child_id,) if has_child else ((as_of_text,) if created_filter != "1=1" else ()))
+            sql = f"SELECT * FROM {table} WHERE {'child_id=? AND ' if has_child else ''}created_at<=? ORDER BY id"
+            args = (child_id, as_of_text) if has_child else (as_of_text,)
             for row in db.execute(sql, args):
                 key = row[key_column] if key_column in row.keys() else row["id"]
-                state = _row_state(db, child_id, state_table, key_column, key, as_of_dt) if state_table else {"independent_correct": 0, "incorrect": 0, "assisted": 0, "latest": None, "due_at": None}
-                recent = _recent_incorrect(db, attempt_table, attempt_key, key, timestamp_column, incorrect_sql, child_id, as_of_dt) if attempt_table else (0, None)
+                state = _historical_state(db, child_id, domain, key, as_of_dt) if domain != "reading_aloud" else {"independent_correct": 0, "incorrect": 0, "assisted": 0, "latest": None, "due_at": None}
+                attempt = ATTEMPTS.get(domain)
+                recent = _recent_incorrect(db, attempt[0], attempt[1], key, attempt[2], attempt[4], child_id, as_of_dt) if attempt else (0, None)
                 candidates.append(_candidate(item_id=f"{skill}:{key}", child_id=child_id, source="CURRICULUM", skill=skill, text=row[text_column], source_id=key, source_detail=skill, state=state, as_of=as_of_dt, preference=preference, recent=recent, item_created=row["created_at"] if "created_at" in row.keys() else None))
         return {"child_id": child_id, "as_of": as_of_text, "limit": limit, "adaptive": adaptive, "preference": preference, "weights": WEIGHTS, "items": _rank(candidates, limit, adaptive)}

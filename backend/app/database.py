@@ -158,7 +158,7 @@ def initialize_database() -> None:
             CREATE TABLE IF NOT EXISTS words (
                 id TEXT PRIMARY KEY, child_id INTEGER NOT NULL REFERENCES children(id), word TEXT NOT NULL,
                 provenance_status TEXT NOT NULL, source_name TEXT NOT NULL, source_url TEXT NOT NULL DEFAULT '',
-                license_name TEXT NOT NULL, commercial_ready INTEGER NOT NULL DEFAULT 0,
+                license_name TEXT NOT NULL, commercial_ready INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(child_id, word)
             );
             CREATE TABLE IF NOT EXISTS word_characters (
@@ -168,7 +168,7 @@ def initialize_database() -> None:
             CREATE TABLE IF NOT EXISTS sentences (
                 id TEXT PRIMARY KEY, child_id INTEGER NOT NULL REFERENCES children(id), sentence TEXT NOT NULL,
                 provenance_status TEXT NOT NULL, source_name TEXT NOT NULL, license_name TEXT NOT NULL,
-                commercial_ready INTEGER NOT NULL DEFAULT 0
+                commercial_ready INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
             CREATE TABLE IF NOT EXISTS sentence_words (
                 sentence_id TEXT NOT NULL REFERENCES sentences(id), word_id TEXT NOT NULL REFERENCES words(id), position INTEGER NOT NULL,
@@ -209,7 +209,7 @@ def initialize_database() -> None:
                 id TEXT PRIMARY KEY, character TEXT NOT NULL, script TEXT NOT NULL CHECK(script IN ('TRADITIONAL','SIMPLIFIED')),
                 notation_system TEXT NOT NULL CHECK(notation_system IN ('ZHUYIN','PINYIN')),
                 notation TEXT NOT NULL, locale TEXT NOT NULL, context TEXT NOT NULL DEFAULT '', source_name TEXT NOT NULL, license_name TEXT NOT NULL,
-                provenance_status TEXT NOT NULL, commercial_ready INTEGER NOT NULL DEFAULT 0
+                provenance_status TEXT NOT NULL, commercial_ready INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
             CREATE TABLE IF NOT EXISTS pronunciation_states (
                 child_id INTEGER NOT NULL REFERENCES children(id), reading_id TEXT NOT NULL REFERENCES pronunciation_readings(id),
@@ -233,11 +233,11 @@ def initialize_database() -> None:
             );
             CREATE TABLE IF NOT EXISTS grammar_concepts (
                 id TEXT PRIMARY KEY, concept TEXT NOT NULL, explanation TEXT NOT NULL, example TEXT NOT NULL,
-                provenance_status TEXT NOT NULL, source_name TEXT NOT NULL, license_name TEXT NOT NULL, commercial_ready INTEGER NOT NULL DEFAULT 0
+                provenance_status TEXT NOT NULL, source_name TEXT NOT NULL, license_name TEXT NOT NULL, commercial_ready INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
             CREATE TABLE IF NOT EXISTS grammar_exercises (
                 id TEXT PRIMARY KEY, concept_id TEXT NOT NULL REFERENCES grammar_concepts(id), prompt TEXT NOT NULL,
-                answer_rule TEXT NOT NULL
+                answer_rule TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
             CREATE TABLE IF NOT EXISTS grammar_states (
                 child_id INTEGER NOT NULL REFERENCES children(id), exercise_id TEXT NOT NULL REFERENCES grammar_exercises(id),
@@ -251,7 +251,7 @@ def initialize_database() -> None:
             );
             CREATE TABLE IF NOT EXISTS idioms (
                 id TEXT PRIMARY KEY, idiom TEXT NOT NULL, meaning TEXT NOT NULL, example TEXT NOT NULL,
-                provenance_status TEXT NOT NULL, source_name TEXT NOT NULL, license_name TEXT NOT NULL, commercial_ready INTEGER NOT NULL DEFAULT 0
+                provenance_status TEXT NOT NULL, source_name TEXT NOT NULL, license_name TEXT NOT NULL, commercial_ready INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
             CREATE TABLE IF NOT EXISTS idiom_characters (
                 idiom_id TEXT NOT NULL REFERENCES idioms(id), character TEXT NOT NULL, position INTEGER NOT NULL,
@@ -267,7 +267,7 @@ def initialize_database() -> None:
             );
             CREATE TABLE IF NOT EXISTS reading_passages (
                 id TEXT PRIMARY KEY, child_id INTEGER NOT NULL REFERENCES children(id), title TEXT NOT NULL, passage TEXT NOT NULL,
-                provenance_status TEXT NOT NULL, source_name TEXT NOT NULL, license_name TEXT NOT NULL, commercial_ready INTEGER NOT NULL DEFAULT 0
+                provenance_status TEXT NOT NULL, source_name TEXT NOT NULL, license_name TEXT NOT NULL, commercial_ready INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
             CREATE TABLE IF NOT EXISTS passage_vocabulary (
                 passage_id TEXT NOT NULL REFERENCES reading_passages(id), word_id TEXT NOT NULL REFERENCES words(id), PRIMARY KEY(passage_id, word_id)
@@ -306,10 +306,17 @@ def initialize_database() -> None:
         migrations = {
             "pronunciation_readings": [
                 ("script", "TEXT NOT NULL DEFAULT 'TRADITIONAL'"),
-                ("context", "TEXT NOT NULL DEFAULT ''")
+                ("context", "TEXT NOT NULL DEFAULT ''"),
+                ("created_at", "TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP")
             ],
             "school_queue_items": [("completed_at", "TEXT"), ("deactivated_at", "TEXT")],
             "review_queue_items": [("deactivated_at", "TEXT")],
+            "words": [("created_at", "TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP")],
+            "sentences": [("created_at", "TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP")],
+            "grammar_concepts": [("created_at", "TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP")],
+            "grammar_exercises": [("created_at", "TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP")],
+            "idioms": [("created_at", "TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP")],
+            "reading_passages": [("created_at", "TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP")],
             "pronunciation_states": [("assisted_count", "INTEGER NOT NULL DEFAULT 0"), ("updated_at", "TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP")],
             "grammar_states": [("updated_at", "TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP")],
             "grammar_attempts": [("created_at", "TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP")],
