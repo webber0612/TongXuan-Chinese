@@ -82,6 +82,6 @@ dimensions. It intentionally remains minimal and unpolished.
 
 ## Delivery
 
-- Draft PR: to be opened after final verification.
-- Final head SHA: recorded after the final report/handoff update.
+- Draft PR: [#7](https://github.com/webber0612/TongXuan-Chinese/pull/7), kept Draft.
+- Final head SHA: `069fcf253246a619081c8df8dfc73bf9ac23c785` before this documentation-only update; final pushed head is recorded in the delivery message.
 - Phase 11: not started.
