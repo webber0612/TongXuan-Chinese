@@ -10,11 +10,17 @@ Implemented only Phase 14 Adaptive Learning from GitHub Issue #13. Phase 15 Pare
 - `POST /api/adaptive/plan` requires an explicit `as_of`, bounded `limit`, adaptive flag, and optional
   current-plan source preference.
 - SQLite remains authoritative. Plan generation reads existing Curriculum, School Queue, Review/Wrong
-  Answer, and recognition attempt/state data only.
+  Answer, and the existing Word, Sentence, Writing, Pronunciation, Grammar, Idiom, Reading, and
+  Reading Aloud content/state domains without merging their mastery.
 - Adaptive output preserves `child_id`, `source`, `source_id`, `skill`, source detail, reasons, and
   named score components for audit/replay.
 - Centralized explicit weights cover overdue, recent incorrect, assisted, low independent success,
-  repeated misses, staleness, School Queue urgency, review reason, and curriculum novelty.
+  repeated misses, staleness, School Queue urgency, review reason, curriculum novelty, parent
+  preference, source representation, and cross-skill representation.
+- School and Review membership now has lifecycle timestamps (`completed_at` / `deactivated_at`)
+  and is evaluated as-of; a historical plan retains items that were completed/deactivated later.
+- `recent_error` is derived only from incorrect events whose own event timestamps fall within the
+  recent window. Old incorrect events followed by a recent correct event do not trigger it.
 
 ## Determinism and integrity
 
@@ -29,6 +35,9 @@ Implemented only Phase 14 Adaptive Learning from GitHub Issue #13. Phase 15 Pare
 
 - Adaptive ranking performs a source representation pass and applies a per-source cap so Curriculum,
   School Queue, and Review cannot be permanently starved when candidates exist.
+- A cross-skill representation pass and explainable `skill_balance` component prevent weaker existing
+  domains from being permanently starved; final ordering uses the returned `ranking_score` whose
+  components include every preference/source/skill adjustment.
 - Parent-facing controls support refresh/recompute, source preference for the current plan, and an
   adaptive-off deterministic fallback.
 - Overrides affect only the returned plan and never permanently mutate learning state.
@@ -41,12 +50,21 @@ Implemented only Phase 14 Adaptive Learning from GitHub Issue #13. Phase 15 Pare
 
 ## Verification
 
-- Backend: `47 passed, 40 warnings` with `PYTHONPATH=backend` and the project virtual environment.
+- Backend: `50 passed` with `PYTHONPATH=backend`.
 - Frontend: `15 passed` with Vitest.
 - Production build: passed with Vite/PWA assets generated.
 - Regression coverage includes deterministic replay, explicit as-of semantics, no look-ahead,
-  overdue/recent-error/assisted/novelty priority, School Queue urgency, anti-starvation, child
-  isolation, source/skill provenance, score composition, manual fallback/preference, and no mutation.
+  historical School/Review lifecycle membership, recent-error event filtering, overdue/assisted/
+  novelty priority, School Queue urgency, source and cross-skill anti-starvation, child isolation,
+  source/skill provenance, score composition for all ranking adjustments, manual fallback/preference,
+  and no mutation.
+
+### Architect Audit resolution
+
+- AUD-T14-01: resolved with auditable School/Review lifecycle timestamps and historical replay tests.
+- AUD-T14-02: resolved with explicit preference/source/skill score components and ranking-score tests.
+- AUD-T14-03: resolved by filtering only recent incorrect events, with old-error/recent-correct coverage.
+- AUD-T14-04: resolved with independent multi-skill candidates and cross-skill anti-starvation tests.
 
 ## Manual validation outstanding
 

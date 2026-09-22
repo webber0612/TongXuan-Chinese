@@ -68,3 +68,48 @@ def test_adaptive_preference_and_invalid_as_of_do_not_mutate_state(tmp_path):
         assert plan["preference"] == "CURRICULUM"
         after = {table: [tuple(row) for row in connect().execute(f"SELECT * FROM {table} ORDER BY 1,2").fetchall()] for table in ("recognition_states", "recognition_attempts", "points_ledger", "reward_redemptions", "school_queue_items")}
         assert before == after
+
+
+def test_queue_membership_is_replayed_from_lifecycle_history(tmp_path):
+    with client(tmp_path) as api:
+        child_id = api.post("/api/children", json={"name": "Alice"}).json()["id"]
+        school = api.post("/api/school-queue", params={"child_id": child_id}, json={"character": "學", "school_source": "Homework"}).json()
+        seeded = api.post(f"/api/children/{child_id}/learning-items/seed", json={"characters": ["學"]}).json()["items"][0]
+        from app.database import connect
+        with connect() as db:
+            db.execute("UPDATE school_queue_items SET created_at=?,completed=1,completed_at=? WHERE id=?", ("2025-01-01 00:00:00", "2026-02-01 00:00:00", school["id"]))
+            db.execute("INSERT INTO review_queue_items (id,child_id,item_id,character,source_detail,reason,created_at,active,deactivated_at) VALUES (?,?,?,?,?,?,?,?,?)", ("review-history", child_id, seeded["id"], "學", "Homework", "wrong", "2025-01-01 00:00:00", 0, "2026-02-01 00:00:00"))
+        before = api.post("/api/adaptive/plan", params={"child_id": child_id}, json={"as_of": "2026-01-15T00:00:00Z", "limit": 10}).json()
+        after = api.post("/api/adaptive/plan", params={"child_id": child_id}, json={"as_of": "2026-03-01T00:00:00Z", "limit": 10}).json()
+        assert school["id"] in {item["source_id"] for item in before["items"]}
+        assert "review-history" in {item["source_id"] for item in before["items"]}
+        assert school["id"] not in {item["source_id"] for item in after["items"]}
+        assert "review-history" not in {item["source_id"] for item in after["items"]}
+
+
+def test_recent_error_only_counts_recent_incorrect_events_and_preference_is_audited(tmp_path):
+    with client(tmp_path) as api:
+        child_id = api.post("/api/children", json={"name": "Alice"}).json()["id"]
+        item = api.post(f"/api/children/{child_id}/learning-items/seed", json={"characters": ["學"]}).json()["items"][0]
+        from app.database import connect
+        with connect() as db:
+            db.execute("UPDATE learning_items SET created_at=? WHERE id=?", ("2025-01-01 00:00:00", item["id"]))
+            db.execute("INSERT INTO learning_sessions (id,child_id,started_at) VALUES (?,?,?)", ("history-session", child_id, "2026-01-01 00:00:00"))
+            db.execute("INSERT INTO recognition_attempts (id,child_id,item_id,timestamp,result,assisted,source_queue,session_id) VALUES (?,?,?,?,?,?,?,?)", ("old-wrong", child_id, item["id"], "2025-01-01 00:00:00", "incorrect", 0, "CURRICULUM", "history-session"))
+            db.execute("INSERT INTO recognition_attempts (id,child_id,item_id,timestamp,result,assisted,source_queue,session_id) VALUES (?,?,?,?,?,?,?,?)", ("recent-right", child_id, item["id"], "2026-01-09 00:00:00", "correct", 0, "CURRICULUM", "history-session"))
+        plan = api.post("/api/adaptive/plan", params={"child_id": child_id}, json={"as_of": "2026-01-10T00:00:00Z", "limit": 10, "preference": "CURRICULUM"}).json()
+        result = next(entry for entry in plan["items"] if entry["source_id"] == item["id"])
+        assert result["components"]["recent_error"] == 0
+        assert result["components"]["preference"] == 20
+        assert result["priority_score"] == sum(result["components"].values())
+
+
+def test_adaptive_plan_represents_multiple_skill_domains_without_merging_state(tmp_path):
+    with client(tmp_path) as api:
+        child_id = api.post("/api/children", json={"name": "Alice"}).json()["id"]
+        api.post("/api/sprint-b/seed", params={"child_id": child_id})
+        plan = api.post("/api/adaptive/plan", params={"child_id": child_id}, json={"as_of": "2099-01-01T00:00:00Z", "limit": 20}).json()
+        skills = {item["skill"] for item in plan["items"]}
+        assert {"word", "sentence", "writing", "pronunciation", "grammar", "idiom", "reading", "reading_aloud"} <= skills
+        assert all(item["priority_score"] == sum(item["components"].values()) for item in plan["items"])
+        assert all(item["child_id"] == child_id for item in plan["items"])

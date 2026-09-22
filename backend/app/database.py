@@ -83,6 +83,7 @@ def initialize_database() -> None:
                 reason TEXT NOT NULL,
                 priority INTEGER NOT NULL DEFAULT 0,
                 active INTEGER NOT NULL DEFAULT 1,
+                deactivated_at TEXT,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(child_id, item_id, source_detail, reason)
             );
@@ -98,6 +99,8 @@ def initialize_database() -> None:
                 provenance_status TEXT NOT NULL DEFAULT 'PRIVATE_OK',
                 active INTEGER NOT NULL DEFAULT 1,
                 completed INTEGER NOT NULL DEFAULT 0,
+                completed_at TEXT,
+                deactivated_at TEXT,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
             CREATE TABLE IF NOT EXISTS ocr_imports (
@@ -212,6 +215,7 @@ def initialize_database() -> None:
                 child_id INTEGER NOT NULL REFERENCES children(id), reading_id TEXT NOT NULL REFERENCES pronunciation_readings(id),
                 correct_count INTEGER NOT NULL DEFAULT 0, incorrect_count INTEGER NOT NULL DEFAULT 0,
                 assisted_count INTEGER NOT NULL DEFAULT 0,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 PRIMARY KEY(child_id, reading_id)
             );
             CREATE TABLE IF NOT EXISTS pronunciation_attempts (
@@ -238,11 +242,12 @@ def initialize_database() -> None:
             CREATE TABLE IF NOT EXISTS grammar_states (
                 child_id INTEGER NOT NULL REFERENCES children(id), exercise_id TEXT NOT NULL REFERENCES grammar_exercises(id),
                 correct_count INTEGER NOT NULL DEFAULT 0, incorrect_count INTEGER NOT NULL DEFAULT 0, assisted_count INTEGER NOT NULL DEFAULT 0,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 PRIMARY KEY(child_id, exercise_id)
             );
             CREATE TABLE IF NOT EXISTS grammar_attempts (
                 id TEXT PRIMARY KEY, child_id INTEGER NOT NULL REFERENCES children(id), exercise_id TEXT NOT NULL REFERENCES grammar_exercises(id),
-                answer TEXT NOT NULL, correct INTEGER NOT NULL, assisted INTEGER NOT NULL DEFAULT 0
+                answer TEXT NOT NULL, correct INTEGER NOT NULL, assisted INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
             CREATE TABLE IF NOT EXISTS idioms (
                 id TEXT PRIMARY KEY, idiom TEXT NOT NULL, meaning TEXT NOT NULL, example TEXT NOT NULL,
@@ -254,11 +259,11 @@ def initialize_database() -> None:
             );
             CREATE TABLE IF NOT EXISTS idiom_states (
                 child_id INTEGER NOT NULL REFERENCES children(id), idiom_id TEXT NOT NULL REFERENCES idioms(id),
-                correct_count INTEGER NOT NULL DEFAULT 0, incorrect_count INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(child_id, idiom_id)
+                correct_count INTEGER NOT NULL DEFAULT 0, incorrect_count INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY(child_id, idiom_id)
             );
             CREATE TABLE IF NOT EXISTS idiom_attempts (
                 id TEXT PRIMARY KEY, child_id INTEGER NOT NULL REFERENCES children(id), idiom_id TEXT NOT NULL REFERENCES idioms(id),
-                answer TEXT NOT NULL, correct INTEGER NOT NULL, assisted INTEGER NOT NULL DEFAULT 0
+                answer TEXT NOT NULL, correct INTEGER NOT NULL, assisted INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
             CREATE TABLE IF NOT EXISTS reading_passages (
                 id TEXT PRIMARY KEY, child_id INTEGER NOT NULL REFERENCES children(id), title TEXT NOT NULL, passage TEXT NOT NULL,
@@ -272,7 +277,7 @@ def initialize_database() -> None:
             );
             CREATE TABLE IF NOT EXISTS reading_states (
                 child_id INTEGER NOT NULL REFERENCES children(id), passage_id TEXT NOT NULL REFERENCES reading_passages(id),
-                correct_count INTEGER NOT NULL DEFAULT 0, incorrect_count INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(child_id, passage_id)
+                correct_count INTEGER NOT NULL DEFAULT 0, incorrect_count INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY(child_id, passage_id)
             );
             CREATE TABLE IF NOT EXISTS reading_attempts (
                 id TEXT PRIMARY KEY, child_id INTEGER NOT NULL REFERENCES children(id), passage_id TEXT NOT NULL REFERENCES reading_passages(id),
@@ -303,7 +308,14 @@ def initialize_database() -> None:
                 ("script", "TEXT NOT NULL DEFAULT 'TRADITIONAL'"),
                 ("context", "TEXT NOT NULL DEFAULT ''")
             ],
-            "pronunciation_states": [("assisted_count", "INTEGER NOT NULL DEFAULT 0")],
+            "school_queue_items": [("completed_at", "TEXT"), ("deactivated_at", "TEXT")],
+            "review_queue_items": [("deactivated_at", "TEXT")],
+            "pronunciation_states": [("assisted_count", "INTEGER NOT NULL DEFAULT 0"), ("updated_at", "TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP")],
+            "grammar_states": [("updated_at", "TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP")],
+            "grammar_attempts": [("created_at", "TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP")],
+            "idiom_states": [("updated_at", "TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP")],
+            "idiom_attempts": [("created_at", "TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP")],
+            "reading_states": [("updated_at", "TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP")],
             "pronunciation_attempts": [
                 ("assisted", "INTEGER NOT NULL DEFAULT 0"),
                 ("source_type", "TEXT NOT NULL DEFAULT 'SPRINT_B'"),
