@@ -14,7 +14,7 @@ def uid(prefix: str) -> str:
 
 
 def now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
 
 def ensure_child(connection: sqlite3.Connection, child_id: int) -> None:
@@ -97,7 +97,7 @@ def record_attempt(child_id: int, session_id: str, item_id: str, result: str, as
           VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(child_id,item_id) DO UPDATE SET
           correct_count=correct_count+excluded.correct_count, incorrect_count=incorrect_count+excluded.incorrect_count,
           assisted_count=assisted_count+excluded.assisted_count,last_result=excluded.last_result,due_at=excluded.due_at,updated_at=excluded.updated_at""",
-          (child_id, item_id, int(result == "correct" and not assisted), int(result == "incorrect"), int(assisted), result, (datetime.now(timezone.utc) + timedelta(days=delay)).isoformat(), now()))
+          (child_id, item_id, int(result == "correct" and not assisted), int(result == "incorrect"), int(assisted), result, (datetime.now(timezone.utc) + timedelta(days=delay)).strftime("%Y-%m-%d %H:%M:%S"), now()))
         return dict(db.execute("SELECT * FROM recognition_attempts WHERE id=?", (attempt_id,)).fetchone())
 
 
@@ -136,7 +136,7 @@ def list_daily_queue(child_id: int) -> list[dict[str, Any]]:
 def create_weekly_test(child_id: int) -> dict[str, Any]:
     with connect() as db:
         ensure_child(db, child_id)
-        cutoff = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
         rows = db.execute(
             """SELECT i.id, i.character FROM learning_items i
                LEFT JOIN recognition_states s ON s.item_id=i.id AND s.child_id=i.child_id

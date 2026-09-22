@@ -33,7 +33,9 @@ Implemented only the Issue #4 Sprint A scope: Recognition MVP, School Queue, Wee
 - Added minimal reward catalog, balance checks, and redemption ledger entries.
 - Points never participate in recognition mastery calculations.
 - Recognition scheduling enforces due-at boundaries and does not repeat an item within the same session.
+- Recognition due timestamps are persisted in one SQLite-comparable UTC format, with regression coverage for immediate versus future eligibility.
 - Session completion validates child ownership, unfinished state, and non-empty attempts; completed Weekly Tests are immutable.
+- Reward redemption is regression-tested with sufficient legitimate points, audited negative ledger entries, reduced balance, and unchanged recognition state.
 
 ## Architecture and schema
 
@@ -44,7 +46,7 @@ Implemented only the Issue #4 Sprint A scope: Recognition MVP, School Queue, Wee
 
 ## Tests and build
 
-- Backend: `17 passed` after AUD-A01～A07 fixes with `backend/.venv` and `PYTHONPATH=backend`.
+- Backend: `18 passed` after AUD-A01～A09 fixes with `backend/.venv` and `PYTHONPATH=backend`.
 - Frontend: `4 passed` with Vitest.
 - Production frontend build: passed; PWA assets generated.
 - Phase 0 tests remain green.
