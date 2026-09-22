@@ -85,7 +85,21 @@ No manual copy/paste of diffs or review text.
 
 ## Product Owner PR Authorization
 
-The Product Owner authorizes Codex to automatically create or update a **Draft Pull Request** after completing an explicitly assigned work order. This authorization does not include merging, marking a PR ready for review, changing branch protection, or starting the next Phase. Codex must stop at the requested Phase boundary and wait for a new work order or explicit review decision.
+The Product Owner authorizes Codex to automatically create or update a **Draft Pull Request** after completing an explicitly assigned work order. This authorization does not include merging, marking a PR ready for review, or changing branch protection.
+
+## Continuous Development Authorization
+
+To accelerate development, the Product Owner has authorized continuous phase progression.
+
+Rules:
+- After a Phase passes ChatGPT Architect Audit and is merged to `main`, ChatGPT should immediately prepare/publish the next Phase work order without asking the Product Owner for separate authorization.
+- Codex may start the next Phase when an explicit ChatGPT work order for that Phase exists on GitHub; no additional Product Owner confirmation is required.
+- Codex must still stop at the end of each assigned Phase, open/update one Draft PR, and wait for ChatGPT Architect Audit.
+- Codex must not merge its own PR, mark it Ready for review, bypass audit, or skip ahead beyond the currently published work order.
+- A failed audit blocks phase progression until findings are resolved.
+- Manual iPad/NAS/real-child validation remains distinct from code-level audit and must not be falsely claimed as completed.
+
+This continuous authorization supersedes older handoff wording that required a separate Product Owner authorization before each next Phase.
 
 ---
 
@@ -216,7 +230,7 @@ The active collaboration model is manual trigger + GitHub handoff:
 - Product Owner tells Codex to read GitHub.
 - Product Owner tells ChatGPT to inspect new GitHub changes.
 
-Phase 11 is complete and merged. Do not start Phase 12 without explicit Product Owner authorization.
+Phase 11 is complete and merged. Continuous development authorization is active; Phase 12 work may start from the published ChatGPT work order without separate Product Owner confirmation.
 
 ---
 
@@ -394,4 +408,4 @@ Remaining validation:
 - Synology DS723+ deployment/persistence;
 - real-child usability / parent workflow trial.
 
-Do not start Phase 12 without explicit Product Owner authorization.
+Continuous development authorization is active. Start Phase 12 only from the explicit GitHub work order; do not skip beyond the current assigned Phase.
