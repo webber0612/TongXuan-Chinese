@@ -6,6 +6,7 @@ from typing import Any
 
 from .database import connect, initialize_database
 from .learning import ensure_child, now, uid
+from .pinyin import normalize_pinyin
 from .writing_provider import provider_for
 
 PROVENANCE = {
@@ -37,9 +38,14 @@ def seed_sprint_b(child_id: int) -> dict[str, Any]:
         db.execute("INSERT OR IGNORE INTO sentences (id,child_id,sentence,provenance_status,source_name,license_name,commercial_ready) VALUES (?,?,?,?,?,?,?)", (sentence_id, child_id, "我在學校學習。", PROVENANCE["provenance_status"], PROVENANCE["source_name"], PROVENANCE["license_name"], 0))
         db.execute("INSERT OR IGNORE INTO sentence_words VALUES (?,?,?)", (sentence_id, word_rows[0][0], 1))
         db.execute("INSERT OR IGNORE INTO sentence_words VALUES (?,?,?)", (sentence_id, word_rows[1][0], 2))
-        readings = [("reading_學_zhuyin", "學", "ZHUYIN", "ㄒㄩㄝˊ", "zh-TW"), ("reading_學_pinyin", "學", "PINYIN", "xué", "zh-CN"), ("reading_學_alt", "學", "PINYIN", "xue2", "zh-CN")]
-        for reading_id, character, system, notation, locale in readings:
-            db.execute("INSERT OR IGNORE INTO pronunciation_readings (id,character,notation_system,notation,locale,source_name,license_name,provenance_status,commercial_ready) VALUES (?,?,?,?,?,?,?,?,?)", (reading_id, character, system, notation, locale, PROVENANCE["source_name"], PROVENANCE["license_name"], PROVENANCE["provenance_status"], 0))
+        readings = [
+            ("reading_學_zhuyin", "學", "TRADITIONAL", "ZHUYIN", "ㄒㄩㄝˊ", "zh-TW", ""),
+            ("reading_学_pinyin", "学", "SIMPLIFIED", "PINYIN", "xué", "zh-CN", ""),
+            ("reading_行_bank", "行", "SIMPLIFIED", "PINYIN", "háng", "zh-CN", "銀行"),
+            ("reading_行_walk", "行", "SIMPLIFIED", "PINYIN", "xíng", "zh-CN", "行走"),
+        ]
+        for reading_id, character, script, system, notation, locale, context in readings:
+            db.execute("INSERT OR IGNORE INTO pronunciation_readings (id,character,script,notation_system,notation,locale,context,source_name,license_name,provenance_status,commercial_ready) VALUES (?,?,?,?,?,?,?,?,?,?,?)", (reading_id, character, script, system, notation, locale, context, PROVENANCE["source_name"], PROVENANCE["license_name"], PROVENANCE["provenance_status"], 0))
         db.execute("INSERT OR IGNORE INTO grammar_concepts VALUES (?,?,?,?,?,?,?,?)", ("grammar_在", "在 + place", "在 marks location.", "我在學校。", PROVENANCE["provenance_status"], PROVENANCE["source_name"], PROVENANCE["license_name"], 0))
         db.execute("INSERT OR IGNORE INTO grammar_exercises VALUES (?,?,?,?)", ("grammar_ex_在", "grammar_在", "Choose the correct sentence.", "我在學校。"))
         db.execute("INSERT OR IGNORE INTO idioms VALUES (?,?,?,?,?,?,?,?)", ("idiom_百聞不如一見", "百聞不如一見", "Seeing once is better than hearing many times.", "百聞不如一見。", PROVENANCE["provenance_status"], PROVENANCE["source_name"], PROVENANCE["license_name"], 0))
@@ -50,7 +56,7 @@ def seed_sprint_b(child_id: int) -> dict[str, Any]:
         for word_id, _, _ in word_rows:
             db.execute("INSERT OR IGNORE INTO passage_vocabulary VALUES (?,?)", (passage_id, word_id))
         db.execute("INSERT OR IGNORE INTO reading_questions VALUES (?,?,?,?)", (f"question_{child_id}_school", passage_id, "Where does the child study?", "學校"))
-        return {"words": list_words(child_id, db), "sentences": list_sentences(child_id, db), "readings": list_readings("學", db), "grammar": list_grammar(db), "idioms": list_idioms(db), "passages": list_passages(child_id, db)}
+        return {"words": list_words(child_id, db), "sentences": list_sentences(child_id, db), "readings": list_readings(None, None, db), "grammar": list_grammar(db), "idioms": list_idioms(db), "passages": list_passages(child_id, db)}
 
 
 def list_words(child_id: int, db: sqlite3.Connection | None = None) -> list[dict[str, Any]]:
@@ -105,22 +111,54 @@ def practice_writing(child_id: int, character: str, trace_result: str, assisted:
         return dict(db.execute("SELECT * FROM writing_states WHERE child_id=? AND character=?", (child_id, character)).fetchone())
 
 
-def list_readings(character: str | None = None, db: sqlite3.Connection | None = None) -> list[dict[str, Any]]:
+def list_readings(character: str | None = None, script: str | None = None, db: sqlite3.Connection | None = None) -> list[dict[str, Any]]:
     own = db is None; db = db or connect(); sql = "SELECT * FROM pronunciation_readings"; args: tuple[Any, ...] = ()
-    if character: sql += " WHERE character=?"; args = (character,)
+    filters = []
+    if character: filters.append("character=?"); args += (character,)
+    if script: filters.append("script=?"); args += (script,)
+    if filters: sql += " WHERE " + " AND ".join(filters)
     rows = [dict(row) for row in db.execute(sql + " ORDER BY character,notation_system,id", args)]
     if own: db.close()
     return rows
 
 
-def practice_pronunciation(child_id: int, reading_id: str, answer: str, assisted: bool) -> dict[str, Any]:
+def practice_pronunciation(child_id: int, reading_id: str, answer: str, assisted: bool, source_type: str = "SPRINT_B", school_queue_item_id: str | None = None, prompt_id: str | None = None) -> dict[str, Any]:
     with connect() as db:
         ensure_child(db, child_id); reading = db.execute("SELECT * FROM pronunciation_readings WHERE id=?", (reading_id,)).fetchone()
         if reading is None: raise ValueError("reading_not_found")
-        correct = int(answer.strip().lower() == reading["notation"].lower())
-        db.execute("INSERT INTO pronunciation_attempts (id,child_id,reading_id,answer,correct,assisted,created_at) VALUES (?,?,?,?,?,?,?)", (uid("pron_attempt"), child_id, reading_id, answer, correct, int(assisted), now()))
+        normalized_answer = normalize_pinyin(answer) if reading["notation_system"] == "PINYIN" else answer.strip().lower()
+        normalized_target = normalize_pinyin(reading["notation"]) if reading["notation_system"] == "PINYIN" else reading["notation"].strip().lower()
+        correct = int(normalized_answer == normalized_target)
+        db.execute("INSERT INTO pronunciation_attempts (id,child_id,reading_id,answer,correct,assisted,source_type,school_queue_item_id,prompt_id,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)", (uid("pron_attempt"), child_id, reading_id, answer, correct, int(assisted), source_type, school_queue_item_id, prompt_id, now()))
         db.execute("""INSERT INTO pronunciation_states (child_id,reading_id,correct_count,incorrect_count,assisted_count) VALUES (?,?,?,?,?) ON CONFLICT(child_id,reading_id) DO UPDATE SET correct_count=correct_count+excluded.correct_count,incorrect_count=incorrect_count+excluded.incorrect_count,assisted_count=assisted_count+excluded.assisted_count""", (child_id, reading_id, int(correct and not assisted), int(not correct), int(assisted)))
-        return {"correct": bool(correct), "reading_id": reading_id, "state": dict(db.execute("SELECT * FROM pronunciation_states WHERE child_id=? AND reading_id=?", (child_id, reading_id)).fetchone())}
+        return {"correct": bool(correct), "reading_id": reading_id, "normalized_answer": normalized_answer, "source_type": source_type, "school_queue_item_id": school_queue_item_id, "prompt_id": prompt_id, "state": dict(db.execute("SELECT * FROM pronunciation_states WHERE child_id=? AND reading_id=?", (child_id, reading_id)).fetchone())}
+
+
+def create_school_pinyin_prompt(child_id: int, school_queue_item_id: str) -> dict[str, Any]:
+    with connect() as db:
+        ensure_child(db, child_id)
+        item = db.execute("SELECT * FROM school_queue_items WHERE id=? AND child_id=?", (school_queue_item_id, child_id)).fetchone()
+        if item is None: raise ValueError("school_queue_item_not_found")
+        reading = db.execute("SELECT * FROM pronunciation_readings WHERE character=? AND script='SIMPLIFIED' AND notation_system='PINYIN' ORDER BY context,id LIMIT 1", (item["character"],)).fetchone()
+        if reading is None: raise ValueError("simplified_pinyin_not_found")
+        prompt_id = f"school_pinyin_{school_queue_item_id}_{reading['id']}"
+        db.execute("INSERT OR IGNORE INTO school_pinyin_prompts (id,child_id,school_queue_item_id,reading_id,prompted_character,source_name,provenance_status,private_content) VALUES (?,?,?,?,?,?,?,?)", (prompt_id, child_id, school_queue_item_id, reading["id"], item["character"], item["school_source"], item["provenance_status"], item["private_content"]))
+        prompt = dict(db.execute("SELECT p.*,r.notation,r.context,r.script,r.notation_system FROM school_pinyin_prompts p JOIN pronunciation_readings r ON r.id=p.reading_id WHERE p.id=?", (prompt_id,)).fetchone())
+        prompt["private_content"] = bool(prompt["private_content"])
+        prompt["promotable_to_curriculum"] = False
+        return prompt
+
+
+def practice_school_pinyin(child_id: int, prompt_id: str, answer: str, assisted: bool) -> dict[str, Any]:
+    with connect() as db:
+        ensure_child(db, child_id)
+        prompt = db.execute("SELECT * FROM school_pinyin_prompts WHERE id=? AND child_id=?", (prompt_id, child_id)).fetchone()
+        if prompt is None: raise ValueError("school_pinyin_prompt_not_found")
+        result = practice_pronunciation(child_id, prompt["reading_id"], answer, assisted, "SCHOOL_QUEUE_PRIVATE", prompt["school_queue_item_id"], prompt_id)
+        result["provenance_status"] = prompt["provenance_status"]
+        result["private_content"] = bool(prompt["private_content"])
+        result["promotable_to_curriculum"] = False
+        return result
 
 
 def list_grammar(db: sqlite3.Connection | None = None) -> list[dict[str, Any]]:

@@ -16,7 +16,8 @@ from .learning import (
 )
 from .sprint_b import (
     list_grammar, list_idioms, list_passages, list_readings, list_sentences, list_words,
-    practice_grammar, practice_idiom, practice_pronunciation, practice_sentence, practice_word, practice_writing,
+    practice_grammar, practice_idiom, practice_pronunciation, practice_school_pinyin, practice_sentence, practice_word, practice_writing,
+    create_school_pinyin_prompt,
     seed_sprint_b, submit_reading,
 )
 
@@ -230,13 +231,25 @@ def post_writing_attempt(child_id: int, character: str, request: WritingAttemptR
 
 
 @app.get("/api/sprint-b/pronunciation")
-def get_pronunciation(character: str | None = None) -> list[dict[str, object]]:
-    return list_readings(character)
+def get_pronunciation(character: str | None = None, script: str | None = None) -> list[dict[str, object]]:
+    return list_readings(character, script)
 
 
 @app.post("/api/sprint-b/pronunciation/{reading_id}/attempts")
 def post_pronunciation_attempt(reading_id: str, child_id: int, request: AnswerRequest) -> dict[str, object]:
     try: return practice_pronunciation(child_id, reading_id, request.answer, request.assisted)
+    except ValueError as error: raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@app.post("/api/sprint-b/pinyin/school-queue/{school_queue_item_id}")
+def post_school_pinyin_prompt(school_queue_item_id: str, child_id: int) -> dict[str, object]:
+    try: return create_school_pinyin_prompt(child_id, school_queue_item_id)
+    except ValueError as error: raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@app.post("/api/sprint-b/pinyin/prompts/{prompt_id}/attempts")
+def post_school_pinyin_attempt(prompt_id: str, child_id: int, request: AnswerRequest) -> dict[str, object]:
+    try: return practice_school_pinyin(child_id, prompt_id, request.answer, request.assisted)
     except ValueError as error: raise HTTPException(status_code=400, detail=str(error)) from error
 
 

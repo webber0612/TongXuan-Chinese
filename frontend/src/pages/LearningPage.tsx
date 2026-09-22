@@ -24,6 +24,9 @@ export function LearningPage() {
   const [points, setPoints] = useState<any>(null);
   const [message, setMessage] = useState("");
   const [sprintB, setSprintB] = useState<any>(null);
+  const [pinyinReading, setPinyinReading] = useState<any>(null);
+  const [pinyinInput, setPinyinInput] = useState("");
+  const [pinyinFeedback, setPinyinFeedback] = useState("");
 
   useEffect(() => { void api<Child[]>("/api/children").then((value) => { setChildren(value); if (value[0]) setChildId(value[0].id); }); }, []);
   async function seed() { if (childId) { await api(`/api/children/${childId}/learning-items/seed`, { method: "POST", body: "{}" }); setMessage("Sample recognition items ready"); } }
@@ -36,10 +39,11 @@ export function LearningPage() {
   async function submitTest() { if (childId && test) setMessage(JSON.stringify(await api<any>(`/api/weekly-tests/${test.id}/submit?child_id=${childId}`, { method: "POST", body: JSON.stringify({ answers }) }))); }
   async function refreshPoints() { if (childId) setPoints(await api<any>(`/api/points?child_id=${childId}`)); }
   async function redeem(id: string) { if (childId) { await api(`/api/points/redeem/${id}?child_id=${childId}`, { method: "POST" }); await refreshPoints(); } }
-  async function seedB() { if (childId) { setSprintB(await api<any>(`/api/sprint-b/seed?child_id=${childId}`, { method: "POST" })); setMessage("Sprint B sample content ready"); } }
+  async function seedB() { if (childId) { const seeded = await api<any>(`/api/sprint-b/seed?child_id=${childId}`, { method: "POST" }); setSprintB(seeded); setPinyinReading(seeded.readings.find((reading: any) => reading.character === "学" && reading.script === "SIMPLIFIED" && reading.notation_system === "PINYIN")); setMessage("Sprint B sample content ready"); } }
   async function practiceWord(id: string, assisted = false) { if (childId) { setSprintB((current: any) => current); await api(`/api/sprint-b/words/${id}/attempts?child_id=${childId}`, { method: "POST", body: JSON.stringify({ result: "correct", assisted }) }); setMessage(`Word practice${assisted ? " (assisted)" : ""}`); } }
   async function practiceSentence(sentence: any) { if (childId) { await api(`/api/sprint-b/sentences/${sentence.id}/attempts?child_id=${childId}`, { method: "POST", body: JSON.stringify({ answer: sentence.sentence }) }); setMessage("Sentence practice recorded"); } }
   async function practiceWriting() { if (childId) { await api(`/api/sprint-b/writing/attempts?child_id=${childId}&character=學`, { method: "POST", body: JSON.stringify(hanziWriterTraceEvent()) }); setMessage("Hanzi Writer trace recorded; no handwriting quality claim"); } }
+  async function submitPinyin() { if (childId && pinyinReading) { const result = await api<any>(`/api/sprint-b/pronunciation/${pinyinReading.id}/attempts?child_id=${childId}`, { method: "POST", body: JSON.stringify({ answer: pinyinInput }) }); setPinyinFeedback(result.correct ? "Correct" : "Try again"); } }
   async function practicePronunciation(reading: any) { if (childId) await api(`/api/sprint-b/pronunciation/${reading.id}/attempts?child_id=${childId}`, { method: "POST", body: JSON.stringify({ answer: reading.notation, assisted: false }) }); }
   async function practiceGrammar(exercise: any) { if (childId) await api(`/api/sprint-b/grammar/${exercise.id}/attempts?child_id=${childId}`, { method: "POST", body: JSON.stringify({ answer: exercise.answer_rule }) }); }
   async function practiceIdiom(idiom: any) { if (childId) await api(`/api/sprint-b/idioms/${idiom.id}/attempts?child_id=${childId}`, { method: "POST", body: JSON.stringify({ answer: idiom.meaning }) }); }
@@ -53,7 +57,8 @@ export function LearningPage() {
     <section className="card"><h2>Fast Track Sprint B · Phase 5–10</h2><button onClick={seedB}>Seed auditable Words → Reading samples</button>{sprintB && <div>
       <h3>Words + Sentences</h3><p>{sprintB.words.length} words / {sprintB.sentences.length} sentences</p>{sprintB.words.map((word: any) => <button key={word.id} onClick={() => practiceWord(word.id)}>Practice {word.word}</button>)}{sprintB.sentences.map((sentence: any) => <button key={sentence.id} onClick={() => practiceSentence(sentence)}>Practice sentence</button>)}
       <h3>Writing</h3><button onClick={practiceWriting}>Trace 學 (deterministic manual result)</button>
-      <h3>Zhuyin + Pinyin</h3>{sprintB.readings.map((reading: any) => <button key={reading.id} onClick={() => practicePronunciation(reading)}>{reading.notation_system}: {reading.notation}</button>)}
+      <h3>Traditional Zhuyin</h3>{sprintB.readings.filter((reading: any) => reading.script === "TRADITIONAL").map((reading: any) => <button key={reading.id} onClick={() => practicePronunciation(reading)}>學 · {reading.notation_system}: {reading.notation}</button>)}
+      <h3>Simplified Pinyin</h3>{pinyinReading && <div><p>Prompt ({pinyinReading.script}): <strong>{pinyinReading.character}</strong>{pinyinReading.context && ` · ${pinyinReading.context}`}</p><select aria-label="Pinyin target reading" value={pinyinReading.id} onChange={(event) => setPinyinReading(sprintB.readings.find((reading: any) => reading.id === event.target.value))}>{sprintB.readings.filter((reading: any) => reading.script === "SIMPLIFIED" && reading.notation_system === "PINYIN").map((reading: any) => <option key={reading.id} value={reading.id}>{reading.character} {reading.context || "general"}</option>)}</select><input aria-label="Pinyin answer" value={pinyinInput} onChange={(event) => setPinyinInput(event.target.value)} placeholder="Type pinyin, e.g. xue2" /><button onClick={submitPinyin}>Submit Pinyin</button><span role="status">{pinyinFeedback}</span></div>}
       <h3>Grammar</h3>{sprintB.grammar.map((exercise: any) => <button key={exercise.id} onClick={() => practiceGrammar(exercise)}>Practice {exercise.concept}</button>)}
       <h3>Idioms</h3>{sprintB.idioms.map((idiom: any) => <button key={idiom.id} onClick={() => practiceIdiom(idiom)}>{idiom.id}</button>)}
       <h3>Reading</h3>{sprintB.passages.map((passage: any) => <button key={passage.id} onClick={() => practiceReading(passage)}>Read {passage.title}</button>)}

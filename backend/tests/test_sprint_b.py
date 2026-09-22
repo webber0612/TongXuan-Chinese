@@ -49,17 +49,32 @@ def test_phase6_writing_is_separate_and_assisted_not_independent(tmp_path):
 def test_phase7_multiple_readings_and_system_separation(tmp_path):
     with client(tmp_path) as api:
         child_id, other_id = seed(api)
-        readings = api.get("/api/sprint-b/pronunciation", params={"character": "學"}).json()
-        assert {item["notation_system"] for item in readings} == {"ZHUYIN", "PINYIN"}
-        assert len([item for item in readings if item["notation_system"] == "PINYIN"]) == 2
-        first_result = api.post(f"/api/sprint-b/pronunciation/{readings[0]['id']}/attempts", params={"child_id": child_id}, json={"answer": readings[0]["notation"]}).json()
-        assisted_result = api.post(f"/api/sprint-b/pronunciation/{readings[0]['id']}/attempts", params={"child_id": child_id}, json={"answer": readings[0]["notation"], "assisted": True}).json()
+        traditional = api.get("/api/sprint-b/pronunciation", params={"character": "學", "script": "TRADITIONAL"}).json()
+        simplified = api.get("/api/sprint-b/pronunciation", params={"character": "学", "script": "SIMPLIFIED"}).json()
+        assert len(traditional) == 1 and traditional[0]["notation_system"] == "ZHUYIN"
+        assert len(simplified) == 1 and simplified[0]["notation"] == "xué"
+        first_result = api.post(f"/api/sprint-b/pronunciation/{simplified[0]['id']}/attempts", params={"child_id": child_id}, json={"answer": "xue2"}).json()
+        assisted_result = api.post(f"/api/sprint-b/pronunciation/{simplified[0]['id']}/attempts", params={"child_id": child_id}, json={"answer": "xué", "assisted": True}).json()
         assert first_result["correct"] is True
         assert assisted_result["state"]["correct_count"] == 1 and assisted_result["state"]["assisted_count"] == 1
-        other = next(item for item in readings if item["id"] != readings[0]["id"])
-        assert api.post(f"/api/sprint-b/pronunciation/{other['id']}/attempts", params={"child_id": child_id}, json={"answer": "wrong"}).json()["correct"] is False
-        bob_result = api.post(f"/api/sprint-b/pronunciation/{readings[0]['id']}/attempts", params={"child_id": other_id}, json={"answer": readings[0]["notation"]}).json()
+        assert api.post(f"/api/sprint-b/pronunciation/{simplified[0]['id']}/attempts", params={"child_id": child_id}, json={"answer": "wrong"}).json()["correct"] is False
+        bob_result = api.post(f"/api/sprint-b/pronunciation/{simplified[0]['id']}/attempts", params={"child_id": other_id}, json={"answer": "xué"}).json()
         assert bob_result["state"]["correct_count"] == 1 and bob_result["state"]["assisted_count"] == 0
+        assert api.post(f"/api/sprint-b/pronunciation/{traditional[0]['id']}/attempts", params={"child_id": child_id}, json={"answer": traditional[0]["notation"]}).json()["state"]["correct_count"] == 1
+        assert api.get("/api/sprint-b/pronunciation", params={"character": "行", "script": "SIMPLIFIED"}).json()[0]["context"] == "銀行"
+
+
+def test_phase7_school_queue_private_pinyin_bridge_does_not_promote(tmp_path):
+    with client(tmp_path) as api:
+        child_id, _ = seed(api)
+        school = api.post("/api/school-queue", params={"child_id": child_id}, json={"character": "学", "school_source": "Private worksheet", "private_content": True, "provenance_status": "PRIVATE_OK"}).json()
+        prompt = api.post(f"/api/sprint-b/pinyin/school-queue/{school['id']}", params={"child_id": child_id}).json()
+        assert prompt["prompted_character"] == "学" and prompt["private_content"] is True
+        assert prompt["provenance_status"] == "PRIVATE_OK" and prompt["promotable_to_curriculum"] is False
+        result = api.post(f"/api/sprint-b/pinyin/prompts/{prompt['id']}/attempts", params={"child_id": child_id}, json={"answer": "xué"}).json()
+        assert result["correct"] is True and result["source_type"] == "SCHOOL_QUEUE_PRIVATE"
+        assert result["school_queue_item_id"] == school["id"] and result["prompt_id"] == prompt["id"]
+        assert len(api.get("/api/sprint-b/words", params={"child_id": child_id}).json()) == 2
 
 
 def test_phase8_deterministic_grammar_assisted_and_isolation(tmp_path):

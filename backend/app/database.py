@@ -185,8 +185,9 @@ def initialize_database() -> None:
                 provider TEXT NOT NULL DEFAULT 'MANUAL_TRACE_RULE', created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
             CREATE TABLE IF NOT EXISTS pronunciation_readings (
-                id TEXT PRIMARY KEY, character TEXT NOT NULL, notation_system TEXT NOT NULL CHECK(notation_system IN ('ZHUYIN','PINYIN')),
-                notation TEXT NOT NULL, locale TEXT NOT NULL, source_name TEXT NOT NULL, license_name TEXT NOT NULL,
+                id TEXT PRIMARY KEY, character TEXT NOT NULL, script TEXT NOT NULL CHECK(script IN ('TRADITIONAL','SIMPLIFIED')),
+                notation_system TEXT NOT NULL CHECK(notation_system IN ('ZHUYIN','PINYIN')),
+                notation TEXT NOT NULL, locale TEXT NOT NULL, context TEXT NOT NULL DEFAULT '', source_name TEXT NOT NULL, license_name TEXT NOT NULL,
                 provenance_status TEXT NOT NULL, commercial_ready INTEGER NOT NULL DEFAULT 0
             );
             CREATE TABLE IF NOT EXISTS pronunciation_states (
@@ -198,7 +199,15 @@ def initialize_database() -> None:
             CREATE TABLE IF NOT EXISTS pronunciation_attempts (
                 id TEXT PRIMARY KEY, child_id INTEGER NOT NULL REFERENCES children(id), reading_id TEXT NOT NULL REFERENCES pronunciation_readings(id),
                 answer TEXT NOT NULL, correct INTEGER NOT NULL, assisted INTEGER NOT NULL DEFAULT 0,
+                source_type TEXT NOT NULL DEFAULT 'SPRINT_B', school_queue_item_id TEXT, prompt_id TEXT,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE IF NOT EXISTS school_pinyin_prompts (
+                id TEXT PRIMARY KEY, child_id INTEGER NOT NULL REFERENCES children(id),
+                school_queue_item_id TEXT NOT NULL REFERENCES school_queue_items(id), reading_id TEXT NOT NULL REFERENCES pronunciation_readings(id),
+                prompted_character TEXT NOT NULL, source_name TEXT NOT NULL, provenance_status TEXT NOT NULL,
+                private_content INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(school_queue_item_id, reading_id)
             );
             CREATE TABLE IF NOT EXISTS grammar_concepts (
                 id TEXT PRIMARY KEY, concept TEXT NOT NULL, explanation TEXT NOT NULL, example TEXT NOT NULL,
@@ -256,8 +265,17 @@ def initialize_database() -> None:
         )
         # Keep existing family databases forward-compatible with the Sprint B audit fields.
         migrations = {
+            "pronunciation_readings": [
+                ("script", "TEXT NOT NULL DEFAULT 'TRADITIONAL'"),
+                ("context", "TEXT NOT NULL DEFAULT ''")
+            ],
             "pronunciation_states": [("assisted_count", "INTEGER NOT NULL DEFAULT 0")],
-            "pronunciation_attempts": [("assisted", "INTEGER NOT NULL DEFAULT 0")],
+            "pronunciation_attempts": [
+                ("assisted", "INTEGER NOT NULL DEFAULT 0"),
+                ("source_type", "TEXT NOT NULL DEFAULT 'SPRINT_B'"),
+                ("school_queue_item_id", "TEXT"),
+                ("prompt_id", "TEXT")
+            ],
             "reading_attempts": [
                 ("answers_json", "TEXT NOT NULL DEFAULT '{}'"),
                 ("correctness_json", "TEXT NOT NULL DEFAULT '{}'")

@@ -26,10 +26,17 @@ Branch: `sprint/phase5-10`
 
 ### Phase 7 — Zhuyin + Pinyin
 
-- Added separate reading rows for ZHUYIN and PINYIN, locale and provenance metadata.
-- Multiple readings are retained without overwriting character identity or another notation system.
-- Practice scores exact notation matches only; assisted answers are persisted and do not increase
-  independent pronunciation mastery.
+- Added script-aware reading rows for Traditional `學` + Zhuyin and Simplified `学` + Hanyu
+  Pinyin, with locale, context, and provenance metadata.
+- Added a real Simplified-character → Pinyin practice surface: the child sees the character,
+  enters/selects a target reading, submits it to backend deterministic scoring, and receives
+  correct/incorrect feedback.
+- Canonical Pinyin is stored with tone marks. A deterministic normalization layer accepts
+  tone-number input such as `xue2` and scores it against canonical `xué`.
+- Multiple lexical readings use explicit context (`銀行` → `háng`, `行走` → `xíng`);
+  notation variants are not stored as separate readings.
+- Traditional Zhuyin and Simplified Pinyin state/attempts remain independently auditable;
+  assisted answers are persisted and do not increase independent Pinyin mastery.
 
 ### Phase 8 — Grammar
 
@@ -57,6 +64,9 @@ Branch: `sprint/phase5-10`
   reading attempts persist normalized JSON snapshots of answers and correctness.
 - Points and rewards are not used as mastery signals.
 - Child ownership is checked on all child-scoped content and practice operations.
+- School Queue items can create a private Pinyin practice prompt through an explicit bridge;
+  source/provenance is retained, practice attempts remain auditable, and the item is never
+  promoted into core Curriculum.
 
 ## UI
 
@@ -65,7 +75,7 @@ dimensions. It intentionally remains minimal and unpolished.
 
 ## Tests and build
 
-- Backend: `24 passed` (31 non-blocking dependency deprecation warnings) with `backend/.venv` and `PYTHONPATH=backend`.
+- Backend: `25 passed` (33 non-blocking dependency deprecation warnings) with `backend/.venv` and `PYTHONPATH=backend`.
 - Frontend: `4 passed` with Vitest.
 - Production frontend build: passed; PWA assets generated.
 - Existing Sprint A and Phase 0 tests remain green.
@@ -90,6 +100,8 @@ dimensions. It intentionally remains minimal and unpolished.
 ## Delivery
 
 - Draft PR: [#7](https://github.com/webber0612/TongXuan-Chinese/pull/7), kept Draft.
-- Latest Architect Audit remediation: AUD-B01 through AUD-B05 addressed with regression coverage.
+- Latest Architect Audit remediation: AUD-B01 through AUD-B10 addressed with regression coverage,
+  including Simplified Pinyin normalization, script/state separation, context disambiguation,
+  and School Queue private provenance bridging.
 - The final pushed head is the latest commit on `sprint/phase5-10` / PR #7.
 - Phase 11: not started.
