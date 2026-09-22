@@ -188,14 +188,22 @@ Current baseline known from GitHub:
 - Phase 2 School Queue completed.
 - Phase 3 Weekly Test + Scoring completed.
 - Phase 4 Points + Reward System completed.
-- Phase 5 has **not** started.
-- Real-child usability validation is still outstanding before treating Sprint A as field-validated.
+- Fast Track Sprint B (Phases 5–10) completed, audited PASS, and PR #7 merged to `main`.
+- Phase 5 Words + Sentences completed.
+- Phase 6 Writing completed.
+- Phase 7 Zhuyin + Pinyin completed, including Simplified Chinese Pinyin practice.
+- Phase 8 Grammar completed.
+- Phase 9 Idioms completed.
+- Phase 10 Reading completed.
+- Phase 11 has **not** started.
+- Real-child usability validation is still outstanding before treating Sprints A/B as field-validated.
 
 Relevant completed commits / milestones:
 - `2a6395a` — add license tracking commercialization gate.
 - `005f8dc` — define AI development and audit loop.
 - PR #3 — Phase 0 technical validation, merged to `main`.
 - PR #5 — Fast Track Sprint A, Phases 1–4, merged to `main`.
+- PR #7 — Fast Track Sprint B, Phases 5–10, merged to `main`.
 
 Important:
 The original automated GitHub-AI / Chrome-MCP idea was abandoned.
@@ -206,7 +214,7 @@ The active collaboration model is manual trigger + GitHub handoff:
 - Product Owner tells Codex to read GitHub.
 - Product Owner tells ChatGPT to inspect new GitHub changes.
 
-Next product phase is Phase 5 only after explicit Product Owner instruction.
+Next product phase is Phase 11 only after explicit Product Owner instruction.
 
 ---
 
@@ -341,7 +349,7 @@ Final state:
 - Review/Wrong Answer Queue behavior is implemented.
 - Weekly Test records are deterministic/auditable and immutable after completion.
 - Points remain separate from recognition mastery.
-- Phase 5 has not started.
+- Phase 5 completed in Sprint B.
 
 Remaining validation:
 - real iPad Safari;
@@ -349,13 +357,36 @@ Remaining validation:
 - Synology DS723+ deployment/persistence;
 - real-child usability / parent workflow trial.
 
-Do not start Phase 5 without explicit Product Owner authorization.
+Do not start Phase 11 without explicit Product Owner authorization.
 
 ## Fast Track Sprint B status
 
-Issue #6 authorizes one continuous Sprint B covering Phases 5–10. The active
-branch is `sprint/phase5-10` with Draft PR #7. Words/Sentences, Writing, Zhuyin/Pinyin,
-Grammar, Idioms, and Reading are implemented at MVP level with separate
-SQLite content, provenance, attempt, and child-state boundaries. Sprint B must
-stop after one Draft PR is opened; do not merge automatically and do not start
-Phase 11.
+Issue #6 covered one continuous Sprint B for Phases 5–10.
+
+Final state:
+- PR #7 passed ChatGPT Architect Audit and was merged to `main`.
+- Phase 5 Words + Sentences completed.
+- Phase 6 Writing completed.
+- Phase 7 Zhuyin + Pinyin completed.
+- Simplified Chinese Pinyin practice completed:
+  - real Simplified-character → Pinyin input flow;
+  - canonical tone-marked Pinyin;
+  - tone-number normalization such as `xue2 → xué`;
+  - `ü` normalization such as `lü3 / lv3 / lǚ → lǚ`;
+  - explicit context/reading selection for polyphones such as `銀行 → háng` and `行走 → xíng`;
+  - Traditional Zhuyin and Simplified Pinyin states remain separate;
+  - School Queue private provenance can bridge into Pinyin practice without curriculum promotion.
+- Phase 8 Grammar completed.
+- Phase 9 Idioms completed.
+- Phase 10 Reading completed.
+- SQLite remains authoritative.
+- Skill/mastery dimensions remain separated and auditable.
+- Phase 11 has not started.
+
+Remaining validation:
+- real iPad Safari;
+- Docker runtime;
+- Synology DS723+ deployment/persistence;
+- real-child usability / parent workflow trial.
+
+Do not start Phase 11 without explicit Product Owner authorization.
