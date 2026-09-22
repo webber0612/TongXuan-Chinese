@@ -22,7 +22,7 @@ Implemented only `[Phase 0] Project skeleton & technical validation` from GitHub
 ## Automated test results
 
 - Backend: `7 passed` with pytest, including `s2t`, `s2tw`, and `t2s`.
-- Frontend: `1 passed` with Vitest.
+- Frontend: `2 passed` with Vitest.
 - Frontend production build: passed; PWA service worker and manifest generated.
 - License registry consistency: covered by backend automated test.
 
@@ -47,5 +47,5 @@ Not started. The repository is ready for a separate Phase 1 work order only afte
 ## Git handoff
 
 - Branch: `phase/0-technical-validation`
-- Fix commit SHA: `20a31255e18509aa34778c6f36a39ae0349e97f6`
+- Fix commit SHA: `a8625b1252eb3e1076b36bd7072421fe887964b2`
 - Pull Request: https://github.com/webber0612/TongXuan-Chinese/pull/3
