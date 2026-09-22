@@ -210,7 +210,8 @@ Current baseline known from GitHub:
 - Phase 9 Idioms completed.
 - Phase 10 Reading completed.
 - Phase 11 TTS completed, audited PASS, and PR #8 merged to `main`.
-- Phase 12 has **not** started.
+- Phase 12 Reading Aloud is authorized by GitHub Issue #9 and is active on the dedicated
+  `phase12/reading-aloud` branch / Draft PR.
 - Real-child usability validation is still outstanding before treating Sprints A/B as field-validated.
 
 Relevant completed commits / milestones:
@@ -230,7 +231,7 @@ The active collaboration model is manual trigger + GitHub handoff:
 - Product Owner tells Codex to read GitHub.
 - Product Owner tells ChatGPT to inspect new GitHub changes.
 
-Phase 11 is complete and merged. Continuous development authorization is active; Phase 12 work may start from the published ChatGPT work order without separate Product Owner confirmation.
+Phase 11 is complete and merged. Phase 12 is authorized by GitHub Issue #9; do not start Phase 13.
 
 ---
 
@@ -400,7 +401,11 @@ Final state:
 - Phase 11 TTS completed, passed ChatGPT Architect Audit, and PR #8 merged to `main`.
 - Phase 11 includes a replaceable provider boundary, `zh-TW`/`zh-CN` routing, transient browser playback, speed control, source/provenance binding for School Queue TTS, and no mastery/state writes.
 - `PHASE_11_TTS_REPORT.md` records the implementation and verification.
-- Phase 12 has not started.
+- Phase 12 Reading Aloud is implemented on `phase12/reading-aloud` with a separate attempt metadata
+  boundary, transient browser MediaRecorder adapter, source/provenance validation, and no raw audio
+  persistence.
+- `PHASE_12_READING_ALOUD_REPORT.md` records the implementation and verification.
+- Phase 13 OCR has not started.
 
 Remaining validation:
 - real iPad Safari;
@@ -408,4 +413,4 @@ Remaining validation:
 - Synology DS723+ deployment/persistence;
 - real-child usability / parent workflow trial.
 
-Continuous development authorization is active. Start Phase 12 only from the explicit GitHub work order; do not skip beyond the current assigned Phase.
+Continuous development authorization is active. Phase 12 is the current assigned Phase; do not start Phase 13.

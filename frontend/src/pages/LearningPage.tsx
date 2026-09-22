@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { nextQueueItem, scoreAnswers } from "../lib/learning";
 import { hanziWriterTraceEvent } from "../lib/writingProvider";
 import { BrowserSpeechSynthesisProvider, TTSLocale, TTSTextKind } from "../lib/tts";
+import { BrowserMediaRecorderAdapter, ReadingAloudTextKind } from "../lib/readingAloud";
 
 const API = import.meta.env.VITE_API_BASE ?? "";
 type Child = { id: number; name: string };
@@ -13,6 +14,7 @@ async function api<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 const ttsProvider = new BrowserSpeechSynthesisProvider();
+const readingAloudRecorder = new BrowserMediaRecorderAdapter();
 
 export function LearningPage() {
   const [children, setChildren] = useState<Child[]>([]);
@@ -32,6 +34,14 @@ export function LearningPage() {
   const [pinyinFeedback, setPinyinFeedback] = useState("");
   const [ttsLocale, setTtsLocale] = useState<TTSLocale>("zh-TW");
   const [ttsRate, setTtsRate] = useState(1);
+  const [readingText, setReadingText] = useState("學");
+  const [readingKind, setReadingKind] = useState<ReadingAloudTextKind>("character");
+  const [readingLocale, setReadingLocale] = useState<TTSLocale>("zh-TW");
+  const [readingAttemptId, setReadingAttemptId] = useState<string | null>(null);
+  const [readingStartedAt, setReadingStartedAt] = useState<number | null>(null);
+  const [readingRecording, setReadingRecording] = useState<Blob | null>(null);
+  const [readingSourceType, setReadingSourceType] = useState("TRANSIENT_TEXT");
+  const [readingSourceId, setReadingSourceId] = useState<string | null>(null);
 
   useEffect(() => { void api<Child[]>("/api/children").then((value) => { setChildren(value); if (value[0]) setChildId(value[0].id); }); }, []);
   async function seed() { if (childId) { await api(`/api/children/${childId}/learning-items/seed`, { method: "POST", body: "{}" }); setMessage("Sample recognition items ready"); } }
@@ -50,6 +60,25 @@ export function LearningPage() {
   async function practiceWriting() { if (childId) { await api(`/api/sprint-b/writing/attempts?child_id=${childId}&character=學`, { method: "POST", body: JSON.stringify(hanziWriterTraceEvent()) }); setMessage("Hanzi Writer trace recorded; no handwriting quality claim"); } }
   async function submitPinyin() { if (childId && pinyinReading) { const result = await api<any>(`/api/sprint-b/pronunciation/${pinyinReading.id}/attempts?child_id=${childId}`, { method: "POST", body: JSON.stringify({ answer: pinyinInput }) }); setPinyinFeedback(result.correct ? "Correct" : "Try again"); } }
   async function speak(text: string, textKind: TTSTextKind, locale = ttsLocale) { try { const payload = await api<any>("/api/tts/speak", { method: "POST", body: JSON.stringify({ text, text_kind: textKind, locale, rate: ttsRate }) }); ttsProvider.speak(payload); setMessage(`TTS played (${locale}, ${ttsRate}x)`); } catch (error) { setMessage(error instanceof Error ? error.message : "TTS unavailable"); } }
+  async function startReadingAloud() {
+    if (!childId || !readingText.trim()) return;
+    try {
+      const attempt = await api<any>(`/api/reading-aloud/attempts/start?child_id=${childId}`, { method: "POST", body: JSON.stringify({ text: readingText, text_kind: readingKind, locale: readingLocale, source_type: readingSourceType, source_id: readingSourceId }) });
+      try { await readingAloudRecorder.start(); } catch (error) { await api(`/api/reading-aloud/attempts/${attempt.id}?child_id=${childId}`, { method: "DELETE" }); throw error; }
+      setReadingAttemptId(attempt.id); setReadingStartedAt(Date.now()); setMessage("Microphone recording started");
+    } catch (error) { setMessage(error instanceof Error ? error.message : "microphone_unavailable"); }
+  }
+  async function stopReadingAloud() {
+    if (!childId || !readingAttemptId) return;
+    try {
+      const recording = await readingAloudRecorder.stop();
+      setReadingRecording(recording);
+      await api(`/api/reading-aloud/attempts/${readingAttemptId}/complete?child_id=${childId}`, { method: "POST", body: JSON.stringify({ duration_ms: readingStartedAt ? Date.now() - readingStartedAt : null }) });
+      setMessage("Reading aloud attempt completed; audio remains local only");
+    } catch (error) { setMessage(error instanceof Error ? error.message : "recording_failed"); }
+  }
+  async function replayReadingAloud() { try { await readingAloudRecorder.replay(); setMessage("Replayed local recording"); } catch (error) { setMessage(error instanceof Error ? error.message : "recording_replay_failed"); } }
+  async function deleteReadingAloud() { if (childId && readingAttemptId) await api(`/api/reading-aloud/attempts/${readingAttemptId}?child_id=${childId}`, { method: "DELETE" }); readingAloudRecorder.delete(); setReadingAttemptId(null); setReadingStartedAt(null); setReadingRecording(null); setMessage("Local recording deleted and attempt reset"); }
   async function practicePronunciation(reading: any) { if (childId) await api(`/api/sprint-b/pronunciation/${reading.id}/attempts?child_id=${childId}`, { method: "POST", body: JSON.stringify({ answer: reading.notation, assisted: false }) }); }
   async function practiceGrammar(exercise: any) { if (childId) await api(`/api/sprint-b/grammar/${exercise.id}/attempts?child_id=${childId}`, { method: "POST", body: JSON.stringify({ answer: exercise.answer_rule }) }); }
   async function practiceIdiom(idiom: any) { if (childId) await api(`/api/sprint-b/idioms/${idiom.id}/attempts?child_id=${childId}`, { method: "POST", body: JSON.stringify({ answer: idiom.meaning }) }); }
@@ -58,6 +87,7 @@ export function LearningPage() {
   return <main><header><p className="eyebrow">FAST TRACK SPRINT A + B · PHASE 1–10</p><h1>TongXuan Chinese</h1><p>Recognition、Words、Writing、Pronunciation、Grammar、Idioms、Reading 與家庭獎勵流程。</p></header>
     <section className="card"><h2>Child selection</h2><select value={childId ?? ""} onChange={(event) => setChildId(Number(event.target.value))}>{children.map((child) => <option key={child.id} value={child.id}>{child.name}</option>)}</select><button onClick={seed}>Seed sample curriculum</button><button onClick={start}>Start recognition session</button>{item && <div><h3>Recognize: {item.character}</h3><button onClick={() => speak(item.character, "character", "zh-TW")}>🔊 Speak character</button><button onClick={() => answer("correct")}>Correct</button><button onClick={() => answer("incorrect")}>Incorrect</button><button onClick={() => answer("correct", true)}>Hint / assisted</button></div>}</section>
     <section className="card"><h2>Phase 11 · TTS playback</h2><label>Locale <select value={ttsLocale} onChange={(event) => setTtsLocale(event.target.value as TTSLocale)}><option value="zh-TW">繁體中文 · zh-TW</option><option value="zh-CN">简体中文 · zh-CN</option></select></label><label>Speed <input aria-label="TTS speed" type="range" min="0.5" max="2" step="0.1" value={ttsRate} onChange={(event) => setTtsRate(Number(event.target.value))} /> {ttsRate.toFixed(1)}x</label><button onClick={() => ttsProvider.cancel()}>Stop TTS</button><small>TTS only plays transient browser speech; it does not write mastery or scoring state.</small></section>
+    <section className="card"><h2>Phase 12 · Reading Aloud</h2><p>Listen to a reference, record your reading, replay it locally, then discard it. No pronunciation score is inferred.</p><input aria-label="Reading aloud text" value={readingText} onChange={(event) => setReadingText(event.target.value)} /><select aria-label="Reading aloud kind" value={readingKind} onChange={(event) => setReadingKind(event.target.value as ReadingAloudTextKind)}><option value="character">Character</option><option value="word">Word</option><option value="sentence">Sentence</option><option value="passage">Reading passage</option></select><select aria-label="Reading aloud locale" value={readingLocale} onChange={(event) => setReadingLocale(event.target.value as TTSLocale)}><option value="zh-TW">繁體中文 · zh-TW</option><option value="zh-CN">简体中文 · zh-CN</option></select><select aria-label="Reading aloud source" value={readingSourceId ? `${readingSourceType}:${readingSourceId}` : "TRANSIENT_TEXT"} onChange={(event) => { const [type, id] = event.target.value.split(":"); setReadingSourceType(type); setReadingSourceId(id ?? null); }}><option value="TRANSIENT_TEXT">Typed / transient text</option>{queue.filter((entry) => entry.source === "SCHOOL_QUEUE").map((entry) => <option key={entry.id} value={`SCHOOL_QUEUE:${entry.id}`}>School Queue · {entry.character}</option>)}</select><button onClick={() => speak(readingText, readingKind, readingLocale)}>🔊 Reference listen</button><button onClick={startReadingAloud}>Start recording</button><button onClick={stopReadingAloud}>Stop recording</button><button onClick={replayReadingAloud} disabled={!readingRecording}>Replay recording</button><button onClick={deleteReadingAloud}>Delete/reset recording</button><small>Microphone permission is explicit. Raw audio is transient in this browser session and is never uploaded or saved.</small></section>
     <section className="card"><h2>Daily Queue / School Queue</h2><button onClick={refreshQueue}>Refresh queue</button><ul>{queue.map((entry) => <li key={`${entry.source}-${entry.id}`}>{entry.character} — {entry.source} — {entry.source_detail}</li>)}</ul><input aria-label="school character" value={schoolCharacter} onChange={(e) => setSchoolCharacter(e.target.value)} placeholder="School character" /><input aria-label="school source" value={schoolSource} onChange={(e) => setSchoolSource(e.target.value)} placeholder="School source/title" /><button onClick={addSchool}>Add private school item</button></section>
     <section className="card"><h2>Weekly Test</h2><button onClick={makeTest}>Generate deterministic test</button>{test?.items?.map((entry: any) => <label key={entry.id}>{entry.character}<input onChange={(e) => setAnswers((current) => ({ ...current, [entry.id]: e.target.value }))} /></label>)}{test && <button onClick={submitTest}>Submit test</button>}</section>
     <section className="card"><h2>Points & Rewards</h2><button onClick={refreshPoints}>Refresh points</button>{points && <><p>Balance: {points.balance}</p><ul>{points.ledger.map((entry: any) => <li key={entry.id}>{entry.reason}: {entry.points_delta}</li>)}</ul>{points.rewards.map((reward: any) => <button key={reward.id} onClick={() => redeem(reward.id)}>Redeem {reward.name} ({reward.cost})</button>)}</>}</section>
