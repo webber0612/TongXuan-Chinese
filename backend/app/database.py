@@ -163,6 +163,17 @@ def initialize_database() -> None:
                 id TEXT PRIMARY KEY, child_id INTEGER NOT NULL REFERENCES children(id), word_id TEXT NOT NULL REFERENCES words(id),
                 result TEXT NOT NULL, assisted INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
+            CREATE TABLE IF NOT EXISTS sentence_states (
+                child_id INTEGER NOT NULL REFERENCES children(id), sentence_id TEXT NOT NULL REFERENCES sentences(id),
+                correct_count INTEGER NOT NULL DEFAULT 0, incorrect_count INTEGER NOT NULL DEFAULT 0,
+                assisted_count INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY(child_id, sentence_id)
+            );
+            CREATE TABLE IF NOT EXISTS sentence_attempts (
+                id TEXT PRIMARY KEY, child_id INTEGER NOT NULL REFERENCES children(id), sentence_id TEXT NOT NULL REFERENCES sentences(id),
+                answer TEXT NOT NULL, correct INTEGER NOT NULL, assisted INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
             CREATE TABLE IF NOT EXISTS writing_states (
                 child_id INTEGER NOT NULL REFERENCES children(id), character TEXT NOT NULL,
                 independent_success_count INTEGER NOT NULL DEFAULT 0, assisted_count INTEGER NOT NULL DEFAULT 0,
@@ -181,11 +192,13 @@ def initialize_database() -> None:
             CREATE TABLE IF NOT EXISTS pronunciation_states (
                 child_id INTEGER NOT NULL REFERENCES children(id), reading_id TEXT NOT NULL REFERENCES pronunciation_readings(id),
                 correct_count INTEGER NOT NULL DEFAULT 0, incorrect_count INTEGER NOT NULL DEFAULT 0,
+                assisted_count INTEGER NOT NULL DEFAULT 0,
                 PRIMARY KEY(child_id, reading_id)
             );
             CREATE TABLE IF NOT EXISTS pronunciation_attempts (
                 id TEXT PRIMARY KEY, child_id INTEGER NOT NULL REFERENCES children(id), reading_id TEXT NOT NULL REFERENCES pronunciation_readings(id),
-                answer TEXT NOT NULL, correct INTEGER NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                answer TEXT NOT NULL, correct INTEGER NOT NULL, assisted INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
             CREATE TABLE IF NOT EXISTS grammar_concepts (
                 id TEXT PRIMARY KEY, concept TEXT NOT NULL, explanation TEXT NOT NULL, example TEXT NOT NULL,
@@ -236,7 +249,22 @@ def initialize_database() -> None:
             );
             CREATE TABLE IF NOT EXISTS reading_attempts (
                 id TEXT PRIMARY KEY, child_id INTEGER NOT NULL REFERENCES children(id), passage_id TEXT NOT NULL REFERENCES reading_passages(id),
-                score INTEGER NOT NULL, total INTEGER NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                score INTEGER NOT NULL, total INTEGER NOT NULL, answers_json TEXT NOT NULL DEFAULT '{}',
+                correctness_json TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
             """
         )
+        # Keep existing family databases forward-compatible with the Sprint B audit fields.
+        migrations = {
+            "pronunciation_states": [("assisted_count", "INTEGER NOT NULL DEFAULT 0")],
+            "pronunciation_attempts": [("assisted", "INTEGER NOT NULL DEFAULT 0")],
+            "reading_attempts": [
+                ("answers_json", "TEXT NOT NULL DEFAULT '{}'"),
+                ("correctness_json", "TEXT NOT NULL DEFAULT '{}'")
+            ],
+        }
+        for table, columns in migrations.items():
+            existing = {row[1] for row in connection.execute(f"PRAGMA table_info({table})")}
+            for column, definition in columns:
+                if column not in existing:
+                    connection.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")

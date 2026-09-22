@@ -13,19 +13,23 @@ Branch: `sprint/phase5-10`
 
 - Added durable child-scoped words, character linkage, sentences, and word linkage.
 - Added separate word attempts/state with correct, incorrect, and assisted behavior.
+- Added separate sentence attempts/state and deterministic exact-sentence practice;
+  sentence mastery is independent from word and Recognition mastery.
 - Added a small auditable sample only; no broad curriculum was fabricated.
 
 ### Phase 6 — Writing
 
 - Added writing attempts and writing state independent from Recognition.
-- Trace practice uses an explicit deterministic `correct`/`incorrect` result and records provider boundary.
+- Trace practice uses an explicit `HANZI_WRITER` client adapter/provider boundary and records
+  the provider on every attempt. The backend keeps a deterministic event contract for the MVP.
 - Assisted traces do not increase independent success; no handwriting quality score is claimed.
 
 ### Phase 7 — Zhuyin + Pinyin
 
 - Added separate reading rows for ZHUYIN and PINYIN, locale and provenance metadata.
 - Multiple readings are retained without overwriting character identity or another notation system.
-- Practice scores exact notation matches only.
+- Practice scores exact notation matches only; assisted answers are persisted and do not increase
+  independent pronunciation mastery.
 
 ### Phase 8 — Grammar
 
@@ -40,7 +44,8 @@ Branch: `sprint/phase5-10`
 ### Phase 10 — Reading
 
 - Added child-scoped passage, provenance, vocabulary linkage, deterministic comprehension question,
-  reading attempts, score, and separate reading state.
+  reading attempts, score, separate reading state, submitted-answer snapshot, and per-question
+  correctness snapshot for audit/reproducibility.
 - Reading-aloud/ASR scoring is explicitly out of scope.
 
 ## Architecture and schema
@@ -48,6 +53,8 @@ Branch: `sprint/phase5-10`
 - SQLite remains authoritative.
 - Domain rules are in `backend/app/sprint_b.py`; FastAPI routes remain thin.
 - Recognition, Writing, Reading, Pronunciation, Words, Grammar, and Idioms use separate state/attempt tables.
+- Sentences use their own state/attempt tables; pronunciation attempts/states persist assisted counts;
+  reading attempts persist normalized JSON snapshots of answers and correctness.
 - Points and rewards are not used as mastery signals.
 - Child ownership is checked on all child-scoped content and practice operations.
 
@@ -58,7 +65,7 @@ dimensions. It intentionally remains minimal and unpolished.
 
 ## Tests and build
 
-- Backend: `24 passed` with `backend/.venv` and `PYTHONPATH=backend`.
+- Backend: `24 passed` (31 non-blocking dependency deprecation warnings) with `backend/.venv` and `PYTHONPATH=backend`.
 - Frontend: `4 passed` with Vitest.
 - Production frontend build: passed; PWA assets generated.
 - Existing Sprint A and Phase 0 tests remain green.
@@ -83,5 +90,6 @@ dimensions. It intentionally remains minimal and unpolished.
 ## Delivery
 
 - Draft PR: [#7](https://github.com/webber0612/TongXuan-Chinese/pull/7), kept Draft.
-- Final head SHA: `069fcf253246a619081c8df8dfc73bf9ac23c785` before this documentation-only update; final pushed head is recorded in the delivery message.
+- Latest Architect Audit remediation: AUD-B01 through AUD-B05 addressed with regression coverage.
+- The final pushed head is the latest commit on `sprint/phase5-10` / PR #7.
 - Phase 11: not started.

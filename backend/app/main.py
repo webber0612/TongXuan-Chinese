@@ -16,7 +16,7 @@ from .learning import (
 )
 from .sprint_b import (
     list_grammar, list_idioms, list_passages, list_readings, list_sentences, list_words,
-    practice_grammar, practice_idiom, practice_pronunciation, practice_word, practice_writing,
+    practice_grammar, practice_idiom, practice_pronunciation, practice_sentence, practice_word, practice_writing,
     seed_sprint_b, submit_reading,
 )
 
@@ -116,6 +116,7 @@ class SkillAttemptRequest(BaseModel):
 class WritingAttemptRequest(BaseModel):
     trace_result: str
     assisted: bool = False
+    provider: str = "HANZI_WRITER"
 
 
 class AnswerRequest(BaseModel):
@@ -216,9 +217,15 @@ def post_word_attempt(word_id: str, child_id: int, request: SkillAttemptRequest)
     except ValueError as error: raise HTTPException(status_code=400, detail=str(error)) from error
 
 
+@app.post("/api/sprint-b/sentences/{sentence_id}/attempts")
+def post_sentence_attempt(sentence_id: str, child_id: int, request: AnswerRequest) -> dict[str, object]:
+    try: return practice_sentence(child_id, sentence_id, request.answer, request.assisted)
+    except ValueError as error: raise HTTPException(status_code=400, detail=str(error)) from error
+
+
 @app.post("/api/sprint-b/writing/attempts")
 def post_writing_attempt(child_id: int, character: str, request: WritingAttemptRequest) -> dict[str, object]:
-    try: return practice_writing(child_id, character, request.trace_result, request.assisted)
+    try: return practice_writing(child_id, character, request.trace_result, request.assisted, request.provider)
     except ValueError as error: raise HTTPException(status_code=400, detail=str(error)) from error
 
 
@@ -229,7 +236,7 @@ def get_pronunciation(character: str | None = None) -> list[dict[str, object]]:
 
 @app.post("/api/sprint-b/pronunciation/{reading_id}/attempts")
 def post_pronunciation_attempt(reading_id: str, child_id: int, request: AnswerRequest) -> dict[str, object]:
-    try: return practice_pronunciation(child_id, reading_id, request.answer)
+    try: return practice_pronunciation(child_id, reading_id, request.answer, request.assisted)
     except ValueError as error: raise HTTPException(status_code=400, detail=str(error)) from error
 
 

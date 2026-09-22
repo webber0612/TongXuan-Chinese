@@ -6,6 +6,7 @@ from typing import Any
 
 from .database import connect, initialize_database
 from .learning import ensure_child, now, uid
+from .writing_provider import provider_for
 
 PROVENANCE = {
     "provenance_status": "LICENSE_REVIEW_REQUIRED",
@@ -63,7 +64,11 @@ def list_words(child_id: int, db: sqlite3.Connection | None = None) -> list[dict
 
 def list_sentences(child_id: int, db: sqlite3.Connection | None = None) -> list[dict[str, Any]]:
     own = db is None; db = db or connect(); ensure_child(db, child_id)
-    rows = [dict(row) for row in db.execute("SELECT * FROM sentences WHERE child_id=? ORDER BY id", (child_id,))]
+    rows = []
+    for row in db.execute("SELECT s.*,COALESCE(st.correct_count,0) correct_count,COALESCE(st.incorrect_count,0) incorrect_count,COALESCE(st.assisted_count,0) assisted_count FROM sentences s LEFT JOIN sentence_states st ON st.sentence_id=s.id AND st.child_id=s.child_id WHERE s.child_id=? ORDER BY s.id", (child_id,)):
+        item = dict(row)
+        item["word_ids"] = [r[0] for r in db.execute("SELECT word_id FROM sentence_words WHERE sentence_id=? ORDER BY position", (row["id"],))]
+        rows.append(item)
     if own: db.close()
     return rows
 
@@ -79,11 +84,23 @@ def practice_word(child_id: int, word_id: str, result: str, assisted: bool) -> d
         return dict(db.execute("SELECT * FROM word_states WHERE child_id=? AND word_id=?", (child_id, word_id)).fetchone())
 
 
-def practice_writing(child_id: int, character: str, trace_result: str, assisted: bool) -> dict[str, Any]:
-    if trace_result not in {"correct", "incorrect"}: raise ValueError("invalid_trace_result")
+def practice_sentence(child_id: int, sentence_id: str, answer: str, assisted: bool) -> dict[str, Any]:
     with connect() as db:
         ensure_child(db, child_id)
-        db.execute("INSERT INTO writing_attempts VALUES (?,?,?,?,?,?,?)", (uid("writing_attempt"), child_id, character, trace_result, int(assisted), "MANUAL_TRACE_RULE", now()))
+        sentence = db.execute("SELECT * FROM sentences WHERE id=? AND child_id=?", (sentence_id, child_id)).fetchone()
+        if sentence is None: raise ValueError("sentence_not_found")
+        correct = int(answer.strip() == sentence["sentence"])
+        db.execute("INSERT INTO sentence_attempts VALUES (?,?,?,?,?,?,?)", (uid("sentence_attempt"), child_id, sentence_id, answer, correct, int(assisted), now()))
+        db.execute("""INSERT INTO sentence_states VALUES (?,?,?,?,?,?)
+          ON CONFLICT(child_id,sentence_id) DO UPDATE SET correct_count=correct_count+excluded.correct_count,incorrect_count=incorrect_count+excluded.incorrect_count,assisted_count=assisted_count+excluded.assisted_count,updated_at=excluded.updated_at""", (child_id, sentence_id, int(correct and not assisted), int(not correct), int(assisted), now()))
+        return {"correct": bool(correct), "state": dict(db.execute("SELECT * FROM sentence_states WHERE child_id=? AND sentence_id=?", (child_id, sentence_id)).fetchone())}
+
+
+def practice_writing(child_id: int, character: str, trace_result: str, assisted: bool, provider: str) -> dict[str, Any]:
+    trace_result = provider_for(provider).validate(trace_result)
+    with connect() as db:
+        ensure_child(db, child_id)
+        db.execute("INSERT INTO writing_attempts VALUES (?,?,?,?,?,?,?)", (uid("writing_attempt"), child_id, character, trace_result, int(assisted), provider, now()))
         db.execute("""INSERT INTO writing_states VALUES (?,?,?,?,?) ON CONFLICT(child_id,character) DO UPDATE SET independent_success_count=independent_success_count+excluded.independent_success_count,assisted_count=assisted_count+excluded.assisted_count,updated_at=excluded.updated_at""", (child_id, character, int(trace_result == "correct" and not assisted), int(assisted), now()))
         return dict(db.execute("SELECT * FROM writing_states WHERE child_id=? AND character=?", (child_id, character)).fetchone())
 
@@ -96,13 +113,13 @@ def list_readings(character: str | None = None, db: sqlite3.Connection | None = 
     return rows
 
 
-def practice_pronunciation(child_id: int, reading_id: str, answer: str) -> dict[str, Any]:
+def practice_pronunciation(child_id: int, reading_id: str, answer: str, assisted: bool) -> dict[str, Any]:
     with connect() as db:
         ensure_child(db, child_id); reading = db.execute("SELECT * FROM pronunciation_readings WHERE id=?", (reading_id,)).fetchone()
         if reading is None: raise ValueError("reading_not_found")
         correct = int(answer.strip().lower() == reading["notation"].lower())
-        db.execute("INSERT INTO pronunciation_attempts VALUES (?,?,?,?,?,?)", (uid("pron_attempt"), child_id, reading_id, answer, correct, now()))
-        db.execute("""INSERT INTO pronunciation_states VALUES (?,?,?,?) ON CONFLICT(child_id,reading_id) DO UPDATE SET correct_count=correct_count+excluded.correct_count,incorrect_count=incorrect_count+excluded.incorrect_count""", (child_id, reading_id, correct, int(not correct)))
+        db.execute("INSERT INTO pronunciation_attempts (id,child_id,reading_id,answer,correct,assisted,created_at) VALUES (?,?,?,?,?,?,?)", (uid("pron_attempt"), child_id, reading_id, answer, correct, int(assisted), now()))
+        db.execute("""INSERT INTO pronunciation_states (child_id,reading_id,correct_count,incorrect_count,assisted_count) VALUES (?,?,?,?,?) ON CONFLICT(child_id,reading_id) DO UPDATE SET correct_count=correct_count+excluded.correct_count,incorrect_count=incorrect_count+excluded.incorrect_count,assisted_count=assisted_count+excluded.assisted_count""", (child_id, reading_id, int(correct and not assisted), int(not correct), int(assisted)))
         return {"correct": bool(correct), "reading_id": reading_id, "state": dict(db.execute("SELECT * FROM pronunciation_states WHERE child_id=? AND reading_id=?", (child_id, reading_id)).fetchone())}
 
 
@@ -152,6 +169,8 @@ def submit_reading(child_id: int, passage_id: str, answers: dict[str, str]) -> d
         if passage is None: raise ValueError("passage_not_found")
         questions = db.execute("SELECT id,answer_rule FROM reading_questions WHERE passage_id=? ORDER BY id", (passage_id,)).fetchall()
         correctness = {row["id"]: answers.get(row["id"]) == row["answer_rule"] for row in questions}; score = sum(correctness.values()); total = len(questions)
-        db.execute("INSERT INTO reading_attempts VALUES (?,?,?,?,?,?)", (uid("reading_attempt"), child_id, passage_id, score, total, now()))
+        answers_snapshot = {str(key): str(value) for key, value in answers.items()}
+        correctness_snapshot = {key: bool(value) for key, value in correctness.items()}
+        db.execute("INSERT INTO reading_attempts (id,child_id,passage_id,score,total,answers_json,correctness_json,created_at) VALUES (?,?,?,?,?,?,?,?)", (uid("reading_attempt"), child_id, passage_id, score, total, json.dumps(answers_snapshot, ensure_ascii=False, sort_keys=True), json.dumps(correctness_snapshot, sort_keys=True), now()))
         db.execute("""INSERT INTO reading_states VALUES (?,?,?,?) ON CONFLICT(child_id,passage_id) DO UPDATE SET correct_count=correct_count+excluded.correct_count,incorrect_count=incorrect_count+excluded.incorrect_count""", (child_id, passage_id, score, total-score))
-        return {"passage_id": passage_id, "correctness": correctness, "score": score, "total": total}
+        return {"passage_id": passage_id, "correctness": correctness, "answers": answers_snapshot, "score": score, "total": total}

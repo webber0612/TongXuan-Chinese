@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { nextQueueItem, scoreAnswers } from "../lib/learning";
+import { hanziWriterTraceEvent } from "../lib/writingProvider";
 
 const API = import.meta.env.VITE_API_BASE ?? "";
 type Child = { id: number; name: string };
@@ -37,8 +38,9 @@ export function LearningPage() {
   async function redeem(id: string) { if (childId) { await api(`/api/points/redeem/${id}?child_id=${childId}`, { method: "POST" }); await refreshPoints(); } }
   async function seedB() { if (childId) { setSprintB(await api<any>(`/api/sprint-b/seed?child_id=${childId}`, { method: "POST" })); setMessage("Sprint B sample content ready"); } }
   async function practiceWord(id: string, assisted = false) { if (childId) { setSprintB((current: any) => current); await api(`/api/sprint-b/words/${id}/attempts?child_id=${childId}`, { method: "POST", body: JSON.stringify({ result: "correct", assisted }) }); setMessage(`Word practice${assisted ? " (assisted)" : ""}`); } }
-  async function practiceWriting() { if (childId) { await api(`/api/sprint-b/writing/attempts?child_id=${childId}&character=學`, { method: "POST", body: JSON.stringify({ trace_result: "correct" }) }); setMessage("Writing trace recorded; no handwriting quality claim"); } }
-  async function practicePronunciation(reading: any) { if (childId) await api(`/api/sprint-b/pronunciation/${reading.id}/attempts?child_id=${childId}`, { method: "POST", body: JSON.stringify({ answer: reading.notation }) }); }
+  async function practiceSentence(sentence: any) { if (childId) { await api(`/api/sprint-b/sentences/${sentence.id}/attempts?child_id=${childId}`, { method: "POST", body: JSON.stringify({ answer: sentence.sentence }) }); setMessage("Sentence practice recorded"); } }
+  async function practiceWriting() { if (childId) { await api(`/api/sprint-b/writing/attempts?child_id=${childId}&character=學`, { method: "POST", body: JSON.stringify(hanziWriterTraceEvent()) }); setMessage("Hanzi Writer trace recorded; no handwriting quality claim"); } }
+  async function practicePronunciation(reading: any) { if (childId) await api(`/api/sprint-b/pronunciation/${reading.id}/attempts?child_id=${childId}`, { method: "POST", body: JSON.stringify({ answer: reading.notation, assisted: false }) }); }
   async function practiceGrammar(exercise: any) { if (childId) await api(`/api/sprint-b/grammar/${exercise.id}/attempts?child_id=${childId}`, { method: "POST", body: JSON.stringify({ answer: exercise.answer_rule }) }); }
   async function practiceIdiom(idiom: any) { if (childId) await api(`/api/sprint-b/idioms/${idiom.id}/attempts?child_id=${childId}`, { method: "POST", body: JSON.stringify({ answer: idiom.meaning }) }); }
   async function practiceReading(passage: any) { if (childId) { const result = await api<any>(`/api/sprint-b/reading/passages/${passage.id}/attempts?child_id=${childId}`, { method: "POST", body: JSON.stringify({ answers: { [passage.question_id]: passage.answer_rule } }) }); setMessage(`Reading score ${result.score}/${result.total}`); } }
@@ -49,7 +51,7 @@ export function LearningPage() {
     <section className="card"><h2>Weekly Test</h2><button onClick={makeTest}>Generate deterministic test</button>{test?.items?.map((entry: any) => <label key={entry.id}>{entry.character}<input onChange={(e) => setAnswers((current) => ({ ...current, [entry.id]: e.target.value }))} /></label>)}{test && <button onClick={submitTest}>Submit test</button>}</section>
     <section className="card"><h2>Points & Rewards</h2><button onClick={refreshPoints}>Refresh points</button>{points && <><p>Balance: {points.balance}</p><ul>{points.ledger.map((entry: any) => <li key={entry.id}>{entry.reason}: {entry.points_delta}</li>)}</ul>{points.rewards.map((reward: any) => <button key={reward.id} onClick={() => redeem(reward.id)}>Redeem {reward.name} ({reward.cost})</button>)}</>}</section>
     <section className="card"><h2>Fast Track Sprint B · Phase 5–10</h2><button onClick={seedB}>Seed auditable Words → Reading samples</button>{sprintB && <div>
-      <h3>Words + Sentences</h3><p>{sprintB.words.length} words / {sprintB.sentences.length} sentences</p>{sprintB.words.map((word: any) => <button key={word.id} onClick={() => practiceWord(word.id)}>Practice {word.word}</button>)}
+      <h3>Words + Sentences</h3><p>{sprintB.words.length} words / {sprintB.sentences.length} sentences</p>{sprintB.words.map((word: any) => <button key={word.id} onClick={() => practiceWord(word.id)}>Practice {word.word}</button>)}{sprintB.sentences.map((sentence: any) => <button key={sentence.id} onClick={() => practiceSentence(sentence)}>Practice sentence</button>)}
       <h3>Writing</h3><button onClick={practiceWriting}>Trace 學 (deterministic manual result)</button>
       <h3>Zhuyin + Pinyin</h3>{sprintB.readings.map((reading: any) => <button key={reading.id} onClick={() => practicePronunciation(reading)}>{reading.notation_system}: {reading.notation}</button>)}
       <h3>Grammar</h3>{sprintB.grammar.map((exercise: any) => <button key={exercise.id} onClick={() => practiceGrammar(exercise)}>Practice {exercise.concept}</button>)}
