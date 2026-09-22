@@ -100,6 +100,24 @@ def initialize_database() -> None:
                 completed INTEGER NOT NULL DEFAULT 0,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
+            CREATE TABLE IF NOT EXISTS ocr_imports (
+                id TEXT PRIMARY KEY,
+                child_id INTEGER NOT NULL REFERENCES children(id),
+                provider_id TEXT NOT NULL,
+                source_type TEXT NOT NULL CHECK(source_type='OCR_IMPORT'),
+                source_label TEXT NOT NULL,
+                candidate_text TEXT NOT NULL DEFAULT '',
+                confirmed_text TEXT,
+                locale TEXT,
+                script TEXT,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                private_content INTEGER NOT NULL DEFAULT 1,
+                provenance_status TEXT NOT NULL DEFAULT 'PRIVATE_OK',
+                commercial_ready INTEGER NOT NULL DEFAULT 0,
+                review_status TEXT NOT NULL DEFAULT 'CANDIDATE',
+                school_queue_item_id TEXT,
+                provenance_json TEXT
+            );
             CREATE TABLE IF NOT EXISTS weekly_tests (
                 id TEXT PRIMARY KEY,
                 child_id INTEGER NOT NULL REFERENCES children(id),
