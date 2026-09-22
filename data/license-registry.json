@@ -1,0 +1,14 @@
+{
+  "schema_version": "0.1",
+  "build_targets": ["family", "commercial"],
+  "usage_statuses": [
+    "PRIVATE_OK",
+    "COMMERCIAL_OK",
+    "COMMERCIAL_LICENSE_REQUIRED",
+    "LICENSE_REVIEW_REQUIRED",
+    "REPLACE_BEFORE_COMMERCIAL",
+    "PROHIBITED"
+  ],
+  "resources": [],
+  "commercial_replacements": []
+}
