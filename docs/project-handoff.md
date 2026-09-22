@@ -350,3 +350,12 @@ Remaining validation:
 - real-child usability / parent workflow trial.
 
 Do not start Phase 5 without explicit Product Owner authorization.
+
+## Fast Track Sprint B status
+
+Issue #6 authorizes one continuous Sprint B covering Phases 5–10. The active
+branch is `sprint/phase5-10`. Words/Sentences, Writing, Zhuyin/Pinyin,
+Grammar, Idioms, and Reading are implemented at MVP level with separate
+SQLite content, provenance, attempt, and child-state boundaries. Sprint B must
+stop after one Draft PR is opened; do not merge automatically and do not start
+Phase 11.
