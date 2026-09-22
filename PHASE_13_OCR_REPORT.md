@@ -14,8 +14,9 @@ Implemented only Phase 13 OCR Import from GitHub Issue #11. Phase 14 Adaptive Le
   content until explicit parent confirmation.
 - Confirmation validates non-empty edited text, explicit locale/script, source provenance, duplicate
   semantics, and child ownership.
-- Known Traditional/Simplified markers must agree with the selected locale and script; uncertain text
-  is not aggressively inferred and remains dependent on explicit parent selection.
+- Every confirmation always enforces `zh-TW ↔ TRADITIONAL` and `zh-CN ↔ SIMPLIFIED`, including
+  ambiguous/shared Han text. Known Traditional/Simplified markers are an additional consistency
+  check; uncertain text is never aggressively inferred.
 
 ## School Queue and commercialization
 
@@ -34,17 +35,26 @@ Implemented only Phase 13 OCR Import from GitHub Issue #11. Phase 14 Adaptive Le
 ## Learner/parent surface
 
 - Added image selection, Run OCR, editable candidate text, source/title, locale/script selectors,
-  confirm-to-private-School-Queue, cancel/reset, and clear status/error handling.
+  confirm-to-private-School-Queue, cancel/reset, and clear status/error handling. The confirm request
+  contains edited text and metadata only—never a File, Blob, image bytes, or base64 payload.
 
 ## Verification
 
-- Backend: `42 passed, 39 warnings` with `PYTHONPATH=backend` and the project virtual environment.
-- Frontend: `11 passed` with Vitest.
+- Backend: `43 passed, 39 warnings` with `PYTHONPATH=backend` and the project virtual environment.
+- Frontend: `13 passed` with Vitest.
 - Production build: passed with Vite/PWA assets generated.
-- Regression coverage includes candidate-only metadata, confirmation flow, private provenance,
+- Regression coverage includes candidate-only metadata, confirmation flow, parent-edited confirmed text,
+  metadata-only confirm requests, local reset state clearing, private provenance,
   no Curriculum promotion, child isolation, duplicate prevention, empty/invalid confirmation,
   locale/script handling, no mastery mutation, provider-unavailable behavior, and no image upload
   through the frontend OCR adapter.
+
+## Audit remediation
+
+- AUD-T13-01: resolved with unconditional `zh-TW ↔ TRADITIONAL` and
+  `zh-CN ↔ SIMPLIFIED` enforcement, including ambiguous/shared Han text.
+- AUD-T13-02: resolved with frontend regression coverage for edited confirmation text,
+  metadata-only confirm requests, and local reset state clearing.
 
 ## Manual validation outstanding
 

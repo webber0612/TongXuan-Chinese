@@ -3,7 +3,7 @@ import { nextQueueItem, scoreAnswers } from "../lib/learning";
 import { hanziWriterTraceEvent } from "../lib/writingProvider";
 import { BrowserSpeechSynthesisProvider, TTSLocale, TTSTextKind } from "../lib/tts";
 import { BrowserMediaRecorderAdapter, ReadingAloudTextKind } from "../lib/readingAloud";
-import { LocalOCRProvider } from "../lib/ocrImport";
+import { buildOCRConfirmPayload, LocalOCRProvider, resetOCRLocalState } from "../lib/ocrImport";
 
 const API = import.meta.env.VITE_API_BASE ?? "";
 type Child = { id: number; name: string };
@@ -88,8 +88,8 @@ export function LearningPage() {
   async function replayReadingAloud() { try { await readingAloudRecorder.replay(); setMessage("Replayed local recording"); } catch (error) { setMessage(error instanceof Error ? error.message : "recording_replay_failed"); } }
   function deleteReadingAloud() { readingAloudRecorder.delete(); setReadingRecording(null); setMessage("Local recording deleted; durable attempt metadata retained"); }
   async function runOCR() { if (!childId || !ocrImage || !ocrSource.trim()) { setMessage("Choose an image and source/title first"); return; } try { const candidate = await ocrProvider.recognize(ocrImage); const saved = await api<any>(`/api/ocr/imports/candidate?child_id=${childId}`, { method: "POST", body: JSON.stringify({ image_name: ocrImage.name, source_label: ocrSource, provider_id: candidate.provider_id, candidate_hint: candidate.text }) }); setOcrImportId(saved.id); setOcrCandidate(saved.candidate_text); setMessage("OCR candidate ready for parent review; nothing added to School Queue yet"); } catch (error) { setMessage(error instanceof Error ? error.message : "ocr_unavailable"); } }
-  async function confirmOCR() { if (!childId || !ocrImportId) return; try { await api(`/api/ocr/imports/${ocrImportId}/confirm?child_id=${childId}`, { method: "POST", body: JSON.stringify({ confirmed_text: ocrCandidate, locale: ocrLocale, script: ocrScript }) }); setMessage("Confirmed private School Queue OCR import"); } catch (error) { setMessage(error instanceof Error ? error.message : "ocr_confirmation_failed"); } }
-  function resetOCR() { setOcrImage(null); setOcrImportId(null); setOcrCandidate(""); setOcrSource(""); setMessage("OCR image and candidate reset locally"); }
+  async function confirmOCR() { if (!childId || !ocrImportId) return; try { await api(`/api/ocr/imports/${ocrImportId}/confirm?child_id=${childId}`, { method: "POST", body: JSON.stringify(buildOCRConfirmPayload(ocrCandidate, ocrLocale, ocrScript as "TRADITIONAL" | "SIMPLIFIED")) }); setMessage("Confirmed private School Queue OCR import"); } catch (error) { setMessage(error instanceof Error ? error.message : "ocr_confirmation_failed"); } }
+  function resetOCR() { const reset = resetOCRLocalState(); setOcrImage(reset.image); setOcrImportId(reset.importId); setOcrCandidate(reset.candidate); setOcrSource(""); setMessage("OCR image, candidate, and import state reset locally"); }
   async function practicePronunciation(reading: any) { if (childId) await api(`/api/sprint-b/pronunciation/${reading.id}/attempts?child_id=${childId}`, { method: "POST", body: JSON.stringify({ answer: reading.notation, assisted: false }) }); }
   async function practiceGrammar(exercise: any) { if (childId) await api(`/api/sprint-b/grammar/${exercise.id}/attempts?child_id=${childId}`, { method: "POST", body: JSON.stringify({ answer: exercise.answer_rule }) }); }
   async function practiceIdiom(idiom: any) { if (childId) await api(`/api/sprint-b/idioms/${idiom.id}/attempts?child_id=${childId}`, { method: "POST", body: JSON.stringify({ answer: idiom.meaning }) }); }

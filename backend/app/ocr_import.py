@@ -72,11 +72,11 @@ def confirm_candidate(*, child_id: int, import_id: str, confirmed_text: str, loc
         raise ValueError("confirmed_text_required")
     if locale not in SUPPORTED_LOCALES or script not in SUPPORTED_SCRIPTS:
         raise ValueError("unsupported_locale_or_script")
+    expected_script = {"zh-TW": "TRADITIONAL", "zh-CN": "SIMPLIFIED"}[locale]
+    if script != expected_script:
+        raise ValueError("script_locale_mismatch")
     expected_locale = _source_locale(text)
     if expected_locale is not None and expected_locale != locale:
-        raise ValueError("script_locale_mismatch")
-    expected_script = {"zh-TW": "TRADITIONAL", "zh-CN": "SIMPLIFIED"}[locale]
-    if expected_locale is not None and script != expected_script:
         raise ValueError("script_locale_mismatch")
     initialize_database()
     with connect() as db:

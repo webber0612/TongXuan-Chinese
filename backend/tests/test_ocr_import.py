@@ -61,3 +61,13 @@ def test_ocr_does_not_mutate_mastery_state_or_accept_unknown_provider(tmp_path):
         api.post(f"/api/ocr/imports/{candidate['id']}/confirm", params={"child_id": child_id}, json={"confirmed_text": "學", "locale": "zh-TW", "script": "TRADITIONAL"})
         after = {table: [tuple(row) for row in connect().execute(f"SELECT * FROM {table} ORDER BY 1,2").fetchall()] for table in tables}
         assert before == after
+
+
+def test_ocr_ambiguous_text_still_requires_fixed_locale_script_pair(tmp_path):
+    with client(tmp_path) as api:
+        child_id = api.post("/api/children", json={"name": "Alice"}).json()["id"]
+        traditional = api.post("/api/ocr/imports/candidate", params={"child_id": child_id}, json={"image_name": "people.jpg", "source_label": "People worksheet", "candidate_hint": "人"}).json()
+        assert api.post(f"/api/ocr/imports/{traditional['id']}/confirm", params={"child_id": child_id}, json={"confirmed_text": "人", "locale": "zh-TW", "script": "SIMPLIFIED"}).json()["detail"] == "script_locale_mismatch"
+        assert api.post(f"/api/ocr/imports/{traditional['id']}/confirm", params={"child_id": child_id}, json={"confirmed_text": "人", "locale": "zh-TW", "script": "TRADITIONAL"}).status_code == 200
+        simplified = api.post("/api/ocr/imports/candidate", params={"child_id": child_id}, json={"image_name": "people-2.jpg", "source_label": "People worksheet 2", "candidate_hint": "人"}).json()
+        assert api.post(f"/api/ocr/imports/{simplified['id']}/confirm", params={"child_id": child_id}, json={"confirmed_text": "人", "locale": "zh-CN", "script": "SIMPLIFIED"}).status_code == 200
