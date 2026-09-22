@@ -10,6 +10,7 @@ from .database import connect, initialize_database
 from .providers import OpenCCProvider
 from .tts import prepare_tts
 from .reading_aloud import abort_attempt, complete_attempt, start_attempt
+from .ocr_import import confirm_candidate, create_candidate
 from .learning import (
     add_school_item, create_child, create_weekly_test, finish_session,
     list_children, list_daily_queue, next_recognition_item, points_summary,
@@ -157,6 +158,19 @@ class ReadingAloudCompleteRequest(BaseModel):
     duration_ms: int | None = Field(default=None, ge=0, le=3_600_000)
 
 
+class OCRCandidateRequest(BaseModel):
+    image_name: str = Field(min_length=1, max_length=255)
+    source_label: str = Field(min_length=1, max_length=255)
+    provider_id: str = "local-deterministic-ocr"
+    candidate_hint: str = Field(default="", max_length=5000)
+
+
+class OCRConfirmRequest(BaseModel):
+    confirmed_text: str = Field(min_length=1, max_length=5000)
+    locale: str
+    script: str
+
+
 @app.get("/api/children")
 def get_children() -> list[dict[str, object]]:
     return list_children()
@@ -214,6 +228,22 @@ def abort_reading_aloud_attempt(attempt_id: str, child_id: int) -> dict[str, obj
         return abort_attempt(child_id=child_id, attempt_id=attempt_id)
     except ValueError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@app.post("/api/ocr/imports/candidate")
+def post_ocr_candidate(child_id: int, request: OCRCandidateRequest) -> dict[str, object]:
+    try:
+        return create_candidate(child_id=child_id, image_name=request.image_name, source_label=request.source_label, provider_id=request.provider_id, candidate_hint=request.candidate_hint)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@app.post("/api/ocr/imports/{import_id}/confirm")
+def post_ocr_confirm(import_id: str, child_id: int, request: OCRConfirmRequest) -> dict[str, object]:
+    try:
+        return confirm_candidate(child_id=child_id, import_id=import_id, confirmed_text=request.confirmed_text, locale=request.locale, script=request.script)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
 
 
 @app.post("/api/recognition/sessions")
