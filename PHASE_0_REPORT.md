@@ -47,5 +47,5 @@ Not started. The repository is ready for a separate Phase 1 work order only afte
 ## Git handoff
 
 - Branch: `phase/0-technical-validation`
-- Commit SHA: pending final commit
-- Pull Request: pending creation
+- Commit SHA: `f54cf12aa1dd5fc7af654cf031ce31cfdce17fa2`
+- Pull Request: https://github.com/webber0612/TongXuan-Chinese/pull/3
