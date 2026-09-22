@@ -8,6 +8,12 @@ from pydantic import BaseModel, Field
 
 from .database import connect, initialize_database
 from .providers import OpenCCProvider
+from .learning import (
+    add_school_item, create_child, create_weekly_test, finish_session,
+    list_children, list_daily_queue, next_recognition_item, points_summary,
+    record_attempt, redeem_reward, seed_learning_items, start_session,
+    submit_weekly_test,
+)
 
 
 @asynccontextmanager
@@ -65,3 +71,132 @@ def sqlite_diagnostic() -> dict[str, object]:
             "delete": deleted is None,
         },
     }
+
+
+class ChildRequest(BaseModel):
+    name: str = Field(min_length=1)
+
+
+class SeedRequest(BaseModel):
+    characters: list[str] | None = None
+
+
+class AttemptRequest(BaseModel):
+    item_id: str
+    result: str
+    assisted: bool = False
+    source_queue: str = "CURRICULUM"
+    response_metadata: dict[str, object] = {}
+
+
+class SchoolQueueRequest(BaseModel):
+    character: str = Field(min_length=1)
+    school_source: str = Field(min_length=1)
+    due_date: str | None = None
+    priority: int = 0
+    notes: str = ""
+    private_content: bool = True
+    provenance_status: str = "PRIVATE_OK"
+
+
+class WeeklySubmitRequest(BaseModel):
+    answers: dict[str, str]
+
+
+@app.get("/api/children")
+def get_children() -> list[dict[str, object]]:
+    return list_children()
+
+
+@app.post("/api/children")
+def post_child(request: ChildRequest) -> dict[str, object]:
+    return create_child(request.name)
+
+
+@app.post("/api/children/{child_id}/learning-items/seed")
+def post_seed(child_id: int, request: SeedRequest) -> dict[str, object]:
+    try:
+        return {"items": seed_learning_items(child_id, request.characters)}
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@app.post("/api/recognition/sessions")
+def post_session(child_id: int) -> dict[str, object]:
+    try:
+        return start_session(child_id)
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@app.get("/api/recognition/sessions/{session_id}/next")
+def get_next(session_id: str, child_id: int) -> dict[str, object]:
+    try:
+        item = next_recognition_item(child_id, session_id)
+        return {"item": item}
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@app.post("/api/recognition/sessions/{session_id}/attempts")
+def post_attempt(session_id: str, child_id: int, request: AttemptRequest) -> dict[str, object]:
+    try:
+        return record_attempt(child_id, session_id, request.item_id, request.result, request.assisted, request.source_queue, request.response_metadata)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@app.post("/api/recognition/sessions/{session_id}/complete")
+def post_session_complete(session_id: str, child_id: int) -> dict[str, object]:
+    try:
+        return finish_session(child_id, session_id)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@app.get("/api/daily-queue")
+def get_daily_queue(child_id: int) -> list[dict[str, object]]:
+    try:
+        return list_daily_queue(child_id)
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@app.post("/api/school-queue")
+def post_school_queue(child_id: int, request: SchoolQueueRequest) -> dict[str, object]:
+    try:
+        return add_school_item(child_id, request.model_dump())
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@app.post("/api/weekly-tests")
+def post_weekly_test(child_id: int) -> dict[str, object]:
+    try:
+        return create_weekly_test(child_id)
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@app.post("/api/weekly-tests/{test_id}/submit")
+def post_weekly_submit(test_id: str, child_id: int, request: WeeklySubmitRequest) -> dict[str, object]:
+    try:
+        return submit_weekly_test(child_id, test_id, request.answers)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@app.get("/api/points")
+def get_points(child_id: int) -> dict[str, object]:
+    try:
+        return points_summary(child_id)
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@app.post("/api/points/redeem/{reward_id}")
+def post_redeem(reward_id: str, child_id: int) -> dict[str, object]:
+    try:
+        return redeem_reward(child_id, reward_id)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error

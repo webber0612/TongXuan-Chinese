@@ -319,3 +319,11 @@ Codex should:
 If any important decision is made in chat and will matter later, ChatGPT should update this handoff document or another appropriate persistent project document.
 
 Do not rely on chat memory alone for durable project decisions.
+
+## Fast Track Sprint A status
+
+Issue #4 authorizes one continuous Sprint A covering Phases 1–4. The sprint
+branch is `sprint/phase1-4`. Recognition, School Queue, Weekly Test, and
+Points/Rewards are implemented with SQLite as the authoritative backend state.
+The sprint must stop after its single Draft PR is opened; Phase 5 remains
+explicitly out of scope and the Draft PR must not be merged automatically.
