@@ -83,6 +83,10 @@ No GitHub AI agent.
 No OpenAI API requirement.
 No manual copy/paste of diffs or review text.
 
+## Product Owner PR Authorization
+
+The Product Owner authorizes Codex to automatically create or update a **Draft Pull Request** after completing an explicitly assigned work order. This authorization does not include merging, marking a PR ready for review, changing branch protection, or starting the next Phase. Codex must stop at the requested Phase boundary and wait for a new work order or explicit review decision.
+
 ---
 
 # Communication Style
