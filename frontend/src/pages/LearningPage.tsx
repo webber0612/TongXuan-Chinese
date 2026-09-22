@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { nextQueueItem, scoreAnswers } from "../lib/learning";
 import { hanziWriterTraceEvent } from "../lib/writingProvider";
+import { BrowserSpeechSynthesisProvider, TTSLocale, TTSTextKind } from "../lib/tts";
 
 const API = import.meta.env.VITE_API_BASE ?? "";
 type Child = { id: number; name: string };
@@ -10,6 +11,8 @@ async function api<T>(path: string, options?: RequestInit): Promise<T> {
   if (!response.ok) throw new Error((await response.json()).detail ?? "Request failed");
   return response.json();
 }
+
+const ttsProvider = new BrowserSpeechSynthesisProvider();
 
 export function LearningPage() {
   const [children, setChildren] = useState<Child[]>([]);
@@ -27,6 +30,8 @@ export function LearningPage() {
   const [pinyinReading, setPinyinReading] = useState<any>(null);
   const [pinyinInput, setPinyinInput] = useState("");
   const [pinyinFeedback, setPinyinFeedback] = useState("");
+  const [ttsLocale, setTtsLocale] = useState<TTSLocale>("zh-TW");
+  const [ttsRate, setTtsRate] = useState(1);
 
   useEffect(() => { void api<Child[]>("/api/children").then((value) => { setChildren(value); if (value[0]) setChildId(value[0].id); }); }, []);
   async function seed() { if (childId) { await api(`/api/children/${childId}/learning-items/seed`, { method: "POST", body: "{}" }); setMessage("Sample recognition items ready"); } }
@@ -44,23 +49,25 @@ export function LearningPage() {
   async function practiceSentence(sentence: any) { if (childId) { await api(`/api/sprint-b/sentences/${sentence.id}/attempts?child_id=${childId}`, { method: "POST", body: JSON.stringify({ answer: sentence.sentence }) }); setMessage("Sentence practice recorded"); } }
   async function practiceWriting() { if (childId) { await api(`/api/sprint-b/writing/attempts?child_id=${childId}&character=學`, { method: "POST", body: JSON.stringify(hanziWriterTraceEvent()) }); setMessage("Hanzi Writer trace recorded; no handwriting quality claim"); } }
   async function submitPinyin() { if (childId && pinyinReading) { const result = await api<any>(`/api/sprint-b/pronunciation/${pinyinReading.id}/attempts?child_id=${childId}`, { method: "POST", body: JSON.stringify({ answer: pinyinInput }) }); setPinyinFeedback(result.correct ? "Correct" : "Try again"); } }
+  async function speak(text: string, textKind: TTSTextKind, locale = ttsLocale) { try { const payload = await api<any>("/api/tts/speak", { method: "POST", body: JSON.stringify({ text, text_kind: textKind, locale, rate: ttsRate }) }); ttsProvider.speak(payload); setMessage(`TTS played (${locale}, ${ttsRate}x)`); } catch (error) { setMessage(error instanceof Error ? error.message : "TTS unavailable"); } }
   async function practicePronunciation(reading: any) { if (childId) await api(`/api/sprint-b/pronunciation/${reading.id}/attempts?child_id=${childId}`, { method: "POST", body: JSON.stringify({ answer: reading.notation, assisted: false }) }); }
   async function practiceGrammar(exercise: any) { if (childId) await api(`/api/sprint-b/grammar/${exercise.id}/attempts?child_id=${childId}`, { method: "POST", body: JSON.stringify({ answer: exercise.answer_rule }) }); }
   async function practiceIdiom(idiom: any) { if (childId) await api(`/api/sprint-b/idioms/${idiom.id}/attempts?child_id=${childId}`, { method: "POST", body: JSON.stringify({ answer: idiom.meaning }) }); }
   async function practiceReading(passage: any) { if (childId) { const result = await api<any>(`/api/sprint-b/reading/passages/${passage.id}/attempts?child_id=${childId}`, { method: "POST", body: JSON.stringify({ answers: { [passage.question_id]: passage.answer_rule } }) }); setMessage(`Reading score ${result.score}/${result.total}`); } }
 
   return <main><header><p className="eyebrow">FAST TRACK SPRINT A + B · PHASE 1–10</p><h1>TongXuan Chinese</h1><p>Recognition、Words、Writing、Pronunciation、Grammar、Idioms、Reading 與家庭獎勵流程。</p></header>
-    <section className="card"><h2>Child selection</h2><select value={childId ?? ""} onChange={(event) => setChildId(Number(event.target.value))}>{children.map((child) => <option key={child.id} value={child.id}>{child.name}</option>)}</select><button onClick={seed}>Seed sample curriculum</button><button onClick={start}>Start recognition session</button>{item && <div><h3>Recognize: {item.character}</h3><button onClick={() => answer("correct")}>Correct</button><button onClick={() => answer("incorrect")}>Incorrect</button><button onClick={() => answer("correct", true)}>Hint / assisted</button></div>}</section>
+    <section className="card"><h2>Child selection</h2><select value={childId ?? ""} onChange={(event) => setChildId(Number(event.target.value))}>{children.map((child) => <option key={child.id} value={child.id}>{child.name}</option>)}</select><button onClick={seed}>Seed sample curriculum</button><button onClick={start}>Start recognition session</button>{item && <div><h3>Recognize: {item.character}</h3><button onClick={() => speak(item.character, "character", "zh-TW")}>🔊 Speak character</button><button onClick={() => answer("correct")}>Correct</button><button onClick={() => answer("incorrect")}>Incorrect</button><button onClick={() => answer("correct", true)}>Hint / assisted</button></div>}</section>
+    <section className="card"><h2>Phase 11 · TTS playback</h2><label>Locale <select value={ttsLocale} onChange={(event) => setTtsLocale(event.target.value as TTSLocale)}><option value="zh-TW">繁體中文 · zh-TW</option><option value="zh-CN">简体中文 · zh-CN</option></select></label><label>Speed <input aria-label="TTS speed" type="range" min="0.5" max="2" step="0.1" value={ttsRate} onChange={(event) => setTtsRate(Number(event.target.value))} /> {ttsRate.toFixed(1)}x</label><button onClick={() => ttsProvider.cancel()}>Stop TTS</button><small>TTS only plays transient browser speech; it does not write mastery or scoring state.</small></section>
     <section className="card"><h2>Daily Queue / School Queue</h2><button onClick={refreshQueue}>Refresh queue</button><ul>{queue.map((entry) => <li key={`${entry.source}-${entry.id}`}>{entry.character} — {entry.source} — {entry.source_detail}</li>)}</ul><input aria-label="school character" value={schoolCharacter} onChange={(e) => setSchoolCharacter(e.target.value)} placeholder="School character" /><input aria-label="school source" value={schoolSource} onChange={(e) => setSchoolSource(e.target.value)} placeholder="School source/title" /><button onClick={addSchool}>Add private school item</button></section>
     <section className="card"><h2>Weekly Test</h2><button onClick={makeTest}>Generate deterministic test</button>{test?.items?.map((entry: any) => <label key={entry.id}>{entry.character}<input onChange={(e) => setAnswers((current) => ({ ...current, [entry.id]: e.target.value }))} /></label>)}{test && <button onClick={submitTest}>Submit test</button>}</section>
     <section className="card"><h2>Points & Rewards</h2><button onClick={refreshPoints}>Refresh points</button>{points && <><p>Balance: {points.balance}</p><ul>{points.ledger.map((entry: any) => <li key={entry.id}>{entry.reason}: {entry.points_delta}</li>)}</ul>{points.rewards.map((reward: any) => <button key={reward.id} onClick={() => redeem(reward.id)}>Redeem {reward.name} ({reward.cost})</button>)}</>}</section>
     <section className="card"><h2>Fast Track Sprint B · Phase 5–10</h2><button onClick={seedB}>Seed auditable Words → Reading samples</button>{sprintB && <div>
-      <h3>Words + Sentences</h3><p>{sprintB.words.length} words / {sprintB.sentences.length} sentences</p>{sprintB.words.map((word: any) => <button key={word.id} onClick={() => practiceWord(word.id)}>Practice {word.word}</button>)}{sprintB.sentences.map((sentence: any) => <button key={sentence.id} onClick={() => practiceSentence(sentence)}>Practice sentence</button>)}
+      <h3>Words + Sentences</h3><p>{sprintB.words.length} words / {sprintB.sentences.length} sentences</p>{sprintB.words.map((word: any) => <span key={word.id}><button onClick={() => practiceWord(word.id)}>Practice {word.word}</button><button onClick={() => speak(word.word, "word")}>🔊</button></span>)}{sprintB.sentences.map((sentence: any) => <span key={sentence.id}><button onClick={() => practiceSentence(sentence)}>Practice sentence</button><button onClick={() => speak(sentence.sentence, "sentence")}>🔊</button></span>)}
       <h3>Writing</h3><button onClick={practiceWriting}>Trace 學 (deterministic manual result)</button>
       <h3>Traditional Zhuyin</h3>{sprintB.readings.filter((reading: any) => reading.script === "TRADITIONAL").map((reading: any) => <button key={reading.id} onClick={() => practicePronunciation(reading)}>學 · {reading.notation_system}: {reading.notation}</button>)}
       <h3>Simplified Pinyin</h3>{pinyinReading && <div><p>Prompt ({pinyinReading.script}): <strong>{pinyinReading.character}</strong>{pinyinReading.context && ` · ${pinyinReading.context}`}</p><select aria-label="Pinyin target reading" value={pinyinReading.id} onChange={(event) => setPinyinReading(sprintB.readings.find((reading: any) => reading.id === event.target.value))}>{sprintB.readings.filter((reading: any) => reading.script === "SIMPLIFIED" && reading.notation_system === "PINYIN").map((reading: any) => <option key={reading.id} value={reading.id}>{reading.character} {reading.context || "general"}</option>)}</select><input aria-label="Pinyin answer" value={pinyinInput} onChange={(event) => setPinyinInput(event.target.value)} placeholder="Type pinyin, e.g. xue2" /><button onClick={submitPinyin}>Submit Pinyin</button><span role="status">{pinyinFeedback}</span></div>}
       <h3>Grammar</h3>{sprintB.grammar.map((exercise: any) => <button key={exercise.id} onClick={() => practiceGrammar(exercise)}>Practice {exercise.concept}</button>)}
       <h3>Idioms</h3>{sprintB.idioms.map((idiom: any) => <button key={idiom.id} onClick={() => practiceIdiom(idiom)}>{idiom.id}</button>)}
-      <h3>Reading</h3>{sprintB.passages.map((passage: any) => <button key={passage.id} onClick={() => practiceReading(passage)}>Read {passage.title}</button>)}
+      <h3>Reading</h3>{sprintB.passages.map((passage: any) => <span key={passage.id}><button onClick={() => practiceReading(passage)}>Read {passage.title}</button><button onClick={() => speak(passage.passage, "passage")}>🔊</button></span>)}
     </div>}</section><p role="status">{message}</p></main>;
 }

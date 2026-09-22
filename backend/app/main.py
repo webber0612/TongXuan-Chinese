@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 
 from .database import connect, initialize_database
 from .providers import OpenCCProvider
+from .tts import prepare_tts
 from .learning import (
     add_school_item, create_child, create_weekly_test, finish_session,
     list_children, list_daily_queue, next_recognition_item, points_summary,
@@ -130,6 +131,17 @@ class SchoolPinyinPromptRequest(BaseModel):
     context: str | None = None
 
 
+class TTSRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=5000)
+    locale: str
+    text_kind: str
+    rate: float = Field(default=1.0, ge=0.5, le=2.0)
+    child_id: int | None = None
+    school_queue_item_id: str | None = None
+    source_type: str = "TRANSIENT_TEXT"
+    provenance_status: str | None = None
+
+
 @app.get("/api/children")
 def get_children() -> list[dict[str, object]]:
     return list_children()
@@ -146,6 +158,23 @@ def post_seed(child_id: int, request: SeedRequest) -> dict[str, object]:
         return {"items": seed_learning_items(child_id, request.characters)}
     except ValueError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@app.post("/api/tts/speak")
+def post_tts(request: TTSRequest) -> dict[str, object]:
+    try:
+        return prepare_tts(
+            text=request.text,
+            locale=request.locale,
+            text_kind=request.text_kind,
+            rate=request.rate,
+            child_id=request.child_id,
+            school_queue_item_id=request.school_queue_item_id,
+            source_type=request.source_type,
+            provenance_status=request.provenance_status,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
 
 
 @app.post("/api/recognition/sessions")
