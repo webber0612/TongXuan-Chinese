@@ -64,7 +64,7 @@ export function LearningPage() {
     if (!childId || !readingText.trim()) return;
     try {
       const attempt = await api<any>(`/api/reading-aloud/attempts/start?child_id=${childId}`, { method: "POST", body: JSON.stringify({ text: readingText, text_kind: readingKind, locale: readingLocale, source_type: readingSourceType, source_id: readingSourceId }) });
-      try { await readingAloudRecorder.start(); } catch (error) { await api(`/api/reading-aloud/attempts/${attempt.id}?child_id=${childId}`, { method: "DELETE" }); throw error; }
+      try { await readingAloudRecorder.start(); } catch (error) { await api(`/api/reading-aloud/attempts/${attempt.id}/abort?child_id=${childId}`, { method: "POST", body: "{}" }); throw error; }
       setReadingAttemptId(attempt.id); setReadingStartedAt(Date.now()); setMessage("Microphone recording started");
     } catch (error) { setMessage(error instanceof Error ? error.message : "microphone_unavailable"); }
   }
@@ -78,7 +78,7 @@ export function LearningPage() {
     } catch (error) { setMessage(error instanceof Error ? error.message : "recording_failed"); }
   }
   async function replayReadingAloud() { try { await readingAloudRecorder.replay(); setMessage("Replayed local recording"); } catch (error) { setMessage(error instanceof Error ? error.message : "recording_replay_failed"); } }
-  async function deleteReadingAloud() { if (childId && readingAttemptId) await api(`/api/reading-aloud/attempts/${readingAttemptId}?child_id=${childId}`, { method: "DELETE" }); readingAloudRecorder.delete(); setReadingAttemptId(null); setReadingStartedAt(null); setReadingRecording(null); setMessage("Local recording deleted and attempt reset"); }
+  function deleteReadingAloud() { readingAloudRecorder.delete(); setReadingRecording(null); setMessage("Local recording deleted; durable attempt metadata retained"); }
   async function practicePronunciation(reading: any) { if (childId) await api(`/api/sprint-b/pronunciation/${reading.id}/attempts?child_id=${childId}`, { method: "POST", body: JSON.stringify({ answer: reading.notation, assisted: false }) }); }
   async function practiceGrammar(exercise: any) { if (childId) await api(`/api/sprint-b/grammar/${exercise.id}/attempts?child_id=${childId}`, { method: "POST", body: JSON.stringify({ answer: exercise.answer_rule }) }); }
   async function practiceIdiom(idiom: any) { if (childId) await api(`/api/sprint-b/idioms/${idiom.id}/attempts?child_id=${childId}`, { method: "POST", body: JSON.stringify({ answer: idiom.meaning }) }); }

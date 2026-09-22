@@ -13,6 +13,13 @@ from .learning import ensure_child, now, uid
 from .tts import SUPPORTED_LOCALES, SUPPORTED_TEXT_KINDS, _source_locale
 
 SUPPORTED_SOURCE_TYPES = {"TRANSIENT_TEXT", "CURRICULUM", "WORD", "SENTENCE", "PASSAGE", "SCHOOL_QUEUE"}
+SOURCE_TEXT_KINDS = {
+    "CURRICULUM": "character",
+    "SCHOOL_QUEUE": "character",
+    "WORD": "word",
+    "SENTENCE": "sentence",
+    "PASSAGE": "passage",
+}
 
 
 def _provenance(row: sqlite3.Row, source_type: str, source_id: str) -> dict[str, Any]:
@@ -24,13 +31,15 @@ def _provenance(row: sqlite3.Row, source_type: str, source_id: str) -> dict[str,
     }
 
 
-def _resolve_source(db: sqlite3.Connection, child_id: int, source_type: str, source_id: str | None, text: str, locale: str) -> dict[str, Any] | None:
+def _resolve_source(db: sqlite3.Connection, child_id: int, source_type: str, source_id: str | None, text: str, locale: str, text_kind: str) -> dict[str, Any] | None:
     if source_type == "TRANSIENT_TEXT":
         if source_id is not None:
             raise ValueError("source_id_not_allowed_for_transient_text")
         return None
     if source_type not in SUPPORTED_SOURCE_TYPES or source_id is None:
         raise ValueError("unsupported_source")
+    if text_kind != SOURCE_TEXT_KINDS[source_type]:
+        raise ValueError("source_text_kind_mismatch")
     queries = {
         "CURRICULUM": ("SELECT * FROM learning_items WHERE id=? AND child_id=?", "character"),
         "WORD": ("SELECT * FROM words WHERE id=? AND child_id=?", "word"),
@@ -45,12 +54,11 @@ def _resolve_source(db: sqlite3.Connection, child_id: int, source_type: str, sou
     source_text = str(row[text_column])
     if text.strip() != source_text:
         raise ValueError("source_text_mismatch")
-    if source_type == "SCHOOL_QUEUE":
-        expected_locale = _source_locale(source_text)
-        if expected_locale is None:
-            raise ValueError("school_queue_script_unknown")
-        if locale != expected_locale:
-            raise ValueError("source_locale_mismatch")
+    expected_locale = _source_locale(source_text)
+    if expected_locale is None:
+        raise ValueError("source_script_unknown")
+    if locale != expected_locale:
+        raise ValueError("source_locale_mismatch")
     provenance = _provenance(row, "SCHOOL_QUEUE_PRIVATE" if source_type == "SCHOOL_QUEUE" else source_type, source_id)
     return provenance
 
@@ -67,15 +75,15 @@ def start_attempt(*, child_id: int, text: str, text_kind: str, locale: str, sour
     initialize_database()
     with connect() as db:
         ensure_child(db, child_id)
-        provenance = _resolve_source(db, child_id, source_type, source_id, text, locale)
+        provenance = _resolve_source(db, child_id, source_type, source_id, text, locale, text_kind)
         attempt_id = uid("reading_aloud")
         started_at = now()
         db.execute(
             """INSERT INTO reading_aloud_attempts
                (id, child_id, source_type, source_id, text_snapshot, text_kind, locale,
-                started_at, assisted, manual_review, provenance_json)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
-            (attempt_id, child_id, source_type, source_id, text.strip(), text_kind, locale, started_at, int(assisted), int(manual_review), json.dumps(provenance, ensure_ascii=False, sort_keys=True) if provenance else None),
+               started_at, status, assisted, manual_review, provenance_json)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (attempt_id, child_id, source_type, source_id, text.strip(), text_kind, locale, started_at, "STARTED", int(assisted), int(manual_review), json.dumps(provenance, ensure_ascii=False, sort_keys=True) if provenance else None),
         )
         return _attempt(db, attempt_id, child_id)
 
@@ -101,14 +109,17 @@ def complete_attempt(*, child_id: int, attempt_id: str, duration_ms: int | None)
             raise ValueError("reading_aloud_attempt_not_found")
         if row["completed_at"] is not None:
             raise ValueError("reading_aloud_attempt_already_completed")
-        db.execute("UPDATE reading_aloud_attempts SET completed_at=?,duration_ms=? WHERE id=? AND child_id=?", (now(), duration_ms, attempt_id, child_id))
+        db.execute("UPDATE reading_aloud_attempts SET completed_at=?,duration_ms=?,status='COMPLETED' WHERE id=? AND child_id=?", (now(), duration_ms, attempt_id, child_id))
         return _attempt(db, attempt_id, child_id)
 
 
-def delete_attempt(*, child_id: int, attempt_id: str) -> None:
-    """Delete metadata when a child discards the transient recording."""
+def abort_attempt(*, child_id: int, attempt_id: str) -> dict[str, Any]:
+    """Keep an auditable row when recording never actually starts."""
     initialize_database()
     with connect() as db:
-        cursor = db.execute("DELETE FROM reading_aloud_attempts WHERE id=? AND child_id=?", (attempt_id, child_id))
-        if cursor.rowcount != 1:
+        row = db.execute("SELECT * FROM reading_aloud_attempts WHERE id=? AND child_id=?", (attempt_id, child_id)).fetchone()
+        if row is None:
             raise ValueError("reading_aloud_attempt_not_found")
+        if row["completed_at"] is None:
+            db.execute("UPDATE reading_aloud_attempts SET status='ABORTED' WHERE id=? AND child_id=?", (attempt_id, child_id))
+        return _attempt(db, attempt_id, child_id)

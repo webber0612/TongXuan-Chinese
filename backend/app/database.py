@@ -272,6 +272,7 @@ def initialize_database() -> None:
                 started_at TEXT NOT NULL,
                 completed_at TEXT,
                 duration_ms INTEGER,
+                status TEXT NOT NULL DEFAULT 'STARTED' CHECK(status IN ('STARTED','COMPLETED','ABORTED')),
                 assisted INTEGER NOT NULL DEFAULT 0,
                 manual_review INTEGER NOT NULL DEFAULT 0,
                 provenance_json TEXT
@@ -294,6 +295,9 @@ def initialize_database() -> None:
             "reading_attempts": [
                 ("answers_json", "TEXT NOT NULL DEFAULT '{}'"),
                 ("correctness_json", "TEXT NOT NULL DEFAULT '{}'")
+            ],
+            "reading_aloud_attempts": [
+                ("status", "TEXT NOT NULL DEFAULT 'STARTED'")
             ],
         }
         for table, columns in migrations.items():

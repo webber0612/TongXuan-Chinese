@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from .database import connect, initialize_database
 from .providers import OpenCCProvider
 from .tts import prepare_tts
-from .reading_aloud import complete_attempt, delete_attempt, start_attempt
+from .reading_aloud import abort_attempt, complete_attempt, start_attempt
 from .learning import (
     add_school_item, create_child, create_weekly_test, finish_session,
     list_children, list_daily_queue, next_recognition_item, points_summary,
@@ -208,13 +208,12 @@ def post_reading_aloud_complete(attempt_id: str, child_id: int, request: Reading
         raise HTTPException(status_code=400, detail=str(error)) from error
 
 
-@app.delete("/api/reading-aloud/attempts/{attempt_id}")
-def delete_reading_aloud_attempt(attempt_id: str, child_id: int) -> dict[str, str]:
+@app.post("/api/reading-aloud/attempts/{attempt_id}/abort")
+def abort_reading_aloud_attempt(attempt_id: str, child_id: int) -> dict[str, object]:
     try:
-        delete_attempt(child_id=child_id, attempt_id=attempt_id)
+        return abort_attempt(child_id=child_id, attempt_id=attempt_id)
     except ValueError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
-    return {"status": "deleted"}
 
 
 @app.post("/api/recognition/sessions")
