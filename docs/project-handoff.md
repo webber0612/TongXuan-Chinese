@@ -195,7 +195,8 @@ Current baseline known from GitHub:
 - Phase 8 Grammar completed.
 - Phase 9 Idioms completed.
 - Phase 10 Reading completed.
-- Phase 11 TTS implementation is active on the current Phase 11 Draft PR branch.
+- Phase 11 TTS completed, audited PASS, and PR #8 merged to `main`.
+- Phase 12 has **not** started.
 - Real-child usability validation is still outstanding before treating Sprints A/B as field-validated.
 
 Relevant completed commits / milestones:
@@ -204,6 +205,7 @@ Relevant completed commits / milestones:
 - PR #3 — Phase 0 technical validation, merged to `main`.
 - PR #5 — Fast Track Sprint A, Phases 1–4, merged to `main`.
 - PR #7 — Fast Track Sprint B, Phases 5–10, merged to `main`.
+- PR #8 — Phase 11 TTS, audited PASS and merged to `main`.
 
 Important:
 The original automated GitHub-AI / Chrome-MCP idea was abandoned.
@@ -214,7 +216,7 @@ The active collaboration model is manual trigger + GitHub handoff:
 - Product Owner tells Codex to read GitHub.
 - Product Owner tells ChatGPT to inspect new GitHub changes.
 
-Phase 11 is authorized by the current Product Owner work order; do not start Phase 12.
+Phase 11 is complete and merged. Do not start Phase 12 without explicit Product Owner authorization.
 
 ---
 
@@ -381,8 +383,8 @@ Final state:
 - Phase 10 Reading completed.
 - SQLite remains authoritative.
 - Skill/mastery dimensions remain separated and auditable.
-- Phase 11 TTS is implemented on the current branch with a replaceable provider boundary,
-  `zh-TW`/`zh-CN` routing, transient browser playback, speed control, and no mastery/state writes.
+- Phase 11 TTS completed, passed ChatGPT Architect Audit, and PR #8 merged to `main`.
+- Phase 11 includes a replaceable provider boundary, `zh-TW`/`zh-CN` routing, transient browser playback, speed control, source/provenance binding for School Queue TTS, and no mastery/state writes.
 - `PHASE_11_TTS_REPORT.md` records the implementation and verification.
 - Phase 12 has not started.
 
