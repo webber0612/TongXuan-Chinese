@@ -16,7 +16,7 @@ Implemented only the Issue #4 Sprint A scope: Recognition MVP, School Queue, Wee
 ### Phase 2 — School Queue
 
 - Added a separate school queue table and API.
-- Daily Queue presents School Queue, Curriculum, and future Review sources with source labels preserved.
+- Daily Queue presents School Queue, Review, and Curriculum sources with source labels preserved. Review entries are generated from recognition wrong answers and Weekly Test missed items.
 - School items carry private-content and provenance/status markers and never enter curriculum rows.
 - Deterministic ordering uses priority, due date, and stable ID.
 
@@ -32,6 +32,8 @@ Implemented only the Issue #4 Sprint A scope: Recognition MVP, School Queue, Wee
 - Session completion and Weekly Test completion issue bounded deterministic points.
 - Added minimal reward catalog, balance checks, and redemption ledger entries.
 - Points never participate in recognition mastery calculations.
+- Recognition scheduling enforces due-at boundaries and does not repeat an item within the same session.
+- Session completion validates child ownership, unfinished state, and non-empty attempts; completed Weekly Tests are immutable.
 
 ## Architecture and schema
 
@@ -42,7 +44,7 @@ Implemented only the Issue #4 Sprint A scope: Recognition MVP, School Queue, Wee
 
 ## Tests and build
 
-- Backend: `11 passed` with `backend/.venv` and `PYTHONPATH=backend`.
+- Backend: `17 passed` after AUD-A01～A07 fixes with `backend/.venv` and `PYTHONPATH=backend`.
 - Frontend: `4 passed` with Vitest.
 - Production frontend build: passed; PWA assets generated.
 - Phase 0 tests remain green.
@@ -62,6 +64,6 @@ Implemented only the Issue #4 Sprint A scope: Recognition MVP, School Queue, Wee
 ## Delivery
 
 - Branch: `sprint/phase1-4`
-- Draft PR: to be opened after final verification
-- Implementation head: recorded in the final delivery message
+- Draft PR: [#5](https://github.com/webber0612/TongXuan-Chinese/pull/5), kept Draft
+- Implementation head: updated after AUD-A01～A07 fixes and push
 - Phase 5: not started

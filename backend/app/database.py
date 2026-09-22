@@ -74,6 +74,18 @@ def initialize_database() -> None:
                 session_id TEXT NOT NULL REFERENCES learning_sessions(id),
                 response_metadata TEXT NOT NULL DEFAULT '{}'
             );
+            CREATE TABLE IF NOT EXISTS review_queue_items (
+                id TEXT PRIMARY KEY,
+                child_id INTEGER NOT NULL REFERENCES children(id),
+                item_id TEXT NOT NULL REFERENCES learning_items(id),
+                character TEXT NOT NULL,
+                source_detail TEXT NOT NULL,
+                reason TEXT NOT NULL,
+                priority INTEGER NOT NULL DEFAULT 0,
+                active INTEGER NOT NULL DEFAULT 1,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(child_id, item_id, source_detail, reason)
+            );
             CREATE TABLE IF NOT EXISTS school_queue_items (
                 id TEXT PRIMARY KEY,
                 child_id INTEGER NOT NULL REFERENCES children(id),
