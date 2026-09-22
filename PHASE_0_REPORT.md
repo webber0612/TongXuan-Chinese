@@ -11,9 +11,9 @@ Implemented only `[Phase 0] Project skeleton & technical validation` from GitHub
 - FastAPI backend with `GET /api/health`.
 - OpenCC provider adapter with `POST /api/tools/convert` for `s2t`, `s2tw`, and `t2s`.
 - SQLite persistent database with `children` and `diagnostic_events` tables plus CRUD diagnostic endpoint.
-- Hanzi Writer PoC for `學`, including render, animation, pause/resume/reset, quiz and mistake callback wiring.
+- Hanzi Writer PoC for `學`, `学`, `國`, and `国`, including render, animation, pause/resume/reset, quiz and mistake callback wiring.
 - Web Speech API controls for zh-TW / zh-CN and rates 0.6 / 0.8 / 1.0.
-- MediaRecorder start/stop/playback-ready in-memory diagnostic flow; no recordings are persisted.
+- MediaRecorder start/stop/playback/delete in-memory diagnostic flow; no recordings are persisted.
 - PASS / FAIL / `MANUAL_VALIDATION_REQUIRED` diagnostics indicators.
 - Docker Compose for frontend + backend only, with persistent SQLite volume.
 - Synology DS723+ deployment and iPad Safari compatibility documents.
@@ -21,7 +21,7 @@ Implemented only `[Phase 0] Project skeleton & technical validation` from GitHub
 
 ## Automated test results
 
-- Backend: `5 passed` with pytest.
+- Backend: `7 passed` with pytest, including `s2t`, `s2tw`, and `t2s`.
 - Frontend: `1 passed` with Vitest.
 - Frontend production build: passed; PWA service worker and manifest generated.
 - License registry consistency: covered by backend automated test.
@@ -47,5 +47,5 @@ Not started. The repository is ready for a separate Phase 1 work order only afte
 ## Git handoff
 
 - Branch: `phase/0-technical-validation`
-- Commit SHA: `f54cf12aa1dd5fc7af654cf031ce31cfdce17fa2`
+- Commit SHA: updated after the AUD-001–004 fix commit
 - Pull Request: https://github.com/webber0612/TongXuan-Chinese/pull/3
