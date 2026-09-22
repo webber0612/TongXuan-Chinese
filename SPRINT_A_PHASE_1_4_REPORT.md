@@ -67,5 +67,5 @@ Implemented only the Issue #4 Sprint A scope: Recognition MVP, School Queue, Wee
 
 - Branch: `sprint/phase1-4`
 - Draft PR: [#5](https://github.com/webber0612/TongXuan-Chinese/pull/5), kept Draft
-- Implementation head: updated after AUD-A01～A07 fixes and push
+- Implementation head: updated after AUD-A01～A09 fixes and push
 - Phase 5: not started
