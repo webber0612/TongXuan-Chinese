@@ -9,6 +9,55 @@
     "REPLACE_BEFORE_COMMERCIAL",
     "PROHIBITED"
   ],
-  "resources": [],
+  "resources": [
+    {
+      "resource_id": "frontend-react-vite",
+      "resource_type": "technical_dependency",
+      "source_name": "React, TypeScript, Vite, Vitest, Vite PWA",
+      "source_url": "https://github.com/vitejs/vite",
+      "license_name": "MIT",
+      "usage_status": "COMMERCIAL_OK",
+      "private_use_allowed": true,
+      "commercial_use_allowed": true,
+      "commercial_license_required": false,
+      "commercial_replacement_required": false,
+      "technical_usable": true,
+      "commercial_ready": true,
+      "commercial_action": "None",
+      "notes": "Verify package lock and individual transitive licenses during release audit."
+    },
+    {
+      "resource_id": "hanzi-writer",
+      "resource_type": "technical_dependency_and_stroke_data",
+      "source_name": "Hanzi Writer",
+      "source_url": "https://github.com/chanind/hanzi-writer",
+      "license_name": "MIT (library; bundled character data must be audited)",
+      "usage_status": "LICENSE_REVIEW_REQUIRED",
+      "private_use_allowed": true,
+      "commercial_use_allowed": false,
+      "commercial_license_required": true,
+      "commercial_replacement_required": true,
+      "technical_usable": true,
+      "commercial_ready": false,
+      "commercial_action": "Verify bundled stroke-data rights or replace before commercial release",
+      "notes": "Phase 0 uses the dependency for a technical PoC only."
+    },
+    {
+      "resource_id": "opencc-python-reimplemented",
+      "resource_type": "technical_dependency_and_conversion_data",
+      "source_name": "OpenCC Python reimplementation",
+      "source_url": "https://github.com/yichen0831/opencc-python",
+      "license_name": "Apache-2.0 (verify bundled dictionary provenance)",
+      "usage_status": "LICENSE_REVIEW_REQUIRED",
+      "private_use_allowed": true,
+      "commercial_use_allowed": false,
+      "commercial_license_required": true,
+      "commercial_replacement_required": true,
+      "technical_usable": true,
+      "commercial_ready": false,
+      "commercial_action": "Audit package and dictionary provenance before commercial release",
+      "notes": "Adapter boundary is required so the provider can be replaced."
+    }
+  ],
   "commercial_replacements": []
 }

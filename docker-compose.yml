@@ -1,0 +1,15 @@
+services:
+  backend:
+    build: ./backend
+    environment:
+      TONGXUAN_DB_PATH: /app/data/tongxuan.sqlite3
+    volumes:
+      - ./data:/app/data
+    ports:
+      - "8000:8000"
+  frontend:
+    build: ./frontend
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
