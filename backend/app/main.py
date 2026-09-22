@@ -14,6 +14,12 @@ from .learning import (
     record_attempt, redeem_reward, seed_learning_items, start_session,
     submit_weekly_test,
 )
+from .sprint_b import (
+    list_grammar, list_idioms, list_passages, list_readings, list_sentences, list_words,
+    practice_grammar, practice_idiom, practice_pronunciation, practice_school_pinyin, practice_sentence, practice_word, practice_writing,
+    create_school_pinyin_prompt,
+    seed_sprint_b, submit_reading,
+)
 
 
 @asynccontextmanager
@@ -103,6 +109,27 @@ class WeeklySubmitRequest(BaseModel):
     answers: dict[str, str]
 
 
+class SkillAttemptRequest(BaseModel):
+    result: str = "correct"
+    assisted: bool = False
+
+
+class WritingAttemptRequest(BaseModel):
+    trace_result: str
+    assisted: bool = False
+    provider: str = "HANZI_WRITER"
+
+
+class AnswerRequest(BaseModel):
+    answer: str
+    assisted: bool = False
+
+
+class SchoolPinyinPromptRequest(BaseModel):
+    reading_id: str | None = None
+    context: str | None = None
+
+
 @app.get("/api/children")
 def get_children() -> list[dict[str, object]]:
     return list_children()
@@ -168,6 +195,101 @@ def post_school_queue(child_id: int, request: SchoolQueueRequest) -> dict[str, o
         return add_school_item(child_id, request.model_dump())
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@app.post("/api/sprint-b/seed")
+def post_sprint_b_seed(child_id: int) -> dict[str, object]:
+    try:
+        return seed_sprint_b(child_id)
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@app.get("/api/sprint-b/words")
+def get_words(child_id: int) -> list[dict[str, object]]:
+    try: return list_words(child_id)
+    except ValueError as error: raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@app.get("/api/sprint-b/sentences")
+def get_sentences(child_id: int) -> list[dict[str, object]]:
+    try: return list_sentences(child_id)
+    except ValueError as error: raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@app.post("/api/sprint-b/words/{word_id}/attempts")
+def post_word_attempt(word_id: str, child_id: int, request: SkillAttemptRequest) -> dict[str, object]:
+    try: return practice_word(child_id, word_id, request.result, request.assisted)
+    except ValueError as error: raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@app.post("/api/sprint-b/sentences/{sentence_id}/attempts")
+def post_sentence_attempt(sentence_id: str, child_id: int, request: AnswerRequest) -> dict[str, object]:
+    try: return practice_sentence(child_id, sentence_id, request.answer, request.assisted)
+    except ValueError as error: raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@app.post("/api/sprint-b/writing/attempts")
+def post_writing_attempt(child_id: int, character: str, request: WritingAttemptRequest) -> dict[str, object]:
+    try: return practice_writing(child_id, character, request.trace_result, request.assisted, request.provider)
+    except ValueError as error: raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@app.get("/api/sprint-b/pronunciation")
+def get_pronunciation(character: str | None = None, script: str | None = None) -> list[dict[str, object]]:
+    return list_readings(character, script)
+
+
+@app.post("/api/sprint-b/pronunciation/{reading_id}/attempts")
+def post_pronunciation_attempt(reading_id: str, child_id: int, request: AnswerRequest) -> dict[str, object]:
+    try: return practice_pronunciation(child_id, reading_id, request.answer, request.assisted)
+    except ValueError as error: raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@app.post("/api/sprint-b/pinyin/school-queue/{school_queue_item_id}")
+def post_school_pinyin_prompt(school_queue_item_id: str, child_id: int, request: SchoolPinyinPromptRequest | None = None) -> dict[str, object]:
+    try: return create_school_pinyin_prompt(child_id, school_queue_item_id, request.reading_id if request else None, request.context if request else None)
+    except ValueError as error: raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@app.post("/api/sprint-b/pinyin/prompts/{prompt_id}/attempts")
+def post_school_pinyin_attempt(prompt_id: str, child_id: int, request: AnswerRequest) -> dict[str, object]:
+    try: return practice_school_pinyin(child_id, prompt_id, request.answer, request.assisted)
+    except ValueError as error: raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@app.get("/api/sprint-b/grammar")
+def get_grammar() -> list[dict[str, object]]:
+    return list_grammar()
+
+
+@app.post("/api/sprint-b/grammar/{exercise_id}/attempts")
+def post_grammar_attempt(exercise_id: str, child_id: int, request: AnswerRequest) -> dict[str, object]:
+    try: return practice_grammar(child_id, exercise_id, request.answer, request.assisted)
+    except ValueError as error: raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@app.get("/api/sprint-b/idioms")
+def get_idioms() -> list[dict[str, object]]:
+    return list_idioms()
+
+
+@app.post("/api/sprint-b/idioms/{idiom_id}/attempts")
+def post_idiom_attempt(idiom_id: str, child_id: int, request: AnswerRequest) -> dict[str, object]:
+    try: return practice_idiom(child_id, idiom_id, request.answer, request.assisted)
+    except ValueError as error: raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@app.get("/api/sprint-b/reading/passages")
+def get_reading_passages(child_id: int) -> list[dict[str, object]]:
+    try: return list_passages(child_id)
+    except ValueError as error: raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@app.post("/api/sprint-b/reading/passages/{passage_id}/attempts")
+def post_reading_attempt(passage_id: str, child_id: int, request: WeeklySubmitRequest) -> dict[str, object]:
+    try: return submit_reading(child_id, passage_id, request.answers)
+    except ValueError as error: raise HTTPException(status_code=400, detail=str(error)) from error
 
 
 @app.post("/api/weekly-tests")
