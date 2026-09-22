@@ -181,19 +181,14 @@ Current baseline known from GitHub:
 - License registry exists.
 - School Queue private-content rule defined.
 - Commercial Replacement Registry defined.
-- roadmap updated.
-- commit previously reported by Product Owner:
-  `2a6395a docs: add license tracking commercialization gate`
+- Phase 0 completed, audited PASS, and PR #3 merged to `main`.
+- Phase 0 manual validation items still outstanding: real iPad Safari, Docker runtime, and Synology DS723+ deployment/persistence checks.
+- Phase 1 has **not** started.
 
-ChatGPT later added:
-- `docs/ai-development-loop.md`
-- commit:
-  `005f8dc01673016615aea807663fec7035c40fb9`
-
-Issue #1 currently exists:
-```text
-[Phase 0B] Automate Codex ↔ AI audit loop through GitHub
-```
+Relevant completed commits / milestones:
+- `2a6395a` — add license tracking commercialization gate.
+- `005f8dc` — define AI development and audit loop.
+- PR #3 — Phase 0 technical validation, merged to `main`.
 
 Important:
 The original automated GitHub-AI / Chrome-MCP idea was abandoned.
@@ -203,6 +198,8 @@ Do not continue that automation design unless the Product Owner explicitly reope
 The active collaboration model is manual trigger + GitHub handoff:
 - Product Owner tells Codex to read GitHub.
 - Product Owner tells ChatGPT to inspect new GitHub changes.
+
+Next authorized product phase is Phase 1 only after explicit Product Owner instruction.
 
 ---
 
