@@ -61,3 +61,26 @@ def test_tts_preserves_school_queue_private_provenance_and_child_boundary(tmp_pa
         assert api.post("/api/tts/speak", json={"locale": "zh-CN", "text_kind": "character", "text": "学", "child_id": bob, "school_queue_item_id": school["id"]}).json()["detail"] == "school_queue_item_not_found"
         assert api.get("/api/daily-queue", params={"child_id": alice}).json()[0]["id"] == school["id"]
         assert api.get("/api/daily-queue", params={"child_id": bob}).json() == []
+
+
+def test_school_queue_tts_requires_authoritative_source_text(tmp_path):
+    with client(tmp_path) as api:
+        child_id = api.post("/api/children", json={"name": "Alice"}).json()["id"]
+        school = api.post("/api/school-queue", params={"child_id": child_id}, json={"character": "学", "school_source": "Private worksheet", "private_content": True}).json()
+        result = api.post("/api/tts/speak", json={
+            "locale": "zh-CN", "text_kind": "character", "text": "完全不同內容",
+            "child_id": child_id, "school_queue_item_id": school["id"],
+        })
+        assert result.status_code == 400
+        assert result.json()["detail"] == "school_queue_text_mismatch"
+
+
+def test_school_queue_tts_validates_source_script_and_locale(tmp_path):
+    with client(tmp_path) as api:
+        child_id = api.post("/api/children", json={"name": "Alice"}).json()["id"]
+        simplified = api.post("/api/school-queue", params={"child_id": child_id}, json={"character": "学", "school_source": "Private worksheet", "private_content": True}).json()
+        traditional = api.post("/api/school-queue", params={"child_id": child_id}, json={"character": "學", "school_source": "Private worksheet", "private_content": True}).json()
+        assert api.post("/api/tts/speak", json={"locale": "zh-TW", "text_kind": "character", "text": "学", "child_id": child_id, "school_queue_item_id": simplified["id"]}).json()["detail"] == "school_queue_locale_mismatch"
+        assert api.post("/api/tts/speak", json={"locale": "zh-CN", "text_kind": "character", "text": "學", "child_id": child_id, "school_queue_item_id": traditional["id"]}).json()["detail"] == "school_queue_locale_mismatch"
+        assert api.post("/api/tts/speak", json={"locale": "zh-CN", "text_kind": "character", "text": "学", "child_id": child_id, "school_queue_item_id": simplified["id"]}).status_code == 200
+        assert api.post("/api/tts/speak", json={"locale": "zh-TW", "text_kind": "character", "text": "學", "child_id": child_id, "school_queue_item_id": traditional["id"]}).status_code == 200

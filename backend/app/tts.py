@@ -13,6 +13,24 @@ from .learning import ensure_child
 SUPPORTED_LOCALES = {"zh-TW", "zh-CN"}
 SUPPORTED_TEXT_KINDS = {"character", "word", "sentence", "passage"}
 
+# School Queue entries currently carry the source character rather than a
+# caller-selected script field. These pairs are the unambiguous script
+# markers used to bind source content to its locale at the TTS boundary.
+_SIMPLIFIED_MARKERS = set("学国汉书说语车门马听读见习会这为来发爱头长开东云儿")
+_TRADITIONAL_MARKERS = set("學國漢書說語車門馬聽讀見習會這為來發愛頭長開東雲兒")
+
+
+def _source_locale(text: str) -> str | None:
+    simplified = bool(set(text) & _SIMPLIFIED_MARKERS)
+    traditional = bool(set(text) & _TRADITIONAL_MARKERS)
+    if simplified and traditional:
+        return None
+    if simplified:
+        return "zh-CN"
+    if traditional:
+        return "zh-TW"
+    return None
+
 
 class TTSProvider(Protocol):
     provider_id: str
@@ -79,6 +97,15 @@ def prepare_tts(
             item = db.execute("SELECT * FROM school_queue_items WHERE id=? AND child_id=?", (school_queue_item_id, child_id)).fetchone()
             if item is None:
                 raise ValueError("school_queue_item_not_found")
+            source_text = str(item["character"])
+            normalized_text = text.strip()
+            if normalized_text != source_text:
+                raise ValueError("school_queue_text_mismatch")
+            expected_locale = _source_locale(source_text)
+            if expected_locale is None:
+                raise ValueError("school_queue_script_unknown")
+            if locale != expected_locale:
+                raise ValueError("school_queue_locale_mismatch")
             provenance = {
                 "source_type": "SCHOOL_QUEUE_PRIVATE",
                 "source_id": school_queue_item_id,

@@ -25,16 +25,26 @@ Implemented only Phase 11 Text-to-Speech. Phase 12 work is not started.
 ## School Queue and privacy
 
 - TTS can receive a School Queue item reference and returns its private provenance metadata.
-- The service verifies child ownership and does not change, promote, or duplicate the School Queue
-  item. No child learning state is written.
+- The service verifies child ownership, requires the requested text to exactly match the
+  authoritative School Queue source text, and validates the source script against `zh-TW` or
+  `zh-CN` before attaching private provenance. Caller text cannot borrow provenance.
+- The service does not change, promote, or duplicate the School Queue item. No child learning state
+  is written.
 
 ## Tests and build
 
-- Backend: `30 passed` with `PYTHONPATH=backend` and the project virtual environment.
-- Frontend: `4 passed` with Vitest.
+- Backend: `32 passed, 34 warnings` with `PYTHONPATH=backend` and the project virtual environment.
+- Frontend: `7 passed` with Vitest, including the Web Speech API adapter regression coverage.
 - Production build: passed with Vite/PWA assets generated.
 - Coverage includes locale routing, all four payload kinds, rate, invalid input, no mastery/state
-  mutation, child boundary, and School Queue private provenance preservation.
+  mutation, child boundary, exact School Queue source binding, source script/locale validation,
+  and Browser SpeechSynthesis text/lang/rate/cancel/unavailable behavior.
+
+### Audit remediation
+
+- AUD-T11-01: resolved with exact authoritative School Queue source-text matching.
+- AUD-T11-02: resolved with source script/locale validation for School Queue TTS.
+- AUD-T11-03: resolved with frontend Web Speech API adapter regression tests.
 
 ## Explicit exclusions
 
