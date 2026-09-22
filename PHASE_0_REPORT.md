@@ -47,5 +47,5 @@ Not started. The repository is ready for a separate Phase 1 work order only afte
 ## Git handoff
 
 - Branch: `phase/0-technical-validation`
-- Commit SHA: updated after the AUD-001–004 fix commit
+- Fix commit SHA: `20a31255e18509aa34778c6f36a39ae0349e97f6`
 - Pull Request: https://github.com/webber0612/TongXuan-Chinese/pull/3
