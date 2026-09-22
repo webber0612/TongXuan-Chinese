@@ -261,6 +261,22 @@ def initialize_database() -> None:
                 score INTEGER NOT NULL, total INTEGER NOT NULL, answers_json TEXT NOT NULL DEFAULT '{}',
                 correctness_json TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
+            CREATE TABLE IF NOT EXISTS reading_aloud_attempts (
+                id TEXT PRIMARY KEY,
+                child_id INTEGER NOT NULL REFERENCES children(id),
+                source_type TEXT NOT NULL,
+                source_id TEXT,
+                text_snapshot TEXT NOT NULL,
+                text_kind TEXT NOT NULL CHECK(text_kind IN ('character','word','sentence','passage')),
+                locale TEXT NOT NULL CHECK(locale IN ('zh-TW','zh-CN')),
+                started_at TEXT NOT NULL,
+                completed_at TEXT,
+                duration_ms INTEGER,
+                status TEXT NOT NULL DEFAULT 'STARTED' CHECK(status IN ('STARTED','COMPLETED','ABORTED')),
+                assisted INTEGER NOT NULL DEFAULT 0,
+                manual_review INTEGER NOT NULL DEFAULT 0,
+                provenance_json TEXT
+            );
             """
         )
         # Keep existing family databases forward-compatible with the Sprint B audit fields.
@@ -279,6 +295,9 @@ def initialize_database() -> None:
             "reading_attempts": [
                 ("answers_json", "TEXT NOT NULL DEFAULT '{}'"),
                 ("correctness_json", "TEXT NOT NULL DEFAULT '{}'")
+            ],
+            "reading_aloud_attempts": [
+                ("status", "TEXT NOT NULL DEFAULT 'STARTED'")
             ],
         }
         for table, columns in migrations.items():
