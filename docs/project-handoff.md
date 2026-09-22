@@ -183,12 +183,19 @@ Current baseline known from GitHub:
 - Commercial Replacement Registry defined.
 - Phase 0 completed, audited PASS, and PR #3 merged to `main`.
 - Phase 0 manual validation items still outstanding: real iPad Safari, Docker runtime, and Synology DS723+ deployment/persistence checks.
-- Phase 1 has **not** started.
+- Fast Track Sprint A (Phases 1–4) completed, audited PASS, and PR #5 merged to `main`.
+- Phase 1 Recognition MVP completed.
+- Phase 2 School Queue completed.
+- Phase 3 Weekly Test + Scoring completed.
+- Phase 4 Points + Reward System completed.
+- Phase 5 has **not** started.
+- Real-child usability validation is still outstanding before treating Sprint A as field-validated.
 
 Relevant completed commits / milestones:
 - `2a6395a` — add license tracking commercialization gate.
 - `005f8dc` — define AI development and audit loop.
 - PR #3 — Phase 0 technical validation, merged to `main`.
+- PR #5 — Fast Track Sprint A, Phases 1–4, merged to `main`.
 
 Important:
 The original automated GitHub-AI / Chrome-MCP idea was abandoned.
@@ -199,7 +206,7 @@ The active collaboration model is manual trigger + GitHub handoff:
 - Product Owner tells Codex to read GitHub.
 - Product Owner tells ChatGPT to inspect new GitHub changes.
 
-Next authorized product phase is Phase 1 only after explicit Product Owner instruction.
+Next product phase is Phase 5 only after explicit Product Owner instruction.
 
 ---
 
@@ -322,8 +329,24 @@ Do not rely on chat memory alone for durable project decisions.
 
 ## Fast Track Sprint A status
 
-Issue #4 authorizes one continuous Sprint A covering Phases 1–4. The sprint
-branch is `sprint/phase1-4`. Recognition, School Queue, Weekly Test, and
-Points/Rewards are implemented with SQLite as the authoritative backend state.
-The sprint must stop after its single Draft PR is opened; Phase 5 remains
-explicitly out of scope and the Draft PR must not be merged automatically.
+Issue #4 covered one continuous Sprint A for Phases 1–4.
+
+Final state:
+- PR #5 passed ChatGPT Architect Audit and was merged to `main`.
+- Phase 1 Recognition MVP completed.
+- Phase 2 School Queue completed.
+- Phase 3 Weekly Test + Scoring completed.
+- Phase 4 Points + Rewards completed.
+- SQLite remains authoritative.
+- Review/Wrong Answer Queue behavior is implemented.
+- Weekly Test records are deterministic/auditable and immutable after completion.
+- Points remain separate from recognition mastery.
+- Phase 5 has not started.
+
+Remaining validation:
+- real iPad Safari;
+- Docker runtime;
+- Synology DS723+ deployment/persistence;
+- real-child usability / parent workflow trial.
+
+Do not start Phase 5 without explicit Product Owner authorization.
