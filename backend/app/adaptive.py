@@ -116,11 +116,12 @@ def _rank(candidates: list[dict[str, Any]], limit: int, adaptive: bool) -> list[
     return sorted(selected[:limit], key=lambda item: (-item["ranking_score"], SOURCES.index(item["source"]), SKILLS.index(item["skill"]), item["source_id"]))
 
 
-def build_adaptive_plan(*, child_id: int, as_of: str, limit: int, adaptive: bool, preference: str | None) -> dict[str, Any]:
+def build_adaptive_plan(*, child_id: int, as_of: str, limit: int, adaptive: bool, preference: str | None, initialize: bool = True) -> dict[str, Any]:
     if not 1 <= limit <= 50: raise ValueError("invalid_limit")
     if preference not in {None, *SOURCES}: raise ValueError("invalid_preference")
     as_of_dt, as_of_text = _as_of(as_of)
-    initialize_database()
+    if initialize:
+        initialize_database()
     with connect() as db:
         ensure_child(db, child_id)
         candidates: list[dict[str, Any]] = []

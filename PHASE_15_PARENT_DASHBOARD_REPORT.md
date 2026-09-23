@@ -40,6 +40,9 @@ Phase 16 Long-term Curriculum was not started.
 
 - Dashboard endpoint is GET-only and does not create attempts, alter mastery, complete queue items,
   change adaptive preferences, award/redeem points, or mutate OCR/Reading Aloud metadata.
+- Dashboard adaptive summaries use the existing read service without invoking database
+  initialization or migrations from the GET path; schema setup remains owned by application
+  startup and write-service boundaries.
 - No raw image bytes, audio bytes, external analytics, telemetry, or cloud export was added.
 - Child selection is explicit and all queries are filtered by the selected child.
 - Weekly score history includes only immutable completed tests and uses `completed_at`; pending
@@ -49,7 +52,7 @@ Phase 16 Long-term Curriculum was not started.
 
 ## Verification
 
-- Backend: `60 passed` with `PYTHONPATH=backend`.
+- Backend: `61 passed` with `PYTHONPATH=backend`.
 - Frontend: `18 passed` with Vitest.
 - Production build: passed with Vite/PWA assets generated.
 - Regression coverage includes child isolation, 7/30/all-time windows, event-based historical

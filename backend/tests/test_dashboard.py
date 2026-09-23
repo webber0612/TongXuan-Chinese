@@ -166,3 +166,13 @@ def test_dashboard_replays_weekly_pending_state_as_of(tmp_path):
         assert [row["id"] for row in t2["weekly_tests"]["history"]] == []
         assert [row["id"] for row in t4["weekly_tests"]["pending"]] == []
         assert [row["id"] for row in t4["weekly_tests"]["history"]] == ["test-pending-history"]
+
+
+def test_dashboard_read_does_not_initialize_database_or_run_migrations(tmp_path, monkeypatch):
+    with client(tmp_path) as api:
+        child_id = api.post("/api/children", json={"name": "Alice"}).json()["id"]
+        from app import adaptive
+
+        monkeypatch.setattr(adaptive, "initialize_database", lambda: (_ for _ in ()).throw(AssertionError("dashboard read initialized database")))
+        response = api.get("/api/dashboard", params={"child_id": child_id, "window": "all"})
+        assert response.status_code == 200

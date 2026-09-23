@@ -200,7 +200,9 @@ def build_dashboard(*, child_id: int, window: str = "7d", from_at: str | None = 
                 "locale": row["locale"], "text_kind": row["text_kind"], "started_at": row["started_at"],
                 "completed_at": completed_at, "aborted_at": aborted_at,
             })
-    adaptive = build_adaptive_plan(child_id=child_id, as_of=end.isoformat() + "Z", limit=adaptive_limit, adaptive=True, preference=None)
+    # The dashboard is a read-only endpoint.  The application lifespan owns schema
+    # initialization; do not let an on-demand adaptive read run migrations/DDL.
+    adaptive = build_adaptive_plan(child_id=child_id, as_of=end.isoformat() + "Z", limit=adaptive_limit, adaptive=True, preference=None, initialize=False)
     return {
         "child": dict(child), "window": {"name": window, "from": _stamp(start) if start else None, "to": end_text},
         "activity": {"attempts": attempt_totals, "active_school_queue": len(active_school), "completed_school_queue": len(completed_school), "due_school_queue": len(due_school), "review_count": review_count, "adaptive": {"as_of": adaptive["as_of"], "items": adaptive["items"]}},
