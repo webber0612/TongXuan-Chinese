@@ -11,6 +11,7 @@ from typing import Any, Protocol
 
 from .database import connect
 from .learning import ensure_child
+from .tts import _source_locale
 
 MODES = {"explain", "story", "reading-guide", "sentence-hint"}
 SOURCE_TYPES = {"CURRICULUM_ITEM", "SCHOOL_QUEUE"}
@@ -105,13 +106,19 @@ def tutor_response(*, child_id: int, mode: str, prompt: str, source_type: str, s
         raise ValueError("unsupported_tutor_source")
     if not prompt.strip():
         raise ValueError("tutor_prompt_required")
+    source = _retrieve(child_id=child_id, source_type=source_type, source_id=source_id, as_of=as_of)
+    source_locale = _source_locale(source["content"])
+    if source_locale is None:
+        raise ValueError("source_script_unknown")
+    source_script = "TRADITIONAL" if source_locale == "zh-TW" else "SIMPLIFIED"
     if locale is not None and locale not in LOCALES:
         raise ValueError("unsupported_locale")
     if script is not None and script not in SCRIPTS:
         raise ValueError("unsupported_script")
-    if locale == "zh-TW" and script == "SIMPLIFIED" or locale == "zh-CN" and script == "TRADITIONAL":
-        raise ValueError("locale_script_mismatch")
-    source = _retrieve(child_id=child_id, source_type=source_type, source_id=source_id, as_of=as_of)
+    if locale is not None and locale != source_locale or script is not None and script != source_script:
+        raise ValueError("source_locale_script_mismatch")
+    locale = source_locale
+    script = source_script
     provider = get_tutor_provider()
     response = provider.respond(mode=mode, prompt=prompt, source=source)
     return {

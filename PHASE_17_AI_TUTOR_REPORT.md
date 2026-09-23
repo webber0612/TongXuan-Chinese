@@ -10,7 +10,8 @@ commercialization, and unrelated refactors were not started.
 - Added a replaceable `TutorProvider` adapter boundary with a deterministic local fallback;
   no model SDK, cloud client, telemetry, raw media, or provider-specific learning-domain code.
 - Tutor retrieval is authoritative and child-scoped for Curriculum Item and School Queue sources.
-  Responses preserve source, provenance, privacy, license, locale, and script metadata.
+  Responses preserve source, provenance, privacy, license, locale, and script metadata. Locale and
+  script are derived from the retrieved source text and mismatched requests are rejected.
 - Allowed modes are limited to `explain`, `story`, `reading-guide`, and `sentence-hint`.
 - Missing authoritative context produces a deterministic refusal. The tutor never decides
   correctness, supplies an answer key, evaluates stroke order/pronunciation, scores, mutates
@@ -20,12 +21,19 @@ commercialization, and unrelated refactors were not started.
 
 ## Verification
 
-- Backend: `72 passed` with `PYTHONPATH=backend`.
+- Backend: `73 passed` with `PYTHONPATH=backend`.
 - Frontend: `24 passed` with Vitest.
 - Production build: passed with Vite/PWA assets generated.
 - Regression coverage includes adapter safety flags, deterministic no-context refusal, child
   isolation, private School Queue provenance, locale/script validation, no learning-state mutation,
-  and rendered frontend child-scoped tutor interaction.
+  authoritative Curriculum/School Queue text locale-script matching, and rendered frontend
+  child-scoped tutor interaction.
+
+## Architect Audit Resolution
+
+- AUD-T17-01: Tutor locale/script is derived from the retrieved authoritative text and compared
+  against any requested pair. Traditional and Simplified Curriculum items plus Traditional School
+  Queue content have matching-success and mismatch-rejection regression coverage.
 
 ## Delivery
 

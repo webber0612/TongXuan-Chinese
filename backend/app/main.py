@@ -296,7 +296,7 @@ def post_tutor_response(child_id: int, request: TutorRequest) -> dict[str, objec
         return tutor_response(child_id=child_id, mode=request.mode, prompt=request.prompt, source_type=request.source_type, source_id=request.source_id, locale=request.locale, script=request.script, as_of=request.as_of)
     except ValueError as error:
         detail = str(error)
-        raise HTTPException(status_code=400 if detail.startswith(("invalid_", "unsupported_", "tutor_prompt", "locale_")) else 404, detail=detail) from error
+        raise HTTPException(status_code=400 if detail.startswith(("invalid_", "unsupported_", "tutor_prompt", "locale_", "source_")) else 404, detail=detail) from error
 
 
 @app.post("/api/tts/speak")
