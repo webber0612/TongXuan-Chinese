@@ -1,0 +1,23 @@
+services:
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      TONGXUAN_ENV: production
+      TONGXUAN_DB_PATH: /app/data/tongxuan.sqlite3
+      TONGXUAN_BACKUP_DIR: /app/backups
+      TONGXUAN_ALLOWED_ORIGINS: ${TONGXUAN_ALLOWED_ORIGINS:?set approved HTTPS origin}
+      TONGXUAN_AUTH_SECRET: ${TONGXUAN_AUTH_SECRET:?set secret in NAS secret manager}
+      BUILD_TARGET: family
+    volumes:
+      - ./data:/app/data
+      - ./backups:/app/backups
+    expose:
+      - "8000"
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"

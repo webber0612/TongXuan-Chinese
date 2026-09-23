@@ -29,10 +29,15 @@ def create_child(name: str) -> dict[str, Any]:
         return {"id": cursor.lastrowid, "name": name.strip()}
 
 
-def list_children() -> list[dict[str, Any]]:
+def list_children(child_ids: set[int] | None = None) -> list[dict[str, Any]]:
     initialize_database()
     with connect() as db:
-        return [dict(row) for row in db.execute("SELECT id, name, created_at FROM children ORDER BY id")]
+        if child_ids is None:
+            return [dict(row) for row in db.execute("SELECT id, name, created_at FROM children ORDER BY id")]
+        if not child_ids:
+            return []
+        placeholders = ",".join("?" for _ in child_ids)
+        return [dict(row) for row in db.execute(f"SELECT id, name, created_at FROM children WHERE id IN ({placeholders}) ORDER BY id", tuple(sorted(child_ids)))]
 
 
 def seed_learning_items(child_id: int, characters: list[str] | None = None) -> list[dict[str, Any]]:

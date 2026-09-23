@@ -6,6 +6,7 @@ from pathlib import Path
 
 
 DEFAULT_DB_PATH = Path(__file__).resolve().parents[2] / "data" / "tongxuan.sqlite3"
+SCHEMA_VERSION = 1
 
 
 def database_path() -> Path:
@@ -28,6 +29,11 @@ def initialize_database() -> None:
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE IF NOT EXISTS schema_migrations (
+                version INTEGER PRIMARY KEY,
+                applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                description TEXT NOT NULL
             );
             CREATE TABLE IF NOT EXISTS diagnostic_events (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -393,3 +399,9 @@ def initialize_database() -> None:
             for column, definition in columns:
                 if column not in existing:
                     connection.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
+        current_version = int(connection.execute("PRAGMA user_version").fetchone()[0])
+        if current_version > SCHEMA_VERSION:
+            raise RuntimeError("database_schema_newer_than_application")
+        if current_version < SCHEMA_VERSION:
+            connection.execute("INSERT OR IGNORE INTO schema_migrations(version, description) VALUES (?, ?)", (SCHEMA_VERSION, "baseline schema and additive audit migrations"))
+            connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
