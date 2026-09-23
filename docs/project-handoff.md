@@ -462,6 +462,13 @@ Final state:
   `python scripts/final_smoke.py` from the repository root (no pre-set `PYTHONPATH` required),
   with `python scripts/test_final_smoke_command.py` as its command regression. It is awaiting
   Architect PASS; do not merge or start Phase 21.
+- The child-first frontend redesign is implemented on `ui/child-first-redesign` from the current
+  `origin/main`. It adds a responsive app shell, two default child profiles plus a parent manager,
+  local profile switching/add-user persistence, a touch-first daily route, visible parent area,
+  settings, accessible dialogs, reduced-motion support, loading/empty/error/success states, and
+  a visual reward redemption flow. Existing API contracts and learning semantics are preserved;
+  the parent password is a frontend UX gate only, not server security. Frontend tests and the
+  production build are required before this branch is reviewed. Do not merge automatically.
 
 Remaining validation:
 - real iPad Safari;
