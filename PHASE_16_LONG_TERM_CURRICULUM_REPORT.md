@@ -23,7 +23,7 @@ were not started.
 
 ## Verification
 
-- Backend: `67 passed` with `PYTHONPATH=backend`.
+- Backend: `68 passed` with `PYTHONPATH=backend`.
 - Frontend: `21 passed` with Vitest.
 - Production build: passed with Vite/PWA assets generated.
 - Regression coverage includes level/unit/item ordering, provenance/license fields, child
@@ -38,6 +38,9 @@ were not started.
   metadata and schema version remain unchanged in the no-mutation regression test.
 - AUD-T16-03: The rendered `CurriculumPage` regression covers child switching, refresh, hierarchy,
   as-of display, provenance/license rendering, and GET-only requests.
+- AUD-T16-04: Curriculum reads defensively ignore persisted progress events whose `event_at` is
+  before the item's `created_at`; direct database insertion coverage verifies a T2 invalid event
+  cannot mark a T3-created item completed in a T4 read.
 
 ## Delivery
 

@@ -98,8 +98,17 @@ def get_curriculum(*, levels: list[dict[str, Any]] | None, child_id: int | None,
             rows = db.execute("SELECT * FROM curriculum_progress_events WHERE child_id=? AND event_at<=? ORDER BY event_at,id", (child_id, end_text)).fetchall()
             valid_item_ids = {row["id"] for rows in items_by_unit.values() for row in rows}
             for row in rows:
-                if row["curriculum_item_id"] in valid_item_ids:
-                    progress[row["curriculum_item_id"]] = {"status": row["status"], "event_at": row["event_at"]}
+                if row["curriculum_item_id"] not in valid_item_ids:
+                    continue
+                item_row = next(item for items in items_by_unit.values() for item in items if item["id"] == row["curriculum_item_id"])
+                try:
+                    event_at = _parse(row["event_at"])
+                    item_created = _parse(item_row["created_at"])
+                except ValueError:
+                    continue
+                if event_at is None or item_created is None or event_at < item_created:
+                    continue
+                progress[row["curriculum_item_id"]] = {"status": row["status"], "event_at": row["event_at"]}
 
         result_levels = []
         counts = {status: 0 for status in STATUSES}

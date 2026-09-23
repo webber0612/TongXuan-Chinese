@@ -85,6 +85,28 @@ def test_curriculum_get_does_not_initialize_or_change_schema(tmp_path, monkeypat
         assert after == before
 
 
+def test_curriculum_get_ignores_persisted_pre_creation_progress_event(tmp_path):
+    with client(tmp_path) as api:
+        child_id = api.post("/api/children", json={"name": "Alice"}).json()["id"]
+        api.post("/api/curriculum/catalog", json=catalog())
+        from app.database import connect
+
+        with connect() as db:
+            db.execute("UPDATE curriculum_levels SET created_at=?", ("2026-01-03 09:00:00",))
+            db.execute("UPDATE curriculum_units SET created_at=?", ("2026-01-03 09:00:00",))
+            db.execute("UPDATE curriculum_items SET created_at=?", ("2026-01-03 10:00:00",))
+            db.execute(
+                "INSERT INTO curriculum_progress_events (id,child_id,curriculum_item_id,status,event_at) VALUES (?,?,?,?,?)",
+                ("malformed-pre-creation", child_id, "item-1a", "COMPLETED", "2026-01-02 10:00:00"),
+            )
+
+        t4 = api.get(f"/api/children/{child_id}/curriculum", params={"as_of": "2026-01-04T00:00:00Z"}).json()
+        item = t4["levels"][0]["units"][0]["items"][0]
+        assert item["progress"]["status"] == "NOT_STARTED"
+        assert item["progress"]["event_at"] is None
+        assert t4["progress"]["completed"] == 0
+
+
 def test_curriculum_progress_does_not_promote_to_school_queue_or_merge_skill_state(tmp_path):
     with client(tmp_path) as api:
         child_id = api.post("/api/children", json={"name": "Alice"}).json()["id"]
