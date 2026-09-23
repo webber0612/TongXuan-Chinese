@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "skills": {
+    "adapt": {
+      "source": "aladicf/better-web-ui",
+      "sourceType": "github",
+      "skillPath": "skills/adapt/SKILL.md",
+      "computedHash": "ba0ba06c26bb7167998d28c4bf1c2d8c9cda0acc2c238c71bf7d130bf776ce1a"
+    },
+    "add-ui": {
+      "source": "aladicf/better-web-ui",
+      "sourceType": "github",
+      "skillPath": "skills/add-ui/SKILL.md",
+      "computedHash": "55c60e7ac983b151d241f12b299080a81a70b5c0e895462a72262c66d7c52a2c"
+    },
+    "animate": {
+      "source": "aladicf/better-web-ui",
+      "sourceType": "github",
+      "skillPath": "skills/animate/SKILL.md",
+      "computedHash": "cb49007a9831659061bf93f82708c68751eaa88ceecf671d18492db267437309"
+    },
+    "arrange": {
+      "source": "aladicf/better-web-ui",
+      "sourceType": "github",
+      "skillPath": "skills/arrange/SKILL.md",
+      "computedHash": "2b664432b54b26fc0e7fc716eb8cff65bbfb74922e62c57246ce6ce8bb622928"
+    },
+    "audit": {
+      "source": "aladicf/better-web-ui",
+      "sourceType": "github",
+      "skillPath": "skills/audit/SKILL.md",
+      "computedHash": "6875ef913334513332ee311a7f30898b4fd161fa89dff65776a632e52300c18e"
+    },
+    "critique": {
+      "source": "aladicf/better-web-ui",
+      "sourceType": "github",
+      "skillPath": "skills/critique/SKILL.md",
+      "computedHash": "328d3ddd8610003062946ed08c29ffd95b3f3cefc52c92993235112a8b1b8bff"
+    },
+    "frontend-design": {
+      "source": "aladicf/better-web-ui",
+      "sourceType": "github",
+      "skillPath": "skills/frontend-design/SKILL.md",
+      "computedHash": "c2cf87cdd07523f4b92d9bbc0b6f90dde57ac574f47a140ca477df4c47a639a9"
+    },
+    "harden": {
+      "source": "aladicf/better-web-ui",
+      "sourceType": "github",
+      "skillPath": "skills/harden/SKILL.md",
+      "computedHash": "7f68096c25be391c4b01f7e5bcab8e13360370bad1b0cf515d444a505baea40c"
+    },
+    "setup": {
+      "source": "aladicf/better-web-ui",
+      "sourceType": "github",
+      "skillPath": "skills/setup/SKILL.md",
+      "computedHash": "dd21c2f3c411b2f71b07aa19ce8c0921dc395a5adc407bff9ae8e6c6d979bc42"
+    }
+  }
+}
