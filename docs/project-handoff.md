@@ -232,7 +232,8 @@ Current baseline known from GitHub:
 - Phase 17 Optional AI Tutor was completed and merged to `main`.
 - Phase 18 Commercialization Gate & Release Audit is implemented on `phase18/commercialization-gate`
   from merged main `1ca8037`; its registry/gate/admin read model and regression tests are complete
-  and awaiting Architect Audit.
+  and awaiting Architect Audit. Its unresolved Commercial blockers remain explicit; no legal or
+  paid-license decision is claimed.
 - Real-child usability validation is still outstanding before treating Sprints A/B as field-validated.
 
 Relevant completed commits / milestones:
@@ -252,8 +253,8 @@ The active collaboration model is manual trigger + GitHub handoff:
 - Product Owner tells Codex to read GitHub.
 - Product Owner tells ChatGPT to inspect new GitHub changes.
 
-Phases 11–17 are complete and merged. Phase 18 is the currently assigned Phase; do not start
-Phase 19.
+Phases 11–18 are complete and merged. Phase 19 Production Hardening is the currently assigned
+Phase on `phase19/production-hardening` from `origin/main` `47361e4`; do not start Phase 20.
 
 ---
 
@@ -447,11 +448,19 @@ Final state:
   package-lock reconciliation, stale-path detection, drift detection, and regression tests are
   complete and awaiting Architect Audit. No legal or paid-license decision is claimed.
 
+- Phase 19 Production Hardening is implemented on `phase19/production-hardening` from merged
+  `origin/main` `47361e4`; deterministic health/readiness, fail-closed production config,
+  versioned additive schema migration, non-destructive backup/restore, privacy-safe errors,
+  CORS/child/admin boundaries, mutation authorization, SQLite safety policy, structured redacted
+  request logging, PWA checks, readiness-aware deployment wiring, runbook, and regression tests
+  are complete.
+  Do not merge automatically or start Phase 20.
+
 Remaining validation:
 - real iPad Safari;
 - Docker runtime;
 - Synology DS723+ deployment/persistence;
 - real-child usability / parent workflow trial.
 
-Continuous development authorization is active. Phase 18 is the current assigned Phase; do not
-start Phase 19.
+Continuous development authorization is active. Phase 19 is the current assigned Phase; do not
+start Phase 20.

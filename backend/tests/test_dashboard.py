@@ -69,6 +69,7 @@ def test_dashboard_weekly_history_uses_completed_at_and_review_is_historical_as_
         child_id = api.post("/api/children", json={"name": "Alice"}).json()["id"]
         from app.database import connect
         with connect() as db:
+            db.execute("INSERT INTO learning_items (id,child_id,character,curriculum_source,provenance_status,commercial_ready) VALUES (?,?,?,?,?,?)", ("missing-item", child_id, "學", "TEST", "PRIVATE_OK", 0))
             db.execute("INSERT INTO weekly_tests (id,child_id,item_ids,correctness,score,total,created_at,completed_at) VALUES (?,?,?,?,?,?,?,?)", ("test-completed", child_id, "[]", '{"item": true}', 1, 1, "2025-12-01 00:00:00", "2026-01-05 00:00:00"))
             db.execute("INSERT INTO weekly_tests (id,child_id,item_ids,total,created_at) VALUES (?,?,?,?,?)", ("test-pending", child_id, "[]", 1, "2026-01-04 00:00:00"))
             db.execute("INSERT INTO review_queue_items (id,child_id,item_id,character,source_detail,reason,created_at) VALUES (?,?,?,?,?,?,?)", ("review-old", child_id, "missing-item", "學", "old", "miss", "2025-01-01 00:00:00"))
