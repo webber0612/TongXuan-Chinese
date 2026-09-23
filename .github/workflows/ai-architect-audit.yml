@@ -20,7 +20,9 @@ jobs:
       - uses: actions/checkout@v5
         with:
           ref: refs/pull/${{ github.event.pull_request.number }}/merge
-          persist-credentials: false
+          # The read-only audit job needs the checkout token for the explicit base/head fetch.
+          # It never receives write permissions and Codex itself runs in a read-only sandbox.
+          persist-credentials: true
       - name: Fetch exact PR refs
         env:
           PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
