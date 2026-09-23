@@ -49,7 +49,7 @@ Phase 16 Long-term Curriculum was not started.
 
 ## Verification
 
-- Backend: `59 passed` with `PYTHONPATH=backend`.
+- Backend: `60 passed` with `PYTHONPATH=backend`.
 - Frontend: `18 passed` with Vitest.
 - Production build: passed with Vite/PWA assets generated.
 - Regression coverage includes child isolation, 7/30/all-time windows, event-based historical
@@ -73,6 +73,9 @@ Phase 16 Long-term Curriculum was not started.
 - AUD-T15-07: Reading Aloud records auditable `aborted_at`; the dashboard reconstructs STARTED /
   COMPLETED / ABORTED from lifecycle timestamps as of report end. Regression tests cover T1 start,
   T3 complete or abort, and T2/T4 historical queries.
+- AUD-T15-08: Weekly Test pending state is reconstructed as of report end using `created_at` and
+  `completed_at`; a test completed after T2 remains pending at T2 and appears in completed history
+  only at T4.
 
 ## Manual validation outstanding
 

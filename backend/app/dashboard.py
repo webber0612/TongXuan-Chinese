@@ -159,8 +159,15 @@ def build_dashboard(*, child_id: int, window: str = "7d", from_at: str | None = 
         school_items = [{"id": row["id"], "source": row["school_source"], "due_date": row["due_date"], "private_content": bool(row["private_content"]), "provenance_status": row["provenance_status"], "active": row["id"] in active_ids, "completed": row["id"] in completed_ids, "due": row["id"] in due_ids} for row in school]
         test_where, test_args = _where("completed_at", start, end)
         tests = db.execute(f"SELECT * FROM weekly_tests WHERE child_id=? AND completed_at IS NOT NULL AND {test_where} ORDER BY completed_at,id", [child_id, *test_args]).fetchall()
-        pending_where, pending_args = _where("created_at", start, end)
-        pending_tests = db.execute(f"SELECT id,created_at,total FROM weekly_tests WHERE child_id=? AND completed_at IS NULL AND {pending_where} ORDER BY created_at,id", [child_id, *pending_args]).fetchall()
+        pending_clauses = ["created_at<=?", "(completed_at IS NULL OR completed_at>?)"]
+        pending_args = [end_text, end_text]
+        if start:
+            pending_clauses.append("created_at>=?")
+            pending_args.append(_stamp(start))
+        pending_tests = db.execute(
+            f"SELECT id,created_at,total FROM weekly_tests WHERE child_id=? AND {' AND '.join(pending_clauses)} ORDER BY created_at,id",
+            [child_id, *pending_args],
+        ).fetchall()
         test_history = [{"id": row["id"], "score": row["score"], "total": row["total"], "created_at": row["created_at"], "completed_at": row["completed_at"], "missed_items": [key for key, value in (json.loads(row["correctness"] or "{}").items()) if not value]} for row in tests]
         points = db.execute("SELECT * FROM points_ledger WHERE child_id=? AND timestamp<=? ORDER BY timestamp,id", (child_id, end_text)).fetchall()
         redemptions = db.execute("SELECT id,reward_id,cost,created_at FROM reward_redemptions WHERE child_id=? AND created_at<=? ORDER BY created_at,id", (child_id, end_text)).fetchall()

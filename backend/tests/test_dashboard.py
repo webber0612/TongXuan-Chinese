@@ -145,7 +145,24 @@ def test_dashboard_replays_reading_aloud_complete_and_abort_as_of(tmp_path):
         assert t2["skills"]["reading_aloud"]["aborted"] == 0
         assert t4["reading_aloud"]["completed"] == 1
         assert t4["reading_aloud"]["aborted"] == 1
-        assert t4["skills"]["reading_aloud"]["completed"] == 1
-        assert t4["skills"]["reading_aloud"]["aborted"] == 1
         assert new["aloud-complete-history"]["status"] == "COMPLETED"
         assert new["aloud-abort-history"]["status"] == "ABORTED"
+        assert t4["skills"]["reading_aloud"]["completed"] == 1
+        assert t4["skills"]["reading_aloud"]["aborted"] == 1
+
+
+def test_dashboard_replays_weekly_pending_state_as_of(tmp_path):
+    with client(tmp_path) as api:
+        child_id = api.post("/api/children", json={"name": "Alice"}).json()["id"]
+        from app.database import connect
+        with connect() as db:
+            db.execute(
+                "INSERT INTO weekly_tests (id,child_id,item_ids,total,created_at,completed_at,score,correctness) VALUES (?,?,?,?,?,?,?,?)",
+                ("test-pending-history", child_id, "[]", 2, "2026-01-01 10:00:00", "2026-01-03 10:00:00", 2, '{"item": true}'),
+            )
+        t2 = api.get("/api/dashboard", params={"child_id": child_id, "window": "all", "to_at": "2026-01-02T00:00:00Z"}).json()
+        t4 = api.get("/api/dashboard", params={"child_id": child_id, "window": "all", "to_at": "2026-01-04T00:00:00Z"}).json()
+        assert [row["id"] for row in t2["weekly_tests"]["pending"]] == ["test-pending-history"]
+        assert [row["id"] for row in t2["weekly_tests"]["history"]] == []
+        assert [row["id"] for row in t4["weekly_tests"]["pending"]] == []
+        assert [row["id"] for row in t4["weekly_tests"]["history"]] == ["test-pending-history"]
