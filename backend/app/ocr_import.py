@@ -101,9 +101,9 @@ def confirm_candidate(*, child_id: int, import_id: str, confirmed_text: str, loc
             (school_id, child_id, text, school_source, 1, "PRIVATE_OK"),
         )
         db.execute(
-            """UPDATE ocr_imports SET confirmed_text=?,locale=?,script=?,review_status='CONFIRMED',school_queue_item_id=?
+            """UPDATE ocr_imports SET confirmed_text=?,locale=?,script=?,confirmed_at=?,review_status='CONFIRMED',school_queue_item_id=?
                WHERE id=? AND child_id=?""",
-            (text, locale, script, school_id, import_id, child_id),
+            (text, locale, script, now(), school_id, import_id, child_id),
         )
         result = _metadata(db.execute("SELECT * FROM ocr_imports WHERE id=?", (import_id,)).fetchone())
         result["school_queue_item"] = dict(db.execute("SELECT * FROM school_queue_items WHERE id=?", (school_id,)).fetchone())

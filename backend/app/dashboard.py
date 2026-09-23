@@ -43,6 +43,10 @@ def _stamp(value: datetime) -> str:
     return value.strftime("%Y-%m-%d %H:%M:%S")
 
 
+def _as_of(value: str | None, end_text: str) -> str | None:
+    return value if value and value <= end_text else None
+
+
 def _bounds(window: str, from_at: str | None, to_at: str | None) -> tuple[datetime | None, datetime]:
     end = _parse(to_at, "to_at") or datetime.now(timezone.utc).replace(tzinfo=None)
     start = _parse(from_at, "from_at")
@@ -74,9 +78,14 @@ def _skill_summary(db: Any, child_id: int, skill: str, start: datetime | None, e
     assisted = 0
     keys: set[str] = set()
     trend: dict[str, dict[str, int]] = {}
+    lifecycle_completed = 0
+    lifecycle_aborted = 0
     for row in rows:
         keys.add(str(row[key_column]))
         if skill == "reading_aloud":
+            status = "COMPLETED" if _as_of(row["completed_at"], _stamp(end)) else "ABORTED" if _as_of(row["aborted_at"], _stamp(end)) else "STARTED"
+            lifecycle_completed += int(status == "COMPLETED")
+            lifecycle_aborted += int(status == "ABORTED")
             day = str(row[timestamp])[:10]
             bucket = trend.setdefault(day, {"attempts": 0, "correct": 0, "incorrect": 0, "assisted": 0})
             bucket["attempts"] += 1
@@ -123,8 +132,8 @@ def _skill_summary(db: Any, child_id: int, skill: str, start: datetime | None, e
         "trend": [{"date": day, **trend[day]} for day in sorted(trend)],
     }
     if skill == "reading_aloud":
-        result["completed"] = sum(row["status"] == "COMPLETED" for row in rows)
-        result["aborted"] = sum(row["status"] == "ABORTED" for row in rows)
+        result["completed"] = lifecycle_completed
+        result["aborted"] = lifecycle_aborted
     return result
 
 
@@ -156,9 +165,34 @@ def build_dashboard(*, child_id: int, window: str = "7d", from_at: str | None = 
         points = db.execute("SELECT * FROM points_ledger WHERE child_id=? AND timestamp<=? ORDER BY timestamp,id", (child_id, end_text)).fetchall()
         redemptions = db.execute("SELECT id,reward_id,cost,created_at FROM reward_redemptions WHERE child_id=? AND created_at<=? ORDER BY created_at,id", (child_id, end_text)).fetchall()
         ocr_where, ocr_args = _where("created_at", start, end)
-        ocr = db.execute(f"SELECT id,source_label,locale,script,confirmed_text,school_queue_item_id,commercial_ready,review_status,created_at FROM ocr_imports WHERE child_id=? AND {ocr_where} ORDER BY created_at,id", [child_id, *ocr_args]).fetchall()
+        ocr_rows = db.execute(f"SELECT id,source_label,locale,script,confirmed_text,confirmed_at,school_queue_item_id,commercial_ready,review_status,created_at FROM ocr_imports WHERE child_id=? AND {ocr_where} ORDER BY created_at,id", [child_id, *ocr_args]).fetchall()
+        ocr = []
+        for row in ocr_rows:
+            confirmed_at = _as_of(row["confirmed_at"], end_text)
+            confirmed = confirmed_at is not None
+            ocr.append({
+                "id": row["id"], "source_label": row["source_label"],
+                "locale": row["locale"] if confirmed else None,
+                "script": row["script"] if confirmed else None,
+                "confirmed_text": row["confirmed_text"] if confirmed else None,
+                "confirmed_at": confirmed_at,
+                "school_queue_item_id": row["school_queue_item_id"] if confirmed else None,
+                "commercial_ready": bool(row["commercial_ready"]),
+                "review_status": "CONFIRMED" if confirmed else "CANDIDATE",
+                "created_at": row["created_at"],
+            })
         aloud_where, aloud_args = _where("started_at", start, end)
-        aloud = db.execute(f"SELECT id,status,duration_ms,locale,text_kind,started_at,completed_at FROM reading_aloud_attempts WHERE child_id=? AND {aloud_where} ORDER BY started_at,id", [child_id, *aloud_args]).fetchall()
+        aloud_rows = db.execute(f"SELECT id,status,duration_ms,locale,text_kind,started_at,completed_at,aborted_at FROM reading_aloud_attempts WHERE child_id=? AND {aloud_where} ORDER BY started_at,id", [child_id, *aloud_args]).fetchall()
+        aloud = []
+        for row in aloud_rows:
+            completed_at = _as_of(row["completed_at"], end_text)
+            aborted_at = _as_of(row["aborted_at"], end_text)
+            status = "COMPLETED" if completed_at else "ABORTED" if aborted_at else "STARTED"
+            aloud.append({
+                "id": row["id"], "status": status, "duration_ms": row["duration_ms"] if completed_at else None,
+                "locale": row["locale"], "text_kind": row["text_kind"], "started_at": row["started_at"],
+                "completed_at": completed_at, "aborted_at": aborted_at,
+            })
     adaptive = build_adaptive_plan(child_id=child_id, as_of=end.isoformat() + "Z", limit=adaptive_limit, adaptive=True, preference=None)
     return {
         "child": dict(child), "window": {"name": window, "from": _stamp(start) if start else None, "to": end_text},
@@ -167,7 +201,7 @@ def build_dashboard(*, child_id: int, window: str = "7d", from_at: str | None = 
         "school_queue": {"active": len(active_school), "completed": len(completed_school), "due": len(due_school), "items": school_items},
         "weekly_tests": {"recent": test_history[-1] if test_history else None, "history": test_history, "pending": [dict(row) for row in pending_tests]},
         "points_rewards": {"balance": sum(row["points_delta"] for row in points), "ledger": [dict(row) for row in points if not start or row["timestamp"] >= _stamp(start)], "redemptions": [dict(row) for row in redemptions]},
-        "reading_aloud": {"attempts": len(aloud), "completed": sum(row["status"] == "COMPLETED" for row in aloud), "aborted": sum(row["status"] == "ABORTED" for row in aloud), "items": [dict(row) for row in aloud]},
-        "ocr": {"candidates": sum(row["review_status"] == "CANDIDATE" for row in ocr), "confirmed": sum(row["review_status"] == "CONFIRMED" for row in ocr), "items": [dict(row) for row in ocr]},
+        "reading_aloud": {"attempts": len(aloud), "completed": sum(row["status"] == "COMPLETED" for row in aloud), "aborted": sum(row["status"] == "ABORTED" for row in aloud), "items": aloud},
+        "ocr": {"candidates": sum(row["review_status"] == "CANDIDATE" for row in ocr), "confirmed": sum(row["review_status"] == "CONFIRMED" for row in ocr), "items": ocr},
         "read_only": True,
     }

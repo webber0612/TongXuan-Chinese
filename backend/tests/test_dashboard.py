@@ -55,7 +55,7 @@ def test_dashboard_keeps_reading_aloud_out_of_correctness_totals(tmp_path):
         from app.database import connect
         with connect() as db:
             db.execute("INSERT INTO reading_aloud_attempts (id,child_id,source_type,text_snapshot,text_kind,locale,started_at,completed_at,status) VALUES (?,?,?,?,?,?,?,?,?)", ("aloud-complete", child_id, "TRANSIENT_TEXT", "學", "character", "zh-TW", "2026-01-01 10:00:00", "2026-01-01 10:00:10", "COMPLETED"))
-            db.execute("INSERT INTO reading_aloud_attempts (id,child_id,source_type,text_snapshot,text_kind,locale,started_at,status) VALUES (?,?,?,?,?,?,?,?)", ("aloud-abort", child_id, "TRANSIENT_TEXT", "學", "character", "zh-TW", "2026-01-01 11:00:00", "ABORTED"))
+            db.execute("INSERT INTO reading_aloud_attempts (id,child_id,source_type,text_snapshot,text_kind,locale,started_at,aborted_at,status) VALUES (?,?,?,?,?,?,?,?,?)", ("aloud-abort", child_id, "TRANSIENT_TEXT", "學", "character", "zh-TW", "2026-01-01 11:00:00", "2026-01-01 11:00:10", "ABORTED"))
         result = api.get("/api/dashboard", params={"child_id": child_id, "window": "all", "to_at": "2026-01-02T00:00:00Z"}).json()
         assert result["activity"]["attempts"]["correct"] == 0
         assert result["activity"]["attempts"]["incorrect"] == 0
@@ -83,3 +83,69 @@ def test_dashboard_weekly_history_uses_completed_at_and_review_is_historical_as_
         after_deactivation = api.get("/api/dashboard", params={"child_id": child_id, "window": "all", "to_at": "2026-01-06T00:00:00Z"}).json()
         assert before_deactivation["activity"]["review_count"] == 1
         assert after_deactivation["activity"]["review_count"] == 0
+
+
+def test_dashboard_replays_ocr_confirmation_as_of_without_future_fields(tmp_path):
+    with client(tmp_path) as api:
+        child_id = api.post("/api/children", json={"name": "Alice"}).json()["id"]
+        created = api.post(
+            "/api/ocr/imports/candidate",
+            params={"child_id": child_id},
+            json={"image_name": "worksheet.jpg", "source_label": "T1 worksheet", "candidate_hint": "學"},
+        ).json()
+        api.post(
+            f"/api/ocr/imports/{created['id']}/confirm",
+            params={"child_id": child_id},
+            json={"confirmed_text": "學", "locale": "zh-TW", "script": "TRADITIONAL"},
+        )
+        from app.database import connect
+        with connect() as db:
+            db.execute("UPDATE ocr_imports SET created_at=?,confirmed_at=? WHERE id=?", ("2026-01-01 10:00:00", "2026-01-03 10:00:00", created["id"]))
+        t2 = api.get("/api/dashboard", params={"child_id": child_id, "window": "all", "to_at": "2026-01-02T00:00:00Z"}).json()
+        t4 = api.get("/api/dashboard", params={"child_id": child_id, "window": "all", "to_at": "2026-01-04T00:00:00Z"}).json()
+        old = t2["ocr"]["items"][0]
+        new = t4["ocr"]["items"][0]
+        assert t2["ocr"]["candidates"] == 1
+        assert t2["ocr"]["confirmed"] == 0
+        assert old["review_status"] == "CANDIDATE"
+        assert old["confirmed_text"] is None
+        assert old["locale"] is None
+        assert old["script"] is None
+        assert old["school_queue_item_id"] is None
+        assert t4["ocr"]["confirmed"] == 1
+        assert new["review_status"] == "CONFIRMED"
+        assert new["confirmed_text"] == "學"
+        assert new["locale"] == "zh-TW"
+        assert new["script"] == "TRADITIONAL"
+        assert new["school_queue_item_id"] is not None
+
+
+def test_dashboard_replays_reading_aloud_complete_and_abort_as_of(tmp_path):
+    with client(tmp_path) as api:
+        child_id = api.post("/api/children", json={"name": "Alice"}).json()["id"]
+        from app.database import connect
+        with connect() as db:
+            db.execute(
+                "INSERT INTO reading_aloud_attempts (id,child_id,source_type,text_snapshot,text_kind,locale,started_at,completed_at,status) VALUES (?,?,?,?,?,?,?,?,?)",
+                ("aloud-complete-history", child_id, "TRANSIENT_TEXT", "學", "character", "zh-TW", "2026-01-01 10:00:00", "2026-01-03 10:00:00", "COMPLETED"),
+            )
+            db.execute(
+                "INSERT INTO reading_aloud_attempts (id,child_id,source_type,text_snapshot,text_kind,locale,started_at,aborted_at,status) VALUES (?,?,?,?,?,?,?,?,?)",
+                ("aloud-abort-history", child_id, "TRANSIENT_TEXT", "國", "character", "zh-TW", "2026-01-01 11:00:00", "2026-01-03 11:00:00", "ABORTED"),
+            )
+        t2 = api.get("/api/dashboard", params={"child_id": child_id, "window": "all", "to_at": "2026-01-02T00:00:00Z"}).json()
+        t4 = api.get("/api/dashboard", params={"child_id": child_id, "window": "all", "to_at": "2026-01-04T00:00:00Z"}).json()
+        old = {row["id"]: row for row in t2["reading_aloud"]["items"]}
+        new = {row["id"]: row for row in t4["reading_aloud"]["items"]}
+        assert t2["reading_aloud"]["completed"] == 0
+        assert t2["reading_aloud"]["aborted"] == 0
+        assert old["aloud-complete-history"]["status"] == "STARTED"
+        assert old["aloud-abort-history"]["status"] == "STARTED"
+        assert t2["skills"]["reading_aloud"]["completed"] == 0
+        assert t2["skills"]["reading_aloud"]["aborted"] == 0
+        assert t4["reading_aloud"]["completed"] == 1
+        assert t4["reading_aloud"]["aborted"] == 1
+        assert t4["skills"]["reading_aloud"]["completed"] == 1
+        assert t4["skills"]["reading_aloud"]["aborted"] == 1
+        assert new["aloud-complete-history"]["status"] == "COMPLETED"
+        assert new["aloud-abort-history"]["status"] == "ABORTED"

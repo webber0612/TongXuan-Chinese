@@ -107,7 +107,7 @@ def complete_attempt(*, child_id: int, attempt_id: str, duration_ms: int | None)
         row = db.execute("SELECT * FROM reading_aloud_attempts WHERE id=? AND child_id=?", (attempt_id, child_id)).fetchone()
         if row is None:
             raise ValueError("reading_aloud_attempt_not_found")
-        if row["completed_at"] is not None:
+        if row["completed_at"] is not None or row["aborted_at"] is not None:
             raise ValueError("reading_aloud_attempt_already_completed")
         db.execute("UPDATE reading_aloud_attempts SET completed_at=?,duration_ms=?,status='COMPLETED' WHERE id=? AND child_id=?", (now(), duration_ms, attempt_id, child_id))
         return _attempt(db, attempt_id, child_id)
@@ -120,6 +120,6 @@ def abort_attempt(*, child_id: int, attempt_id: str) -> dict[str, Any]:
         row = db.execute("SELECT * FROM reading_aloud_attempts WHERE id=? AND child_id=?", (attempt_id, child_id)).fetchone()
         if row is None:
             raise ValueError("reading_aloud_attempt_not_found")
-        if row["completed_at"] is None:
-            db.execute("UPDATE reading_aloud_attempts SET status='ABORTED' WHERE id=? AND child_id=?", (attempt_id, child_id))
+        if row["completed_at"] is None and row["aborted_at"] is None:
+            db.execute("UPDATE reading_aloud_attempts SET aborted_at=?,status='ABORTED' WHERE id=? AND child_id=?", (now(), attempt_id, child_id))
         return _attempt(db, attempt_id, child_id)
