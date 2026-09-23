@@ -444,8 +444,8 @@ Final state:
   `phase18/commercialization-gate`; its auditable registry, Family/Commercial gate behavior,
   replacement registry, manifest/provider inventory reconciliation, server-verified developer/admin
   readiness view, private School Queue enforcement, repository source-of-truth inventory manifest,
-  drift detection, and regression tests are complete and awaiting Architect Audit. No legal or
-  paid-license decision is claimed.
+  package-lock reconciliation, stale-path detection, drift detection, and regression tests are
+  complete and awaiting Architect Audit. No legal or paid-license decision is claimed.
 
 Remaining validation:
 - real iPad Safari;

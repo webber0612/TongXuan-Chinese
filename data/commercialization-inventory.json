@@ -5,7 +5,7 @@
     {
       "scope_id": "provider-adapter-source",
       "kind": "source_files",
-      "include_globs": ["backend/app/*provider*.py", "backend/app/providers.py", "backend/app/tts.py", "backend/app/ocr_import.py", "backend/app/tutor.py", "frontend/src/lib/*Provider.ts", "frontend/src/lib/*provider.ts", "frontend/src/lib/*ocr*.ts", "frontend/src/lib/*tutor*.ts", "frontend/src/lib/*readingAloud.ts"],
+      "include_globs": ["backend/app/*provider*.py", "backend/app/providers.py", "backend/app/tts.py", "backend/app/ocr_import.py", "backend/app/tutor.py", "frontend/src/lib/*Provider.ts", "frontend/src/lib/*provider.ts", "frontend/src/lib/tts.ts", "frontend/src/lib/*ocr*.ts", "frontend/src/lib/*tutor*.ts", "frontend/src/lib/*readingAloud.ts"],
       "registered_paths": ["backend/app/auth.py", "backend/app/ocr_import.py", "backend/app/providers.py", "backend/app/reading_aloud.py", "backend/app/tts.py", "backend/app/tutor.py", "backend/app/writing_provider.py", "frontend/src/lib/ocrImport.ts", "frontend/src/lib/readingAloud.ts", "frontend/src/lib/tts.ts", "frontend/src/lib/tutor.ts", "frontend/src/lib/writingProvider.ts"]
     },
     {

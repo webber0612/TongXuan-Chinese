@@ -17,7 +17,9 @@ or Phase 19 work was started.
   `technical_usable=false` are explicitly excluded from runtime/build.
 - `data/commercialization-inventory.json` is the source-of-truth manifest for repository paths;
   deterministic scanning ignores generated/cache/vendor directories and fails on newly added
-  provider/adapter, seed/content/dataset, or asset files that are not registered.
+  provider/adapter, seed/content/dataset, or asset files that are not registered. It also checks
+  `frontend/package-lock.json` root package inventory, covers every registered adapter including
+  `frontend/src/lib/tts.ts`, and fails on stale or renamed registered paths.
 - Commercial replacement records track current source/license, issue, candidate, license option,
   estimated work, status, and resolution evidence. Every unresolved replacement-required resource
   has exactly one non-orphan registry record.
@@ -49,8 +51,8 @@ or Phase 19 work was started.
 - Regression coverage includes registry category/provenance completeness, Family warnings,
   Commercial failures, replacement records and inventory reconciliation, server-verified admin
   authorization with parent denial, School Queue private ownership/child isolation, and admin
-  endpoint frontend routing. Drift tests prove both a registered manifest and an unregistered
-  repository resource path.
+  endpoint frontend routing. Drift tests prove registered inventory, missing registration,
+  package-lock drift, and stale registered paths.
 
 ## Product Owner blockers
 

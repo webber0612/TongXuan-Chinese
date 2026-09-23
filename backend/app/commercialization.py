@@ -26,12 +26,15 @@ def _bool(value: Any) -> bool:
 def _manifest_inventory(root: Path = ROOT) -> dict[str, set[str]]:
     package = json.loads((root / "frontend" / "package.json").read_text(encoding="utf-8"))
     packages = set(package.get("dependencies", {})) | set(package.get("devDependencies", {}))
+    lock = json.loads((root / "frontend" / "package-lock.json").read_text(encoding="utf-8"))
+    lock_root = lock.get("packages", {}).get("", {})
+    lock_packages = set(lock_root.get("dependencies", {})) | set(lock_root.get("devDependencies", {}))
     requirements: set[str] = set()
     for line in (root / "backend" / "requirements.txt").read_text(encoding="utf-8").splitlines():
         line = line.split("#", 1)[0].strip()
         if line:
             requirements.add(re.split(r"[<>=!~\[]", line, maxsplit=1)[0].strip().lower())
-    return {"frontend_packages": packages, "backend_requirements": requirements}
+    return {"frontend_packages": packages, "frontend_lock_packages": lock_packages, "backend_requirements": requirements}
 
 
 def _scan_manifest_sources(root: Path, manifest: dict[str, Any]) -> dict[str, set[str]]:
@@ -55,6 +58,10 @@ def _scan_manifest_sources(root: Path, manifest: dict[str, Any]) -> dict[str, se
                 if path.is_file() and not any(part in excluded for part in path.relative_to(root).parts):
                     if not scope.get("extensions") or path.suffix.lower() in scope["extensions"]:
                         paths.add(path.relative_to(root).as_posix())
+        for registered_path in scope.get("registered_paths", []):
+            path = root / registered_path
+            if path.is_file() and not any(part in excluded for part in path.relative_to(root).parts):
+                paths.add(registered_path.replace("\\", "/"))
         found[scope["scope_id"]] = paths
     return found
 
@@ -74,12 +81,20 @@ def reconcile_inventory(root: Path = ROOT, registry: dict[str, Any] | None = Non
     for manifest_name, entries in declared.get("frontend_package_manifests", {}).items():
         if manifest_name == "frontend/package.json" and set(entries) != actual["frontend_packages"]:
             errors.append("inventory_manifest_mismatch:frontend/package.json")
+        if manifest_name == "frontend/package.json" and actual["frontend_packages"] != actual["frontend_lock_packages"]:
+            errors.append("package_lock_inventory_mismatch:frontend/package-lock.json")
     for manifest_name, entries in declared.get("backend_requirements", {}).items():
         if manifest_name == "backend/requirements.txt" and {str(item).lower() for item in entries} != actual["backend_requirements"]:
             errors.append("inventory_manifest_mismatch:backend/requirements.txt")
     for scope in manifest.get("scopes", []):
         registered = set(scope.get("registered_paths", []))
-        for path in sorted(_scan_manifest_sources(root, manifest).get(scope["scope_id"], set())):
+        discovered = _scan_manifest_sources(root, manifest).get(scope["scope_id"], set())
+        for path in sorted(registered):
+            if not (root / path).is_file():
+                errors.append(f"stale_registered_path:{scope['scope_id']}:{path}")
+            elif path not in discovered:
+                errors.append(f"registered_path_not_scanned:{scope['scope_id']}:{path}")
+        for path in sorted(discovered):
             if path not in registered:
                 errors.append(f"unregistered_repository_resource:{scope['scope_id']}:{path}")
     return sorted(set(errors))
