@@ -15,6 +15,7 @@ from .adaptive import build_adaptive_plan
 from .dashboard import build_dashboard
 from .curriculum import get_curriculum, record_progress, seed_catalog
 from .tutor import tutor_response
+from .commercialization import audit_registry
 from .learning import (
     add_school_item, create_child, create_weekly_test, finish_session,
     list_children, list_daily_queue, next_recognition_item, points_summary,
@@ -297,6 +298,14 @@ def post_tutor_response(child_id: int, request: TutorRequest) -> dict[str, objec
     except ValueError as error:
         detail = str(error)
         raise HTTPException(status_code=400 if detail.startswith(("invalid_", "unsupported_", "tutor_prompt", "locale_", "source_")) else 404, detail=detail) from error
+
+
+@app.get("/api/admin/commercialization/readiness")
+def get_commercialization_readiness(build_target: str = "family") -> dict[str, object]:
+    try:
+        return audit_registry(build_target)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
 
 
 @app.post("/api/tts/speak")

@@ -229,8 +229,10 @@ Current baseline known from GitHub:
 - Phase 14 Adaptive Learning passed Architect Audit and was merged to `main`.
 - Phase 15 Parent Dashboard was completed and merged to `main`.
 - Phase 16 Long-Term Curriculum was completed and merged to `main`.
-- Phase 17 Optional AI Tutor is implemented on `phase17/ai-tutor` from merged main `190954d`; its
-  report/API/UI and regression tests are complete and awaiting Architect Audit.
+- Phase 17 Optional AI Tutor was completed and merged to `main`.
+- Phase 18 Commercialization Gate & Release Audit is implemented on `phase18/commercialization-gate`
+  from merged main `1ca8037`; its registry/gate/admin read model and regression tests are complete
+  and awaiting Architect Audit.
 - Real-child usability validation is still outstanding before treating Sprints A/B as field-validated.
 
 Relevant completed commits / milestones:
@@ -250,8 +252,8 @@ The active collaboration model is manual trigger + GitHub handoff:
 - Product Owner tells Codex to read GitHub.
 - Product Owner tells ChatGPT to inspect new GitHub changes.
 
-Phases 11–16 are complete and merged. Phase 17 is the currently assigned Phase; do not start
-Phase 18.
+Phases 11–17 are complete and merged. Phase 18 is the currently assigned Phase; do not start
+Phase 19.
 
 ---
 
@@ -435,9 +437,13 @@ Final state:
 - Phase 16 Long-Term Curriculum was implemented and merged to `main`; its hierarchy,
   provenance/license tracking, child-scoped as-of progression read model, frontend view, and
   regression tests are retained as the baseline.
-- Phase 17 Optional AI Tutor is implemented on `phase17/ai-tutor`; its replaceable retrieval-first
+- Phase 17 Optional AI Tutor was implemented and merged to `main`; its replaceable retrieval-first
   adapter, deterministic refusal boundary, child/provenance privacy rules, frontend panel, and
-  regression tests are complete and awaiting Architect Audit.
+  regression tests are retained as the baseline.
+- Phase 18 Commercialization Gate & Release Audit is implemented on
+  `phase18/commercialization-gate`; its auditable registry, Family/Commercial gate behavior,
+  replacement registry, admin readiness view, and regression tests are complete and awaiting
+  Architect Audit. No legal or paid-license decision is claimed.
 
 Remaining validation:
 - real iPad Safari;
@@ -445,5 +451,5 @@ Remaining validation:
 - Synology DS723+ deployment/persistence;
 - real-child usability / parent workflow trial.
 
-Continuous development authorization is active. Phase 17 is the current assigned Phase; do not
-start Phase 18.
+Continuous development authorization is active. Phase 18 is the current assigned Phase; do not
+start Phase 19.

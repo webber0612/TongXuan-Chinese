@@ -1,0 +1,51 @@
+# Phase 18 — Commercialization Gate & Release Audit Report
+
+## Scope
+
+Implemented the Phase 18 Commercialization Gate from Issue #21 on `phase18/commercialization-gate`,
+based on merged main `1ca8037`. No commercial release, legal conclusion, paid license purchase,
+or Phase 19 work was started.
+
+## Registry
+
+- `data/license-registry.json` now inventories technical dependencies, learning content, images,
+  audio, fonts, datasets, third-party APIs, and parent-provided School Queue content.
+- Every resource records source/provenance/license fields, usage status, private/commercial flags,
+  `technical_usable`, `commercial_ready`, action, and notes.
+- Commercial replacement records track current source/license, issue, candidate, license option,
+  estimated work, and status.
+- Parent-provided School Queue content remains `USER_PROVIDED_SCHOOL_CONTENT`, private/family
+  scoped, and is never promoted to public Curriculum by the gate.
+
+## Gate behavior
+
+- Family target: non-commercial-ready resources produce visible warnings; `PROHIBITED` fails.
+- Commercial target: only `COMMERCIAL_OK` plus `commercial_ready=true` passes; all other statuses
+  are blockers.
+- `/api/admin/commercialization/readiness` and `scripts/commercialization_gate.py` expose the
+  deterministic readiness counts and per-resource results for developer/admin use only.
+- Parent Dashboard has no commercialization readiness fields or endpoint dependency.
+- The implementation makes no legal or paid-license claim; open licensing/legal decisions remain
+  Product Owner decisions.
+
+## Verification
+
+- Backend: `76 passed` with `PYTHONPATH=backend`.
+- Frontend: `26 passed` with Vitest.
+- Production build: passed with Vite/PWA assets generated.
+- Regression coverage includes registry category/provenance completeness, Family warnings,
+  Commercial failures, replacement records, admin-only readiness, School Queue private ownership,
+  and admin endpoint frontend routing.
+
+## Product Owner blockers
+
+The Commercial target intentionally reports blockers for resources whose commercial rights are not
+evidenced. Resolving them requires paid licensing, replacement, or legal/ownership decisions; this
+implementation does not choose among those options.
+
+## Delivery
+
+- Branch: `phase18/commercialization-gate`.
+- Based on merged main `1ca8037`.
+- Commit and push completed; do not merge automatically.
+- Stop at Phase 18; do not start Phase 19.
