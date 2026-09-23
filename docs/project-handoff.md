@@ -212,8 +212,9 @@ Current baseline known from GitHub:
 - Phase 11 TTS completed, audited PASS, and PR #8 merged to `main`.
 - Phase 12 Reading Aloud completed, audited PASS, and PR #10 merged to `main`.
 - Phase 13 OCR Import completed, audited PASS, and PR #12 merged to `main`.
-- Phase 14 Adaptive Learning is authorized by GitHub Issue #13 and is active on the dedicated
-  `phase14/adaptive-learning` branch / Draft PR.
+- Phase 14 Adaptive Learning passed Architect Audit and was merged to `main`.
+- Phase 15 Parent Dashboard is authorized by GitHub Issue #15 and is active on the dedicated
+  `phase15/parent-dashboard` branch / Draft PR.
 - Real-child usability validation is still outstanding before treating Sprints A/B as field-validated.
 
 Relevant completed commits / milestones:
@@ -233,7 +234,7 @@ The active collaboration model is manual trigger + GitHub handoff:
 - Product Owner tells Codex to read GitHub.
 - Product Owner tells ChatGPT to inspect new GitHub changes.
 
-Phases 11–13 are complete and merged. Phase 14 is authorized by GitHub Issue #13; do not start Phase 15.
+Phases 11–14 are complete and merged. Phase 15 is the currently assigned Phase; do not start Phase 16.
 
 ---
 
@@ -412,7 +413,8 @@ Final state:
 - Phase 14 Adaptive Learning is implemented on `phase14/adaptive-learning` with deterministic/as-of
   scoring, explainable components, anti-starvation, child isolation, and non-mutating manual overrides.
 - `PHASE_14_ADAPTIVE_REPORT.md` records the implementation and verification.
-- Phase 15 Parent Dashboard has not started.
+- Phase 15 Parent Dashboard is implemented on `phase15/parent-dashboard`; its read-only dashboard
+  report/API/UI and regression tests are complete and awaiting Architect Audit.
 
 Remaining validation:
 - real iPad Safari;
@@ -420,4 +422,4 @@ Remaining validation:
 - Synology DS723+ deployment/persistence;
 - real-child usability / parent workflow trial.
 
-Continuous development authorization is active. Phase 14 is the current assigned Phase; do not start Phase 15.
+Continuous development authorization is active. Phase 15 is the current assigned Phase; do not start Phase 16.

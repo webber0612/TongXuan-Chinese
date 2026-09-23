@@ -12,6 +12,7 @@ from .tts import prepare_tts
 from .reading_aloud import abort_attempt, complete_attempt, start_attempt
 from .ocr_import import confirm_candidate, create_candidate
 from .adaptive import build_adaptive_plan
+from .dashboard import build_dashboard
 from .learning import (
     add_school_item, create_child, create_weekly_test, finish_session,
     list_children, list_daily_queue, next_recognition_item, points_summary,
@@ -260,6 +261,20 @@ def post_adaptive_plan(child_id: int, request: AdaptivePlanRequest) -> dict[str,
         return build_adaptive_plan(child_id=child_id, as_of=request.as_of, limit=request.limit, adaptive=request.adaptive, preference=request.preference)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@app.get("/api/dashboard")
+def get_parent_dashboard(
+    child_id: int,
+    window: str = "7d",
+    from_at: str | None = None,
+    to_at: str | None = None,
+    adaptive_limit: int = 5,
+) -> dict[str, object]:
+    try:
+        return build_dashboard(child_id=child_id, window=window, from_at=from_at, to_at=to_at, adaptive_limit=adaptive_limit)
+    except ValueError as error:
+        raise HTTPException(status_code=400 if str(error).startswith("invalid_") else 404, detail=str(error)) from error
 
 
 @app.post("/api/recognition/sessions")
