@@ -45,7 +45,7 @@ or Phase 19 work was started.
 
 ## Verification
 
-- Backend: `79 passed` with `PYTHONPATH=backend`.
+- Backend: `80 passed` with `PYTHONPATH=backend`.
 - Frontend: `26 passed` with Vitest.
 - Production build: passed with Vite/PWA assets generated.
 - Regression coverage includes registry category/provenance completeness, Family warnings,
