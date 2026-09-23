@@ -32,7 +32,7 @@ Responsibilities:
 - fix actionable audit findings;
 - never begin the next Phase until the current Phase reaches PASS.
 
-### Audit Agent
+### Architect / Project Manager Agent
 Independent automated reviewer executed from GitHub.
 
 Responsibilities:
@@ -42,7 +42,13 @@ Responsibilities:
 - never modify product requirements silently;
 - never approve its own implementation work.
 
-The automated Audit Agent is intentionally stateless. Persistent project context must live in repository documents.
+The automated Architect / Project Manager Agent is intentionally stateless between runs. Persistent
+project context must live in repository documents, GitHub Issues, PRs, labels, and audit comments.
+
+The repository provides two independent Codex roles under `.github/codex/prompts/`:
+
+- `implementer.md` edits code and drives a Phase PR to the audit gate.
+- `architect-auditor.md` is read-only and performs a fresh adversarial audit on every PR SHA.
 
 A human-triggered ChatGPT architecture audit may still be used for milestone reviews, but routine implementation handoff must not depend on copying chat messages.
 
@@ -55,13 +61,15 @@ Use:
 1. **GitHub Issues** — work orders / Phase scope.
 2. **Feature branches + draft Pull Requests** — implementation unit.
 3. **GitHub Actions / GitHub Agentic Workflows** — event-driven audit.
-4. **OpenAI Codex GitHub Action or Agentic Workflow with a dedicated audit prompt** — automated reviewer.
-5. **Codex PR monitoring ("babysit PR" style workflow where available)** — developer consumes review feedback, patches, pushes, and continues watching.
+4. **OpenAI Codex GitHub Action with dedicated Implementer and Architect prompts** — independent agents.
+5. **GitHub Actions labels and PR events** — automatically feed `CHANGES_REQUESTED` back to the Implementer.
+6. **Codex PR monitoring ("babysit PR" style workflow where available)** — developer consumes review feedback, patches, pushes, and continues watching.
 6. **GitHub branch protection / required checks** — merge gate.
 
 GitHub is the message bus.
 
-No agent-to-agent state may exist only in a local chat.
+No agent-to-agent state may exist only in a local chat. The workflows require an `OPENAI_API_KEY`
+repository secret and GitHub Actions write permissions for the Implementer job.
 
 ---
 
@@ -341,18 +349,22 @@ If GitHub Agentic Workflows is used, initialize it with the official `gh aw` too
 # Automation Rollout
 
 ## Stage A — Audit automation
-First automate only:
-- PR event → Audit Agent → structured PR feedback.
+PR event → read-only Architect Agent → structured PR feedback and `audit-pass` or
+`audit-changes-requested` label.
 
 Do not automate merging.
 
 ## Stage B — Developer feedback loop
-Configure Codex to:
+The repository workflow configures Codex to:
 - implement an Issue;
 - open/update draft PR;
 - monitor audit feedback;
 - fix findings;
-- continue until Audit PASS.
+- continue until Architect Audit PASS.
+
+The loop starts from a Product-Owner-created Phase Issue labeled `phase-ready`, or from an explicit
+workflow dispatch. A `CHANGES_REQUESTED` audit on a Draft PR triggers the Implementer again. PASS
+stops the loop at the merge gate.
 
 ## Stage C — Merge gate
 Enable branch/ruleset requirements for CI + AI audit.

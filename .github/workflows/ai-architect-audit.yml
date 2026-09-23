@@ -1,0 +1,68 @@
+name: AI Architect Audit
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+concurrency:
+  group: ai-architect-audit-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    if: github.event.pull_request.base.ref == 'main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      final_message: ${{ steps.codex.outputs.final-message }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: refs/pull/${{ github.event.pull_request.number }}/merge
+          persist-credentials: false
+      - name: Fetch exact PR refs
+        env:
+          PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: git fetch --no-tags origin "$PR_BASE_REF" "+refs/pull/$PR_NUMBER/head"
+      - name: Run read-only Architect audit
+        id: codex
+        uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          sandbox: read-only
+          prompt: |
+            Read .github/codex/prompts/architect-auditor.md and follow it exactly.
+            This is PR #${{ github.event.pull_request.number }} in ${{ github.repository }}.
+            Reviewed PR head SHA: ${{ github.event.pull_request.head.sha }}.
+            Base SHA: ${{ github.event.pull_request.base.sha }}.
+            Review the exact PR diff and active Issue. Do not modify the checkout.
+            Return the required structured audit beginning with `## AI AUDIT`.
+
+  publish:
+    needs: audit
+    if: needs.audit.outputs.final_message != ''
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/github-script@v7
+        env:
+          AUDIT: ${{ needs.audit.outputs.final_message }}
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const body = process.env.AUDIT;
+            const number = context.payload.pull_request.number;
+            await github.rest.issues.createComment({ owner: context.repo.owner, repo: context.repo.repo, issue_number: number, body });
+            for (const label of ['audit-changes-requested', 'audit-pass']) {
+              try { await github.rest.issues.removeLabel({ owner: context.repo.owner, repo: context.repo.repo, issue_number: number, name: label }); } catch (error) { if (error.status !== 404) throw error; }
+            }
+            const label = /Result:\s*CHANGES_REQUESTED/i.test(body) ? 'audit-changes-requested' : /Result:\s*PASS/i.test(body) ? 'audit-pass' : null;
+            if (label) {
+              try { await github.rest.issues.getLabel({ owner: context.repo.owner, repo: context.repo.repo, name: label }); }
+              catch (error) { if (error.status === 404) await github.rest.issues.createLabel({ owner: context.repo.owner, repo: context.repo.repo, name: label, color: label === 'audit-pass' ? '0e8a16' : 'd73a4a' }); else throw error; }
+              await github.rest.issues.addLabels({ owner: context.repo.owner, repo: context.repo.repo, issue_number: number, labels: [label] });
+            }

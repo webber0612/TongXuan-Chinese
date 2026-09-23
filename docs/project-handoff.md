@@ -56,6 +56,19 @@ ChatGPT should avoid long status narration unless the Product Owner asks for it.
 
 ---
 
+## Automated Agent Loop
+
+The repository now includes independent `Implementer` and `Architect / Project Manager` Codex
+agents in `.github/codex/` and GitHub Actions workflows in `.github/workflows/`.
+
+- A Product Owner-created Phase Issue labeled `phase-ready` starts the Implementer.
+- A Draft PR update starts a fresh read-only Architect audit.
+- `CHANGES_REQUESTED` labels feed the findings back to the Implementer.
+- `audit-pass` ends the automated loop at the merge gate.
+
+The loop requires the `OPENAI_API_KEY` GitHub Actions secret. It never auto-merges, never marks a
+PR Ready for review, and never starts a later Phase without an explicit Work Order Issue.
+
 # Normal Working Loop
 
 Use this simple loop:
@@ -78,10 +91,8 @@ ChatGPT audits GitHub directly
 repeat
 ```
 
-No browser automation.
-No GitHub AI agent.
-No OpenAI API requirement.
-No manual copy/paste of diffs or review text.
+No browser automation is required for the agent loop. GitHub Actions is the message bus, and no
+agent-to-agent state is kept only in a local chat.
 
 ## Product Owner PR Authorization
 
@@ -98,6 +109,9 @@ Rules:
 - Codex must not merge its own PR, mark it Ready for review, bypass audit, or skip ahead beyond the currently published work order.
 - A failed audit blocks phase progression until findings are resolved.
 - Manual iPad/NAS/real-child validation remains distinct from code-level audit and must not be falsely claimed as completed.
+
+The Implementer/Auditor automation may continue fixing the current Phase until Architect PASS;
+the merge gate and Phase boundary remain explicit human/work-order boundaries.
 
 This continuous authorization supersedes older handoff wording that required a separate Product Owner authorization before each next Phase.
 
