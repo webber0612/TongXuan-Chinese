@@ -210,3 +210,38 @@ def test_dashboard_reconstructs_school_lifecycle_and_ignores_malformed_events(tm
         assert t4["school_queue"]["completed"] == 1
         assert t4_items["school-future"]["active"] is False
         assert t4_items["school-future"]["completed"] is True
+
+
+def test_dashboard_school_review_and_adaptive_share_lifecycle_as_of(tmp_path):
+    with client(tmp_path) as api:
+        child_id = api.post("/api/children", json={"name": "Alice"}).json()["id"]
+        api.post(f"/api/children/{child_id}/learning-items/seed", json={"characters": ["學"]})
+        from app.database import connect
+
+        with connect() as db:
+            item_id = db.execute("SELECT id FROM learning_items WHERE child_id=? LIMIT 1", (child_id,)).fetchone()[0]
+            db.execute(
+                "INSERT INTO school_queue_items (id,child_id,character,school_source,created_at,active,completed,completed_at,deactivated_at) VALUES (?,?,?,?,?,?,?,?,?)",
+                ("school-lifecycle", child_id, "學", "Worksheet", "2026-01-01 10:00:00", 0, 1, "2026-01-03 10:00:00", None),
+            )
+            db.execute(
+                "INSERT INTO review_queue_items (id,child_id,item_id,character,source_detail,reason,created_at,active,deactivated_at) VALUES (?,?,?,?,?,?,?,?,?)",
+                ("review-lifecycle", child_id, item_id, "學", "Review", "wrong", "2026-01-01 10:00:00", 0, "2026-01-03 10:00:00"),
+            )
+
+        t2 = api.get("/api/dashboard", params={"child_id": child_id, "window": "all", "to_at": "2026-01-02T00:00:00Z", "adaptive_limit": 50}).json()
+        t4 = api.get("/api/dashboard", params={"child_id": child_id, "window": "all", "to_at": "2026-01-04T00:00:00Z", "adaptive_limit": 50}).json()
+        t2_sources = {(item["source"], item["source_id"]) for item in t2["activity"]["adaptive"]["items"]}
+        t4_sources = {(item["source"], item["source_id"]) for item in t4["activity"]["adaptive"]["items"]}
+
+        # T2 reconstructs both resources as active despite their current flags.
+        assert t2["school_queue"]["active"] == 1
+        assert t2["activity"]["review_count"] == 1
+        assert ("SCHOOL_QUEUE", "school-lifecycle") in t2_sources
+        assert ("REVIEW", "review-lifecycle") in t2_sources
+        # T4 applies the same T3 lifecycle events to all three views.
+        assert t4["school_queue"]["active"] == 0
+        assert t4["school_queue"]["completed"] == 1
+        assert t4["activity"]["review_count"] == 0
+        assert ("SCHOOL_QUEUE", "school-lifecycle") not in t4_sources
+        assert ("REVIEW", "review-lifecycle") not in t4_sources
