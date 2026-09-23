@@ -68,6 +68,34 @@ def _where(timestamp: str, start: datetime | None, end: datetime) -> tuple[str, 
     return " AND ".join(clauses), args
 
 
+def _school_lifecycle(row: Any, end: datetime) -> dict[str, bool]:
+    """Reconstruct School Queue state from immutable lifecycle timestamps.
+
+    The current ``active``/``completed`` flags are projections and may be stale,
+    contradictory, or rewritten by a later operation.  A malformed lifecycle
+    timestamp is ignored; an event before creation is inconsistent and is also
+    ignored.  This gives historical reports a deterministic, conservative rule.
+    """
+    created_at = _parse(row["created_at"], "created_at")
+    if created_at is None or created_at > end:
+        return {"visible": False, "active": False, "completed": False}
+
+    def valid_event(value: str | None) -> datetime | None:
+        if not value:
+            return None
+        try:
+            event_at = _parse(value, "lifecycle")
+        except ValueError:
+            return None
+        return event_at if event_at is not None and event_at >= created_at else None
+
+    completed_at = valid_event(row["completed_at"])
+    deactivated_at = valid_event(row["deactivated_at"])
+    completed = completed_at is not None and completed_at <= end
+    deactivated = deactivated_at is not None and deactivated_at <= end
+    return {"visible": True, "active": not completed and not deactivated, "completed": completed}
+
+
 def _skill_summary(db: Any, child_id: int, skill: str, start: datetime | None, end: datetime) -> dict[str, Any]:
     table, key_column, timestamp, _correct_sql, _incorrect_sql = EVENTS[skill]
     where, args = _where(timestamp, start, end)
@@ -146,17 +174,19 @@ def build_dashboard(*, child_id: int, window: str = "7d", from_at: str | None = 
             raise ValueError("child_not_found")
         skill_summary = {skill: _skill_summary(db, child_id, skill, start, end) for skill in SKILLS}
         school_where, school_args = _where("created_at", None, end)
-        school = db.execute(f"SELECT * FROM school_queue_items WHERE child_id=? AND {school_where} ORDER BY id", [child_id, *school_args]).fetchall()
-        active_school = [row for row in school if (row["completed"] == 0 or not row["completed_at"] or row["completed_at"] > end_text) and (row["active"] == 1 or not row["deactivated_at"] or row["deactivated_at"] > end_text)]
+        school_rows = db.execute(f"SELECT * FROM school_queue_items WHERE child_id=? AND {school_where} ORDER BY id", [child_id, *school_args]).fetchall()
+        school = [(row, _school_lifecycle(row, end)) for row in school_rows]
+        school = [(row, state) for row, state in school if state["visible"]]
+        active_school = [row for row, state in school if state["active"]]
         due_school = [row for row in active_school if row["due_date"] and row["due_date"] <= end_text[:10]]
-        completed_school = [row for row in school if row["completed_at"] and row["completed_at"] <= end_text]
+        completed_school = [row for row, state in school if state["completed"]]
         review_where, review_args = _where("created_at", None, end)
         review_count = db.execute(f"SELECT COUNT(*) FROM review_queue_items WHERE child_id=? AND {review_where} AND (active=1 OR (deactivated_at IS NOT NULL AND deactivated_at>?))", [child_id, *review_args, end_text]).fetchone()[0]
         attempt_totals = {field: sum(skill_summary[skill][field] for skill in SKILLS) for field in ("attempts", "correct", "independent_correct", "incorrect", "assisted")}
         active_ids = {row["id"] for row in active_school}
         completed_ids = {row["id"] for row in completed_school}
         due_ids = {row["id"] for row in due_school}
-        school_items = [{"id": row["id"], "source": row["school_source"], "due_date": row["due_date"], "private_content": bool(row["private_content"]), "provenance_status": row["provenance_status"], "active": row["id"] in active_ids, "completed": row["id"] in completed_ids, "due": row["id"] in due_ids} for row in school]
+        school_items = [{"id": row["id"], "source": row["school_source"], "due_date": row["due_date"], "private_content": bool(row["private_content"]), "provenance_status": row["provenance_status"], "active": row["id"] in active_ids, "completed": row["id"] in completed_ids, "due": row["id"] in due_ids} for row, _ in school]
         test_where, test_args = _where("completed_at", start, end)
         tests = db.execute(f"SELECT * FROM weekly_tests WHERE child_id=? AND completed_at IS NOT NULL AND {test_where} ORDER BY completed_at,id", [child_id, *test_args]).fetchall()
         pending_clauses = ["created_at<=?", "(completed_at IS NULL OR completed_at>?)"]

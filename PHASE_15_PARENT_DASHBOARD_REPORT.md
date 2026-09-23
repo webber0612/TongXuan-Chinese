@@ -17,7 +17,9 @@ Phase 16 Long-term Curriculum was not started.
   Aloud remain separate dimensions. Reading Aloud is process activity only: completed/aborted
   status, duration, locale, text kind, and metadata do not become correctness or mastery.
 - School Queue lifecycle is evaluated against the report end timestamp. Private-content and
-  provenance fields remain visible.
+  provenance fields remain visible. Historical active/completed state is reconstructed only from
+  `created_at`, `completed_at`, and `deactivated_at`; current lifecycle flags are not trusted.
+  Malformed or pre-creation lifecycle events are ignored deterministically.
 - Adaptive summary is requested on demand through the existing deterministic service and preserves
   source, skill, score, and reasons.
 
@@ -52,7 +54,7 @@ Phase 16 Long-term Curriculum was not started.
 
 ## Verification
 
-- Backend: `61 passed` with `PYTHONPATH=backend`.
+- Backend: `62 passed` with `PYTHONPATH=backend`.
 - Frontend: `18 passed` with Vitest.
 - Production build: passed with Vite/PWA assets generated.
 - Regression coverage includes child isolation, 7/30/all-time windows, event-based historical
@@ -79,6 +81,9 @@ Phase 16 Long-term Curriculum was not started.
 - AUD-T15-08: Weekly Test pending state is reconstructed as of report end using `created_at` and
   `completed_at`; a test completed after T2 remains pending at T2 and appears in completed history
   only at T4.
+- AUD-T15-10: School Queue active/completed state is reconstructed from lifecycle timestamps as of
+  report end; contradictory current flags cannot leak future state, and malformed or pre-creation
+  lifecycle events are ignored with regression coverage.
 
 ## Manual validation outstanding
 

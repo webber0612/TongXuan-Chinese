@@ -176,3 +176,37 @@ def test_dashboard_read_does_not_initialize_database_or_run_migrations(tmp_path,
         monkeypatch.setattr(adaptive, "initialize_database", lambda: (_ for _ in ()).throw(AssertionError("dashboard read initialized database")))
         response = api.get("/api/dashboard", params={"child_id": child_id, "window": "all"})
         assert response.status_code == 200
+
+
+def test_dashboard_reconstructs_school_lifecycle_and_ignores_malformed_events(tmp_path):
+    with client(tmp_path) as api:
+        child_id = api.post("/api/children", json={"name": "Alice"}).json()["id"]
+        from app.database import connect
+
+        with connect() as db:
+            db.execute(
+                "INSERT INTO school_queue_items (id,child_id,character,school_source,created_at,active,completed,completed_at,deactivated_at) VALUES (?,?,?,?,?,?,?,?,?)",
+                ("school-future", child_id, "學", "Worksheet", "2026-01-01 10:00:00", 0, 1, "2026-01-03 10:00:00", "2026-01-04 10:00:00"),
+            )
+            db.execute(
+                "INSERT INTO school_queue_items (id,child_id,character,school_source,created_at,active,completed,completed_at,deactivated_at) VALUES (?,?,?,?,?,?,?,?,?)",
+                ("school-malformed", child_id, "國", "Worksheet", "2026-01-01 11:00:00", 0, 1, "not-a-time", "2025-12-31 00:00:00"),
+            )
+
+        t2 = api.get("/api/dashboard", params={"child_id": child_id, "window": "all", "to_at": "2026-01-02T00:00:00Z"}).json()
+        t4 = api.get("/api/dashboard", params={"child_id": child_id, "window": "all", "to_at": "2026-01-05T00:00:00Z"}).json()
+        t2_items = {item["id"]: item for item in t2["school_queue"]["items"]}
+        t4_items = {item["id"]: item for item in t4["school_queue"]["items"]}
+
+        # Current flags cannot hide a row before its timestamped lifecycle event.
+        assert t2["school_queue"]["active"] == 2
+        assert t2["school_queue"]["completed"] == 0
+        assert t2_items["school-future"]["active"] is True
+        assert t2_items["school-future"]["completed"] is False
+        # A malformed event and an event before creation are ignored deterministically.
+        assert t2_items["school-malformed"]["active"] is True
+        assert t2_items["school-malformed"]["completed"] is False
+        assert t4["school_queue"]["active"] == 1
+        assert t4["school_queue"]["completed"] == 1
+        assert t4_items["school-future"]["active"] is False
+        assert t4_items["school-future"]["completed"] is True

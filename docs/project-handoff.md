@@ -56,18 +56,17 @@ ChatGPT should avoid long status narration unless the Product Owner asks for it.
 
 ---
 
-## Automated Agent Loop
+## Internal Agent Loop
 
-The repository now includes independent `Implementer` and `Architect / Project Manager` Codex
-agents in `.github/codex/` and GitHub Actions workflows in `.github/workflows/`.
+The Codex runtime launches an independent internal Implementer and Architect / Project Manager
+pair for each Work Order. The Architect reads the exact implementation, schema, migrations, tests,
+frontend, report, and handoff; it performs an adversarial audit and sends findings back to the
+Implementer for correction and fresh re-audit.
 
-- A Product Owner-created Phase Issue labeled `phase-ready` starts the Implementer.
-- A Draft PR update starts a fresh read-only Architect audit.
-- `CHANGES_REQUESTED` labels feed the findings back to the Implementer.
-- `audit-pass` ends the automated loop at the merge gate.
-
-The loop requires the `OPENAI_API_KEY` GitHub Actions secret. It never auto-merges, never marks a
-PR Ready for review, and never starts a later Phase without an explicit Work Order Issue.
+This loop has no GitHub Actions Codex workflow, no external API or repository secret dependency,
+and no timer-based progress check. GitHub remains the durable branch/Draft PR and merge-gate record.
+The pair never auto-merges, marks a PR Ready for review, or starts a later Phase without its
+explicit Work Order and boundary.
 
 # Normal Working Loop
 
@@ -91,8 +90,9 @@ ChatGPT audits GitHub directly
 repeat
 ```
 
-No browser automation is required for the agent loop. GitHub Actions is the message bus, and no
-agent-to-agent state is kept only in a local chat.
+No browser automation, GitHub Actions, external API, or timer is required for the agent loop.
+The Codex runtime is the agent-to-agent handoff channel; repository documents preserve durable
+state.
 
 ## Product Owner PR Authorization
 

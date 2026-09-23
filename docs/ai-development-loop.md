@@ -2,9 +2,9 @@
 
 ## Purpose
 
-This repository uses GitHub as the single source of truth and handoff channel between the implementation agent and the audit agent.
-
-The project owner should not need to copy messages between agents.
+The Codex runtime is the execution and handoff channel for the implementation agent and the
+independent audit agent. Repository files remain the durable project record, while GitHub is used
+for the requested branch, Draft PR, and merge gate.
 
 ## Roles
 
@@ -33,7 +33,7 @@ Responsibilities:
 - never begin the next Phase until the current Phase reaches PASS.
 
 ### Architect / Project Manager Agent
-Independent automated reviewer executed from GitHub.
+Independent reviewer launched inside the Codex runtime for each work order.
 
 Responsibilities:
 - review the PR diff, tests, architecture and Phase acceptance criteria;
@@ -42,34 +42,27 @@ Responsibilities:
 - never modify product requirements silently;
 - never approve its own implementation work.
 
-The automated Architect / Project Manager Agent is intentionally stateless between runs. Persistent
-project context must live in repository documents, GitHub Issues, PRs, labels, and audit comments.
-
-The repository provides two independent Codex roles under `.github/codex/prompts/`:
-
-- `implementer.md` edits code and drives a Phase PR to the audit gate.
-- `architect-auditor.md` is read-only and performs a fresh adversarial audit on every PR SHA.
-
-A human-triggered ChatGPT architecture audit may still be used for milestone reviews, but routine implementation handoff must not depend on copying chat messages.
+The Codex runtime launches an internal Implementer and Architect pair for the current work order.
+The Architect receives the completed implementation in an isolated review context, performs a
+fresh adversarial audit, and returns findings to the Implementer. This loop does not depend on
+GitHub Actions, an external API, a repository secret, or a timer.
 
 ---
 
-# Chosen Automation Architecture
+# Runtime Coordination Architecture
 
 Use:
 
-1. **GitHub Issues** — work orders / Phase scope.
-2. **Feature branches + draft Pull Requests** — implementation unit.
-3. **GitHub Actions / GitHub Agentic Workflows** — event-driven audit.
-4. **OpenAI Codex GitHub Action with dedicated Implementer and Architect prompts** — independent agents.
-5. **GitHub Actions labels and PR events** — automatically feed `CHANGES_REQUESTED` back to the Implementer.
-6. **Codex PR monitoring ("babysit PR" style workflow where available)** — developer consumes review feedback, patches, pushes, and continues watching.
-6. **GitHub branch protection / required checks** — merge gate.
+1. **Work Order / roadmap** — authorized Phase scope and boundaries.
+2. **Internal Implementer** — edits only the current Phase, adds tests, and prepares the Draft PR.
+3. **Internal Architect / Project Manager** — independently reviews implementation, schema,
+   migrations, tests, frontend, provenance, and adversarial cases.
+4. **Codex runtime handoff** — sends findings back for correction and starts a fresh re-audit.
+5. **Feature branch + Draft PR** — durable delivery artifact and merge gate.
 
-GitHub is the message bus.
-
-No agent-to-agent state may exist only in a local chat. The workflows require an `OPENAI_API_KEY`
-repository secret and GitHub Actions write permissions for the Implementer job.
+There is no GitHub Actions Codex workflow, external API dependency, or periodic timer in this
+coordination loop. The internal pair must never auto-merge, mark a PR Ready, or cross a Phase
+boundary without the applicable work order and merge gate.
 
 ---
 
@@ -157,7 +150,7 @@ PR title:
 [Phase 0] Technical validation
 ```
 
-The PR should remain **draft** while automated developer/audit iterations are running.
+The PR should remain **draft** while the internal Implementer/Architect iterations are running.
 
 PR body must contain:
 
@@ -175,29 +168,17 @@ Audit status:
 
 ---
 
-# Automated Audit Trigger
+# Internal Audit Trigger
 
-Audit should run on:
-
-```text
-pull_request:
-  opened
-  synchronize
-  reopened
-  ready_for_review
-```
-
-Draft-PR support is preferred so AI review can happen before human review.
-
-Use concurrency per PR and cancel stale in-progress audit runs when a newer SHA is pushed.
-
-The audit job must review the exact PR head SHA / diff and must not review an older cached revision.
+After the Implementer completes a bounded Work Order, the Codex runtime starts a fresh isolated
+Architect review against the exact current checkout. A new implementation commit starts a new
+audit cycle. No GitHub event, external API, or timer is required.
 
 ---
 
 # Audit Output Contract
 
-Every automated audit response must use this structure:
+Every internal audit response must use this structure:
 
 ```text
 ## AI AUDIT
@@ -313,68 +294,24 @@ Do not claim hardware validation unless it was actually performed.
 
 ---
 
-# Security Rules for AI GitHub Actions
+# Runtime Safety Rules
 
-- Never expose repository/API secrets to untrusted PR code.
-- Keep code-review analysis and PR-comment posting in separate jobs where practical.
-- Give the analysis job read-only repository permissions.
-- Give the posting job only the minimum issue / pull-request write permission.
-- Pin or deliberately version third-party Actions.
-- Do not use `pull_request_target` with untrusted checked-out PR code unless the workflow has been explicitly designed for that threat model.
-- Store OpenAI/Codex credentials only in GitHub Actions Secrets.
-- Never commit API keys.
+- Keep Implementer and Architect contexts independent for every work order.
+- Never let the Architect modify the implementation it is auditing.
+- Never expose secrets or require an external API for the development loop.
+- Preserve child isolation, provenance, privacy, and read-only audit boundaries.
+- Never auto-merge, mark Ready for review, or start a later Phase.
 
 ---
 
 # Recommended Repository Files
 
 ```text
-.github/
-  codex/
-    prompts/
-      audit.md
-  workflows/
-    ai-audit.md        # or agentic-workflow source + compiled lock workflow
-
 docs/
   ai-development-loop.md
   roadmap.md
   license-and-commercialization.md
 ```
-
-If GitHub Agentic Workflows is used, initialize it with the official `gh aw` tooling and commit both its Markdown source and generated locked workflow.
-
----
-
-# Automation Rollout
-
-## Stage A — Audit automation
-PR event → read-only Architect Agent → structured PR feedback and `audit-pass` or
-`audit-changes-requested` label.
-
-Do not automate merging.
-
-## Stage B — Developer feedback loop
-The repository workflow configures Codex to:
-- implement an Issue;
-- open/update draft PR;
-- monitor audit feedback;
-- fix findings;
-- continue until Architect Audit PASS.
-
-The loop starts from a Product-Owner-created Phase Issue labeled `phase-ready`, or from an explicit
-workflow dispatch. A `CHANGES_REQUESTED` audit on a Draft PR triggers the Implementer again. PASS
-stops the loop at the merge gate.
-
-## Stage C — Merge gate
-Enable branch/ruleset requirements for CI + AI audit.
-
-Human retains final merge control initially.
-
-## Stage D — Optional auto-merge
-Only after the loop has proven stable across multiple Phases should auto-merge be considered.
-
-Never auto-advance to a new roadmap Phase solely because an AI reviewer returned PASS unless the roadmap explicitly allows it.
 
 ---
 
@@ -395,12 +332,12 @@ Stop the autonomous loop and require Product Owner decision when:
 
 # One-command Developer Handoff
 
-Once automation is installed, the desired human instruction to Codex is:
+The desired runtime instruction to Codex is:
 
 ```text
 Read docs/ai-development-loop.md and the active GitHub work-order Issue.
 Implement only that Issue, open/update its draft PR, run all required tests,
-then monitor the PR and address automated audit feedback until the PR reaches
+then launch the internal Architect review and address audit feedback until the PR reaches
 AI AUDIT PASS. Do not start the next Phase and do not merge unless explicitly
 authorized by repository policy.
 ```
