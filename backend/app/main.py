@@ -14,6 +14,7 @@ from .ocr_import import confirm_candidate, create_candidate
 from .adaptive import build_adaptive_plan
 from .dashboard import build_dashboard
 from .curriculum import get_curriculum, record_progress, seed_catalog
+from .tutor import tutor_response
 from .learning import (
     add_school_item, create_child, create_weekly_test, finish_session,
     list_children, list_daily_queue, next_recognition_item, points_summary,
@@ -229,6 +230,16 @@ class CurriculumProgressRequest(BaseModel):
     event_at: str | None = None
 
 
+class TutorRequest(BaseModel):
+    mode: str
+    prompt: str = Field(min_length=1, max_length=2000)
+    source_type: str | None = None
+    source_id: str | None = None
+    locale: str | None = None
+    script: str | None = None
+    as_of: str | None = None
+
+
 @app.get("/api/children")
 def get_children() -> list[dict[str, object]]:
     return list_children()
@@ -277,6 +288,15 @@ def post_curriculum_progress(child_id: int, item_id: str, request: CurriculumPro
         return record_progress(child_id=child_id, item_id=item_id, status=request.status, event_at=request.event_at)
     except ValueError as error:
         raise HTTPException(status_code=400 if str(error).startswith(("invalid_", "progress_")) else 404, detail=str(error)) from error
+
+
+@app.post("/api/children/{child_id}/tutor/respond")
+def post_tutor_response(child_id: int, request: TutorRequest) -> dict[str, object]:
+    try:
+        return tutor_response(child_id=child_id, mode=request.mode, prompt=request.prompt, source_type=request.source_type, source_id=request.source_id, locale=request.locale, script=request.script, as_of=request.as_of)
+    except ValueError as error:
+        detail = str(error)
+        raise HTTPException(status_code=400 if detail.startswith(("invalid_", "unsupported_", "tutor_prompt", "locale_")) else 404, detail=detail) from error
 
 
 @app.post("/api/tts/speak")
