@@ -276,7 +276,7 @@ def post_curriculum_progress(child_id: int, item_id: str, request: CurriculumPro
     try:
         return record_progress(child_id=child_id, item_id=item_id, status=request.status, event_at=request.event_at)
     except ValueError as error:
-        raise HTTPException(status_code=400 if str(error).startswith("invalid_") else 404, detail=str(error)) from error
+        raise HTTPException(status_code=400 if str(error).startswith(("invalid_", "progress_")) else 404, detail=str(error)) from error
 
 
 @app.post("/api/tts/speak")

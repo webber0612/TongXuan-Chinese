@@ -72,7 +72,6 @@ def seed_catalog(levels: list[dict[str, Any]]) -> dict[str, Any]:
 
 def get_curriculum(*, levels: list[dict[str, Any]] | None, child_id: int | None, as_of: str | None) -> dict[str, Any]:
     del levels
-    initialize_database()
     # SQLite CURRENT_TIMESTAMP has second precision and the application/test
     # clock can cross a second between insert and read. Include that current
     # write boundary only for an implicit live read; explicit as_of remains exact.
@@ -127,6 +126,9 @@ def record_progress(*, child_id: int, item_id: str, status: str, event_at: str |
         item = db.execute("SELECT id FROM curriculum_items WHERE id=?", (item_id,)).fetchone()
         if item is None:
             raise ValueError("curriculum_item_not_found")
+        item_created = db.execute("SELECT created_at FROM curriculum_items WHERE id=?", (item_id,)).fetchone()["created_at"]
+        if occurred < (_parse(item_created) or occurred):
+            raise ValueError("progress_before_item_created")
         event_id = uid("curriculum-progress")
         db.execute("INSERT INTO curriculum_progress_events (id,child_id,curriculum_item_id,status,event_at,created_at) VALUES (?,?,?,?,?,?)", (event_id, child_id, item_id, status, _stamp(occurred), now()))
         return {"id": event_id, "child_id": child_id, "curriculum_item_id": item_id, "status": status, "event_at": _stamp(occurred)}

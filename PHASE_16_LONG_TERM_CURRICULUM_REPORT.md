@@ -23,12 +23,21 @@ were not started.
 
 ## Verification
 
-- Backend: `66 passed` with `PYTHONPATH=backend`.
-- Frontend: `20 passed` with Vitest.
+- Backend: `67 passed` with `PYTHONPATH=backend`.
+- Frontend: `21 passed` with Vitest.
 - Production build: passed with Vite/PWA assets generated.
 - Regression coverage includes level/unit/item ordering, provenance/license fields, child
   isolation, `created_at`/as-of filtering, append-only progress history, no School Queue
   promotion, and independent existing skill state.
+
+## Architect Audit Resolution
+
+- AUD-T16-01: Progress events reject timestamps before the curriculum item's `created_at`;
+  regression coverage exercises T1 creation, T2 rejected event/read, T3 valid event, and T4 read.
+- AUD-T16-02: Curriculum GET paths do not invoke database initialization or migrations; schema
+  metadata and schema version remain unchanged in the no-mutation regression test.
+- AUD-T16-03: The rendered `CurriculumPage` regression covers child switching, refresh, hierarchy,
+  as-of display, provenance/license rendering, and GET-only requests.
 
 ## Delivery
 
