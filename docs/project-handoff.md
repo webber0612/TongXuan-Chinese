@@ -227,8 +227,9 @@ Current baseline known from GitHub:
 - Phase 12 Reading Aloud completed, audited PASS, and PR #10 merged to `main`.
 - Phase 13 OCR Import completed, audited PASS, and PR #12 merged to `main`.
 - Phase 14 Adaptive Learning passed Architect Audit and was merged to `main`.
-- Phase 15 Parent Dashboard is authorized by GitHub Issue #15 and is active on the dedicated
-  `phase15/parent-dashboard` branch / Draft PR.
+- Phase 15 Parent Dashboard was completed and merged to `main`.
+- Phase 16 Long-Term Curriculum is implemented on `phase16/long-term-curriculum` from merged main
+  `8d4b007`; its report/API/UI and regression tests are complete and awaiting Architect Audit.
 - Real-child usability validation is still outstanding before treating Sprints A/B as field-validated.
 
 Relevant completed commits / milestones:
@@ -248,7 +249,8 @@ The active collaboration model is manual trigger + GitHub handoff:
 - Product Owner tells Codex to read GitHub.
 - Product Owner tells ChatGPT to inspect new GitHub changes.
 
-Phases 11–14 are complete and merged. Phase 15 is the currently assigned Phase; do not start Phase 16.
+Phases 11–15 are complete and merged. Phase 16 is the currently assigned Phase; do not start
+Phase 17.
 
 ---
 
@@ -427,8 +429,11 @@ Final state:
 - Phase 14 Adaptive Learning is implemented on `phase14/adaptive-learning` with deterministic/as-of
   scoring, explainable components, anti-starvation, child isolation, and non-mutating manual overrides.
 - `PHASE_14_ADAPTIVE_REPORT.md` records the implementation and verification.
-- Phase 15 Parent Dashboard is implemented on `phase15/parent-dashboard`; its read-only dashboard
-  report/API/UI and regression tests are complete and awaiting Architect Audit.
+- Phase 15 Parent Dashboard was implemented and merged to `main`; its report/API/UI and regression
+  tests are retained as the baseline.
+- Phase 16 Long-Term Curriculum is implemented on `phase16/long-term-curriculum`; its hierarchy,
+  provenance/license tracking, child-scoped as-of progression read model, frontend view, and
+  regression tests are complete and awaiting Architect Audit.
 
 Remaining validation:
 - real iPad Safari;
@@ -436,4 +441,5 @@ Remaining validation:
 - Synology DS723+ deployment/persistence;
 - real-child usability / parent workflow trial.
 
-Continuous development authorization is active. Phase 15 is the current assigned Phase; do not start Phase 16.
+Continuous development authorization is active. Phase 16 is the current assigned Phase; do not
+start Phase 17.

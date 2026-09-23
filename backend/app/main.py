@@ -13,6 +13,7 @@ from .reading_aloud import abort_attempt, complete_attempt, start_attempt
 from .ocr_import import confirm_candidate, create_candidate
 from .adaptive import build_adaptive_plan
 from .dashboard import build_dashboard
+from .curriculum import get_curriculum, record_progress, seed_catalog
 from .learning import (
     add_school_item, create_child, create_weekly_test, finish_session,
     list_children, list_daily_queue, next_recognition_item, points_summary,
@@ -180,6 +181,54 @@ class AdaptivePlanRequest(BaseModel):
     preference: str | None = None
 
 
+class CurriculumItemRequest(BaseModel):
+    id: str | None = None
+    item_type: str = Field(min_length=1)
+    content: str = Field(min_length=1)
+    sequence: int = Field(ge=0)
+    source_name: str = Field(min_length=1)
+    source_url: str = ""
+    license_name: str = Field(min_length=1)
+    provenance_status: str = "PRIVATE_OK"
+    commercial_ready: bool = False
+    commercial_action: str = ""
+
+
+class CurriculumUnitRequest(BaseModel):
+    id: str | None = None
+    title: str = Field(min_length=1)
+    sequence: int = Field(ge=0)
+    source_name: str = Field(min_length=1)
+    source_url: str = ""
+    license_name: str = Field(min_length=1)
+    provenance_status: str = "PRIVATE_OK"
+    commercial_ready: bool = False
+    commercial_action: str = ""
+    items: list[CurriculumItemRequest]
+
+
+class CurriculumLevelRequest(BaseModel):
+    id: str | None = None
+    title: str = Field(min_length=1)
+    sequence: int = Field(ge=0)
+    source_name: str = Field(min_length=1)
+    source_url: str = ""
+    license_name: str = Field(min_length=1)
+    provenance_status: str = "PRIVATE_OK"
+    commercial_ready: bool = False
+    commercial_action: str = ""
+    units: list[CurriculumUnitRequest]
+
+
+class CurriculumCatalogRequest(BaseModel):
+    levels: list[CurriculumLevelRequest]
+
+
+class CurriculumProgressRequest(BaseModel):
+    status: str
+    event_at: str | None = None
+
+
 @app.get("/api/children")
 def get_children() -> list[dict[str, object]]:
     return list_children()
@@ -196,6 +245,38 @@ def post_seed(child_id: int, request: SeedRequest) -> dict[str, object]:
         return {"items": seed_learning_items(child_id, request.characters)}
     except ValueError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@app.post("/api/curriculum/catalog")
+def post_curriculum_catalog(request: CurriculumCatalogRequest) -> dict[str, object]:
+    try:
+        return seed_catalog([level.model_dump() for level in request.levels])
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@app.get("/api/curriculum")
+def get_shared_curriculum(as_of: str | None = None) -> dict[str, object]:
+    try:
+        return get_curriculum(levels=None, child_id=None, as_of=as_of)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@app.get("/api/children/{child_id}/curriculum")
+def get_child_curriculum(child_id: int, as_of: str | None = None) -> dict[str, object]:
+    try:
+        return get_curriculum(levels=None, child_id=child_id, as_of=as_of)
+    except ValueError as error:
+        raise HTTPException(status_code=400 if str(error).startswith("invalid_") else 404, detail=str(error)) from error
+
+
+@app.post("/api/children/{child_id}/curriculum/items/{item_id}/progress")
+def post_curriculum_progress(child_id: int, item_id: str, request: CurriculumProgressRequest) -> dict[str, object]:
+    try:
+        return record_progress(child_id=child_id, item_id=item_id, status=request.status, event_at=request.event_at)
+    except ValueError as error:
+        raise HTTPException(status_code=400 if str(error).startswith(("invalid_", "progress_")) else 404, detail=str(error)) from error
 
 
 @app.post("/api/tts/speak")

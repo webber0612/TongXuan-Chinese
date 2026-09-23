@@ -46,6 +46,53 @@ def initialize_database() -> None:
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(child_id, character, curriculum_source)
             );
+            CREATE TABLE IF NOT EXISTS curriculum_levels (
+                id TEXT PRIMARY KEY,
+                title TEXT NOT NULL,
+                sequence INTEGER NOT NULL,
+                source_name TEXT NOT NULL,
+                source_url TEXT NOT NULL,
+                license_name TEXT NOT NULL,
+                provenance_status TEXT NOT NULL,
+                commercial_ready INTEGER NOT NULL DEFAULT 0,
+                commercial_action TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE IF NOT EXISTS curriculum_units (
+                id TEXT PRIMARY KEY,
+                level_id TEXT NOT NULL REFERENCES curriculum_levels(id),
+                title TEXT NOT NULL,
+                sequence INTEGER NOT NULL,
+                source_name TEXT NOT NULL,
+                source_url TEXT NOT NULL,
+                license_name TEXT NOT NULL,
+                provenance_status TEXT NOT NULL,
+                commercial_ready INTEGER NOT NULL DEFAULT 0,
+                commercial_action TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE IF NOT EXISTS curriculum_items (
+                id TEXT PRIMARY KEY,
+                unit_id TEXT NOT NULL REFERENCES curriculum_units(id),
+                item_type TEXT NOT NULL,
+                content TEXT NOT NULL,
+                sequence INTEGER NOT NULL,
+                source_name TEXT NOT NULL,
+                source_url TEXT NOT NULL,
+                license_name TEXT NOT NULL,
+                provenance_status TEXT NOT NULL,
+                commercial_ready INTEGER NOT NULL DEFAULT 0,
+                commercial_action TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE IF NOT EXISTS curriculum_progress_events (
+                id TEXT PRIMARY KEY,
+                child_id INTEGER NOT NULL REFERENCES children(id),
+                curriculum_item_id TEXT NOT NULL REFERENCES curriculum_items(id),
+                status TEXT NOT NULL CHECK(status IN ('NOT_STARTED','IN_PROGRESS','COMPLETED')),
+                event_at TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
             CREATE TABLE IF NOT EXISTS recognition_states (
                 child_id INTEGER NOT NULL REFERENCES children(id),
                 item_id TEXT NOT NULL REFERENCES learning_items(id),
