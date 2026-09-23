@@ -21,7 +21,7 @@ class Settings:
 
 def load_settings() -> Settings:
     environment = os.getenv("TONGXUAN_ENV", "development").strip().lower()
-    origins = tuple(item.strip() for item in os.getenv("TONGXUAN_ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",") if item.strip())
+    origins = tuple(item.strip() for item in os.getenv("TONGXUAN_ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174").split(",") if item.strip())
     backup = os.getenv("TONGXUAN_BACKUP_DIR", "").strip()
     return Settings(
         environment=environment,

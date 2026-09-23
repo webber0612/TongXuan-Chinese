@@ -41,7 +41,7 @@ describe("long-term curriculum read model", () => {
     const child = document.querySelector('[aria-label="Curriculum child"]') as HTMLSelectElement;
     child.value = "2";
     await act(async () => { child.dispatchEvent(new Event("change", { bubbles: true })); await Promise.resolve(); await Promise.resolve(); });
-    const refresh = Array.from(document.querySelectorAll("button")).find((button) => button.textContent === "Refresh curriculum")!;
+    const refresh = Array.from(document.querySelectorAll("button")).find((button) => button.textContent?.includes("Refresh"))!;
     await act(async () => { refresh.click(); await Promise.resolve(); });
     expect(calls.some((call) => call.url.includes("/api/children/2/curriculum"))).toBe(true);
     expect(calls.every((call) => call.method === "GET")).toBe(true);

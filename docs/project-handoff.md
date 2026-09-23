@@ -475,6 +475,13 @@ Final state:
   override; passwords are never logged or returned. The app shell listens for browser `popstate`.
   The Phase UI audit regression suite and production build are required before review. Do not merge
   automatically.
+- The active PM frontend-rebuild objective continues on the same working tree. The current slice
+  adds the official-course learning-map presentation, a Course 0 sound-lab route for Zhuyin/Pinyin/
+  tones, an official 《學華語向前走》 path manifest (Starter → Basic → Book 1A Lesson 1「你好」),
+  a source-bound first-lesson holding screen, an App-like course lesson flow, child-first profile menu
+  compatibility, and local frontend API configuration for port 5174. Exact textbook content remains
+  import-pending until provenance/licence records are complete. The durable design contract is `docs/frontend-rebuild-plan.md`;
+  the replaceable asset request list is `資產/前端資產需求清單.md`. Mini-games remain deferred.
 - The Phase UI audit also updated `scripts/final_smoke.py` to provide and restore the production
   parent-password environment during the canonical root smoke command, keeping fail-closed
   readiness checks compatible with the release-candidate harness.

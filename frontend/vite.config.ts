@@ -9,16 +9,22 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["favicon.svg"],
       manifest: {
-        name: "TongXuan Chinese Diagnostics",
+        name: "TongXuan Chinese",
         short_name: "TongXuan",
-        start_url: "/diagnostics",
+        start_url: "/",
         display: "standalone",
-        background_color: "#fffaf2",
-        theme_color: "#7b3f00",
+        background_color: "#f4f4ed",
+        theme_color: "#2e746a",
         icons: []
       }
     })
   ],
-  server: { port: 5173 },
-  preview: { port: 4173 }
+  server: {
+    port: 5173,
+    proxy: { "/api": { target: "http://127.0.0.1:8000", changeOrigin: true } }
+  },
+  preview: {
+    port: 4173,
+    proxy: { "/api": { target: "http://127.0.0.1:8000", changeOrigin: true } }
+  }
 });

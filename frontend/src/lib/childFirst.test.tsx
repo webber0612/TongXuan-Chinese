@@ -7,6 +7,7 @@ import { PARENT_GATE_NOTE, isPasswordEntered } from "./parentGate";
 import { ChildHomePage } from "../pages/ChildHomePage";
 import { routeFromPath } from "../AppShell";
 import { AppShell } from "../AppShell";
+import { DISPLAY_LANGUAGE_KEY } from "./i18n";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -34,6 +35,7 @@ describe("child-first shell contracts", () => {
 
   it("persists add-user through POST and reconciles profiles by backend id", async () => {
     localStorage.clear();
+    localStorage.setItem(DISPLAY_LANGUAGE_KEY, "zh-Hant");
     let childrenReads = 0;
     const calls: Array<{ url: string; method: string }> = [];
     vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
@@ -47,12 +49,13 @@ describe("child-first shell contracts", () => {
     document.body.innerHTML = '<div id="root"></div>';
     const root = createRoot(document.getElementById("root")!);
     await act(async () => { root.render(React.createElement(AppShell)); await Promise.resolve(); await Promise.resolve(); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
     await act(async () => { (document.querySelector(".profile-trigger") as HTMLButtonElement).click(); });
     await act(async () => { (Array.from(document.querySelectorAll("button")).find((button) => button.textContent?.includes("新增學習者")) as HTMLButtonElement).click(); });
     const input = document.querySelector("#new-profile-name") as HTMLInputElement;
     const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
     await act(async () => { setter?.call(input, "Bob"); input.dispatchEvent(new Event("input", { bubbles: true })); });
-    await act(async () => { (Array.from(document.querySelectorAll("button")).find((button) => button.textContent === "建立學習者") as HTMLButtonElement).click(); await Promise.resolve(); await Promise.resolve(); });
+    await act(async () => { (Array.from(document.querySelectorAll("button")).find((button) => button.textContent?.includes("建立")) as HTMLButtonElement).click(); await Promise.resolve(); await Promise.resolve(); });
     expect(calls.some((call) => call.url.endsWith("/api/children") && call.method === "POST")).toBe(true);
     expect(document.body.textContent).toContain("Bob");
     root.unmount();
@@ -60,6 +63,7 @@ describe("child-first shell contracts", () => {
   });
 
   it("makes the parent gate explicit and keeps backend redemption as the only mutation", async () => {
+    localStorage.setItem(DISPLAY_LANGUAGE_KEY, "zh-Hant");
     expect(isPasswordEntered("")).toBe(false);
     expect(isPasswordEntered("entered")).toBe(true);
     expect(PARENT_GATE_NOTE).toContain("後端");
@@ -73,7 +77,8 @@ describe("child-first shell contracts", () => {
     document.body.innerHTML = '<div id="root"></div>';
     const root = createRoot(document.getElementById("root")!);
     await act(async () => { root.render(React.createElement(ChildHomePage, { child: { id: 1, name: "Alice" }, childName: "Alice", onOpenPractice: vi.fn() })); await Promise.resolve(); await Promise.resolve(); });
-    const redeem = Array.from(document.querySelectorAll("button")).find((button) => button.textContent?.includes("兌換")) as HTMLButtonElement;
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    const redeem = document.querySelector('button[aria-label="兌換選擇的獎勵"]') as HTMLButtonElement;
     await act(async () => { redeem.click(); });
     expect(document.querySelector("#parent-password")).toBeTruthy();
     expect(document.querySelector('[aria-label="關閉家長確認視窗"]')).toBeTruthy();
@@ -92,13 +97,15 @@ describe("child-first shell contracts", () => {
   });
 
   it("exposes touch-sized primary labels and accessible status text on the child home", async () => {
+    localStorage.setItem(DISPLAY_LANGUAGE_KEY, "zh-Hant");
     vi.stubGlobal("fetch", vi.fn(async (url: string) => new Response(JSON.stringify(url.includes("daily-queue") ? [{ id: "q1", character: "學", source: "CURRICULUM", priority: 1 }] : { balance: 0, rewards: [] }), { status: 200, headers: { "Content-Type": "application/json" } })));
     document.body.innerHTML = '<div id="root"></div>';
     const root = createRoot(document.getElementById("root")!);
     await act(async () => { root.render(React.createElement(ChildHomePage, { child: { id: 1, name: "Alice" }, childName: "Alice", onOpenPractice: vi.fn() })); await Promise.resolve(); await Promise.resolve(); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
     expect(document.querySelector("#child-home-title")?.textContent).toContain("Alice");
     expect(document.querySelector("button.button-large")?.textContent).toContain("開始練習");
-    expect(document.querySelector("#daily-focus-title")?.textContent).toContain("今天先做這一件事");
+    expect(document.querySelector("#daily-focus-title")?.textContent).toContain("接著來認識");
     root.unmount();
     vi.unstubAllGlobals();
   });
