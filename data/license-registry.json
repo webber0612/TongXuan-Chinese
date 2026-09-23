@@ -5,11 +5,7 @@
   "replacement_statuses": ["OPEN", "IN_PROGRESS", "RESOLVED", "REJECTED"],
   "inventory": {
     "frontend_package_manifests": {"frontend/package.json": ["hanzi-writer", "react", "react-dom", "@types/react", "@types/react-dom", "@vitejs/plugin-react", "is-callable", "jsdom", "typescript", "vite", "vite-plugin-pwa", "vitest"]},
-    "backend_requirements": {"backend/requirements.txt": ["fastapi", "uvicorn", "opencc-python-reimplemented", "pytest", "httpx"]},
-    "providers_adapters": ["opencc-provider", "browser-speech-synthesis", "local-deterministic-ocr", "hanzi-writer-adapter", "writing-trace-provider", "tutor-adapter"],
-    "assets": [],
-    "content": ["sprint-b-auditable-sample-content"],
-    "datasets": ["application-dataset-inventory"]
+    "backend_requirements": {"backend/requirements.txt": ["fastapi", "uvicorn", "opencc-python-reimplemented", "pytest", "httpx"]}
   },
   "resources": [
     {"resource_id": "frontend-react-vite", "resource_type": "technical_dependency", "inventory_entries": ["hanzi-writer", "react", "react-dom", "@types/react", "@types/react-dom", "@vitejs/plugin-react", "is-callable", "jsdom", "typescript", "vite", "vite-plugin-pwa", "vitest"], "source_name": "Frontend package manifests", "source_url": "https://github.com/webber0612/TongXuan-Chinese/blob/main/frontend/package.json", "license_name": "Per-package manifest; individual package licenses require release verification", "usage_status": "LICENSE_REVIEW_REQUIRED", "private_use_allowed": true, "commercial_use_allowed": false, "commercial_license_required": true, "commercial_replacement_required": false, "technical_usable": true, "commercial_ready": false, "commercial_action": "Verify every manifest package license before commercial release", "commercial_evidence": "Manifest inventory recorded; no commercial clearance claimed", "notes": "Reconciliation checks package names against this inventory."},

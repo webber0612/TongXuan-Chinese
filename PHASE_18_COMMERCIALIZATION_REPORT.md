@@ -15,6 +15,9 @@ or Phase 19 work was started.
 - Inventory reconciliation compares the registry with actual frontend package manifests, backend
   requirements, public assets, content, datasets, and provider/adapter identifiers. Entries with
   `technical_usable=false` are explicitly excluded from runtime/build.
+- `data/commercialization-inventory.json` is the source-of-truth manifest for repository paths;
+  deterministic scanning ignores generated/cache/vendor directories and fails on newly added
+  provider/adapter, seed/content/dataset, or asset files that are not registered.
 - Commercial replacement records track current source/license, issue, candidate, license option,
   estimated work, status, and resolution evidence. Every unresolved replacement-required resource
   has exactly one non-orphan registry record.
@@ -40,13 +43,14 @@ or Phase 19 work was started.
 
 ## Verification
 
-- Backend: `77 passed` with `PYTHONPATH=backend`.
+- Backend: `79 passed` with `PYTHONPATH=backend`.
 - Frontend: `26 passed` with Vitest.
 - Production build: passed with Vite/PWA assets generated.
 - Regression coverage includes registry category/provenance completeness, Family warnings,
   Commercial failures, replacement records and inventory reconciliation, server-verified admin
   authorization with parent denial, School Queue private ownership/child isolation, and admin
-  endpoint frontend routing.
+  endpoint frontend routing. Drift tests prove both a registered manifest and an unregistered
+  repository resource path.
 
 ## Product Owner blockers
 

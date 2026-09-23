@@ -35,6 +35,34 @@ def test_registry_covers_resource_categories_and_complete_provenance():
         assert resource["commercial_evidence"]
 
 
+def test_repository_inventory_manifest_is_registered_and_drift_is_detected(tmp_path):
+    from app.commercialization import reconcile_inventory
+    assert reconcile_inventory() == []
+    (tmp_path / "frontend").mkdir(parents=True)
+    (tmp_path / "backend").mkdir(parents=True)
+    (tmp_path / "backend" / "app").mkdir(parents=True)
+    (tmp_path / "data").mkdir(parents=True)
+    (tmp_path / "frontend" / "package.json").write_text('{"dependencies": {}}', encoding="utf-8")
+    (tmp_path / "backend" / "requirements.txt").write_text("", encoding="utf-8")
+    (tmp_path / "backend" / "app" / "new_provider.py").write_text("class NewProvider: pass\n", encoding="utf-8")
+    (tmp_path / "data" / "license-registry.json").write_text('{"resources": []}', encoding="utf-8")
+    (tmp_path / "data" / "commercialization-inventory.json").write_text(json.dumps({"excluded_directories": [], "scopes": [{"scope_id": "providers", "include_globs": ["backend/app/*provider*.py"], "registered_paths": []}]}), encoding="utf-8")
+    errors = reconcile_inventory(tmp_path)
+    assert "unregistered_repository_resource:providers:backend/app/new_provider.py" in errors
+
+
+def test_repository_inventory_manifest_registered_source_passes(tmp_path):
+    from app.commercialization import reconcile_inventory
+    (tmp_path / "frontend").mkdir(parents=True)
+    (tmp_path / "backend").mkdir(parents=True)
+    (tmp_path / "data").mkdir(parents=True)
+    (tmp_path / "frontend" / "package.json").write_text('{"dependencies": {}}', encoding="utf-8")
+    (tmp_path / "backend" / "requirements.txt").write_text("", encoding="utf-8")
+    (tmp_path / "data" / "license-registry.json").write_text('{"resources": []}', encoding="utf-8")
+    (tmp_path / "data" / "commercialization-inventory.json").write_text(json.dumps({"excluded_directories": [], "scopes": []}), encoding="utf-8")
+    assert reconcile_inventory(tmp_path) == []
+
+
 def test_family_gate_warns_and_admin_readiness_is_not_parent_dashboard(tmp_path):
     with client(tmp_path) as api:
         result = api.get("/api/admin/commercialization/readiness", params={"build_target": "family"}, headers=admin_headers())

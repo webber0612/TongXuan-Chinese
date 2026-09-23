@@ -12,6 +12,7 @@ BUILD_TARGETS = {"family", "commercial"}
 REQUIRED_FIELDS = {"resource_id", "resource_type", "source_name", "source_url", "license_name", "usage_status", "private_use_allowed", "commercial_use_allowed", "commercial_license_required", "commercial_replacement_required", "technical_usable", "commercial_ready", "commercial_action", "commercial_evidence", "notes", "inventory_entries"}
 ROOT = Path(__file__).resolve().parents[2]
 REGISTRY_PATH = ROOT / "data" / "license-registry.json"
+INVENTORY_MANIFEST_PATH = ROOT / "data" / "commercialization-inventory.json"
 
 
 def load_registry() -> dict[str, Any]:
@@ -22,21 +23,47 @@ def _bool(value: Any) -> bool:
     return type(value) is bool
 
 
-def _manifest_inventory() -> dict[str, set[str]]:
-    package = json.loads((ROOT / "frontend" / "package.json").read_text(encoding="utf-8"))
+def _manifest_inventory(root: Path = ROOT) -> dict[str, set[str]]:
+    package = json.loads((root / "frontend" / "package.json").read_text(encoding="utf-8"))
     packages = set(package.get("dependencies", {})) | set(package.get("devDependencies", {}))
     requirements: set[str] = set()
-    for line in (ROOT / "backend" / "requirements.txt").read_text(encoding="utf-8").splitlines():
+    for line in (root / "backend" / "requirements.txt").read_text(encoding="utf-8").splitlines():
         line = line.split("#", 1)[0].strip()
         if line:
             requirements.add(re.split(r"[<>=!~\[]", line, maxsplit=1)[0].strip().lower())
-    public = ROOT / "frontend" / "public"
-    assets = {str(path.relative_to(ROOT / "frontend" / "public")).replace("\\", "/") for path in public.rglob("*") if path.is_file()} if public.exists() else set()
-    return {"frontend_packages": packages, "backend_requirements": requirements, "assets": assets, "providers_adapters": {"opencc-provider", "browser-speech-synthesis", "local-deterministic-ocr", "hanzi-writer-adapter", "writing-trace-provider", "tutor-adapter"}, "content": {"sprint-b-auditable-sample-content"}, "datasets": {"application-dataset-inventory"}}
+    return {"frontend_packages": packages, "backend_requirements": requirements}
 
 
-def _inventory_errors(registry: dict[str, Any], resources: list[dict[str, Any]]) -> list[str]:
-    actual = _manifest_inventory()
+def _scan_manifest_sources(root: Path, manifest: dict[str, Any]) -> dict[str, set[str]]:
+    excluded = set(manifest.get("excluded_directories", []))
+    found: dict[str, set[str]] = {}
+    for scope in manifest.get("scopes", []):
+        paths: set[str] = set()
+        excluded_paths = set(scope.get("excluded_paths", []))
+        for pattern in scope.get("include_globs", []):
+            for path in root.glob(pattern):
+                if path.is_file():
+                    relative = path.relative_to(root).as_posix()
+                    if ".test." not in path.name and relative not in excluded_paths and not any(part in excluded for part in path.relative_to(root).parts):
+                        if not scope.get("extensions") or path.suffix.lower() in scope["extensions"]:
+                            paths.add(relative)
+        for scan_root in scope.get("include_roots", []):
+            base = root / scan_root
+            if not base.exists():
+                continue
+            for path in base.rglob("*"):
+                if path.is_file() and not any(part in excluded for part in path.relative_to(root).parts):
+                    if not scope.get("extensions") or path.suffix.lower() in scope["extensions"]:
+                        paths.add(path.relative_to(root).as_posix())
+        found[scope["scope_id"]] = paths
+    return found
+
+
+def reconcile_inventory(root: Path = ROOT, registry: dict[str, Any] | None = None) -> list[str]:
+    registry = registry or json.loads((root / "data" / "license-registry.json").read_text(encoding="utf-8"))
+    manifest = json.loads((root / "data" / "commercialization-inventory.json").read_text(encoding="utf-8"))
+    resources = registry.get("resources", [])
+    actual = _manifest_inventory(root)
     covered = {entry for resource in resources for entry in resource.get("inventory_entries", [])}
     errors: list[str] = []
     for category, entries in actual.items():
@@ -50,7 +77,12 @@ def _inventory_errors(registry: dict[str, Any], resources: list[dict[str, Any]])
     for manifest_name, entries in declared.get("backend_requirements", {}).items():
         if manifest_name == "backend/requirements.txt" and {str(item).lower() for item in entries} != actual["backend_requirements"]:
             errors.append("inventory_manifest_mismatch:backend/requirements.txt")
-    return errors
+    for scope in manifest.get("scopes", []):
+        registered = set(scope.get("registered_paths", []))
+        for path in sorted(_scan_manifest_sources(root, manifest).get(scope["scope_id"], set())):
+            if path not in registered:
+                errors.append(f"unregistered_repository_resource:{scope['scope_id']}:{path}")
+    return sorted(set(errors))
 
 
 def _validate(registry: dict[str, Any]) -> list[str]:
@@ -112,7 +144,7 @@ def _validate(registry: dict[str, Any]) -> list[str]:
     expected_replacements = {resource["resource_id"] for resource in resources if resource.get("commercial_replacement_required") and not resource.get("commercial_ready")}
     if replacement_ids != expected_replacements:
         errors.append("replacement_registry_incomplete_or_has_orphans")
-    errors.extend(_inventory_errors(registry, resources))
+    errors.extend(reconcile_inventory(ROOT, registry))
     return errors
 
 
