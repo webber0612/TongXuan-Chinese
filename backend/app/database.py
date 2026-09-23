@@ -7,6 +7,7 @@ from pathlib import Path
 
 DEFAULT_DB_PATH = Path(__file__).resolve().parents[2] / "data" / "tongxuan.sqlite3"
 SCHEMA_VERSION = 1
+SQLITE_BUSY_TIMEOUT_MS = 5000
 
 
 def database_path() -> Path:
@@ -18,6 +19,10 @@ def database_path() -> Path:
 def connect() -> sqlite3.Connection:
     connection = sqlite3.connect(database_path())
     connection.row_factory = sqlite3.Row
+    connection.execute("PRAGMA foreign_keys = ON")
+    connection.execute(f"PRAGMA busy_timeout = {SQLITE_BUSY_TIMEOUT_MS}")
+    connection.execute("PRAGMA journal_mode = WAL")
+    connection.execute("PRAGMA synchronous = NORMAL")
     return connection
 
 

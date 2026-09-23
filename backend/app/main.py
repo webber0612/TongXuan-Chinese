@@ -3,6 +3,7 @@ from __future__ import annotations
 import sqlite3
 import logging
 import re
+import time
 import uuid
 from contextlib import asynccontextmanager
 
@@ -21,7 +22,7 @@ from .dashboard import build_dashboard
 from .curriculum import get_curriculum, record_progress, seed_catalog
 from .tutor import tutor_response
 from .commercialization import audit_registry
-from .auth import require_commercialization_admin
+from .auth import authenticate, require_commercialization_admin
 from .auth import require_child_access, require_production_session
 from .config import load_settings, validate_settings
 from .production import readiness, structured_error
@@ -56,24 +57,45 @@ async def lifespan(_: FastAPI):
 app = FastAPI(title="TongXuan Chinese API", version="0.1.0", lifespan=lifespan)
 opencc_provider = OpenCCProvider()
 app.add_middleware(CORSMiddleware, allow_origins=list(load_settings().allowed_origins), allow_credentials=True, allow_methods=["GET", "POST", "OPTIONS"], allow_headers=["Authorization", "Content-Type", "X-Request-ID"])
+production_logger = logging.getLogger("tongxuan.production")
+if not production_logger.handlers:
+    from .production import JsonLogFormatter
+    handler = logging.StreamHandler()
+    handler.setFormatter(JsonLogFormatter())
+    production_logger.addHandler(handler)
+    production_logger.setLevel(logging.INFO)
 
 
 @app.middleware("http")
 async def production_security_boundary(request: Request, call_next):
     request_id = request.headers.get("X-Request-ID") or uuid.uuid4().hex
+    started = time.perf_counter()
+    status_code = 500
     try:
         settings = load_settings()
         if settings.environment == "production" and request.url.path.startswith("/api/"):
             match = re.search(r"/children/(\d+)(?:/|$)", request.url.path)
             child_text = request.query_params.get("child_id") or (match.group(1) if match else None)
+            session = None
+            if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+                session = authenticate(request)
+                privileged = request.url.path in {"/api/diagnostics/sqlite", "/api/curriculum/catalog", "/api/tools/convert", "/api/children"}
+                if privileged and session.role not in {"developer", "admin"}:
+                    raise HTTPException(status_code=403, detail="developer_admin_required")
+                if child_text is None and session.role == "parent":
+                    raise HTTPException(status_code=403, detail="child_scope_required")
             if child_text is not None:
                 require_child_access(request, int(child_text))
         response = await call_next(request)
+        status_code = response.status_code
     except HTTPException as error:
+        status_code = error.status_code
         response = JSONResponse(status_code=error.status_code, content={"detail": error.detail, "error": {"code": str(error.detail), "request_id": request_id}})
     except Exception:
-        logging.getLogger("tongxuan.production").error("unhandled_request")
+        production_logger.error("unhandled_request", extra={"request_id": request_id, "route": request.url.path, "status": 500, "latency_ms": round((time.perf_counter() - started) * 1000, 2)})
         response = JSONResponse(status_code=500, content=structured_error(request_id))
+    finally:
+        production_logger.info("request", extra={"request_id": request_id, "route": request.scope.get("route").path if request.scope.get("route") else request.url.path, "status": status_code, "latency_ms": round((time.perf_counter() - started) * 1000, 2)})
     response.headers["X-Request-ID"] = request_id
     return response
 

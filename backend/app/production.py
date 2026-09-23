@@ -87,4 +87,11 @@ def structured_error(request_id: str, code: str = "internal_error") -> dict[str,
 
 class JsonLogFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
-        return json.dumps({"event": record.getMessage(), "level": record.levelname}, ensure_ascii=False)
+        return json.dumps({
+            "event": record.getMessage(),
+            "level": record.levelname,
+            "request_id": getattr(record, "request_id", None),
+            "route": getattr(record, "route", None),
+            "status": getattr(record, "status", None),
+            "latency_ms": getattr(record, "latency_ms", None),
+        }, ensure_ascii=False)

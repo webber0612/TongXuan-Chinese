@@ -451,7 +451,9 @@ Final state:
 - Phase 19 Production Hardening is implemented on `phase19/production-hardening` from merged
   `origin/main` `47361e4`; deterministic health/readiness, fail-closed production config,
   versioned additive schema migration, non-destructive backup/restore, privacy-safe errors,
-  CORS/child/admin boundaries, PWA checks, deployment runbook, and regression tests are complete.
+  CORS/child/admin boundaries, mutation authorization, SQLite safety policy, structured redacted
+  request logging, PWA checks, readiness-aware deployment wiring, runbook, and regression tests
+  are complete.
   Do not merge automatically or start Phase 20.
 
 Remaining validation:

@@ -17,14 +17,18 @@ No Phase 20 work was started and no merge was performed.
 - Added non-destructive SQLite backup/restore contracts and `scripts/db_backup.py`; existing backup
   and restore destinations are not overwritten unless explicit `--overwrite` is supplied.
 - Added privacy-safe request IDs, structured internal errors, no request-body logging, and no secret
-  exposure.
-- Added production CORS configuration and production child-scope enforcement for authenticated
-  parent sessions. Existing developer/admin commercialization auth remains protected.
+  exposure. The wired JSON handler records only `request_id`, route, status, and latency with
+  redaction by construction.
+- Every production mutation now requires a server-verified session. Parent sessions are limited to
+  their child scope; diagnostics, child creation, curriculum catalog writes, and conversion tools
+  require developer/admin role. Existing developer/admin commercialization auth remains protected.
+- SQLite connections explicitly enable foreign keys, a 5-second busy timeout, WAL journal mode,
+  and NORMAL synchronous policy.
 
 ## Deployment and client hardening
 
 - Added `docker-compose.production.yml` with persistent data/backup mounts and fail-closed secret
-  placeholders.
+  placeholders, `/api/readiness` healthcheck, and frontend dependency on a healthy backend.
 - Added `scripts/production_check.py` for deterministic PWA/static artifact checks.
 - Added `docs/production-runbook.md` covering NAS deployment, iPad Safari/browser checks, health,
   readiness, backup/restore, HTTPS, privacy, and security boundaries.
@@ -37,12 +41,13 @@ paid-license, or commercial-readiness claim.
 
 ## Verification
 
-- Backend: `83 passed` with `PYTHONPATH=backend`.
+- Backend: `86 passed` with `PYTHONPATH=backend`.
 - Frontend: `26 passed` with Vitest.
 - Production build: passed with Vite/PWA assets generated.
 - Production artifact check: passed.
 - Backup/restore, readiness, fail-closed config, schema version, and privacy contracts have
-  regression coverage.
+  regression coverage, including unauthenticated/parent/admin mutation authorization, SQLite
+  connection policy, structured log fields, and sensitive payload redaction.
 
 ## Delivery
 
