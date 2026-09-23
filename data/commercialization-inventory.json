@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0",
+  "excluded_directories": [".git", ".venv", "node_modules", "dist", "build", "vendor", "__pycache__", ".pytest_cache", "coverage"],
+  "scopes": [
+    {
+      "scope_id": "provider-adapter-source",
+      "kind": "source_files",
+      "include_globs": ["backend/app/*provider*.py", "backend/app/providers.py", "backend/app/tts.py", "backend/app/ocr_import.py", "backend/app/tutor.py", "frontend/src/lib/*Provider.ts", "frontend/src/lib/*provider.ts", "frontend/src/lib/tts.ts", "frontend/src/lib/*ocr*.ts", "frontend/src/lib/*tutor*.ts", "frontend/src/lib/*readingAloud.ts"],
+      "registered_paths": ["backend/app/auth.py", "backend/app/ocr_import.py", "backend/app/providers.py", "backend/app/reading_aloud.py", "backend/app/tts.py", "backend/app/tutor.py", "backend/app/writing_provider.py", "frontend/src/lib/ocrImport.ts", "frontend/src/lib/readingAloud.ts", "frontend/src/lib/tts.ts", "frontend/src/lib/tutor.ts", "frontend/src/lib/writingProvider.ts"]
+    },
+    {
+      "scope_id": "seed-content-dataset-source",
+      "kind": "source_files",
+      "include_globs": ["backend/app/sprint_b.py", "backend/app/curriculum.py", "backend/app/learning.py", "data/*"],
+      "extensions": [".json", ".csv", ".tsv", ".txt", ".yaml", ".yml", ".py"],
+      "excluded_paths": ["data/license-registry.json", "data/commercialization-inventory.json"],
+      "registered_paths": ["backend/app/curriculum.py", "backend/app/learning.py", "backend/app/sprint_b.py"]
+    },
+    {
+      "scope_id": "repository-assets",
+      "kind": "assets",
+      "include_roots": ["frontend", "backend", "data", "public", "assets"],
+      "extensions": [".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".ico", ".mp3", ".wav", ".ogg", ".m4a", ".woff", ".woff2", ".ttf", ".otf"],
+      "registered_paths": []
+    }
+  ]
+}

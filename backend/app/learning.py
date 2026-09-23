@@ -117,11 +117,19 @@ def finish_session(child_id: int, session_id: str) -> dict[str, Any]:
 
 
 def add_school_item(child_id: int, payload: dict[str, Any]) -> dict[str, Any]:
+    if (payload.get("source_type", "USER_PROVIDED_SCHOOL_CONTENT") != "USER_PROVIDED_SCHOOL_CONTENT" or
+            payload.get("private_content") is not True or payload.get("provenance_status") != "PRIVATE_OK" or
+            payload.get("public_curriculum_reuse", False) or payload.get("commercial_reuse", False)):
+        raise ValueError("school_queue_private_provenance_required")
     with connect() as db:
         ensure_child(db, child_id)
         item_id = uid("school")
         db.execute("INSERT INTO school_queue_items (id,child_id,character,school_source,due_date,priority,notes,private_content,provenance_status) VALUES (?,?,?,?,?,?,?,?,?)", (item_id, child_id, payload["character"], payload["school_source"], payload.get("due_date"), int(payload.get("priority", 0)), payload.get("notes", ""), int(payload.get("private_content", True)), payload.get("provenance_status", "PRIVATE_OK")))
-        return dict(db.execute("SELECT * FROM school_queue_items WHERE id=?", (item_id,)).fetchone())
+        result = dict(db.execute("SELECT * FROM school_queue_items WHERE id=?", (item_id,)).fetchone())
+        result["source_type"] = "USER_PROVIDED_SCHOOL_CONTENT"
+        result["public_curriculum_reuse"] = False
+        result["commercial_reuse"] = False
+        return result
 
 
 def list_daily_queue(child_id: int) -> list[dict[str, Any]]:

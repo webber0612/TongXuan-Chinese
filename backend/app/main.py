@@ -3,7 +3,7 @@ from __future__ import annotations
 import sqlite3
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 from .database import connect, initialize_database
@@ -15,6 +15,8 @@ from .adaptive import build_adaptive_plan
 from .dashboard import build_dashboard
 from .curriculum import get_curriculum, record_progress, seed_catalog
 from .tutor import tutor_response
+from .commercialization import audit_registry
+from .auth import require_commercialization_admin
 from .learning import (
     add_school_item, create_child, create_weekly_test, finish_session,
     list_children, list_daily_queue, next_recognition_item, points_summary,
@@ -110,6 +112,9 @@ class SchoolQueueRequest(BaseModel):
     notes: str = ""
     private_content: bool = True
     provenance_status: str = "PRIVATE_OK"
+    source_type: str = "USER_PROVIDED_SCHOOL_CONTENT"
+    public_curriculum_reuse: bool = False
+    commercial_reuse: bool = False
 
 
 class WeeklySubmitRequest(BaseModel):
@@ -299,6 +304,14 @@ def post_tutor_response(child_id: int, request: TutorRequest) -> dict[str, objec
         raise HTTPException(status_code=400 if detail.startswith(("invalid_", "unsupported_", "tutor_prompt", "locale_", "source_")) else 404, detail=detail) from error
 
 
+@app.get("/api/admin/commercialization/readiness")
+def get_commercialization_readiness(build_target: str = "family", _session=Depends(require_commercialization_admin)) -> dict[str, object]:
+    try:
+        return audit_registry(build_target)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+
 @app.post("/api/tts/speak")
 def post_tts(request: TTSRequest) -> dict[str, object]:
     try:
@@ -422,6 +435,10 @@ def get_daily_queue(child_id: int) -> list[dict[str, object]]:
 @app.post("/api/school-queue")
 def post_school_queue(child_id: int, request: SchoolQueueRequest) -> dict[str, object]:
     try:
+        if (not request.private_content or request.provenance_status != "PRIVATE_OK" or
+                request.source_type != "USER_PROVIDED_SCHOOL_CONTENT" or
+                request.public_curriculum_reuse or request.commercial_reuse):
+            raise ValueError("school_queue_private_provenance_required")
         return add_school_item(child_id, request.model_dump())
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
