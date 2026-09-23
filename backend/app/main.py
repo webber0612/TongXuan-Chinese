@@ -11,6 +11,7 @@ from .providers import OpenCCProvider
 from .tts import prepare_tts
 from .reading_aloud import abort_attempt, complete_attempt, start_attempt
 from .ocr_import import confirm_candidate, create_candidate
+from .adaptive import build_adaptive_plan
 from .learning import (
     add_school_item, create_child, create_weekly_test, finish_session,
     list_children, list_daily_queue, next_recognition_item, points_summary,
@@ -171,6 +172,13 @@ class OCRConfirmRequest(BaseModel):
     script: str
 
 
+class AdaptivePlanRequest(BaseModel):
+    as_of: str
+    limit: int = Field(default=10, ge=1, le=50)
+    adaptive: bool = True
+    preference: str | None = None
+
+
 @app.get("/api/children")
 def get_children() -> list[dict[str, object]]:
     return list_children()
@@ -242,6 +250,14 @@ def post_ocr_candidate(child_id: int, request: OCRCandidateRequest) -> dict[str,
 def post_ocr_confirm(import_id: str, child_id: int, request: OCRConfirmRequest) -> dict[str, object]:
     try:
         return confirm_candidate(child_id=child_id, import_id=import_id, confirmed_text=request.confirmed_text, locale=request.locale, script=request.script)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@app.post("/api/adaptive/plan")
+def post_adaptive_plan(child_id: int, request: AdaptivePlanRequest) -> dict[str, object]:
+    try:
+        return build_adaptive_plan(child_id=child_id, as_of=request.as_of, limit=request.limit, adaptive=request.adaptive, preference=request.preference)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
 

@@ -46,13 +46,13 @@ def seed_sprint_b(child_id: int) -> dict[str, Any]:
         ]
         for reading_id, character, script, system, notation, locale, context in readings:
             db.execute("INSERT OR IGNORE INTO pronunciation_readings (id,character,script,notation_system,notation,locale,context,source_name,license_name,provenance_status,commercial_ready) VALUES (?,?,?,?,?,?,?,?,?,?,?)", (reading_id, character, script, system, notation, locale, context, PROVENANCE["source_name"], PROVENANCE["license_name"], PROVENANCE["provenance_status"], 0))
-        db.execute("INSERT OR IGNORE INTO grammar_concepts VALUES (?,?,?,?,?,?,?,?)", ("grammar_在", "在 + place", "在 marks location.", "我在學校。", PROVENANCE["provenance_status"], PROVENANCE["source_name"], PROVENANCE["license_name"], 0))
-        db.execute("INSERT OR IGNORE INTO grammar_exercises VALUES (?,?,?,?)", ("grammar_ex_在", "grammar_在", "Choose the correct sentence.", "我在學校。"))
-        db.execute("INSERT OR IGNORE INTO idioms VALUES (?,?,?,?,?,?,?,?)", ("idiom_百聞不如一見", "百聞不如一見", "Seeing once is better than hearing many times.", "百聞不如一見。", PROVENANCE["provenance_status"], PROVENANCE["source_name"], PROVENANCE["license_name"], 0))
+        db.execute("INSERT OR IGNORE INTO grammar_concepts (id,concept,explanation,example,provenance_status,source_name,license_name,commercial_ready) VALUES (?,?,?,?,?,?,?,?)", ("grammar_在", "在 + place", "在 marks location.", "我在學校。", PROVENANCE["provenance_status"], PROVENANCE["source_name"], PROVENANCE["license_name"], 0))
+        db.execute("INSERT OR IGNORE INTO grammar_exercises (id,concept_id,prompt,answer_rule) VALUES (?,?,?,?)", ("grammar_ex_在", "grammar_在", "Choose the correct sentence.", "我在學校。"))
+        db.execute("INSERT OR IGNORE INTO idioms (id,idiom,meaning,example,provenance_status,source_name,license_name,commercial_ready) VALUES (?,?,?,?,?,?,?,?)", ("idiom_百聞不如一見", "百聞不如一見", "Seeing once is better than hearing many times.", "百聞不如一見。", PROVENANCE["provenance_status"], PROVENANCE["source_name"], PROVENANCE["license_name"], 0))
         for position, character in enumerate("百聞不如一見"):
             db.execute("INSERT OR IGNORE INTO idiom_characters VALUES (?,?,?)", ("idiom_百聞不如一見", character, position))
         passage_id = f"passage_{child_id}_school"
-        db.execute("INSERT OR IGNORE INTO reading_passages VALUES (?,?,?,?,?,?,?,?)", (passage_id, child_id, "我的學校", "我每天到學校學習。學校裡有圖書館。", PROVENANCE["provenance_status"], PROVENANCE["source_name"], PROVENANCE["license_name"], 0))
+        db.execute("INSERT OR IGNORE INTO reading_passages (id,child_id,title,passage,provenance_status,source_name,license_name,commercial_ready) VALUES (?,?,?,?,?,?,?,?)", (passage_id, child_id, "我的學校", "我每天到學校學習。學校裡有圖書館。", PROVENANCE["provenance_status"], PROVENANCE["source_name"], PROVENANCE["license_name"], 0))
         for word_id, _, _ in word_rows:
             db.execute("INSERT OR IGNORE INTO passage_vocabulary VALUES (?,?)", (passage_id, word_id))
         db.execute("INSERT OR IGNORE INTO reading_questions VALUES (?,?,?,?)", (f"question_{child_id}_school", passage_id, "Where does the child study?", "學校"))
@@ -130,7 +130,7 @@ def practice_pronunciation(child_id: int, reading_id: str, answer: str, assisted
         normalized_target = normalize_pinyin(reading["notation"]) if reading["notation_system"] == "PINYIN" else reading["notation"].strip().lower()
         correct = int(normalized_answer == normalized_target)
         db.execute("INSERT INTO pronunciation_attempts (id,child_id,reading_id,answer,correct,assisted,source_type,school_queue_item_id,prompt_id,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)", (uid("pron_attempt"), child_id, reading_id, answer, correct, int(assisted), source_type, school_queue_item_id, prompt_id, now()))
-        db.execute("""INSERT INTO pronunciation_states (child_id,reading_id,correct_count,incorrect_count,assisted_count) VALUES (?,?,?,?,?) ON CONFLICT(child_id,reading_id) DO UPDATE SET correct_count=correct_count+excluded.correct_count,incorrect_count=incorrect_count+excluded.incorrect_count,assisted_count=assisted_count+excluded.assisted_count""", (child_id, reading_id, int(correct and not assisted), int(not correct), int(assisted)))
+        db.execute("""INSERT INTO pronunciation_states (child_id,reading_id,correct_count,incorrect_count,assisted_count,updated_at) VALUES (?,?,?,?,?,?) ON CONFLICT(child_id,reading_id) DO UPDATE SET correct_count=correct_count+excluded.correct_count,incorrect_count=incorrect_count+excluded.incorrect_count,assisted_count=assisted_count+excluded.assisted_count,updated_at=excluded.updated_at""", (child_id, reading_id, int(correct and not assisted), int(not correct), int(assisted), now()))
         return {"correct": bool(correct), "reading_id": reading_id, "normalized_answer": normalized_answer, "source_type": source_type, "school_queue_item_id": school_queue_item_id, "prompt_id": prompt_id, "state": dict(db.execute("SELECT * FROM pronunciation_states WHERE child_id=? AND reading_id=?", (child_id, reading_id)).fetchone())}
 
 
@@ -181,8 +181,8 @@ def practice_grammar(child_id: int, exercise_id: str, answer: str, assisted: boo
         ensure_child(db, child_id); exercise = db.execute("SELECT * FROM grammar_exercises WHERE id=?", (exercise_id,)).fetchone()
         if exercise is None: raise ValueError("exercise_not_found")
         correct = int(answer.strip() == exercise["answer_rule"])
-        db.execute("INSERT INTO grammar_attempts VALUES (?,?,?,?,?,?)", (uid("grammar_attempt"), child_id, exercise_id, answer, correct, int(assisted)))
-        db.execute("""INSERT INTO grammar_states VALUES (?,?,?,?,?) ON CONFLICT(child_id,exercise_id) DO UPDATE SET correct_count=correct_count+excluded.correct_count,incorrect_count=incorrect_count+excluded.incorrect_count,assisted_count=assisted_count+excluded.assisted_count""", (child_id, exercise_id, int(correct and not assisted), int(not correct), int(assisted)))
+        db.execute("INSERT INTO grammar_attempts (id,child_id,exercise_id,answer,correct,assisted,created_at) VALUES (?,?,?,?,?,?,?)", (uid("grammar_attempt"), child_id, exercise_id, answer, correct, int(assisted), now()))
+        db.execute("""INSERT INTO grammar_states (child_id,exercise_id,correct_count,incorrect_count,assisted_count,updated_at) VALUES (?,?,?,?,?,?) ON CONFLICT(child_id,exercise_id) DO UPDATE SET correct_count=correct_count+excluded.correct_count,incorrect_count=incorrect_count+excluded.incorrect_count,assisted_count=assisted_count+excluded.assisted_count,updated_at=excluded.updated_at""", (child_id, exercise_id, int(correct and not assisted), int(not correct), int(assisted), now()))
         return {"correct": bool(correct), "state": dict(db.execute("SELECT * FROM grammar_states WHERE child_id=? AND exercise_id=?", (child_id, exercise_id)).fetchone())}
 
 
@@ -197,8 +197,8 @@ def practice_idiom(child_id: int, idiom_id: str, answer: str, assisted: bool) ->
         ensure_child(db, child_id); idiom = db.execute("SELECT * FROM idioms WHERE id=?", (idiom_id,)).fetchone()
         if idiom is None: raise ValueError("idiom_not_found")
         correct = int(answer.strip() == idiom["meaning"])
-        db.execute("INSERT INTO idiom_attempts VALUES (?,?,?,?,?,?)", (uid("idiom_attempt"), child_id, idiom_id, answer, correct, int(assisted)))
-        db.execute("""INSERT INTO idiom_states VALUES (?,?,?,?) ON CONFLICT(child_id,idiom_id) DO UPDATE SET correct_count=correct_count+excluded.correct_count,incorrect_count=incorrect_count+excluded.incorrect_count""", (child_id, idiom_id, int(correct and not assisted), int(not correct)))
+        db.execute("INSERT INTO idiom_attempts (id,child_id,idiom_id,answer,correct,assisted,created_at) VALUES (?,?,?,?,?,?,?)", (uid("idiom_attempt"), child_id, idiom_id, answer, correct, int(assisted), now()))
+        db.execute("""INSERT INTO idiom_states (child_id,idiom_id,correct_count,incorrect_count,updated_at) VALUES (?,?,?,?,?) ON CONFLICT(child_id,idiom_id) DO UPDATE SET correct_count=correct_count+excluded.correct_count,incorrect_count=incorrect_count+excluded.incorrect_count,updated_at=excluded.updated_at""", (child_id, idiom_id, int(correct and not assisted), int(not correct), now()))
         return {"correct": bool(correct), "state": dict(db.execute("SELECT * FROM idiom_states WHERE child_id=? AND idiom_id=?", (child_id, idiom_id)).fetchone())}
 
 
@@ -218,5 +218,5 @@ def submit_reading(child_id: int, passage_id: str, answers: dict[str, str]) -> d
         answers_snapshot = {str(key): str(value) for key, value in answers.items()}
         correctness_snapshot = {key: bool(value) for key, value in correctness.items()}
         db.execute("INSERT INTO reading_attempts (id,child_id,passage_id,score,total,answers_json,correctness_json,created_at) VALUES (?,?,?,?,?,?,?,?)", (uid("reading_attempt"), child_id, passage_id, score, total, json.dumps(answers_snapshot, ensure_ascii=False, sort_keys=True), json.dumps(correctness_snapshot, sort_keys=True), now()))
-        db.execute("""INSERT INTO reading_states VALUES (?,?,?,?) ON CONFLICT(child_id,passage_id) DO UPDATE SET correct_count=correct_count+excluded.correct_count,incorrect_count=incorrect_count+excluded.incorrect_count""", (child_id, passage_id, score, total-score))
+        db.execute("""INSERT INTO reading_states (child_id,passage_id,correct_count,incorrect_count,updated_at) VALUES (?,?,?,?,?) ON CONFLICT(child_id,passage_id) DO UPDATE SET correct_count=correct_count+excluded.correct_count,incorrect_count=incorrect_count+excluded.incorrect_count,updated_at=excluded.updated_at""", (child_id, passage_id, score, total-score, now()))
         return {"passage_id": passage_id, "correctness": correctness, "answers": answers_snapshot, "score": score, "total": total}
