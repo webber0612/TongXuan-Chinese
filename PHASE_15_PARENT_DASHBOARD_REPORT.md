@@ -14,7 +14,8 @@ Phase 16 Long-term Curriculum was not started.
 - All activity and skill summaries are rebuilt from timestamped attempt/event rows. Current
   cumulative mastery/state rows are not used to infer historical activity.
 - Recognition, Writing, Word, Sentence, Pronunciation, Grammar, Idiom, Reading, and Reading
-  Aloud remain separate dimensions. No overall mastery score is generated.
+  Aloud remain separate dimensions. Reading Aloud is process activity only: completed/aborted
+  status, duration, locale, text kind, and metadata do not become correctness or mastery.
 - School Queue lifecycle is evaluated against the report end timestamp. Private-content and
   provenance fields remain visible.
 - Adaptive summary is requested on demand through the existing deterministic service and preserves
@@ -37,15 +38,31 @@ Phase 16 Long-term Curriculum was not started.
   change adaptive preferences, award/redeem points, or mutate OCR/Reading Aloud metadata.
 - No raw image bytes, audio bytes, external analytics, telemetry, or cloud export was added.
 - Child selection is explicit and all queries are filtered by the selected child.
+- Weekly score history includes only immutable completed tests and uses `completed_at`; pending
+  tests are exposed separately.
+- Review backlog is active as of the report end and is not restricted to items created inside the
+  selected activity window.
 
 ## Verification
 
-- Backend: `55 passed` with `PYTHONPATH=backend`.
-- Frontend: `17 passed` with Vitest.
+- Backend: `57 passed` with `PYTHONPATH=backend`.
+- Frontend: `18 passed` with Vitest.
 - Production build: passed with Vite/PWA assets generated.
 - Regression coverage includes child isolation, 7/30/all-time windows, event-based historical
-  counts, correct/incorrect/assisted separation, per-skill separation, read-only behavior, and
-  UI request/window contracts.
+  counts, correct/incorrect/assisted separation, Reading Aloud non-mastery activity, completed
+  Weekly Test history, historical Review backlog, per-skill separation, read-only behavior, and
+  actual DashboardPage child/window/section/refresh/GET-only behavior.
+
+## Architect Audit resolution
+
+- AUD-T15-01: Reading Aloud completed/aborted status is activity-only and contributes zero to
+  correctness, independent-correct, and incorrect totals.
+- AUD-T15-02: Weekly score history and recent score use completed immutable tests by `completed_at`;
+  pending tests are separate.
+- AUD-T15-03: Initial dashboard child selection is synchronized before the first report load.
+- AUD-T15-04: DashboardPage regression tests exercise the rendered page, switching, sections,
+  refresh, and GET-only/no-mutation behavior.
+- AUD-T15-05: Review backlog is evaluated active as-of report end, independent of creation window.
 
 ## Manual validation outstanding
 

@@ -48,3 +48,38 @@ def test_dashboard_rejects_invalid_window_and_unknown_child(tmp_path):
         child_id = api.post("/api/children", json={"name": "Alice"}).json()["id"]
         assert api.get("/api/dashboard", params={"child_id": child_id, "window": "bad"}).json()["detail"] == "invalid_window"
 
+
+def test_dashboard_keeps_reading_aloud_out_of_correctness_totals(tmp_path):
+    with client(tmp_path) as api:
+        child_id = api.post("/api/children", json={"name": "Alice"}).json()["id"]
+        from app.database import connect
+        with connect() as db:
+            db.execute("INSERT INTO reading_aloud_attempts (id,child_id,source_type,text_snapshot,text_kind,locale,started_at,completed_at,status) VALUES (?,?,?,?,?,?,?,?,?)", ("aloud-complete", child_id, "TRANSIENT_TEXT", "學", "character", "zh-TW", "2026-01-01 10:00:00", "2026-01-01 10:00:10", "COMPLETED"))
+            db.execute("INSERT INTO reading_aloud_attempts (id,child_id,source_type,text_snapshot,text_kind,locale,started_at,status) VALUES (?,?,?,?,?,?,?,?)", ("aloud-abort", child_id, "TRANSIENT_TEXT", "學", "character", "zh-TW", "2026-01-01 11:00:00", "ABORTED"))
+        result = api.get("/api/dashboard", params={"child_id": child_id, "window": "all", "to_at": "2026-01-02T00:00:00Z"}).json()
+        assert result["activity"]["attempts"]["correct"] == 0
+        assert result["activity"]["attempts"]["incorrect"] == 0
+        assert result["activity"]["attempts"]["independent_correct"] == 0
+        assert result["skills"]["reading_aloud"]["completed"] == 1
+        assert result["skills"]["reading_aloud"]["aborted"] == 1
+
+
+def test_dashboard_weekly_history_uses_completed_at_and_review_is_historical_as_of(tmp_path):
+    with client(tmp_path) as api:
+        child_id = api.post("/api/children", json={"name": "Alice"}).json()["id"]
+        from app.database import connect
+        with connect() as db:
+            db.execute("INSERT INTO weekly_tests (id,child_id,item_ids,correctness,score,total,created_at,completed_at) VALUES (?,?,?,?,?,?,?,?)", ("test-completed", child_id, "[]", '{"item": true}', 1, 1, "2025-12-01 00:00:00", "2026-01-05 00:00:00"))
+            db.execute("INSERT INTO weekly_tests (id,child_id,item_ids,total,created_at) VALUES (?,?,?,?,?)", ("test-pending", child_id, "[]", 1, "2026-01-04 00:00:00"))
+            db.execute("INSERT INTO review_queue_items (id,child_id,item_id,character,source_detail,reason,created_at) VALUES (?,?,?,?,?,?,?)", ("review-old", child_id, "missing-item", "學", "old", "miss", "2025-01-01 00:00:00"))
+        first = api.get("/api/dashboard", params={"child_id": child_id, "window": "7d", "to_at": "2026-01-06T00:00:00Z"}).json()
+        assert [entry["id"] for entry in first["weekly_tests"]["history"]] == ["test-completed"]
+        assert first["weekly_tests"]["recent"]["id"] == "test-completed"
+        assert [entry["id"] for entry in first["weekly_tests"]["pending"]] == ["test-pending"]
+        assert first["activity"]["review_count"] == 1
+        with connect() as db:
+            db.execute("UPDATE review_queue_items SET active=0,deactivated_at=? WHERE id=?", ("2026-01-05 00:00:00", "review-old"))
+        before_deactivation = api.get("/api/dashboard", params={"child_id": child_id, "window": "all", "to_at": "2026-01-04T00:00:00Z"}).json()
+        after_deactivation = api.get("/api/dashboard", params={"child_id": child_id, "window": "all", "to_at": "2026-01-06T00:00:00Z"}).json()
+        assert before_deactivation["activity"]["review_count"] == 1
+        assert after_deactivation["activity"]["review_count"] == 0

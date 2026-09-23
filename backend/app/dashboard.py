@@ -76,6 +76,11 @@ def _skill_summary(db: Any, child_id: int, skill: str, start: datetime | None, e
     trend: dict[str, dict[str, int]] = {}
     for row in rows:
         keys.add(str(row[key_column]))
+        if skill == "reading_aloud":
+            day = str(row[timestamp])[:10]
+            bucket = trend.setdefault(day, {"attempts": 0, "correct": 0, "incorrect": 0, "assisted": 0})
+            bucket["attempts"] += 1
+            continue
         if skill == "recognition":
             is_correct = row["result"] == "correct"
             is_incorrect = row["result"] == "incorrect"
@@ -107,7 +112,7 @@ def _skill_summary(db: Any, child_id: int, skill: str, start: datetime | None, e
         bucket["correct"] += int(is_correct)
         bucket["incorrect"] += int(is_incorrect)
         bucket["assisted"] += int(row["assisted"]) if "assisted" in row.keys() else 0
-    return {
+    result = {
         "correct": correct,
         "independent_correct": independent_correct,
         "incorrect": incorrect,
@@ -117,6 +122,10 @@ def _skill_summary(db: Any, child_id: int, skill: str, start: datetime | None, e
         "attempts": len(rows),
         "trend": [{"date": day, **trend[day]} for day in sorted(trend)],
     }
+    if skill == "reading_aloud":
+        result["completed"] = sum(row["status"] == "COMPLETED" for row in rows)
+        result["aborted"] = sum(row["status"] == "ABORTED" for row in rows)
+    return result
 
 
 def build_dashboard(*, child_id: int, window: str = "7d", from_at: str | None = None, to_at: str | None = None, adaptive_limit: int = 5) -> dict[str, Any]:
@@ -132,15 +141,17 @@ def build_dashboard(*, child_id: int, window: str = "7d", from_at: str | None = 
         active_school = [row for row in school if (row["completed"] == 0 or not row["completed_at"] or row["completed_at"] > end_text) and (row["active"] == 1 or not row["deactivated_at"] or row["deactivated_at"] > end_text)]
         due_school = [row for row in active_school if row["due_date"] and row["due_date"] <= end_text[:10]]
         completed_school = [row for row in school if row["completed_at"] and row["completed_at"] <= end_text]
-        review_where, review_args = _where("created_at", start, end)
+        review_where, review_args = _where("created_at", None, end)
         review_count = db.execute(f"SELECT COUNT(*) FROM review_queue_items WHERE child_id=? AND {review_where} AND (active=1 OR (deactivated_at IS NOT NULL AND deactivated_at>?))", [child_id, *review_args, end_text]).fetchone()[0]
         attempt_totals = {field: sum(skill_summary[skill][field] for skill in SKILLS) for field in ("attempts", "correct", "independent_correct", "incorrect", "assisted")}
         active_ids = {row["id"] for row in active_school}
         completed_ids = {row["id"] for row in completed_school}
         due_ids = {row["id"] for row in due_school}
         school_items = [{"id": row["id"], "source": row["school_source"], "due_date": row["due_date"], "private_content": bool(row["private_content"]), "provenance_status": row["provenance_status"], "active": row["id"] in active_ids, "completed": row["id"] in completed_ids, "due": row["id"] in due_ids} for row in school]
-        test_where, test_args = _where("created_at", start, end)
-        tests = db.execute(f"SELECT * FROM weekly_tests WHERE child_id=? AND {test_where} ORDER BY created_at,id", [child_id, *test_args]).fetchall()
+        test_where, test_args = _where("completed_at", start, end)
+        tests = db.execute(f"SELECT * FROM weekly_tests WHERE child_id=? AND completed_at IS NOT NULL AND {test_where} ORDER BY completed_at,id", [child_id, *test_args]).fetchall()
+        pending_where, pending_args = _where("created_at", start, end)
+        pending_tests = db.execute(f"SELECT id,created_at,total FROM weekly_tests WHERE child_id=? AND completed_at IS NULL AND {pending_where} ORDER BY created_at,id", [child_id, *pending_args]).fetchall()
         test_history = [{"id": row["id"], "score": row["score"], "total": row["total"], "created_at": row["created_at"], "completed_at": row["completed_at"], "missed_items": [key for key, value in (json.loads(row["correctness"] or "{}").items()) if not value]} for row in tests]
         points = db.execute("SELECT * FROM points_ledger WHERE child_id=? AND timestamp<=? ORDER BY timestamp,id", (child_id, end_text)).fetchall()
         redemptions = db.execute("SELECT id,reward_id,cost,created_at FROM reward_redemptions WHERE child_id=? AND created_at<=? ORDER BY created_at,id", (child_id, end_text)).fetchall()
@@ -154,7 +165,7 @@ def build_dashboard(*, child_id: int, window: str = "7d", from_at: str | None = 
         "activity": {"attempts": attempt_totals, "active_school_queue": len(active_school), "completed_school_queue": len(completed_school), "due_school_queue": len(due_school), "review_count": review_count, "adaptive": {"as_of": adaptive["as_of"], "items": adaptive["items"]}},
         "skills": skill_summary,
         "school_queue": {"active": len(active_school), "completed": len(completed_school), "due": len(due_school), "items": school_items},
-        "weekly_tests": {"recent": test_history[-1] if test_history else None, "history": test_history},
+        "weekly_tests": {"recent": test_history[-1] if test_history else None, "history": test_history, "pending": [dict(row) for row in pending_tests]},
         "points_rewards": {"balance": sum(row["points_delta"] for row in points), "ledger": [dict(row) for row in points if not start or row["timestamp"] >= _stamp(start)], "redemptions": [dict(row) for row in redemptions]},
         "reading_aloud": {"attempts": len(aloud), "completed": sum(row["status"] == "COMPLETED" for row in aloud), "aborted": sum(row["status"] == "ABORTED" for row in aloud), "items": [dict(row) for row in aloud]},
         "ocr": {"candidates": sum(row["review_status"] == "CANDIDATE" for row in ocr), "confirmed": sum(row["review_status"] == "CONFIRMED" for row in ocr), "items": [dict(row) for row in ocr]},

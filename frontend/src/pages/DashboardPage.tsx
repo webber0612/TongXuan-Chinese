@@ -22,7 +22,7 @@ export function DashboardPage() {
     try { setError(""); setDashboard(await api<any>(buildDashboardPath(id, selectedWindow))); }
     catch (value) { setError(value instanceof Error ? value.message : "dashboard_failed"); }
   }
-  useEffect(() => { void api<Child[]>("/api/children").then((value) => { setChildren(value); if (value[0]) void refresh(value[0].id); }); }, []);
+  useEffect(() => { void api<Child[]>("/api/children").then((value) => { setChildren(value); if (value[0]) { setChildId(value[0].id); void refresh(value[0].id); } }); }, []);
 
   return <main><header><p className="eyebrow">PHASE 15 · READ-ONLY FAMILY VIEW</p><h1>Parent Dashboard</h1><p>Event-based summaries only. Viewing this page does not create attempts or change learning state.</p></header>
     <section className="card"><h2>Child and time window</h2><select aria-label="Dashboard child" value={childId ?? ""} onChange={(event) => { const id = Number(event.target.value); setChildId(id); void refresh(id); }}>{children.map((child) => <option key={child.id} value={child.id}>{child.name}</option>)}</select><select aria-label="Dashboard time window" value={window} onChange={(event) => { const value = event.target.value as DashboardWindow; setWindow(value); void refresh(childId, value); }}><option value="7d">{dashboardWindowLabel("7d")}</option><option value="30d">{dashboardWindowLabel("30d")}</option><option value="all">{dashboardWindowLabel("all")}</option></select><button onClick={() => void refresh()}>Refresh report</button>{dashboard && <small>Events through {dashboard.window.to}; no cumulative-state inference.</small>}{error && <p role="alert">{error}</p>}</section>
