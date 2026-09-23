@@ -16,6 +16,7 @@ class Settings:
     allowed_origins: tuple[str, ...]
     auth_secret: str
     build_target: str
+    parent_password: str
 
 
 def load_settings() -> Settings:
@@ -29,6 +30,7 @@ def load_settings() -> Settings:
         allowed_origins=origins,
         auth_secret=os.getenv("TONGXUAN_AUTH_SECRET", ""),
         build_target=os.getenv("BUILD_TARGET", "family").strip().lower(),
+        parent_password=os.getenv("TONGXUAN_PARENT_PASSWORD", "test-parent-password" if environment in {"development", "test"} else ""),
     )
 
 
@@ -47,4 +49,6 @@ def validate_settings(settings: Settings) -> list[str]:
             errors.append("production_auth_secret_required")
         if not settings.allowed_origins or "*" in settings.allowed_origins:
             errors.append("production_cors_origins_required")
+        if settings.parent_password == "" or len(settings.parent_password) < 12:
+            errors.append("production_parent_password_required")
     return errors

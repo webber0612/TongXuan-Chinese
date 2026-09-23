@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { buildDashboardPath, DASHBOARD_SKILLS, dashboardWindowLabel, DashboardWindow } from "../lib/dashboard";
 
 const API = import.meta.env.VITE_API_BASE ?? "";
@@ -16,16 +16,34 @@ export function DashboardPage() {
   const [window, setWindow] = useState<DashboardWindow>("7d");
   const [dashboard, setDashboard] = useState<any>(null);
   const [error, setError] = useState("");
+  const [childrenLoading, setChildrenLoading] = useState(true);
+  const [childrenError, setChildrenError] = useState("");
+  const [reportLoading, setReportLoading] = useState(false);
+  const requestSerial = useRef(0);
 
   async function refresh(id = childId, selectedWindow = window) {
     if (!id) return;
-    try { setError(""); setDashboard(await api<any>(buildDashboardPath(id, selectedWindow))); }
-    catch (value) { setError(value instanceof Error ? value.message : "dashboard_failed"); }
+    const serial = ++requestSerial.current;
+    setReportLoading(true); setError(""); setDashboard(null);
+    try {
+      const next = await api<any>(buildDashboardPath(id, selectedWindow));
+      if (serial === requestSerial.current) setDashboard(next);
+    } catch (value) { if (serial === requestSerial.current) setError(value instanceof Error ? value.message : "dashboard_failed"); }
+    finally { if (serial === requestSerial.current) setReportLoading(false); }
   }
-  useEffect(() => { void api<Child[]>("/api/children").then((value) => { setChildren(value); if (value[0]) { setChildId(value[0].id); void refresh(value[0].id); } }); }, []);
+  async function loadChildren() {
+    setChildrenLoading(true); setChildrenError("");
+    try {
+      const value = await api<Child[]>("/api/children");
+      setChildren(value);
+      if (value[0]) { setChildId(value[0].id); void refresh(value[0].id, window); }
+    } catch (value) { setChildrenError(value instanceof Error ? value.message : "children_failed"); }
+    finally { setChildrenLoading(false); }
+  }
+  useEffect(() => { void loadChildren(); return () => { requestSerial.current += 1; }; }, []);
 
   return <main><header><p className="eyebrow">PHASE 15 · READ-ONLY FAMILY VIEW</p><h1>Parent Dashboard</h1><p>Event-based summaries only. Viewing this page does not create attempts or change learning state.</p></header>
-    <section className="card"><h2>Child and time window</h2><select aria-label="Dashboard child" value={childId ?? ""} onChange={(event) => { const id = Number(event.target.value); setChildId(id); void refresh(id); }}>{children.map((child) => <option key={child.id} value={child.id}>{child.name}</option>)}</select><select aria-label="Dashboard time window" value={window} onChange={(event) => { const value = event.target.value as DashboardWindow; setWindow(value); void refresh(childId, value); }}><option value="7d">{dashboardWindowLabel("7d")}</option><option value="30d">{dashboardWindowLabel("30d")}</option><option value="all">{dashboardWindowLabel("all")}</option></select><button onClick={() => void refresh()}>Refresh report</button>{dashboard && <small>Events through {dashboard.window.to}; no cumulative-state inference.</small>}{error && <p role="alert">{error}</p>}</section>
+    <section className="card"><h2>Child and time window</h2>{childrenLoading && <p role="status">正在載入孩子名單…</p>}{!childrenLoading && childrenError && <p className="field-error" role="alert">{childrenError} <button className="button button-text" onClick={() => void loadChildren()}>重試</button></p>}{!childrenLoading && !childrenError && children.length === 0 && <div className="empty-state"><div><h3>目前沒有可查看的孩子</h3><p>請先建立家庭成員，再回到這裡查看進度。</p></div><button className="button button-secondary" onClick={() => void loadChildren()}>重新載入</button></div>}{children.length > 0 && <><select aria-label="Dashboard child" value={childId ?? ""} onChange={(event) => { const id = Number(event.target.value); setChildId(id); void refresh(id, window); }}>{children.map((child) => <option key={child.id} value={child.id}>{child.name}</option>)}</select><select aria-label="Dashboard time window" value={window} onChange={(event) => { const value = event.target.value as DashboardWindow; setWindow(value); void refresh(childId, value); }}><option value="7d">{dashboardWindowLabel("7d")}</option><option value="30d">{dashboardWindowLabel("30d")}</option><option value="all">{dashboardWindowLabel("all")}</option></select><button onClick={() => void refresh()} disabled={reportLoading}>{reportLoading ? "Loading…" : "Refresh report"}</button></>}{reportLoading && <p role="status">正在更新只讀報告…</p>}{dashboard && <small>Events through {dashboard.window.to}; no cumulative-state inference.</small>}{error && <p role="alert">{error}</p>}</section>
     {dashboard && <>
       <section className="grid">{[["Attempts", dashboard.activity.attempts.attempts], ["Correct", dashboard.activity.attempts.independent_correct], ["Incorrect", dashboard.activity.attempts.incorrect], ["Assisted", dashboard.activity.attempts.assisted], ["Active School Queue", dashboard.school_queue.active], ["Due School Queue", dashboard.school_queue.due], ["Review", dashboard.activity.review_count]].map(([label, value]) => <div className="result" key={label as string}><strong>{label}</strong><span>{value}</span></div>)}</section>
       <section className="card"><h2>Skill summary</h2><div className="grid">{DASHBOARD_SKILLS.map((skill) => { const summary = dashboard.skills[skill]; return <div className="result" key={skill}><strong>{skill}</strong><span>{summary.attempts} attempts · {summary.independent_correct} independent correct · {summary.incorrect} incorrect · {summary.assisted} assisted</span><small>{summary.distinct_practiced_items} distinct items · last {summary.last_practiced ?? "never"}</small></div>; })}</div></section>

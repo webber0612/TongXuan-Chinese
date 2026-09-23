@@ -92,3 +92,16 @@ def require_child_access(request: Request, child_id: int) -> Session | None:
 def require_production_session(request: Request) -> Session | None:
     from .config import load_settings
     return authenticate(request) if load_settings().environment == "production" else None
+
+
+def require_reward_redemption_access(request: Request, child_id: int) -> Session | None:
+    """Require an authenticated parent/privileged session for production redemption."""
+    from .config import load_settings
+    if load_settings().environment != "production":
+        return None
+    session = authenticate(request)
+    if session.role not in {"parent", "developer", "admin"}:
+        raise HTTPException(status_code=403, detail="reward_redemption_role_required")
+    if session.role == "parent" and child_id not in session.child_ids:
+        raise HTTPException(status_code=403, detail="child_access_denied")
+    return session

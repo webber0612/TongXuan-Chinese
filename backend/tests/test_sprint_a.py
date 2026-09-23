@@ -154,7 +154,7 @@ def test_points_idempotency_balance_redemption_and_mastery_separation(tmp_path):
         assert points["balance"] == 5
         assert len(points["ledger"]) == 1
         reward = points["rewards"][0]
-        assert api.post(f"/api/points/redeem/{reward['id']}", params={"child_id": child_id}).status_code == 400
+        assert api.post(f"/api/points/redeem/{reward['id']}", params={"child_id": child_id}, json={"parent_password": "test-parent-password"}).status_code == 400
 
 
 def test_successful_redemption_is_auditable_and_does_not_change_mastery(tmp_path):
@@ -174,7 +174,7 @@ def test_successful_redemption_is_auditable_and_does_not_change_mastery(tmp_path
             before = [dict(row) for row in db.execute("SELECT * FROM recognition_states WHERE child_id=? ORDER BY item_id", (child_id,))]
         points = api.get("/api/points", params={"child_id": child_id}).json()
         reward = points["rewards"][0]
-        redemption = api.post(f"/api/points/redeem/{reward['id']}", params={"child_id": child_id})
+        redemption = api.post(f"/api/points/redeem/{reward['id']}", params={"child_id": child_id}, json={"parent_password": "test-parent-password"})
         assert redemption.status_code == 200
         assert redemption.json()["cost"] == 20
         after_points = api.get("/api/points", params={"child_id": child_id}).json()

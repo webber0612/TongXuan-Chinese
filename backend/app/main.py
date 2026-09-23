@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sqlite3
 import logging
+import hmac
 import re
 import time
 import uuid
@@ -23,7 +24,7 @@ from .curriculum import get_curriculum, record_progress, seed_catalog
 from .tutor import tutor_response
 from .commercialization import audit_registry
 from .auth import authenticate, require_commercialization_admin
-from .auth import require_child_access, require_production_session
+from .auth import require_child_access, require_production_session, require_reward_redemption_access
 from .config import load_settings, validate_settings
 from .production import readiness, structured_error
 from .learning import (
@@ -310,6 +311,10 @@ class TutorRequest(BaseModel):
     locale: str | None = None
     script: str | None = None
     as_of: str | None = None
+
+
+class RewardRedemptionRequest(BaseModel):
+    parent_password: str = Field(min_length=1, max_length=256)
 
 
 @app.get("/api/children")
@@ -633,7 +638,11 @@ def get_points(child_id: int) -> dict[str, object]:
 
 
 @app.post("/api/points/redeem/{reward_id}")
-def post_redeem(reward_id: str, child_id: int) -> dict[str, object]:
+def post_redeem(reward_id: str, child_id: int, request: RewardRedemptionRequest, http_request: Request) -> dict[str, object]:
+    require_reward_redemption_access(http_request, child_id)
+    settings = load_settings()
+    if not hmac.compare_digest(request.parent_password, settings.parent_password):
+        raise HTTPException(status_code=403, detail="invalid_parent_password")
     try:
         return redeem_reward(child_id, reward_id)
     except ValueError as error:

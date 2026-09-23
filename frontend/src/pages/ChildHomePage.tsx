@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Reward, PARENT_GATE_NOTE, validateParentPassword } from "../lib/parentGate";
+import { Reward, PARENT_GATE_NOTE, isPasswordEntered } from "../lib/parentGate";
 
 const API = import.meta.env.VITE_API_BASE ?? "";
 type QueueItem = { id: string; character: string; source?: string; source_detail?: string; priority?: number };
@@ -26,6 +26,7 @@ export function ChildHomePage({ child, childName, onOpenPractice }: ChildHomePro
   const [gateReward, setGateReward] = useState<Reward | null>(null);
   const [password, setPassword] = useState("");
   const [gateError, setGateError] = useState("");
+  const [redeeming, setRedeeming] = useState(false);
   const lastFocused = useRef<HTMLElement | null>(null);
 
   async function refresh() {
@@ -53,12 +54,14 @@ export function ChildHomePage({ child, childName, onOpenPractice }: ChildHomePro
 
   async function redeem() {
     if (!child || !gateReward) return;
-    if (!validateParentPassword(password)) { setGateError("請輸入家長密語「家長」以確認兌換。"); return; }
+    if (!isPasswordEntered(password)) { setGateError("請輸入家長密碼，交由後端驗證。"); return; }
+    setRedeeming(true); setGateError("");
     try {
-      await api(`/api/points/redeem/${gateReward.id}?child_id=${child.id}`, { method: "POST", body: "{}" });
+      await api(`/api/points/redeem/${gateReward.id}?child_id=${child.id}`, { method: "POST", body: JSON.stringify({ parent_password: password }) });
       setMessage(`已送出「${gateReward.name}」兌換，後端已完成權限檢查。`);
       setGateReward(null); setPassword(""); setGateError(""); await refresh();
     } catch (value) { setGateError(value instanceof Error ? value.message : "兌換失敗，請稍後再試。"); }
+    finally { setRedeeming(false); }
   }
 
   const next = [...queue].sort((left, right) => (right.priority ?? 0) - (left.priority ?? 0))[0];
@@ -78,7 +81,7 @@ export function ChildHomePage({ child, childName, onOpenPractice }: ChildHomePro
       <article className="soft-panel reward-panel"><div className="section-heading"><div><p className="eyebrow">小小獎勵</p><h2>點數 {points?.balance ?? "—"}</h2></div><span className="reward-star" aria-hidden="true">★</span></div>{points?.rewards?.length ? <div className="reward-list">{points.rewards.slice(0, 2).map((reward: Reward) => <div className="reward-row" key={reward.id}><div><strong>{reward.name}</strong><small>{reward.description ?? "完成練習後兌換"}</small></div><button className="button button-secondary" disabled={!child || (points?.balance ?? 0) < reward.cost} onClick={(event) => { lastFocused.current = event.currentTarget; setGateReward(reward); setGateError(""); }}>兌換 {reward.cost}</button></div>)}</div> : <p className="muted">完成學習後，這裡會出現你的獎勵。</p>}</article>
       </section>
     </>}
-    {gateReward && <div className="dialog-backdrop" role="presentation"><div className="dialog" role="dialog" aria-modal="true" aria-labelledby="reward-dialog-title"><button className="dialog-close" aria-label="關閉家長確認視窗" onClick={closeGate}>×</button><p className="eyebrow">家長確認</p><h2 id="reward-dialog-title">兌換「{gateReward.name}」</h2><p>請請家長確認這次兌換。這個確認只在本機介面使用。</p><label htmlFor="parent-password">家長密語</label><input id="parent-password" autoFocus type="password" value={password} onChange={(event) => setPassword(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void redeem(); }} placeholder="輸入家長" />{gateError && <p className="field-error" role="alert">{gateError}</p>}<p className="dialog-note">{PARENT_GATE_NOTE}</p><div className="dialog-actions"><button className="button button-secondary" onClick={closeGate}>先不要</button><button className="button button-primary" onClick={() => void redeem()}>確認兌換</button></div></div></div>}
+    {gateReward && <div className="dialog-backdrop" role="presentation"><div className="dialog" role="dialog" aria-modal="true" aria-labelledby="reward-dialog-title"><button className="dialog-close" aria-label="關閉家長確認視窗" onClick={closeGate} disabled={redeeming}>×</button><p className="eyebrow">家長確認</p><h2 id="reward-dialog-title">兌換「{gateReward.name}」</h2><p>請請家長確認。密碼會送到後端驗證。</p><label htmlFor="parent-password">家長密碼</label><input id="parent-password" autoFocus type="password" value={password} disabled={redeeming} onChange={(event) => setPassword(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void redeem(); }} placeholder="輸入家長密碼" />{gateError && <p className="field-error" role="alert">{gateError}</p>}<p className="dialog-note">{PARENT_GATE_NOTE}</p><div className="dialog-actions"><button className="button button-secondary" onClick={closeGate} disabled={redeeming}>取消</button><button className="button button-primary" onClick={() => void redeem()} disabled={redeeming || !password.trim()}>{redeeming ? "驗證中…" : "確認兌換"}</button></div></div></div>}
     {message && <p className="sr-status" role="status">{message}</p>}
   </main>;
 }

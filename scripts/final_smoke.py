@@ -35,12 +35,12 @@ def run_smoke(dist: Path | None = None) -> dict[str, Any]:
     from backend.app.production import backup_database, restore_database
     from scripts.production_check import check_dist
 
-    env_keys = ("TONGXUAN_ENV", "BUILD_TARGET", "TONGXUAN_DB_PATH", "TONGXUAN_BACKUP_DIR", "TONGXUAN_AUTH_SECRET", "TONGXUAN_ALLOWED_ORIGINS")
+    env_keys = ("TONGXUAN_ENV", "BUILD_TARGET", "TONGXUAN_DB_PATH", "TONGXUAN_BACKUP_DIR", "TONGXUAN_AUTH_SECRET", "TONGXUAN_PARENT_PASSWORD", "TONGXUAN_ALLOWED_ORIGINS")
     previous = {key: os.environ.get(key) for key in env_keys}
     temporary = tempfile.mkdtemp(prefix="tongxuan-phase20-")
     try:
         root = Path(temporary)
-        os.environ.update({"TONGXUAN_ENV": "production", "BUILD_TARGET": "family", "TONGXUAN_DB_PATH": str(root / "data.sqlite3"), "TONGXUAN_BACKUP_DIR": str(root / "backups"), "TONGXUAN_AUTH_SECRET": "phase20-smoke-secret-01234567890123456789", "TONGXUAN_ALLOWED_ORIGINS": "https://family.example"})
+        os.environ.update({"TONGXUAN_ENV": "production", "BUILD_TARGET": "family", "TONGXUAN_DB_PATH": str(root / "data.sqlite3"), "TONGXUAN_BACKUP_DIR": str(root / "backups"), "TONGXUAN_AUTH_SECRET": "phase20-smoke-secret-01234567890123456789", "TONGXUAN_PARENT_PASSWORD": "phase20-parent-password-012345", "TONGXUAN_ALLOWED_ORIGINS": "https://family.example"})
         from backend.app.main import app
         admin = {"Authorization": f"Bearer {issue_session(subject='admin', role='admin')}"}
         with TestClient(app) as api:

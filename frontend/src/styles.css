@@ -10,9 +10,9 @@
   --line: #dfe7e2;
   --navy: #244554;
   --navy-soft: #e5eff0;
-  --coral: #db735d;
+  --coral: #a54836;
   --coral-soft: #fae8df;
-  --mint: #6e9d8e;
+  --mint: #366b5b;
   --mint-soft: #e4f1e9;
   --sun: #e5aa50;
   --shadow: 0 10px 30px rgba(36, 69, 84, .08);
@@ -21,7 +21,7 @@
 body { margin: 0; min-width: 320px; background: var(--canvas); color: var(--ink); }
 button, input, select, textarea { font: inherit; }
 button { cursor: pointer; }
-button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible { outline: 3px solid #e5aa50; outline-offset: 3px; }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible { outline: 3px solid #8a5a00; outline-offset: 3px; }
 a { color: inherit; }
 h1, h2, h3, p { margin-top: 0; }
 h1 { font-size: clamp(2rem, 4vw, 3.6rem); letter-spacing: -.04em; line-height: 1.08; margin-bottom: 16px; }

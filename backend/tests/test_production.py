@@ -18,6 +18,7 @@ def make_production_client(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("TONGXUAN_DB_PATH", str(tmp_path / "production.sqlite3"))
     monkeypatch.setenv("TONGXUAN_BACKUP_DIR", str(tmp_path / "backups"))
     monkeypatch.setenv("TONGXUAN_AUTH_SECRET", "production-test-secret-0123456789012345")
+    monkeypatch.setenv("TONGXUAN_PARENT_PASSWORD", "production-test-parent-password")
     monkeypatch.setenv("TONGXUAN_ALLOWED_ORIGINS", "https://family.example")
     from app.main import app
     return TestClient(app)

@@ -464,11 +464,20 @@ Final state:
   Architect PASS; do not merge or start Phase 21.
 - The child-first frontend redesign is implemented on `ui/child-first-redesign` from the current
   `origin/main`. It adds a responsive app shell, two default child profiles plus a parent manager,
-  local profile switching/add-user persistence, a touch-first daily route, visible parent area,
-  settings, accessible dialogs, reduced-motion support, loading/empty/error/success states, and
-  a visual reward redemption flow. Existing API contracts and learning semantics are preserved;
-  the parent password is a frontend UX gate only, not server security. Frontend tests and the
-  production build are required before this branch is reviewed. Do not merge automatically.
+  stable backend-ID profile binding, real `POST /api/children` add-user persistence, a touch-first
+  daily route, visible parent area, settings, accessible dialogs, reduced-motion support,
+  loading/empty/error/success states, race-safe dashboard refresh and child switching, and a visual
+  reward redemption flow. Existing learning semantics are preserved. Reward redemption now uses a
+  server-verified `TONGXUAN_PARENT_PASSWORD` (required in production, minimum 12 characters),
+  constant-time comparison, and production parent/developer/admin session authorization; the
+  frontend is only the password-entry UX and never claims to provide security by itself. Local
+  development/tests may use the documented `test-parent-password` default or an explicit env
+  override; passwords are never logged or returned. The app shell listens for browser `popstate`.
+  The Phase UI audit regression suite and production build are required before review. Do not merge
+  automatically.
+- The Phase UI audit also updated `scripts/final_smoke.py` to provide and restore the production
+  parent-password environment during the canonical root smoke command, keeping fail-closed
+  readiness checks compatible with the release-candidate harness.
 
 Remaining validation:
 - real iPad Safari;

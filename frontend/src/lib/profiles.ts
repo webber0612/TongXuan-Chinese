@@ -36,6 +36,14 @@ export function selectProfile(profiles: Profile[], key: string): Profile {
   return profiles.find((profile) => profile.key === key) ?? profiles[0] ?? defaultProfiles[0];
 }
 
+export function reconcileProfiles(children: Array<{ id: number; name: string }>, saved: Profile[] = defaultProfiles): Profile[] {
+  const parent = saved.find((profile) => profile.role === "parent") ?? defaultProfiles.find((profile) => profile.role === "parent")!;
+  return [...children.map((child, index) => {
+    const previous = saved.find((profile) => profile.role === "child" && profile.childId === child.id);
+    return { key: `child-${child.id}`, name: child.name, role: "child" as const, childId: child.id, color: previous?.color ?? (index % 2 ? "mint" : "coral") };
+  }), { ...parent, key: "parent", childId: null }];
+}
+
 export function addChildProfile(profiles: Profile[], name: string): Profile[] {
   const cleanName = name.trim();
   if (!cleanName) return profiles;

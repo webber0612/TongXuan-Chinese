@@ -1,8 +1,8 @@
 export type Reward = { id: string; name: string; cost: number; description?: string };
 
-/** The parent password is a UX gate only; backend authorization remains authoritative. */
-export const PARENT_GATE_NOTE = "這是前端確認流程，不是伺服器安全邊界。兌換仍受後端權限保護。";
+/** The password is sent to the backend for verification and is never treated as UI-only security. */
+export const PARENT_GATE_NOTE = "密碼只送給後端驗證，不會由前端保存或回傳；後端 session 與 child scope 才是安全邊界。";
 
-export function validateParentPassword(value: string, expected = "家長") {
-  return value.trim() === expected;
+export function isPasswordEntered(value: string) {
+  return value.trim().length > 0;
 }
