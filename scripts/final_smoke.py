@@ -5,8 +5,14 @@ import os
 import tempfile
 import gc
 import shutil
+import sys
 from pathlib import Path
 from typing import Any
+
+# Support the canonical repository-root command without requiring PYTHONPATH.
+REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+if str(REPOSITORY_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPOSITORY_ROOT))
 
 from fastapi.testclient import TestClient
 

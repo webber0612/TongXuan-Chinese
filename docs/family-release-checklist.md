@@ -9,7 +9,8 @@ legal, or paid-license claim.
 - [x] Frontend test suite passes.
 - [x] Production build completes.
 - [x] `scripts/production_check.py` validates `index.html`, manifest, service worker, and standalone PWA metadata.
-- [x] `scripts/final_smoke.py` covers all existing learning domains, child isolation, private School Queue provenance, source-bound locale rejection, read-only snapshot invariance, readiness, and backup/restore.
+- [x] From the repository root, `python scripts/final_smoke.py` runs without a manually pre-set `PYTHONPATH` and covers all existing learning domains, child isolation, private School Queue provenance, source-bound locale rejection, read-only snapshot invariance, readiness, and backup/restore.
+- [x] `python scripts/test_final_smoke_command.py` verifies the canonical root command with `PYTHONPATH` removed.
 - [x] Commercialization Gate remains Family-compatible with unresolved commercial blockers visible to developer/admin only.
 
 ## Manual NAS checks

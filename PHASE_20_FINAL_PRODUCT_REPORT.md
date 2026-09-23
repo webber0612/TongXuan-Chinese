@@ -14,6 +14,15 @@ SQLite database and fixed source text. It exercises all existing domains: Recogn
 private School Queue, TTS, Reading Aloud, OCR, Tutor, Adaptive, Parent Dashboard, and the
 developer/admin Commercialization readiness boundary.
 
+Canonical repository-root invocation (no manually pre-set `PYTHONPATH` required):
+
+```powershell
+python scripts/final_smoke.py
+```
+
+`scripts/test_final_smoke_command.py` is the command-level regression that executes this exact
+invocation with `PYTHONPATH` removed from its environment.
+
 The harness asserts:
 
 - Alice and Bob sessions cannot cross child scope.

@@ -458,8 +458,10 @@ Final state:
   `origin/main` `04e3f88`; it adds the deterministic seeded end-to-end smoke harness, cross-domain
   child/private-provenance/source-locale checks, read-only snapshot verification, family packaging
   and PWA artifact checks, backup/restore smoke coverage, commercial blocker fidelity, release notes,
-  and operator/manual NAS/iPad checklist. It is awaiting Architect PASS; do not merge or start
-  Phase 21.
+  and operator/manual NAS/iPad checklist. The canonical verification command is
+  `python scripts/final_smoke.py` from the repository root (no pre-set `PYTHONPATH` required),
+  with `python scripts/test_final_smoke_command.py` as its command regression. It is awaiting
+  Architect PASS; do not merge or start Phase 21.
 
 Remaining validation:
 - real iPad Safari;

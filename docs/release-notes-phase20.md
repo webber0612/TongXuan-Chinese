@@ -12,6 +12,9 @@
   readiness-aware deployment checks.
 - Family packaging, operator handoff, NAS/iPad manual checklist, known limitations, and
   commercial-blocker fidelity documentation.
+- The canonical smoke command is `python scripts/final_smoke.py` from the repository root; it
+  bootstraps the repository path itself and does not require a pre-set `PYTHONPATH`. The command
+  regression is `python scripts/test_final_smoke_command.py`.
 
 ## Boundaries and limitations
 
