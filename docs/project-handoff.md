@@ -253,8 +253,8 @@ The active collaboration model is manual trigger + GitHub handoff:
 - Product Owner tells Codex to read GitHub.
 - Product Owner tells ChatGPT to inspect new GitHub changes.
 
-Phases 11–18 are complete and merged. Phase 19 Production Hardening is the currently assigned
-Phase on `phase19/production-hardening` from `origin/main` `47361e4`; do not start Phase 20.
+Phases 11–19 are complete and merged. Phase 20 Final Product is the currently assigned
+Phase on `phase20/final-product` from `origin/main` `04e3f88`; do not start Phase 21.
 
 ---
 
@@ -446,15 +446,20 @@ Final state:
   replacement registry, manifest/provider inventory reconciliation, server-verified developer/admin
   readiness view, private School Queue enforcement, repository source-of-truth inventory manifest,
   package-lock reconciliation, stale-path detection, drift detection, and regression tests are
-  complete and awaiting Architect Audit. No legal or paid-license decision is claimed.
+  complete and retained in merged `main`. No legal or paid-license decision is claimed.
 
 - Phase 19 Production Hardening is implemented on `phase19/production-hardening` from merged
   `origin/main` `47361e4`; deterministic health/readiness, fail-closed production config,
   versioned additive schema migration, non-destructive backup/restore, privacy-safe errors,
   CORS/child/admin boundaries, mutation authorization, SQLite safety policy, structured redacted
   request logging, PWA checks, readiness-aware deployment wiring, runbook, and regression tests
-  are complete.
-  Do not merge automatically or start Phase 20.
+  are complete and retained in merged `main`.
+- Phase 20 Final Product is implemented on `phase20/final-product` from merged
+  `origin/main` `04e3f88`; it adds the deterministic seeded end-to-end smoke harness, cross-domain
+  child/private-provenance/source-locale checks, read-only snapshot verification, family packaging
+  and PWA artifact checks, backup/restore smoke coverage, commercial blocker fidelity, release notes,
+  and operator/manual NAS/iPad checklist. It is awaiting Architect PASS; do not merge or start
+  Phase 21.
 
 Remaining validation:
 - real iPad Safari;
@@ -462,5 +467,5 @@ Remaining validation:
 - Synology DS723+ deployment/persistence;
 - real-child usability / parent workflow trial.
 
-Continuous development authorization is active. Phase 19 is the current assigned Phase; do not
-start Phase 20.
+Continuous development authorization is active. Phase 20 is the current assigned Phase; do not
+start Phase 21.
