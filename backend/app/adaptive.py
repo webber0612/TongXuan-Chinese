@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from .database import connect, initialize_database
+from .lifecycle import reconstruct_lifecycle
 from .learning import ensure_child
 
 WEIGHTS = {"overdue": 30, "recent_error": 25, "assisted": 10, "low_independent": 15, "repeated_misses": 10, "staleness": 5, "school_urgency": 20, "review_reason": 15, "novelty": 10, "preference": 20, "source_balance": 8, "skill_balance": 12}
@@ -116,11 +117,12 @@ def _rank(candidates: list[dict[str, Any]], limit: int, adaptive: bool) -> list[
     return sorted(selected[:limit], key=lambda item: (-item["ranking_score"], SOURCES.index(item["source"]), SKILLS.index(item["skill"]), item["source_id"]))
 
 
-def build_adaptive_plan(*, child_id: int, as_of: str, limit: int, adaptive: bool, preference: str | None) -> dict[str, Any]:
+def build_adaptive_plan(*, child_id: int, as_of: str, limit: int, adaptive: bool, preference: str | None, initialize: bool = True) -> dict[str, Any]:
     if not 1 <= limit <= 50: raise ValueError("invalid_limit")
     if preference not in {None, *SOURCES}: raise ValueError("invalid_preference")
     as_of_dt, as_of_text = _as_of(as_of)
-    initialize_database()
+    if initialize:
+        initialize_database()
     with connect() as db:
         ensure_child(db, child_id)
         candidates: list[dict[str, Any]] = []
@@ -128,13 +130,14 @@ def build_adaptive_plan(*, child_id: int, as_of: str, limit: int, adaptive: bool
             state = _historical_state(db, child_id, "recognition", row["id"], as_of_dt)
             recent = _recent_incorrect(db, "recognition_attempts", "item_id", row["id"], "timestamp", "result='incorrect'", child_id, as_of_dt)
             candidates.append(_candidate(item_id=row["id"], child_id=child_id, source="CURRICULUM", skill="recognition", text=row["character"], source_id=row["id"], source_detail=row["curriculum_source"], state=state, as_of=as_of_dt, preference=preference, recent=recent, item_created=row["created_at"]))
-        for row in db.execute("""SELECT * FROM school_queue_items WHERE child_id=? AND created_at<=?
-          AND (completed=0 OR (completed_at IS NOT NULL AND completed_at>?))
-          AND (active=1 OR (deactivated_at IS NOT NULL AND deactivated_at>?)) ORDER BY id""", (child_id, as_of_text, as_of_text, as_of_text)):
+        for row in db.execute("SELECT * FROM school_queue_items WHERE child_id=? AND created_at<=? ORDER BY id", (child_id, as_of_text)):
+            if not reconstruct_lifecycle(row, as_of_dt)["active"]:
+                continue
             empty = {"independent_correct": 0, "incorrect": 0, "assisted": 0, "latest": None, "due_at": None}
             candidates.append(_candidate(item_id=row["id"], child_id=child_id, source="SCHOOL_QUEUE", skill="recognition", text=row["character"], source_id=row["id"], source_detail=row["school_source"], state=empty, as_of=as_of_dt, preference=preference, school_due=row["due_date"], school_priority=row["priority"], item_created=row["created_at"]))
-        for row in db.execute("""SELECT * FROM review_queue_items WHERE child_id=? AND created_at<=?
-          AND (active=1 OR (deactivated_at IS NOT NULL AND deactivated_at>?)) ORDER BY id""", (child_id, as_of_text, as_of_text)):
+        for row in db.execute("SELECT * FROM review_queue_items WHERE child_id=? AND created_at<=? ORDER BY id", (child_id, as_of_text)):
+            if not reconstruct_lifecycle(row, as_of_dt)["active"]:
+                continue
             state = _historical_state(db, child_id, "recognition", row["item_id"], as_of_dt)
             recent = _recent_incorrect(db, "recognition_attempts", "item_id", row["item_id"], "timestamp", "result='incorrect'", child_id, as_of_dt)
             candidates.append(_candidate(item_id=row["id"], child_id=child_id, source="REVIEW", skill="recognition", text=row["character"], source_id=row["id"], source_detail=row["source_detail"], state=state, as_of=as_of_dt, preference=preference, review_reason=row["reason"], recent=recent, item_created=row["created_at"]))

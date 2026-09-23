@@ -56,6 +56,18 @@ ChatGPT should avoid long status narration unless the Product Owner asks for it.
 
 ---
 
+## Internal Agent Loop
+
+The Codex runtime launches an independent internal Implementer and Architect / Project Manager
+pair for each Work Order. The Architect reads the exact implementation, schema, migrations, tests,
+frontend, report, and handoff; it performs an adversarial audit and sends findings back to the
+Implementer for correction and fresh re-audit.
+
+This loop has no GitHub Actions Codex workflow, no external API or repository secret dependency,
+and no timer-based progress check. GitHub remains the durable branch/Draft PR and merge-gate record.
+The pair never auto-merges, marks a PR Ready for review, or starts a later Phase without its
+explicit Work Order and boundary.
+
 # Normal Working Loop
 
 Use this simple loop:
@@ -78,10 +90,9 @@ ChatGPT audits GitHub directly
 repeat
 ```
 
-No browser automation.
-No GitHub AI agent.
-No OpenAI API requirement.
-No manual copy/paste of diffs or review text.
+No browser automation, GitHub Actions, external API, or timer is required for the agent loop.
+The Codex runtime is the agent-to-agent handoff channel; repository documents preserve durable
+state.
 
 ## Product Owner PR Authorization
 
@@ -98,6 +109,9 @@ Rules:
 - Codex must not merge its own PR, mark it Ready for review, bypass audit, or skip ahead beyond the currently published work order.
 - A failed audit blocks phase progression until findings are resolved.
 - Manual iPad/NAS/real-child validation remains distinct from code-level audit and must not be falsely claimed as completed.
+
+The Implementer/Auditor automation may continue fixing the current Phase until Architect PASS;
+the merge gate and Phase boundary remain explicit human/work-order boundaries.
 
 This continuous authorization supersedes older handoff wording that required a separate Product Owner authorization before each next Phase.
 
@@ -212,8 +226,9 @@ Current baseline known from GitHub:
 - Phase 11 TTS completed, audited PASS, and PR #8 merged to `main`.
 - Phase 12 Reading Aloud completed, audited PASS, and PR #10 merged to `main`.
 - Phase 13 OCR Import completed, audited PASS, and PR #12 merged to `main`.
-- Phase 14 Adaptive Learning is authorized by GitHub Issue #13 and is active on the dedicated
-  `phase14/adaptive-learning` branch / Draft PR.
+- Phase 14 Adaptive Learning passed Architect Audit and was merged to `main`.
+- Phase 15 Parent Dashboard is authorized by GitHub Issue #15 and is active on the dedicated
+  `phase15/parent-dashboard` branch / Draft PR.
 - Real-child usability validation is still outstanding before treating Sprints A/B as field-validated.
 
 Relevant completed commits / milestones:
@@ -233,7 +248,7 @@ The active collaboration model is manual trigger + GitHub handoff:
 - Product Owner tells Codex to read GitHub.
 - Product Owner tells ChatGPT to inspect new GitHub changes.
 
-Phases 11–13 are complete and merged. Phase 14 is authorized by GitHub Issue #13; do not start Phase 15.
+Phases 11–14 are complete and merged. Phase 15 is the currently assigned Phase; do not start Phase 16.
 
 ---
 
@@ -412,7 +427,8 @@ Final state:
 - Phase 14 Adaptive Learning is implemented on `phase14/adaptive-learning` with deterministic/as-of
   scoring, explainable components, anti-starvation, child isolation, and non-mutating manual overrides.
 - `PHASE_14_ADAPTIVE_REPORT.md` records the implementation and verification.
-- Phase 15 Parent Dashboard has not started.
+- Phase 15 Parent Dashboard is implemented on `phase15/parent-dashboard`; its read-only dashboard
+  report/API/UI and regression tests are complete and awaiting Architect Audit.
 
 Remaining validation:
 - real iPad Safari;
@@ -420,4 +436,4 @@ Remaining validation:
 - Synology DS723+ deployment/persistence;
 - real-child usability / parent workflow trial.
 
-Continuous development authorization is active. Phase 14 is the current assigned Phase; do not start Phase 15.
+Continuous development authorization is active. Phase 15 is the current assigned Phase; do not start Phase 16.

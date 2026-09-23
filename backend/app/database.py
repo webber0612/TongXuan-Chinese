@@ -113,6 +113,7 @@ def initialize_database() -> None:
                 confirmed_text TEXT,
                 locale TEXT,
                 script TEXT,
+                confirmed_at TEXT,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 private_content INTEGER NOT NULL DEFAULT 1,
                 provenance_status TEXT NOT NULL DEFAULT 'PRIVATE_OK',
@@ -294,6 +295,7 @@ def initialize_database() -> None:
                 locale TEXT NOT NULL CHECK(locale IN ('zh-TW','zh-CN')),
                 started_at TEXT NOT NULL,
                 completed_at TEXT,
+                aborted_at TEXT,
                 duration_ms INTEGER,
                 status TEXT NOT NULL DEFAULT 'STARTED' CHECK(status IN ('STARTED','COMPLETED','ABORTED')),
                 assisted INTEGER NOT NULL DEFAULT 0,
@@ -334,8 +336,10 @@ def initialize_database() -> None:
                 ("correctness_json", "TEXT NOT NULL DEFAULT '{}'")
             ],
             "reading_aloud_attempts": [
-                ("status", "TEXT NOT NULL DEFAULT 'STARTED'")
+                ("status", "TEXT NOT NULL DEFAULT 'STARTED'"),
+                ("aborted_at", "TEXT")
             ],
+            "ocr_imports": [("confirmed_at", "TEXT")],
         }
         for table, columns in migrations.items():
             existing = {row[1] for row in connection.execute(f"PRAGMA table_info({table})")}
