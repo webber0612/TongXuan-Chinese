@@ -92,6 +92,13 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     morning: "早安",
     weekN: "第 {n} 週",
     menu: "選單",
+    brandTitle: "童軒中文",
+    brandEnSubtitle: "TONGXUAN",
+    levelProgressSub: "🎯 第 {n} 關 · 挑戰中 🔄",
+    pinkyPactChip: "🤙 打勾勾約定：{current}/{total} 天",
+    myAchievements: "我的成就",
+    rewardsShop: "獎勵兌換舖",
+    settings: "設定",
     beginnerChipOn: "初學標音 · 開啟",
     beginnerChipOff: "純漢字 · 閱讀",
     beginnerModeLabel: "初學者標音模式 (全字標音)",
@@ -100,14 +107,41 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     eyeCareMode: "護眼模式",
     eyeCareDark: "深色低藍光",
     eyeCareLight: "白天模式",
+    eyeCareDarkShort: "🌙 開啟",
+    eyeCareLightShort: "☀️ 白天",
     scriptModeLabel: "學習字體與拼讀",
     scriptZhuyin: "繁體注音",
     scriptPinyin: "簡體拼音",
     scriptDual: "繁+簡雙軌",
+    scriptZhuyinShort: "繁體",
+    scriptPinyinShort: "簡體",
+    scriptDualShort: "繁+簡",
     displayLangLabel: "介面顯示語言",
     phoneticLabel: "生字標音顯示",
+    phoneticAssistLabel: "閱讀標音輔助",
     phoneticShow: "顯示標音",
     phoneticHide: "隱藏標音 (識字挑戰)",
+    assistZhuyinShort: "注音",
+    assistPinyinShort: "拼音",
+    assistOffShort: "隱藏",
+    handModeLabel: "習慣用手切換",
+    handRight: "✋ 右手",
+    handLeft: "🤚 左手",
+    stageN: "🚩 第 {n} 階段",
+    sprintDayN: "第 {n} 日",
+    milestoneReview: "全冊總複習",
+    stageQuiz: "綜合測驗",
+    passedStatus: "已及格",
+    evalStatus: "驗收",
+    voiceGuide: "語音導讀",
+    fullReadAloud: "全篇朗讀",
+    playSentence: "播放單句",
+    repeatSentence: "🎙️ 復誦跟讀",
+    doneRecording: "⏹️ 完成跟讀",
+    communityFooterText: "☕ 童軒中文為免費開源專案 · 歡迎回饋使用體驗與建議！",
+    betaDisclaimerLink: "⚠️ 目前為公開測試版 (Beta) · 點此查看《免責聲明與隱私條款》",
+    feedbackBtn: "問題與建議回報",
+    sponsorBtn: "請作者喝咖啡",
     switchUser: "👤 切換學習者帳號",
     parentZone: "進入家長管理後台",
     today: "今日",
@@ -166,12 +200,43 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     parentDashboardDesc: "已驗證家長身份。在此配置每日學習量、教材主線與防沉迷時間：",
     parentPlanLabel: "🎯 每日學習量與目標時長",
     parentCurriculumLabel: "📚 僑委會主線教材冊次",
-    saveSettings: "儲存學習設定"
+    saveSettings: "儲存學習設定",
+    aboutModalTitle: "童軒中文 · 關於、藍圖與使用條款",
+    aboutModalSub: "專為海外兒童與初學者量身打造 · 溫暖、趣味、系統化的華語全景學習平臺",
+    tabAbout: "🌟 理念與特色",
+    tabRoadmap: "🗺️ 全景進階路線與檢定目標",
+    tabLegal: "⚖️ 教材出處與版權聲明",
+    tabDisclaimer: "📜 測試版與免責聲明",
+    aboutFeat1Title: "田字格 10 遍遞減筆順引擎",
+    aboutFeat1Desc: "遵循標準標楷體字形，以 100% ➔ 0% 漸隱提示與即時落點判定，陪伴孩子從臨摹到自信默寫。",
+    aboutFeat2Title: "繁簡注拼雙軌並進",
+    aboutFeat2Desc: "同步支援臺灣注音符號（ㄅㄆㄇ）與國際漢語拼音（pīnyīn），繁簡同字或異字自動對照，無縫切換。",
+    aboutFeat3Title: "1~10 冊完整分級體系",
+    aboutFeat3Desc: "整合 5,000 標準常用漢字庫與 10 冊循序漸進教材，涵蓋字、詞、句、故事到成語閱讀全循環。",
+    aboutFeat4Title: "正向激勵與護眼承諾",
+    aboutFeat4Desc: "無噪音式手遊誘導，透過星星打卡與週日開箱微習慣，並提供低藍光深色護眼模式呵護視力。",
+    disclaimerTitle: "📜 公開測試版 (Beta) 免責聲明與隱私條款",
+    disclaimerPoint1Title: "⚠️ 公開測試版與進度保存風險：",
+    disclaimerPoint1Desc: "本專案目前處於公開 Beta 測試與持續改版階段。當系統升級、發布新功能或您清除瀏覽器快取時，儲存於您設備本地的學習進度（如金幣、星星、答錯記錄、兌換券）可能隨時被重置或調整。本系統不保證歷史資料的永久保存。",
+    disclaimerPoint2Title: "🔒 純本地運算與非託管隱私聲明：",
+    disclaimerPoint2Desc: "本系統採 Local-First 純前端本地架構，伺服器端不設有使用者資料庫，亦不負責託管、備份或恢復任何個人學習記錄或隱私數據。所有數據 100% 僅儲存於您當前的瀏覽器沙盒中，更換設備或清除快取後將無法由開發者端找回。",
+    disclaimerPoint3Title: "📚 非正式教育機構與學習成效免責：",
+    disclaimerPoint3Desc: "本系統為個人開發之自主自學輔助工具，非教育部或官方認證之正式學校機構。本系統不對任何使用者的識字速度、發音標準度、考試成績或特定學習結果提供任何形式之保證。",
+    disclaimerPoint4Title: "☕ 開源與贊助性質：",
+    disclaimerPoint4Desc: "本專案程式碼採 MIT 授權開源發布。請作者喝咖啡（Sponsor）屬於個人自願贊助與鼓勵性質，不構成任何商業契約、付費訂閱服務或專屬客服義務。",
+    disclaimerFooter: "童軒中文恪守兒少隱私安全規範 · 感謝所有測試家長與教育工作者的理解與支持"
   },
   "zh-Hans": {
     morning: "早安",
     weekN: "第 {n} 周",
     menu: "菜单",
+    brandTitle: "童轩中文",
+    brandEnSubtitle: "TONGXUAN",
+    levelProgressSub: "🎯 第 {n} 关 · 挑战中 🔄",
+    pinkyPactChip: "🤙 打勾勾约定：{current}/{total} 天",
+    myAchievements: "我的成就",
+    rewardsShop: "奖励兑换铺",
+    settings: "设置",
     beginnerChipOn: "初学标音 · 开启",
     beginnerChipOff: "纯汉字 · 阅读",
     beginnerModeLabel: "初学者标音模式 (全字标音)",
@@ -180,14 +245,41 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     eyeCareMode: "护眼模式",
     eyeCareDark: "深色低蓝光",
     eyeCareLight: "白天模式",
+    eyeCareDarkShort: "🌙 开启",
+    eyeCareLightShort: "☀️ 白天",
     scriptModeLabel: "学习字体与拼读",
     scriptZhuyin: "繁体注音",
     scriptPinyin: "简体拼音",
     scriptDual: "繁+简双轨",
+    scriptZhuyinShort: "繁体",
+    scriptPinyinShort: "简体",
+    scriptDualShort: "繁+简",
     displayLangLabel: "界面显示语言",
     phoneticLabel: "生字标音显示",
+    phoneticAssistLabel: "阅读标音辅助",
     phoneticShow: "显示标音",
     phoneticHide: "隐藏标音 (识字挑战)",
+    assistZhuyinShort: "注音",
+    assistPinyinShort: "拼音",
+    assistOffShort: "隐藏",
+    handModeLabel: "习惯用手切换",
+    handRight: "✋ 右手",
+    handLeft: "🤚 左手",
+    stageN: "🚩 第 {n} 阶段",
+    sprintDayN: "第 {n} 日",
+    milestoneReview: "全册总复习",
+    stageQuiz: "综合测验",
+    passedStatus: "已及格",
+    evalStatus: "验收",
+    voiceGuide: "语音导读",
+    fullReadAloud: "全篇朗读",
+    playSentence: "播放单句",
+    repeatSentence: "🎙️ 复诵跟读",
+    doneRecording: "⏹️ 完成跟读",
+    communityFooterText: "☕ 童轩中文为免费开源项目 · 欢迎反馈使用体验与建议！",
+    betaDisclaimerLink: "⚠️ 目前为公开测试版 (Beta) · 点此查看《免责声明与隐私条款》",
+    feedbackBtn: "问题与建议回报",
+    sponsorBtn: "请作者喝咖啡",
     switchUser: "👤 切换学习者账号",
     parentZone: "进入家长管理后台",
     today: "今日",
@@ -246,37 +338,95 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     parentDashboardDesc: "已验证家长身份。在此配置每日学习量、教材主线与防沉迷时间：",
     parentPlanLabel: "🎯 每日学习量与目标时长",
     parentCurriculumLabel: "📚 侨委会主线教材册次",
-    saveSettings: "保存学习设置"
+    saveSettings: "保存学习设置",
+    aboutModalTitle: "童轩中文 · 关于、蓝图与使用条款",
+    aboutModalSub: "专为海外儿童与初学者量身打造 · 温暖、趣味、系统化的华语全景学习平台",
+    tabAbout: "🌟 理念与特色",
+    tabRoadmap: "🗺️ 全景进阶路线与检定目标",
+    tabLegal: "⚖️ 教材出处与版权声明",
+    tabDisclaimer: "📜 测试版与免责声明",
+    aboutFeat1Title: "田字格 10 遍递减笔顺引擎",
+    aboutFeat1Desc: "遵循标准标楷体字形，以 100% ➔ 0% 渐隐提示与即时落点判定，陪伴孩子从临摹到自信默写。",
+    aboutFeat2Title: "繁简注拼双轨并进",
+    aboutFeat2Desc: "同步支持台湾注音符号（ㄅㄆㄇ）与国际汉语拼音（pīnyīn），繁简同字或异字自动对照，无缝切换。",
+    aboutFeat3Title: "1~10 册完整分级体系",
+    aboutFeat3Desc: "整合 5,000 标准常用汉字库与 10 册循序渐进教材，涵盖字、词、句、故事到成语阅读全循环。",
+    aboutFeat4Title: "正向激励与护眼承诺",
+    aboutFeat4Desc: "无噪音式手游诱导，通过星星打卡与周日开箱微习惯，并提供低蓝光深色护眼模式呵护视力。",
+    disclaimerTitle: "📜 公开测试版 (Beta) 免责声明与隐私条款",
+    disclaimerPoint1Title: "⚠️ 公开测试版与进度保存风险：",
+    disclaimerPoint1Desc: "本项目目前处于公开 Beta 测试与持续改版阶段。当系统升级、发布新功能或您清除浏览器缓存时，储存于您设备本地的学习进度（如金币、星星、答错记录、兑换券）可能随时被重置或调整。本系统不保证历史数据的永久保存。",
+    disclaimerPoint2Title: "🔒 纯本地运算与非托管隐私声明：",
+    disclaimerPoint2Desc: "本系统采 Local-First 纯前端本地架构，服务器端不设有用户数据库，亦不负责托管、备份或恢复任何个人学习记录或隐私数据。所有数据 100% 仅储存于您当前的浏览器沙盒中，更换设备或清除缓存后将无法由开发者端找回。",
+    disclaimerPoint3Title: "📚 非正式教育机构与学习成效免责：",
+    disclaimerPoint3Desc: "本系统为个人开发之自主自学辅助工具，非教育部或官方认证之正式学校机构。本系统不对任何使用者的识字速度、发音标准度、考试成绩或特定学习结果提供任何形式之保证。",
+    disclaimerPoint4Title: "☕ 开源与赞助性质：",
+    disclaimerPoint4Desc: "本项目代码采 MIT 授权开源发布。请作者喝咖啡（Sponsor）属于个人自愿赞助与鼓励性质，不构成任何商业契约、付费订阅服务或专属客服义务。",
+    disclaimerFooter: "童轩中文恪守儿少隐私安全规范 · 感谢所有测试家长与教育工作者的理解与支持"
   },
   "en": {
     morning: "Good Morning",
     weekN: "Week {n}",
     menu: "Menu",
+    brandTitle: "TongXuan Chinese",
+    brandEnSubtitle: "TONGXUAN",
+    levelProgressSub: "🎯 Level {n} · In Progress 🔄",
+    pinkyPactChip: "🤙 Pinky Promise: {current}/{total} days",
+    myAchievements: "Achievements",
+    rewardsShop: "Rewards Shop",
+    settings: "Settings",
     beginnerChipOn: "Phonetics · ON",
     beginnerChipOff: "Hanzi Only · Reading",
     beginnerModeLabel: "Beginner Phonetic Assist Mode",
     beginnerModeActive: "All characters annotated with Zhuyin/Pinyin",
     beginnerModeInactive: "Character-only reading challenge mode",
-    eyeCareTheme: "Eye-Care Theme",
+    eyeCareMode: "Eye-Care Theme",
     eyeCareDark: "Dark Low-Blue",
     eyeCareLight: "Daylight Mode",
+    eyeCareDarkShort: "🌙 On",
+    eyeCareLightShort: "☀️ Daylight",
     scriptModeLabel: "Script & Phonetics",
     scriptZhuyin: "Traditional (Zhuyin)",
     scriptPinyin: "Simplified (Pinyin)",
     scriptDual: "Trad + Sim Dual",
+    scriptZhuyinShort: "Trad",
+    scriptPinyinShort: "Simp",
+    scriptDualShort: "Dual",
     displayLangLabel: "Display Language",
     phoneticLabel: "Phonetic Notation",
+    phoneticAssistLabel: "Phonetic Assist",
     phoneticShow: "Show Phonetics",
     phoneticHide: "Hide (Reading Challenge)",
+    assistZhuyinShort: "Zhuyin",
+    assistPinyinShort: "Pinyin",
+    assistOffShort: "Hide",
+    handModeLabel: "Handedness",
+    handRight: "✋ Right",
+    handLeft: "🤚 Left",
+    stageN: "🚩 Stage {n}",
+    sprintDayN: "Day {n}",
+    milestoneReview: "Full Review",
+    stageQuiz: "Stage Quiz",
+    passedStatus: "Passed",
+    evalStatus: "Exam",
+    voiceGuide: "Voice Guide",
+    fullReadAloud: "Full Audio",
+    playSentence: "Play",
+    repeatSentence: "🎙️ Read Along",
+    doneRecording: "⏹️ Done",
+    communityFooterText: "☕ TongXuan Chinese is free & open-source · Feedback & suggestions welcome!",
+    betaDisclaimerLink: "⚠️ Public Beta · Click to view Disclaimer & Privacy Terms",
+    feedbackBtn: "Feedback & Issues",
+    sponsorBtn: "Buy Me a Coffee",
     switchUser: "👤 Switch Learner Account",
     parentZone: "Parent Dashboard",
     today: "Today",
     lessonDay: "{day} Lesson",
     lessonDuration: "⏱️ ~{min} mins",
     readAloud: "Read Aloud",
-    cardStrokeTitle: "Characters · 5-Step Loop",
-    cardVocabTitle: "Vocabulary · Phrases",
-    cardIdiomTitle: "Idioms · Story Reading",
+    cardStrokeTitle: "Characters",
+    cardVocabTitle: "Vocabulary",
+    cardIdiomTitle: "Idioms",
     cardStrokeDualHint: "Stroke order · 5-step interactive character classroom",
     cardStrokeSingleHint: "Tianzige tracing · Tap to enter full character loop",
     cardVocabHint: "Daily essential vocabulary · Listen and speak",
@@ -326,12 +476,43 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     parentDashboardDesc: "Parent verified. Configure daily workload, textbook, and screen limits:",
     parentPlanLabel: "🎯 Daily Pace & Target Time",
     parentCurriculumLabel: "📚 Official Textbook Curriculum",
-    saveSettings: "Save Settings"
+    saveSettings: "Save Settings",
+    aboutModalTitle: "TongXuan Chinese · About, Roadmap & Terms",
+    aboutModalSub: "Tailored for young learners & beginners · A warm, playful, systematic Chinese learning platform",
+    tabAbout: "🌟 Philosophy & Features",
+    tabRoadmap: "🗺️ Learning Roadmap & Exams",
+    tabLegal: "⚖️ Curriculum Attribution",
+    tabDisclaimer: "📜 Beta Disclaimer & Privacy",
+    aboutFeat1Title: "10-Step Tianzige Stroke Engine",
+    aboutFeat1Desc: "Based on standard KaiTi fonts, with 100% to 0% gradual fading hints and real-time stroke checking.",
+    aboutFeat2Title: "Dual Zhuyin & Pinyin Support",
+    aboutFeat2Desc: "Supports both Taiwan Zhuyin (Bopomofo) and standard Hanyu Pinyin with instant side-by-side comparison.",
+    aboutFeat3Title: "Complete 10-Book Curriculum",
+    aboutFeat3Desc: "Integrates 5,000 standard Chinese characters with a 10-volume progressive reading system.",
+    aboutFeat4Title: "Child-Safe & Eye-Care Design",
+    aboutFeat4Desc: "Free of noisy mobile-game ads and microtransactions, featuring dark low-blue mode to protect eyesight.",
+    disclaimerTitle: "📜 Public Beta Disclaimer & Privacy Policy",
+    disclaimerPoint1Title: "⚠️ Public Beta & Local Storage Notice:",
+    disclaimerPoint1Desc: "This project is currently in public beta. When upgrading or clearing browser cache, local learning progress (coins, stars, mistakes, passes) may be reset. The system does not guarantee permanent data persistence.",
+    disclaimerPoint2Title: "🔒 Local-First Architecture & No Server Database:",
+    disclaimerPoint2Desc: "TongXuan operates entirely on a Local-First frontend architecture without a server database. We do not host, backup, or recover personal learning records. Data resides 100% in your browser sandbox.",
+    disclaimerPoint3Title: "📚 Educational Tool Non-Guarantee:",
+    disclaimerPoint3Desc: "This application is an independent self-study aid and not an accredited academic institution. We make no guarantees regarding learning speed, test scores, or specific examination results.",
+    disclaimerPoint4Title: "☕ Open Source & Voluntary Sponsorship:",
+    disclaimerPoint4Desc: "The source code is published under the MIT license. Buy Me a Coffee sponsorships are voluntary donations and do not constitute commercial contracts, subscriptions, or dedicated support agreements.",
+    disclaimerFooter: "TongXuan Chinese strictly adheres to youth privacy standards · Thank you for testing!"
   },
   "ja": {
     morning: "おはよう",
     weekN: "第 {n} 週",
     menu: "メニュー",
+    brandTitle: "童軒中国語",
+    brandEnSubtitle: "TONGXUAN",
+    levelProgressSub: "🎯 第 {n} レベル · 挑戦中 🔄",
+    pinkyPactChip: "🤙 指切り約束：{current}/{total} 日",
+    myAchievements: "実績・バッジ",
+    rewardsShop: "ご褒美ショップ",
+    settings: "設定",
     beginnerChipOn: "ふりがな補助 · ON",
     beginnerChipOff: "漢字のみ · 読解",
     beginnerModeLabel: "初心者ふりがなモード",
@@ -340,23 +521,50 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     eyeCareMode: "アイケアモード",
     eyeCareDark: "ダーク・低ブルーライト",
     eyeCareLight: "デイライト",
+    eyeCareDarkShort: "🌙 オン",
+    eyeCareLightShort: "☀️ デイ",
     scriptModeLabel: "文字と発音表記",
     scriptZhuyin: "繁体字（注音）",
     scriptPinyin: "簡体字（ピンイン）",
     scriptDual: "繁＋簡両方",
+    scriptZhuyinShort: "繁体",
+    scriptPinyinShort: "簡体",
+    scriptDualShort: "繁＋簡",
     displayLangLabel: "表示言語",
     phoneticLabel: "ふりがな・発音表示",
+    phoneticAssistLabel: "ふりがな補助",
     phoneticShow: "表示する",
     phoneticHide: "隠す (漢字挑戦)",
+    assistZhuyinShort: "注音",
+    assistPinyinShort: "ピンイン",
+    assistOffShort: "非表示",
+    handModeLabel: "利き手切り替え",
+    handRight: "✋ 右手",
+    handLeft: "🤚 左手",
+    stageN: "🚩 第 {n} ステージ",
+    sprintDayN: "{n}日目",
+    milestoneReview: "総復習",
+    stageQuiz: "確認テスト",
+    passedStatus: "合格",
+    evalStatus: "検定",
+    voiceGuide: "音声ガイド",
+    fullReadAloud: "全文朗読",
+    playSentence: "再生",
+    repeatSentence: "🎙️ シャドーイング",
+    doneRecording: "⏹️ 完了",
+    communityFooterText: "☕ 童軒中国語は無料のオープンソースです · ご意見やフィードバックを歓迎します！",
+    betaDisclaimerLink: "⚠️ 現在オープンベータ版です · 免責事項とプライバシーポリシーを見る",
+    feedbackBtn: "ご意見・問題報告",
+    sponsorBtn: "開発者にコーヒーを奢る",
     switchUser: "👤 学習者を切り替え",
     parentZone: "保護者ダッシュボード",
     today: "今日",
     lessonDay: "{day} レッスン",
     lessonDuration: "⏱️ 毎日約 {min} 分（{count} 文字）",
     readAloud: "本文朗読",
-    cardStrokeTitle: "生字 · 読み書き",
-    cardVocabTitle: "単語 · 語彙",
-    cardIdiomTitle: "成語 · お話",
+    cardStrokeTitle: "生字・読み書き",
+    cardVocabTitle: "単語・語彙",
+    cardIdiomTitle: "成語・お話",
     cardStrokeDualHint: "田字格筆順 · 5ステップ全循環学習",
     cardStrokeSingleHint: "田字格なぞり書き · タップして練習",
     cardVocabHint: "生活頻出語彙 · 発音を聞いて練習",
@@ -406,12 +614,43 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     parentDashboardDesc: "毎日の学習量・教材を設定：",
     parentPlanLabel: "🎯 毎日の学習時間",
     parentCurriculumLabel: "📚 教材コース",
-    saveSettings: "設定を保存"
+    saveSettings: "設定を保存",
+    aboutModalTitle: "童軒中国語 · 概要・ロードマップ・利用規約",
+    aboutModalSub: "海外の子供や初心者のために作られた、体系的で楽しい中国語学習プラットフォーム",
+    tabAbout: "🌟 理念と特徴",
+    tabRoadmap: "🗺️ ロードマップと検定目標",
+    tabLegal: "⚖️ 教材の出典と著作権",
+    tabDisclaimer: "📜 ベータ版免責事項",
+    aboutFeat1Title: "田字格 10回漸減筆順エンジン",
+    aboutFeat1Desc: "標準の楷書フォントを採用し、100%から0%への漸減ガイドで自立した書き取りを支援。",
+    aboutFeat2Title: "注音・ピンインのデュアル対応",
+    aboutFeat2Desc: "台湾注音（ボポモフォ）と国際漢語ピンインの両方に対応し、繁体・簡体をシームレスに学習。",
+    aboutFeat3Title: "全10冊の体系的カリキュラム",
+    aboutFeat3Desc: "常用漢字5,000字と10冊の教材を統合し、文字から物語まで段階的にステップアップ。",
+    aboutFeat4Title: "子供に安心な学習環境",
+    aboutFeat4Desc: "広告や過度なゲーム要素を排除し、目に優しいダークモードで視力を保護します。",
+    disclaimerTitle: "📜 オープンベータ版 免責事項とプライバシーポリシー",
+    disclaimerPoint1Title: "⚠️ ベータ版とデータ保存について：",
+    disclaimerPoint1Desc: "本プロジェクトは現在公開ベータテスト中です。アップデートやブラウザのキャッシュ削除により、端末内の学習データがリセットされる場合があります。データの永久保存は保証されません。",
+    disclaimerPoint2Title: "🔒 完全ローカル処理と個人情報：",
+    disclaimerPoint2Desc: "本システムはLocal-Firstアーキテクチャを採用し、サーバー側でユーザーデータを保持しません。すべてのデータはお使いの端末のブラウザ内のみに保存されます。",
+    disclaimerPoint3Title: "📚 自主学習ツールとしての免責：",
+    disclaimerPoint3Desc: "本システムは個人の自主学習補助ツールです。公式の教育機関ではなく、学習進度や試験結果を保証するものではありません。",
+    disclaimerPoint4Title: "☕ オープンソースとサポート：",
+    disclaimerPoint4Desc: "本コードはMITライセンスで公開されています。Buy Me a Coffeeでのご支援は自発的な寄付であり、商用契約や個別サポートを保証するものではありません。",
+    disclaimerFooter: "童軒中国語は青少年のプライバシーと安全を遵守します · ご理解とご協力に感謝いたします"
   },
   "ko": {
     morning: "좋은 아침",
     weekN: "{n} 주차",
     menu: "메뉴",
+    brandTitle: "통쉬안 중국어",
+    brandEnSubtitle: "TONGXUAN",
+    levelProgressSub: "🎯 레벨 {n} · 도전 중 🔄",
+    pinkyPactChip: "🤙 새끼손가락 약속：{current}/{total} 일",
+    myAchievements: "나의 업적",
+    rewardsShop: "보상 상점",
+    settings: "설정",
     beginnerChipOn: "초보자 발음 표기 · 켜짐",
     beginnerChipOff: "순수 한자 · 읽기",
     beginnerModeLabel: "초보자 발음 보조 모드 (전체 한자 표기)",
@@ -420,14 +659,41 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     eyeCareMode: "눈 보호 모드",
     eyeCareDark: "다크 모드",
     eyeCareLight: "라이트 모드",
+    eyeCareDarkShort: "🌙 켜짐",
+    eyeCareLightShort: "☀️ 낮",
     scriptModeLabel: "글자 및 발음 표기",
     scriptZhuyin: "번체자 (주음)",
     scriptPinyin: "간체자 (병음)",
     scriptDual: "번체+간체 듀얼",
+    scriptZhuyinShort: "번체",
+    scriptPinyinShort: "간체",
+    scriptDualShort: "번+간",
     displayLangLabel: "표시 언어",
     phoneticLabel: "발음 표기 표시",
+    phoneticAssistLabel: "독서 발음 보조",
     phoneticShow: "표기 켜기",
     phoneticHide: "숨기기 (한자 도전)",
+    assistZhuyinShort: "주음",
+    assistPinyinShort: "병음",
+    assistOffShort: "숨김",
+    handModeLabel: "주로 쓰는 손",
+    handRight: "✋ 오른손",
+    handLeft: "🤚 왼손",
+    stageN: "🚩 제 {n} 단계",
+    sprintDayN: "{n}일차",
+    milestoneReview: "전체 복습",
+    stageQuiz: "종합 퀴즈",
+    passedStatus: "합격",
+    evalStatus: "검정",
+    voiceGuide: "음성 가이드",
+    fullReadAloud: "전체 듣기",
+    playSentence: "문장 듣기",
+    repeatSentence: "🎙️ 따라 읽기",
+    doneRecording: "⏹️ 완료",
+    communityFooterText: "☕ 통쉬안 중국어는 무료 오픈소스 프로젝트입니다 · 피드백과 제안을 환영합니다!",
+    betaDisclaimerLink: "⚠️ 현재 공개 베타 버전입니다 · 면책 조항 및 개인정보 보호정책 보기",
+    feedbackBtn: "문제 및 피드백 보고",
+    sponsorBtn: "개발자에게 커피 한 잔",
     switchUser: "👤 학습자 계정 전환",
     parentZone: "학부모 관리 설정",
     today: "오늘",
@@ -435,8 +701,8 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     lessonDuration: "⏱️ 하루 약 {min}분 ({count}개 핵심 한자)",
     readAloud: "본문 듣기",
     cardStrokeTitle: "한자 · 읽고 쓰기",
-    cardVocabTitle: "어휘 · 문장 만들기",
-    cardIdiomTitle: "고사성어 · 이야기",
+    cardVocabTitle: "어휘 · 문장",
+    cardIdiomTitle: "고사성어",
     cardStrokeDualHint: "십자 격자 획순 · 5단계 한자 완성 루프",
     cardStrokeSingleHint: "격자 획순 쓰기 연습 · 탭하여 시작",
     cardVocabHint: "일상 필수 어휘 · 발음 듣기",
@@ -486,12 +752,43 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     parentDashboardDesc: "하루 학습량, 교재 및 사용 시간 설정:",
     parentPlanLabel: "🎯 일일 학습 목표",
     parentCurriculumLabel: "📚 공식 교재 과정",
-    saveSettings: "설정 저장"
+    saveSettings: "설정 저장",
+    aboutModalTitle: "통쉬안 중국어 · 소개, 로드맵 및 이용약관",
+    aboutModalSub: "해외 어린이 및 초보자를 위한 따뜻하고 체계적인 중국어 학습 플랫폼",
+    tabAbout: "🌟 교육 철학 및 특징",
+    tabRoadmap: "🗺️ 학습 로드맵 및 검정 목표",
+    tabLegal: "⚖️ 교재 출처 및 저작권",
+    tabDisclaimer: "📜 베타 면책 조항 및 개인정보",
+    aboutFeat1Title: "10단계 격자 획순 가이드",
+    aboutFeat1Desc: "표준해서 글꼴을 바탕으로 100%에서 0%로 점진적 힌트를 줄여 스스로 쓰기를 돕습니다.",
+    aboutFeat2Title: "주음부호 및 한어병음 듀얼 지원",
+    aboutFeat2Desc: "대만 주음부호와 표준 한어병음을 모두 지원하여 번체/간체를 손쉽게 학습합니다.",
+    aboutFeat3Title: "총 10권의 체계적 커리큘럼",
+    aboutFeat3Desc: "5,000자 상용한자 데이터베이스와 10권의 교재를 결합한 단계별 학습 과정입니다.",
+    aboutFeat4Title: "어린이 안심 및 시력 보호",
+    aboutFeat4Desc: "상업적 광고나 과도한 게임 요소를 배제하고, 눈에 편안한 다크 모드를 지원합니다.",
+    disclaimerTitle: "📜 공개 베타 (Beta) 면책 조항 및 개인정보 보호정책",
+    disclaimerPoint1Title: "⚠️ 공개 베타 버전 및 데이터 보존 안내:",
+    disclaimerPoint1Desc: "본 프로젝트는 공개 베타 테스트 중입니다. 시스템 업데이트나 브라우저 캐시 삭제 시 기기에 저장된 학습 데이터(코인, 별, 오답, 티켓 등)가 초기화될 수 있습니다.",
+    disclaimerPoint2Title: "🔒 완전 로컬 처리 및 비호스팅 정책:",
+    disclaimerPoint2Desc: "본 시스템은 Local-First 프런트엔드 구조로 서버에 사용자 데이터베이스를 운영하지 않습니다. 모든 데이터는 100% 현재 브라우저 샌드박스에만 보관됩니다.",
+    disclaimerPoint3Title: "📚 비공식 학습 도구 및 성과 비보증:",
+    disclaimerPoint3Desc: "본 시스템은 개인 자율 학습 보조 도구이며 공식 교육 기관이 아닙니다. 학습 속도나 특정 시험 성적을 보증하지 않습니다.",
+    disclaimerPoint4Title: "☕ 오픈소스 및 자발적 후원:",
+    disclaimerPoint4Desc: "소스 코드는 MIT 라이선스로 배포됩니다. Buy Me a Coffee를 통한 후원은 자발적 응원이며, 상업적 구독이나 개별 지원 의무를 발생시키지 않습니다.",
+    disclaimerFooter: "통쉬안 중국어는 아동 개인정보 보호 규정을 준수합니다 · 테스트에 참여해 주셔서 감사합니다"
   },
   "es": {
     morning: "Buenos días",
     weekN: "Semana {n}",
     menu: "Menú",
+    brandTitle: "TongXuan Chino",
+    brandEnSubtitle: "TONGXUAN",
+    levelProgressSub: "🎯 Nivel {n} · En progreso 🔄",
+    pinkyPactChip: "🤙 Promesa: {current}/{total} días",
+    myAchievements: "Logros",
+    rewardsShop: "Tienda de Premios",
+    settings: "Ajustes",
     beginnerChipOn: "Modo Principiante · ON",
     beginnerChipOff: "Solo Caracteres · ON",
     beginnerModeLabel: "Modo Principiante (Anotación Fonética)",
@@ -500,23 +797,50 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     eyeCareMode: "Modo Cuidado Visual",
     eyeCareDark: "Modo Oscuro",
     eyeCareLight: "Modo Día",
+    eyeCareDarkShort: "🌙 Activado",
+    eyeCareLightShort: "☀️ Día",
     scriptModeLabel: "Modo de Aprendizaje",
     scriptZhuyin: "Tradicional (Zhuyin)",
     scriptPinyin: "Simplificado (Pinyin)",
     scriptDual: "Trad + Simp Dual",
+    scriptZhuyinShort: "Trad",
+    scriptPinyinShort: "Simp",
+    scriptDualShort: "Dual",
     displayLangLabel: "Idioma de Interfaz",
     phoneticLabel: "Notación Fonética",
+    phoneticAssistLabel: "Asistencia Fonética",
     phoneticShow: "Mostrar Fonética",
     phoneticHide: "Ocultar (Reto de Caracteres)",
+    assistZhuyinShort: "Zhuyin",
+    assistPinyinShort: "Pinyin",
+    assistOffShort: "Ocultar",
+    handModeLabel: "Mano Dominante",
+    handRight: "✋ Diestro",
+    handLeft: "🤚 Zurdo",
+    stageN: "🚩 Etapa {n}",
+    sprintDayN: "Día {n}",
+    milestoneReview: "Repaso Total",
+    stageQuiz: "Cuestionario",
+    passedStatus: "Aprobado",
+    evalStatus: "Examen",
+    voiceGuide: "Guía de Voz",
+    fullReadAloud: "Lectura Completa",
+    playSentence: "Escuchar",
+    repeatSentence: "🎙️ Repetir",
+    doneRecording: "⏹️ Listo",
+    communityFooterText: "☕ TongXuan Chinese es libre y de código abierto · ¡Agradecemos sus comentarios!",
+    betaDisclaimerLink: "⚠️ Versión Beta Pública · Ver Descargo de Responsabilidad y Privacidad",
+    feedbackBtn: "Comentarios y Sugerencias",
+    sponsorBtn: "Invitar un Café",
     switchUser: "👤 Cambiar de Usuario",
     parentZone: "Panel de Padres",
     today: "Hoy",
     lessonDay: "Lección del {day}",
     lessonDuration: "⏱️ ~{min} min al día ({count} caracteres)",
     readAloud: "Leer Texto",
-    cardStrokeTitle: "Caracteres · 5 Pasos",
-    cardVocabTitle: "Vocabulario · Frases",
-    cardIdiomTitle: "Modismos · Cuentos",
+    cardStrokeTitle: "Caracteres",
+    cardVocabTitle: "Vocabulario",
+    cardIdiomTitle: "Modismos",
     cardStrokeDualHint: "Cuadrícula · Bucle de 5 pasos para dominar caracteres",
     cardStrokeSingleHint: "Trazado de caracteres · Tocar para practicar",
     cardVocabHint: "Vocabulario común esencial · Escuchar y pronunciar",
@@ -566,7 +890,31 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     parentDashboardDesc: "Configurar carga diaria, libro de texto y tiempo:",
     parentPlanLabel: "🎯 Meta y Duración Diaria",
     parentCurriculumLabel: "📚 Libro de Texto Oficial",
-    saveSettings: "Guardar Cambios"
+    saveSettings: "Guardar Cambios",
+    aboutModalTitle: "TongXuan Chinese · Acerca de, Hoja de Ruta y Términos",
+    aboutModalSub: "Diseñado para niños y principiantes · Una plataforma cálida, lúdica y sistemática para aprender chino",
+    tabAbout: "🌟 Filosofía y Características",
+    tabRoadmap: "🗺️ Hoja de Ruta y Exámenes",
+    tabLegal: "⚖️ Fuentes y Derechos de Autor",
+    tabDisclaimer: "📜 Descargo de Responsabilidad Beta",
+    aboutFeat1Title: "Motor de Trazos Tianzige en 10 Pasos",
+    aboutFeat1Desc: "Basado en tipografía estándar KaiTi con desvanecimiento progresivo del 100% al 0%.",
+    aboutFeat2Title: "Soporte Dual Zhuyin y Pinyin",
+    aboutFeat2Desc: "Compatible con Zhuyin de Taiwán y Pinyin internacional con comparación instantánea.",
+    aboutFeat3Title: "Currículo Completo de 10 Libros",
+    aboutFeat3Desc: "Integra 5.000 caracteres chinos estándar con 10 libros de lectura progresiva.",
+    aboutFeat4Title: "Entorno Seguro y Cuidado Visual",
+    aboutFeat4Desc: "Sin anuncios ni compras ruidosas, con modo oscuro de baja emisión azul para cuidar la vista.",
+    disclaimerTitle: "📜 Descargo de Responsabilidad Beta Pública y Privacidad",
+    disclaimerPoint1Title: "⚠️ Versión Beta Pública y Almacenamiento Local:",
+    disclaimerPoint1Desc: "Este proyecto se encuentra en fase beta pública. Al actualizar o borrar la caché del navegador, los datos de aprendizaje locales (monedas, estrellas, errores, vales) pueden restablecerse.",
+    disclaimerPoint2Title: "🔒 Arquitectura Local-First y Sin Servidor Central:",
+    disclaimerPoint2Desc: "TongXuan opera completamente en el navegador sin base de datos central en servidores. No respaldamos ni recuperamos datos personales.",
+    disclaimerPoint3Title: "📚 Herramienta Educativa No Acreditada:",
+    disclaimerPoint3Desc: "Esta aplicación es una ayuda de autoaprendizaje independiente y no una institución educativa formal. No garantiza resultados de exámenes específicos.",
+    disclaimerPoint4Title: "☕ Código Abierto y Patrocinio Voluntario:",
+    disclaimerPoint4Desc: "El código se publica bajo licencia MIT. Los patrocinios en Buy Me a Coffee son donaciones voluntarias y no constituyen contratos comerciales.",
+    disclaimerFooter: "TongXuan Chinese protege la privacidad de los menores · ¡Gracias por su apoyo!"
   }
 };
 
@@ -1660,24 +2008,24 @@ export function KidsPrototypesPage() {
       <header className="weekly-header-bar clean-header-bar">
         {/* Left: Brand Logo & Learner Profile */}
         <div className="header-left-cluster">
-          <div className="header-brand-logo-pill" title="童軒中文 TongXuan Chinese">
-            <img src={appLogoIcon} alt="童軒中文 Logo" className="header-brand-img" />
+          <div className="header-brand-logo-pill" title={`${t("brandTitle")} ${t("brandEnSubtitle")}`}>
+            <img src={appLogoIcon} alt={`${t("brandTitle")} Logo`} className="header-brand-img" />
             <div className="header-brand-title-box">
-              <span className="brand-main-title">童軒中文</span>
-              <span className="brand-en-subtitle">TONGXUAN</span>
+              <span className="brand-main-title">{t("brandTitle")}</span>
+              <span className="brand-en-subtitle">{t("brandEnSubtitle")}</span>
             </div>
           </div>
 
           <button
             className="header-learner-pill header-learner-large header-learner-interactive-btn"
             onClick={() => setLoginModalOpen(true)}
-            title="點擊切換或管理學習者帳號"
-            aria-label="切換學習者帳號"
+            title={t("switchUser")}
+            aria-label={t("switchUser")}
           >
             <span className="brand-badge-mini brand-badge-large">{activeLearner.avatar}</span>
             <div className="learner-info">
               <span className="learner-name learner-name-large">☀️ {t("morning")} · {activeLearner.name}</span>
-              <span className="learner-sub learner-sub-large">🎯 第 {selectedLevelNum} 關 · 挑戰中 🔄</span>
+              <span className="learner-sub learner-sub-large">{t("levelProgressSub", { n: selectedLevelNum })}</span>
             </div>
           </button>
         </div>
@@ -1686,8 +2034,8 @@ export function KidsPrototypesPage() {
         <div className="header-right-actions-group">
           {/* Active Pinky Promise Reminder Chip (if active) */}
           {activeLearner.activePinkyPromise && !activeLearner.activePinkyPromise.isCompleted && (
-            <div className="header-pact-chip" title="打勾勾約定進行中">
-              <span>🤙 打勾勾約定：{activeLearner.activePinkyPromise.currentDays}/{activeLearner.activePinkyPromise.requiredDays} 天</span>
+            <div className="header-pact-chip" title={t("pinkyPactChip", { current: activeLearner.activePinkyPromise.currentDays, total: activeLearner.activePinkyPromise.requiredDays })}>
+              <span>{t("pinkyPactChip", { current: activeLearner.activePinkyPromise.currentDays, total: activeLearner.activePinkyPromise.requiredDays })}</span>
             </div>
           )}
 
@@ -1696,7 +2044,7 @@ export function KidsPrototypesPage() {
             type="button"
             className="header-points-combined-pill"
             onClick={() => setRewardsShopModalOpen(true)}
-            title="查看金幣與特權票券夾"
+            title={t("rewardsShop")}
           >
             <span className="pill-coin-part">🪙 <b>{learnerPoints.coins.toLocaleString()}</b></span>
             <span className="pill-sep">|</span>
@@ -1708,10 +2056,10 @@ export function KidsPrototypesPage() {
             type="button"
             className="feature-action-capsule-btn achievements-btn"
             onClick={() => setAchievementsModalOpen(true)}
-            title="開啟我的榮譽成就與量化學習數據"
+            title={t("myAchievements")}
           >
             <span className="btn-icon">🏆</span>
-            <span>我的成就</span>
+            <span>{t("myAchievements")}</span>
           </button>
 
           {/* Rewards Store Button */}
@@ -1719,10 +2067,10 @@ export function KidsPrototypesPage() {
             type="button"
             className="feature-action-capsule-btn rewards-btn"
             onClick={() => setRewardsShopModalOpen(true)}
-            title="開啟獎勵兌換舖與票券夾"
+            title={t("rewardsShop")}
           >
             <span className="btn-icon">🎁</span>
-            <span>獎勵兌換舖</span>
+            <span>{t("rewardsShop")}</span>
           </button>
 
           {/* Settings Menu Button */}
@@ -1731,10 +2079,10 @@ export function KidsPrototypesPage() {
               className={`menu-trigger-btn ${menuOpen ? "active" : ""}`}
               onClick={() => setMenuOpen((prev) => !prev)}
               aria-label={t("menu")}
-              title="系統設定與家長後台"
+              title={t("settings")}
             >
               <Settings size={22} />
-              <span className="menu-btn-label">設定</span>
+              <span className="menu-btn-label">{t("settings")}</span>
             </button>
 
             {menuOpen && (
@@ -1752,13 +2100,13 @@ export function KidsPrototypesPage() {
                     <div className="menu-item-info">
                       <span className="menu-item-icon">🀄</span>
                       <div>
-                        <strong>學習字體與拼讀</strong>
+                        <strong>{t("scriptModeLabel")}</strong>
                         <small>
                           {scriptMode === "zhuyin"
-                            ? "繁體注音 (ㄅㄆㄇ)"
+                            ? t("scriptZhuyin")
                             : scriptMode === "pinyin"
-                            ? "簡體拼音 (pīnyīn)"
-                            : "繁+簡雙軌對照"}
+                            ? t("scriptPinyin")
+                            : t("scriptDual")}
                         </small>
                       </div>
                     </div>
@@ -1766,23 +2114,23 @@ export function KidsPrototypesPage() {
                       <button
                         className={`seg-btn ${scriptMode === "zhuyin" ? "active" : ""}`}
                         onClick={() => updateScriptMode("zhuyin")}
-                        title="繁體注音"
+                        title={t("scriptZhuyin")}
                       >
-                        繁體
+                        {t("scriptZhuyinShort")}
                       </button>
                       <button
                         className={`seg-btn ${scriptMode === "pinyin" ? "active" : ""}`}
                         onClick={() => updateScriptMode("pinyin")}
-                        title="簡體拼音"
+                        title={t("scriptPinyin")}
                       >
-                        簡體
+                        {t("scriptPinyinShort")}
                       </button>
                       <button
                         className={`seg-btn ${scriptMode === "dual" ? "active" : ""}`}
                         onClick={() => updateScriptMode("dual")}
-                        title="繁簡雙軌"
+                        title={t("scriptDual")}
                       >
-                        繁+簡
+                        {t("scriptDualShort")}
                       </button>
                     </div>
                   </div>
@@ -1792,13 +2140,13 @@ export function KidsPrototypesPage() {
                     <div className="menu-item-info">
                       <span className="menu-item-icon">🔤</span>
                       <div>
-                        <strong>閱讀標音輔助</strong>
+                        <strong>{t("phoneticAssistLabel")}</strong>
                         <small>
                           {phoneticAssist === "zhuyin"
-                            ? "臺灣注音標音"
+                            ? t("scriptZhuyin")
                             : phoneticAssist === "pinyin"
-                            ? "漢語拼音標音"
-                            : "純漢字閱讀挑戰"}
+                            ? t("scriptPinyin")
+                            : t("phoneticHide")}
                         </small>
                       </div>
                     </div>
@@ -1806,23 +2154,23 @@ export function KidsPrototypesPage() {
                       <button
                         className={`seg-btn ${phoneticAssist === "zhuyin" ? "active" : ""}`}
                         onClick={() => updatePhoneticAssist("zhuyin")}
-                        title="注音"
+                        title={t("scriptZhuyin")}
                       >
-                        注音
+                        {t("assistZhuyinShort")}
                       </button>
                       <button
                         className={`seg-btn ${phoneticAssist === "pinyin" ? "active" : ""}`}
                         onClick={() => updatePhoneticAssist("pinyin")}
-                        title="拼音"
+                        title={t("scriptPinyin")}
                       >
-                        拼音
+                        {t("assistPinyinShort")}
                       </button>
                       <button
                         className={`seg-btn ${phoneticAssist === "off" ? "active" : ""}`}
                         onClick={() => updatePhoneticAssist("off")}
-                        title="純漢字"
+                        title={t("phoneticHide")}
                       >
-                        隱藏
+                        {t("assistOffShort")}
                       </button>
                     </div>
                   </div>
@@ -1832,24 +2180,24 @@ export function KidsPrototypesPage() {
                     <div className="menu-item-info">
                       <span className="menu-item-icon">✍️</span>
                       <div>
-                        <strong>習慣用手切換</strong>
-                        <small>{handMode === "right" ? "右手模式（右側書寫）" : "左手模式（左側書寫）"}</small>
+                        <strong>{t("handModeLabel")}</strong>
+                        <small>{handMode === "right" ? t("handRight") : t("handLeft")}</small>
                       </div>
                     </div>
                     <div className="menu-segmented-pill">
                       <button
                         className={`seg-btn ${handMode === "right" ? "active" : ""}`}
                         onClick={() => updateHandMode("right")}
-                        title="右手"
+                        title={t("handRight")}
                       >
-                        ✋ 右手
+                        {t("handRight")}
                       </button>
                       <button
                         className={`seg-btn ${handMode === "left" ? "active" : ""}`}
                         onClick={() => updateHandMode("left")}
-                        title="左手"
+                        title={t("handLeft")}
                       >
-                        🤚 左手
+                        {t("handLeft")}
                       </button>
                     </div>
                   </div>
@@ -1861,15 +2209,15 @@ export function KidsPrototypesPage() {
                         {isDarkEyeCare ? "🌙" : "☀️"}
                       </span>
                       <div>
-                        <strong>護眼深色模式</strong>
-                        <small>{isDarkEyeCare ? "深色低藍光" : "白天明亮"}</small>
+                        <strong>{t("eyeCareMode")}</strong>
+                        <small>{isDarkEyeCare ? t("eyeCareDark") : t("eyeCareLight")}</small>
                       </div>
                     </div>
                     <button
                       className={`menu-switch-pill ${isDarkEyeCare ? "on" : "off"}`}
                       onClick={() => setIsDarkEyeCare((prev) => !prev)}
                     >
-                      {isDarkEyeCare ? "🌙 開啟" : "☀️ 白天"}
+                      {isDarkEyeCare ? t("eyeCareDarkShort") : t("eyeCareLightShort")}
                     </button>
                   </div>
 
@@ -1878,7 +2226,7 @@ export function KidsPrototypesPage() {
                     <div className="menu-item-info">
                       <span className="menu-item-icon">🌐</span>
                       <div>
-                        <strong>介面顯示語言</strong>
+                        <strong>{t("displayLangLabel")}</strong>
                         <small>
                           {displayLang === "zh-Hant"
                             ? "繁體中文"
@@ -1903,7 +2251,7 @@ export function KidsPrototypesPage() {
                           setDisplayLang(newLang);
                           localStorage.setItem("tongxuan_display_lang", newLang);
                         }}
-                        aria-label="選擇介面顯示語言"
+                        aria-label={t("displayLangLabel")}
                       >
                         <option value="zh-Hant">繁體中文</option>
                         <option value="zh-Hans">简体中文</option>
@@ -1924,7 +2272,7 @@ export function KidsPrototypesPage() {
                         setLoginModalOpen(true);
                       }}
                     >
-                      <span>👤 切換 / 管理學習者帳號</span>
+                      <span>{t("switchUser")}</span>
                     </button>
                   </div>
 
@@ -1938,7 +2286,7 @@ export function KidsPrototypesPage() {
                       }}
                     >
                       <Lock size={18} />
-                      <span>進入家長管理後台</span>
+                      <span>{t("parentZone")}</span>
                     </button>
                   </div>
                 </div>
@@ -1965,7 +2313,7 @@ export function KidsPrototypesPage() {
               ◀
             </button>
             <span className="sprint-stage-badge">
-              🚩 第 {selectedLevel.stageNumber || 1} 階段
+              {t("stageN", { n: selectedLevel.stageNumber || 1 })}
             </span>
             <button
               type="button"
@@ -2029,7 +2377,7 @@ export function KidsPrototypesPage() {
                     <span className="sprint-node-num">{dayIdx}</span>
                   )}
                 </div>
-                <span className="sprint-node-label">第 {dayIdx} 日</span>
+                <span className="sprint-node-label">{t("sprintDayN", { n: dayIdx })}</span>
                 <div className="sprint-mini-stars">
                   <Star
                     size={11}
@@ -2084,10 +2432,10 @@ export function KidsPrototypesPage() {
                   )}
                 </div>
                 <span className="sprint-node-label sprint-quiz-label">
-                  {currentStage === 5 ? "全冊總複習" : "綜合測驗"}
+                  {currentStage === 5 ? t("milestoneReview") : t("stageQuiz")}
                 </span>
                 <span className="sprint-quiz-status-pill">
-                  {isQuizDone ? "已及格" : "驗收"}
+                  {isQuizDone ? t("passedStatus") : t("evalStatus")}
                 </span>
               </button>
             );
@@ -2148,7 +2496,7 @@ export function KidsPrototypesPage() {
                 title={t("readAloud")}
               >
                 <Volume2 size={24} />
-                <span>語音導讀</span>
+                <span>{t("voiceGuide")}</span>
               </button>
             </div>
 
@@ -2224,7 +2572,7 @@ export function KidsPrototypesPage() {
           <div className="daily-story-textbook-panel">
             <div className="story-meta-bar">
               <div className="story-badges-group">
-                <span className="story-day-tag">🚩 第 {selectedLevel.stageNumber || 1} 階段 · {selectedLevel.title}</span>
+                <span className="story-day-tag">{t("stageN", { n: selectedLevel.stageNumber || 1 })} · {selectedLevel.title}</span>
                 <span className="story-duration-pill">
                   ⏱️ 約 {selectedDay.estimatedMinutes} 分鐘
                 </span>
@@ -2241,7 +2589,7 @@ export function KidsPrototypesPage() {
                 title={t("readAloud")}
               >
                 <Volume2 size={22} />
-                <span>全篇朗讀</span>
+                <span>{t("fullReadAloud")}</span>
               </button>
             </div>
 
@@ -2267,7 +2615,7 @@ export function KidsPrototypesPage() {
                         title="播放這句話的標準朗讀"
                       >
                         <Volume2 size={16} />
-                        <span>播放單句</span>
+                        <span>{t("playSentence")}</span>
                       </button>
 
                       <button
@@ -2277,7 +2625,7 @@ export function KidsPrototypesPage() {
                         title="開口跟讀這句話"
                       >
                         <Mic size={16} />
-                        <span>{activeRecordingLineIdx === idx ? "⏹️ 完成跟讀" : "🎙️ 復誦跟讀"}</span>
+                        <span>{activeRecordingLineIdx === idx ? t("doneRecording") : t("repeatSentence")}</span>
                       </button>
 
                       {linePraiseMessages[idx] && (
@@ -2457,7 +2805,7 @@ export function KidsPrototypesPage() {
           <div className="portal-sponsor-pill">
             <div className="sponsor-text-group">
               <span className="sponsor-text">
-                ☕ 童軒中文為免費開源專案 · 歡迎回饋使用體驗與建議！
+                {t("communityFooterText")}
               </span>
               <button
                 type="button"
@@ -2467,7 +2815,7 @@ export function KidsPrototypesPage() {
                   setAboutModalOpen(true);
                 }}
               >
-                ⚠️ 目前為公開測試版 (Beta) · 點此查看《免責聲明與隱私條款》
+                {t("betaDisclaimerLink")}
               </button>
             </div>
             <div className="sponsor-actions-row">
@@ -2476,20 +2824,20 @@ export function KidsPrototypesPage() {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="sponsor-feedback-btn"
-                title="透過 Email 或表單回報問題與建議"
+                title={t("feedbackBtn")}
               >
                 <span className="btn-feedback-emoji">💬</span>
-                <span>問題與建議回報</span>
+                <span>{t("feedbackBtn")}</span>
               </a>
               <a
                 href="https://buymeacoffee.com/webber0612"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="sponsor-coffee-btn"
-                title="前往 Buy Me a Coffee 支持作者"
+                title={t("sponsorBtn")}
               >
                 <span className="btn-coffee-emoji">☕</span>
-                <span>請作者喝咖啡</span>
+                <span>{t("sponsorBtn")}</span>
               </a>
             </div>
           </div>
@@ -2634,6 +2982,7 @@ export function KidsPrototypesPage() {
       {aboutModalOpen && (
         <AboutTongXuanModal
           initialTab={aboutInitialTab}
+          t={t}
           onClose={() => {
             setAboutModalOpen(false);
             setAboutInitialTab("about");
@@ -6405,9 +6754,11 @@ function RewardsStoreModal({
    ======================================================== */
 function AboutTongXuanModal({
   initialTab = "about",
+  t = (k) => k,
   onClose
 }: {
   initialTab?: "about" | "roadmap" | "legal" | "disclaimer";
+  t?: (key: string, values?: Record<string, string | number>) => string;
   onClose: () => void;
 }) {
   const [activeTab, setActiveTab] = useState<"about" | "roadmap" | "legal" | "disclaimer">(initialTab);
@@ -6415,7 +6766,7 @@ function AboutTongXuanModal({
   return (
     <div className="modal-backdrop">
       <div className="about-tongxuan-modal-card animate-fade">
-        <button className="modal-close-x" onClick={onClose} aria-label="關閉">
+        <button className="modal-close-x" onClick={onClose} aria-label="Close">
           <X size={20} />
         </button>
 
@@ -6423,9 +6774,9 @@ function AboutTongXuanModal({
         <div className="about-modal-header">
           <div className="about-brand-badge">☀️</div>
           <div>
-            <h2>童軒中文 · 關於、藍圖與使用條款</h2>
+            <h2>{t("aboutModalTitle")}</h2>
             <p className="about-sub-lead">
-              專為海外兒童與初學者量身打造 · 溫暖、趣味、系統化的華語全景學習平臺
+              {t("aboutModalSub")}
             </p>
           </div>
         </div>
@@ -6436,25 +6787,25 @@ function AboutTongXuanModal({
             className={`about-tab-btn ${activeTab === "about" ? "active" : ""}`}
             onClick={() => setActiveTab("about")}
           >
-            🌟 理念與特色
+            {t("tabAbout")}
           </button>
           <button
             className={`about-tab-btn ${activeTab === "roadmap" ? "active" : ""}`}
             onClick={() => setActiveTab("roadmap")}
           >
-            🗺️ 全景進階路線與檢定目標
+            {t("tabRoadmap")}
           </button>
           <button
             className={`about-tab-btn ${activeTab === "legal" ? "active" : ""}`}
             onClick={() => setActiveTab("legal")}
           >
-            ⚖️ 教材出處與版權聲明
+            {t("tabLegal")}
           </button>
           <button
             className={`about-tab-btn ${activeTab === "disclaimer" ? "active" : ""}`}
             onClick={() => setActiveTab("disclaimer")}
           >
-            📜 測試版與免責聲明
+            {t("tabDisclaimer")}
           </button>
         </div>
 
@@ -6464,23 +6815,23 @@ function AboutTongXuanModal({
             <div className="about-feature-cards-grid">
               <div className="about-feature-box">
                 <span className="feat-icon">✍️</span>
-                <h4>田字格 10 遍遞減筆順引擎</h4>
-                <p>遵循標準標楷體字形，以 100% ➔ 0% 漸隱提示與即時落點判定，陪伴孩子從臨摹到自信默寫。</p>
+                <h4>{t("aboutFeat1Title")}</h4>
+                <p>{t("aboutFeat1Desc")}</p>
               </div>
               <div className="about-feature-box">
                 <span className="feat-icon">🇹🇼🔤</span>
-                <h4>繁簡注拼雙軌並進</h4>
-                <p>同步支援臺灣注音符號（ㄅㄆㄇ）與國際漢語拼音（pīnyīn），繁簡同字或異字自動對照，無縫切換。</p>
+                <h4>{t("aboutFeat2Title")}</h4>
+                <p>{t("aboutFeat2Desc")}</p>
               </div>
               <div className="about-feature-box">
                 <span className="feat-icon">📚</span>
-                <h4>1~10 冊完整分級體系</h4>
-                <p>整合 5,000 標準常用漢字庫與 10 冊循序漸進教材，涵蓋字、詞、句、故事到成語閱讀全循環。</p>
+                <h4>{t("aboutFeat3Title")}</h4>
+                <p>{t("aboutFeat3Desc")}</p>
               </div>
               <div className="about-feature-box">
                 <span className="feat-icon">🎁</span>
-                <h4>正向激勵與護眼承諾</h4>
-                <p>無噪音式手遊誘導，透過星星打卡與週日開箱微習慣，並提供低藍光深色護眼模式呵護視力。</p>
+                <h4>{t("aboutFeat4Title")}</h4>
+                <p>{t("aboutFeat4Desc")}</p>
               </div>
             </div>
           </div>
@@ -6611,27 +6962,27 @@ function AboutTongXuanModal({
         {activeTab === "disclaimer" && (
           <div className="about-tab-pane animate-fade">
             <div className="legal-notice-box">
-              <h3>📜 公開測試版 (Beta) 免責聲明與隱私條款</h3>
+              <h3>{t("disclaimerTitle")}</h3>
               <ul className="legal-points-list">
                 <li>
-                  <strong>⚠️ 公開測試版與進度保存風險：</strong>
-                  本專案目前處於公開 Beta 測試與持續改版階段。當系統升級、發布新功能或您清除瀏覽器快取時，儲存於您設備本地的學習進度（如金幣、星星、答錯記錄、兌換券）<strong>可能隨時被重置或調整</strong>。本系統不保證歷史資料的永久保存。
+                  <strong>{t("disclaimerPoint1Title")}</strong>
+                  {t("disclaimerPoint1Desc")}
                 </li>
                 <li>
-                  <strong>🔒 純本地運算與非託管隱私聲明：</strong>
-                  本系統採 Local-First 純前端本地架構，<strong>伺服器端不設有使用者資料庫，亦不負責託管、備份或恢復任何個人學習記錄或隱私數據</strong>。所有數據 100% 僅儲存於您當前的瀏覽器沙盒中，更換設備或清除快取後將無法由開發者端找回。
+                  <strong>{t("disclaimerPoint2Title")}</strong>
+                  {t("disclaimerPoint2Desc")}
                 </li>
                 <li>
-                  <strong>📚 非正式教育機構與學習成效免責：</strong>
-                  本系統為個人開發之自主自學輔助工具，非教育部或官方認證之正式學校機構。本系統不對任何使用者的識字速度、發音標準度、考試成績或特定學習結果提供任何形式之保證。
+                  <strong>{t("disclaimerPoint3Title")}</strong>
+                  {t("disclaimerPoint3Desc")}
                 </li>
                 <li>
-                  <strong>☕ 開源與贊助性質：</strong>
-                  本專案程式碼採 MIT 授權開源發布。請作者喝咖啡（Sponsor）屬於個人自願贊助與鼓勵性質，不構成任何商業契約、付費訂閱服務或專屬客服義務。
+                  <strong>{t("disclaimerPoint4Title")}</strong>
+                  {t("disclaimerPoint4Desc")}
                 </li>
               </ul>
               <div className="legal-footer-note">
-                <span>童軒中文恪守兒少隱私安全規範 · 感謝所有測試家長與教育工作者的理解與支持</span>
+                <span>{t("disclaimerFooter")}</span>
               </div>
             </div>
           </div>

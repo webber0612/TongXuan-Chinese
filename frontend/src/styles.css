@@ -1506,14 +1506,12 @@ body { background:var(--canvas); }
 }
 
 .star-card-title-group h3 {
-  font-size: 1.2rem;
+  font-size: clamp(1.02rem, 1.3vw, 1.18rem);
   font-weight: 900;
   color: #0f172a;
   margin: 0;
   letter-spacing: -0.01em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.2;
 }
 
 .star-card-goal-star {
