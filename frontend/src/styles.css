@@ -693,6 +693,67 @@ body { background:var(--canvas); }
   flex-wrap: nowrap;
 }
 
+/* Header Left Cluster: Logo & Learner */
+.header-left-cluster {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.header-brand-logo-pill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 12px 4px 6px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 16px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.header-brand-img {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  object-fit: cover;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.header-brand-title-box {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.brand-main-title {
+  font-size: 1.05rem;
+  font-weight: 900;
+  color: #1e293b;
+  letter-spacing: 0.02em;
+}
+
+.brand-en-subtitle {
+  font-size: 0.62rem;
+  font-weight: 800;
+  color: #0284c7;
+  letter-spacing: 0.08em;
+  margin-top: 2px;
+}
+
+.is-dark-eyecare .header-brand-logo-pill {
+  background: rgba(30, 41, 59, 0.95);
+  border-color: #334155;
+}
+
+.is-dark-eyecare .brand-main-title {
+  color: #f1f5f9;
+}
+
+.is-dark-eyecare .brand-en-subtitle {
+  color: #38bdf8;
+}
+
 /* LEFT: Learner Avatar Pill */
 .header-learner-pill.header-learner-large {
   display: flex;

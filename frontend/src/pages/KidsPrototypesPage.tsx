@@ -45,6 +45,7 @@ import {
   Pause
 } from "lucide-react";
 import { renderRuby, RubyText, getCharPhonetic } from "../lib/chinesePhonetics";
+import appLogoIcon from "../assets/app-logo-icon.png";
 import { OCAC_VOLUMES, type OCACVolume, type OCACLesson } from "../data/ocacTextbooksData";
 import { HANZI_5000_CORE, searchHanziLexicon, type HanziEntry } from "../data/hanzi5000Database";
 import {
@@ -1657,19 +1658,29 @@ export function KidsPrototypesPage() {
     <div className={`ipad-weekly-portal ${isDarkEyeCare ? "is-dark-eyecare" : ""}`}>
       {/* 1. TOP APP BAR (Clean, Focused, Distraction-Free) */}
       <header className="weekly-header-bar clean-header-bar">
-        {/* Left: Learner Profile */}
-        <button
-          className="header-learner-pill header-learner-large header-learner-interactive-btn"
-          onClick={() => setLoginModalOpen(true)}
-          title="點擊切換或管理學習者帳號"
-          aria-label="切換學習者帳號"
-        >
-          <span className="brand-badge-mini brand-badge-large">{activeLearner.avatar}</span>
-          <div className="learner-info">
-            <span className="learner-name learner-name-large">☀️ {t("morning")} · {activeLearner.name}</span>
-            <span className="learner-sub learner-sub-large">🎯 第 {selectedLevelNum} 關 · 挑戰中 🔄</span>
+        {/* Left: Brand Logo & Learner Profile */}
+        <div className="header-left-cluster">
+          <div className="header-brand-logo-pill" title="童軒中文 TongXuan Chinese">
+            <img src={appLogoIcon} alt="童軒中文 Logo" className="header-brand-img" />
+            <div className="header-brand-title-box">
+              <span className="brand-main-title">童軒中文</span>
+              <span className="brand-en-subtitle">TONGXUAN</span>
+            </div>
           </div>
-        </button>
+
+          <button
+            className="header-learner-pill header-learner-large header-learner-interactive-btn"
+            onClick={() => setLoginModalOpen(true)}
+            title="點擊切換或管理學習者帳號"
+            aria-label="切換學習者帳號"
+          >
+            <span className="brand-badge-mini brand-badge-large">{activeLearner.avatar}</span>
+            <div className="learner-info">
+              <span className="learner-name learner-name-large">☀️ {t("morning")} · {activeLearner.name}</span>
+              <span className="learner-sub learner-sub-large">🎯 第 {selectedLevelNum} 關 · 挑戰中 🔄</span>
+            </div>
+          </button>
+        </div>
 
         {/* Right Actions: Pact Reminder, Points Balance, Achievements, Rewards & Settings Menu */}
         <div className="header-right-actions-group">
