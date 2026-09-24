@@ -3,6 +3,8 @@
 > 專為海外與幼童家庭打造的現代中文沉浸式自主學習系統。  
 > 支援 **繁體中文 + 注音** 與 **簡體中文 + 拼音** 雙軌學習，融合筆順引導、智能跟讀、溫暖獎勵與無壓力的每日學習循環。
 
+🌐 **[點此直接在瀏覽器 / iPad 上線體驗 (Live Demo)](https://webber0612.github.io/TongXuan-Chinese/)**
+
 [![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)]()
 [![PWA Ready](https://img.shields.io/badge/PWA-ready-blue.svg)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
