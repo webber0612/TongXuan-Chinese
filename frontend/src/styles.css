@@ -10680,6 +10680,96 @@ body.is-dark-eyecare-global .calm-node-text {
   color: #94a3b8;
 }
 
+/* ==========================================================================
+   Portal Community & Buy Me a Coffee Footer (Subtle & Elegant)
+   ========================================================================== */
+.portal-community-footer {
+  width: 100%;
+  max-width: 1200px;
+  margin: 36px auto 20px auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0 16px;
+}
+
+.portal-sponsor-pill {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 9999px;
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  backdrop-filter: blur(8px);
+  max-width: 800px;
+  width: 100%;
+}
+
+.sponsor-text {
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: #64748b;
+  line-height: 1.4;
+  flex: 1;
+}
+
+.sponsor-coffee-btn {
+  background: #ffdd00;
+  color: #000000;
+  border: none;
+  border-radius: 9999px;
+  padding: 8px 18px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+  box-shadow: 0 2px 6px rgba(255, 221, 0, 0.4);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.sponsor-coffee-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 221, 0, 0.5);
+  filter: brightness(1.03);
+}
+
+.sponsor-coffee-btn:active {
+  transform: translateY(1px);
+}
+
+.btn-coffee-emoji {
+  font-size: 1rem;
+}
+
+/* Dark mode adjustments */
+.is-dark-eyecare .portal-sponsor-pill,
+body.is-dark-eyecare-global .portal-sponsor-pill {
+  background: rgba(30, 41, 59, 0.85);
+  border-color: #334155;
+}
+
+.is-dark-eyecare .sponsor-text,
+body.is-dark-eyecare-global .sponsor-text {
+  color: #94a3b8;
+}
+
+@media (max-width: 640px) {
+  .portal-sponsor-pill {
+    flex-direction: column;
+    text-align: center;
+    border-radius: 20px;
+    padding: 14px 16px;
+    gap: 12px;
+  }
+}
+
 
 
 

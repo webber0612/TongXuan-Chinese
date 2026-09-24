@@ -2439,6 +2439,25 @@ export function KidsPrototypesPage() {
           </div>
         </div>
         )}
+
+        {/* Soft Community & Sponsor Footer */}
+        <footer className="portal-community-footer">
+          <div className="portal-sponsor-pill">
+            <span className="sponsor-text">
+              ☕ 童軒中文為免費開源專案 · 若對孩子學習有幫助，歡迎請作者喝杯咖啡支持持續維護！
+            </span>
+            <a
+              href="https://buymeacoffee.com/webber0612"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="sponsor-coffee-btn"
+              title="前往 Buy Me a Coffee 支持作者"
+            >
+              <span className="btn-coffee-emoji">☕</span>
+              <span>請作者喝咖啡</span>
+            </a>
+          </div>
+        </footer>
       </main>
 
       {/* 1. Login & Learner Management Switcher Modal */}

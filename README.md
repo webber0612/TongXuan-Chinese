@@ -97,7 +97,16 @@ python scripts/final_smoke.py
 
 ---
 
+## ☕ 支持與贊助 (Support & Sponsor)
+
+**童軒中文** 是一個由獨立開發者為孩子打造的開源學習專案。如果這個專案對您與孩子的中文學習有所幫助，歡迎請作者喝杯咖啡支持持續維護與內容充實！
+
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-☕%20請作者喝咖啡-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/webber0612)
+
+---
+
 ## 📄 授權條款 (License)
 
 本專案程式碼基於 [MIT License](LICENSE) 授權發布。  
 專案內含之官方專有教材與繪本插畫內容保留所有權利。
+
