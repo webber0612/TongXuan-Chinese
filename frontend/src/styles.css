@@ -24,8 +24,8 @@
   --radius-control: 16px;
 }
 * { box-sizing: border-box; }
-html { min-width: 320px; scroll-behavior: smooth; }
-body { margin: 0; min-width: 320px; min-height: 100vh; background: var(--canvas); color: var(--ink); }
+html { min-width: 320px; max-width: 100vw; overflow-x: hidden; scroll-behavior: smooth; }
+body { margin: 0; min-width: 320px; max-width: 100vw; overflow-x: hidden; min-height: 100vh; background: var(--canvas); color: var(--ink); }
 button, input, select, textarea { font: inherit; }
 button { color: inherit; cursor: pointer; }
 button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid #9d5d12; outline-offset: 3px; }
@@ -844,32 +844,161 @@ body { background:var(--canvas); }
 
 @media (max-width: 900px) {
   .weekly-header-bar.clean-header-bar {
-    padding: 8px 12px;
-    gap: 8px;
+    padding: 8px 14px;
+    gap: 10px;
   }
   .header-right-actions-group {
     gap: 6px;
   }
   .feature-action-capsule-btn {
-    padding: 5px 9px;
-    font-size: 0.78rem;
+    padding: 6px 10px;
+    font-size: 0.8rem;
     gap: 4px;
   }
   .header-points-combined-pill {
-    padding: 5px 9px;
-    font-size: 0.82rem;
+    padding: 6px 10px;
+    font-size: 0.84rem;
     gap: 5px;
   }
   .learner-name.learner-name-large {
-    font-size: 0.95rem;
+    font-size: 0.96rem;
   }
   .learner-sub.learner-sub-large {
-    font-size: 0.70rem;
+    font-size: 0.72rem;
   }
   .brand-badge-mini.brand-badge-large {
+    width: 38px;
+    height: 38px;
+    font-size: 1.3rem;
+  }
+}
+
+@media (max-width: 680px) {
+  .ipad-weekly-portal {
+    padding: 10px 8px 24px;
+    gap: 12px;
+    overflow-x: hidden;
+  }
+  .weekly-header-bar.clean-header-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 20px;
+  }
+  .header-left-cluster {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 8px;
+  }
+  .header-brand-logo-pill {
+    padding: 4px 8px 4px 6px;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .header-brand-img {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+  }
+  .brand-main-title {
+    font-size: 0.95rem;
+  }
+  .brand-en-subtitle {
+    font-size: 0.55rem;
+  }
+  .header-learner-pill.header-learner-large {
+    gap: 8px;
+    flex-shrink: 1;
+    min-width: 0;
+  }
+  .brand-badge-mini.brand-badge-large {
+    width: 34px;
+    height: 34px;
+    font-size: 1.15rem;
+    border-radius: 10px;
+    flex-shrink: 0;
+  }
+  .learner-name.learner-name-large {
+    font-size: 0.88rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 140px;
+  }
+  .learner-sub.learner-sub-large {
+    font-size: 0.68rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 140px;
+  }
+  .header-right-actions-group {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 6px;
+  }
+  .header-pact-chip {
+    display: none;
+  }
+  .header-points-combined-pill {
+    flex: 1;
+    justify-content: center;
+    padding: 6px 8px;
+    font-size: 0.82rem;
+    min-width: 0;
+  }
+  .feature-action-capsule-btn {
+    padding: 6px 10px;
+    font-size: 0.78rem;
+    white-space: nowrap;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+  .clean-header-bar .menu-trigger-btn {
+    padding: 6px 10px;
+    font-size: 0.82rem;
+    flex-shrink: 0;
+  }
+}
+
+@media (max-width: 440px) {
+  .brand-en-subtitle {
+    display: none;
+  }
+  .learner-name.learner-name-large {
+    max-width: 100px;
+  }
+  .learner-sub.learner-sub-large {
+    max-width: 100px;
+  }
+  .feature-action-capsule-btn span:not(.btn-icon) {
+    display: none;
+  }
+  .feature-action-capsule-btn {
+    padding: 6px;
+    border-radius: 50%;
     width: 36px;
     height: 36px;
-    font-size: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .clean-header-bar .menu-btn-label {
+    display: none;
+  }
+  .clean-header-bar .menu-trigger-btn {
+    padding: 6px;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 }
 
@@ -1928,6 +2057,62 @@ body { background:var(--canvas); }
   .three-star-cards-grid {
     grid-template-columns: 1fr;
     gap: 14px;
+  }
+}
+
+@media (max-width: 640px) {
+  .daily-story-textbook-panel {
+    padding: 14px 12px;
+    border-radius: 20px;
+    gap: 10px;
+  }
+  .story-meta-bar {
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: space-between;
+    padding-bottom: 8px;
+  }
+  .story-day-tag {
+    font-size: 0.82rem;
+    padding: 3px 10px;
+  }
+  .story-duration-pill {
+    font-size: 0.78rem;
+    padding: 3px 8px;
+  }
+  .story-listen-audio-btn {
+    padding: 6px 12px;
+    font-size: 0.84rem;
+  }
+  .story-main-title {
+    font-size: 1.5rem;
+    line-height: 1.4;
+  }
+  .story-paragraphs-box {
+    padding: 4px 2px;
+    gap: 10px;
+  }
+  .story-paragraph-text {
+    font-size: 1.15rem;
+    line-height: 2.1;
+    text-indent: 1.5em;
+  }
+  .story-sentence-actions-bar {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .sentence-action-btn {
+    padding: 5px 10px;
+    font-size: 0.78rem;
+  }
+  .char-tianzige-grid-6 {
+    gap: 4px;
+  }
+  .char-tianzi-card-mini {
+    padding: 6px 2px;
+  }
+  .tianzi-glyph-mini {
+    font-size: 1.45rem;
   }
 }
 
@@ -10083,6 +10268,46 @@ body.is-dark-eyecare-global .cert-body {
   color: #cbd5e1;
 }
 
+@media (max-width: 580px) {
+  .compact-sprint-panel {
+    padding: 10px 8px 12px;
+    border-radius: 18px;
+    margin-bottom: 14px;
+    gap: 8px;
+  }
+  .compact-sprint-nodes-track {
+    gap: 3px;
+  }
+  .sprint-track-line {
+    top: 17px;
+    left: 12px;
+    right: 12px;
+    height: 2px;
+  }
+  .sprint-node-bubble {
+    width: 34px;
+    height: 34px;
+    font-size: 0.85rem;
+    border-width: 2px;
+  }
+  .sprint-node-label {
+    font-size: 0.65rem;
+  }
+  .sprint-quiz-status-pill,
+  .sprint-chest-status-pill {
+    font-size: 0.55rem;
+    padding: 1px 4px;
+  }
+  .sprint-mini-stars svg {
+    width: 9px;
+    height: 9px;
+  }
+  .sprint-stage-badge {
+    font-size: 0.82rem;
+    padding: 3px 10px;
+  }
+}
+
 /* ========================================================
    REWARDS SHOP SCROLLING & TICKET STACKING
    ======================================================== */
@@ -10909,6 +11134,20 @@ body.is-dark-eyecare-global .sponsor-feedback-btn:hover {
     width: 100%;
     justify-content: center;
     flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 480px) {
+  .sponsor-actions-row {
+    flex-direction: column;
+    width: 100%;
+    gap: 8px;
+  }
+  .sponsor-feedback-btn,
+  .sponsor-coffee-btn {
+    width: 100%;
+    justify-content: center;
+    box-sizing: border-box;
   }
 }
 
