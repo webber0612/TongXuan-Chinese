@@ -148,8 +148,8 @@ export function AppShell() {
     </header>
     <div className="app-frame">
       <div className="main-column">
-        {childrenLoading && <div className="offline-strip" role="status">{t("loading")}</div>}
-        {childrenError && <div className="offline-strip error-strip" role="alert">{childrenError} <button className="button button-text" onClick={() => void loadChildren()}>{t("retry")}</button></div>}
+        {childrenLoading && !isChildPortal && <div className="offline-strip" role="status">{t("loading")}</div>}
+        {childrenError && !isChildPortal && <div className="offline-strip error-strip" role="alert">{childrenError} <button className="button button-text" onClick={() => void loadChildren()}>{t("retry")}</button></div>}
         {route === "preview-kids" && <KidsPrototypesPage />}
         {route === "preview" && <DesignPreviewPage />}
         {route === "preview-b" && <KidsPrototypesPage />}
@@ -199,7 +199,7 @@ function SettingsPage({ profiles, language, setLanguage, onOpenParent }: { profi
   function setNotation(value: AnnotationMode) { setAnnotation(value); localStorage.setItem(ANNOTATION_MODE_KEY, value); }
   return <main className="app-page settings-page">
     <PageHeading kicker={t("settings")} title={t("settingsTitle")} subtitle={t("settingsIntro")} icon={<Languages/>}/>
-    <section className="settings-section"><div className="settings-section-heading"><div><p className="eyebrow">01 · APP LANGUAGE</p><h2>{t("displayLanguage")}</h2></div><Languages/></div><p className="settings-help">{t("beginner")}</p><SettingSelect label={t("displayLanguage")} selectedKey={language} onChange={(value) => { if (value) setLanguage(value as DisplayLanguage); }} options={[["zh-Hant", "繁體中文"], ["zh-Hans", "简体中文"], ["en", "English"]]} /></section>
+    <section className="settings-section"><div className="settings-section-heading"><div><p className="eyebrow">01 · APP LANGUAGE</p><h2>{t("displayLanguage")}</h2></div><Languages/></div><p className="settings-help">{t("beginner")}</p><SettingSelect label={t("displayLanguage")} selectedKey={language} onChange={(value) => { if (value) setLanguage(value as DisplayLanguage); }} options={[["zh-Hant", "繁體中文"], ["zh-Hans", "简体中文"], ["en", "English"], ["ja", "日本語"], ["ko", "한국어"], ["es", "Español"]]} /></section>
     <section className="settings-section"><div className="settings-section-heading"><div><p className="eyebrow">02 · LEARNING CONTENT</p><h2>{t("learningChinese")}</h2></div><BookOpen/></div><SettingSelect label={t("learningChinese")} selectedKey={learningLocale} onChange={(value) => { if (value) setLearning(value as LearningLocale); }} options={[["zh-TW", t("traditional")], ["zh-CN", t("simplified")]]}/><div className="setting-divider"/><SettingSelect label={t("notation")} selectedKey={annotation} onChange={(value) => { if (value) setNotation(value as AnnotationMode); }} options={[["AUTO", t("notationAuto")], ["BOPOMOFO", t("bopomofo")], ["PINYIN", t("pinyin")], ["HIDDEN", t("hide")]]}/><p className="settings-help">{learningLocale === "zh-TW" ? t("traditionalHint") : t("simplifiedHint")}</p></section>
     <section className="settings-section"><div className="settings-section-heading"><div><p className="eyebrow">03 · FAMILY</p><h2>{t("familyMembers")}</h2></div><CircleUserRound/></div><div className="family-list">{profiles.map((profile) => <div className="family-row" key={profile.key}><span className={`avatar avatar-${profile.color}`}>{profile.name.slice(-1)}</span><span><strong>{profile.name}</strong><small>{profile.role === "parent" ? t("parentRole") : t("childRole")}</small></span></div>)}</div></section>
     <section className="settings-note"><div><strong>{t("privacy")}</strong><p>{t("privacyText")}</p></div></section>

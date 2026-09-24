@@ -45,6 +45,7 @@ import {
   Pause
 } from "lucide-react";
 import { renderRuby, RubyText, getCharPhonetic } from "../lib/chinesePhonetics";
+import { useLocale } from "../lib/i18n";
 import appLogoIcon from "../assets/app-logo-icon.png";
 import { OCAC_VOLUMES, type OCACVolume, type OCACLesson } from "../data/ocacTextbooksData";
 import { HANZI_5000_CORE, searchHanziLexicon, type HanziEntry } from "../data/hanzi5000Database";
@@ -2865,6 +2866,7 @@ export function KidsPrototypesPage() {
           onAddLearner={handleAddLearner}
           onDeleteLearner={handleDeleteLearner}
           onClose={() => setLoginModalOpen(false)}
+          t={t}
         />
       )}
 
@@ -2970,6 +2972,7 @@ export function KidsPrototypesPage() {
           learner={activeLearner}
           onClose={() => setAchievementsModalOpen(false)}
           R={R}
+          t={t}
         />
       )}
 
@@ -2986,6 +2989,7 @@ export function KidsPrototypesPage() {
           }}
           onClose={() => setRewardsShopModalOpen(false)}
           R={R}
+          t={t}
         />
       )}
 
@@ -5367,7 +5371,8 @@ function LearnerLoginModal({
   onSelectLearner,
   onAddLearner,
   onDeleteLearner,
-  onClose
+  onClose,
+  t
 }: {
   learners: ChildLearner[];
   activeLearnerId: string;
@@ -5377,6 +5382,7 @@ function LearnerLoginModal({
   onAddLearner: (learner: ChildLearner) => void;
   onDeleteLearner: (id: string) => void;
   onClose: () => void;
+  t: (key: string, values?: Record<string, string | number>) => string;
 }) {
   const [isAdding, setIsAdding] = useState(false);
   const [newName, setNewName] = useState("");
@@ -6368,7 +6374,8 @@ function RewardsStoreModal({
   onUpdatePoints,
   onUpdateRedemptions,
   onClose,
-  R
+  R,
+  t
 }: {
   points: { coins: number; stars: number };
   redemptions: RedemptionRecord[];
@@ -6376,6 +6383,7 @@ function RewardsStoreModal({
   onUpdateRedemptions: (newHistory: RedemptionRecord[]) => void;
   onClose: () => void;
   R: (text: string) => ReactNode;
+  t: (key: string, values?: Record<string, string | number>) => string;
 }) {
   const [activeTab, setActiveTab] = useState<"shop" | "passbook">("shop");
   const [passbookSubTab, setPassbookSubTab] = useState<"pending" | "claimed">("pending");
@@ -6439,8 +6447,8 @@ function RewardsStoreModal({
           <div className="rewards-title-group">
             <span className="rewards-icon-badge">🎁</span>
             <div>
-              <h2>獎勵兌換舖</h2>
-              <p className="rewards-sub">累積學習星星與金幣，跟爸爸媽媽一起設定與兌換生活小約定。</p>
+              <h2>{t("rewardsStoreTitle")}</h2>
+              <p className="rewards-sub">{t("rewardsStoreSub")}</p>
             </div>
           </div>
 
@@ -6448,12 +6456,12 @@ function RewardsStoreModal({
             <div className="balance-item-chip gold-coin-chip" title="可消耗金幣">
               <span className="coin-icon">🪙</span>
               <span className="balance-val">{points.coins.toLocaleString()}</span>
-              <small>金幣 (可兌換)</small>
+              <small>{t("coinBalanceLabel")}</small>
             </div>
             <div className="balance-item-chip star-chip" title="學習累積星星（榮譽門檻）">
               <span className="star-icon">⭐</span>
               <span className="balance-val">{points.stars}</span>
-              <small>星星 (解鎖門檻)</small>
+              <small>{t("starBalanceLabel")}</small>
             </div>
           </div>
         </div>
@@ -6464,15 +6472,15 @@ function RewardsStoreModal({
             className={`rewards-tab-btn ${activeTab === "shop" ? "active" : ""}`}
             onClick={() => setActiveTab("shop")}
           >
-            🛍️ 獎勵品清單
+            {t("tabCatalog")}
           </button>
           <button
             className={`rewards-tab-btn ${activeTab === "passbook" ? "active" : ""}`}
             onClick={() => setActiveTab("passbook")}
           >
-            🎟️ 我的票券夾 ({totalPendingTickets})
+            {t("tabPassbook")} ({totalPendingTickets})
             {totalPendingTickets > 0 && (
-              <span className="passbook-pending-badge">{totalPendingTickets} 張待使用</span>
+              <span className="passbook-pending-badge">{t("passbookPendingCount", { n: totalPendingTickets })}</span>
             )}
           </button>
         </div>
@@ -6501,8 +6509,8 @@ function RewardsStoreModal({
 
                     <div className="reward-pricing-bottom">
                       <div className="cost-tag-group">
-                        <span className="cost-tag coin-cost">🪙 {item.costCoins.toLocaleString()} 金幣</span>
-                        <span className="cost-tag star-cost">⭐ 滿 {item.costStars} 星解鎖</span>
+                        <span className="cost-tag coin-cost">{t("costCoinLabel", { n: item.costCoins.toLocaleString() })}</span>
+                        <span className="cost-tag star-cost">{t("costStarThreshold", { n: item.costStars })}</span>
                       </div>
 
                       <button
@@ -6528,7 +6536,7 @@ function RewardsStoreModal({
             <div className="passbook-guidance-banner">
               <span>💡</span>
               <p>
-                <b>使用方法：</b> 成功兌換的生活約定票券會存放在「我的票券夾」。想使用約定時，請爸爸媽媽輸入 4 位 PIN 碼核銷即可！
+                {t("passbookUsageGuide")}
               </p>
             </div>
 
@@ -6539,14 +6547,14 @@ function RewardsStoreModal({
                 className={`passbook-subtab-btn ${passbookSubTab === "pending" ? "active" : ""}`}
                 onClick={() => setPassbookSubTab("pending")}
               >
-                🎟️ 待使用的約定票券 ({totalPendingTickets})
+                {t("tabPendingVouchers", { n: totalPendingTickets })}
               </button>
               <button
                 type="button"
                 className={`passbook-subtab-btn ${passbookSubTab === "claimed" ? "active" : ""}`}
                 onClick={() => setPassbookSubTab("claimed")}
               >
-                📜 已核銷使用紀錄 ({claimedList.length})
+                {t("tabClaimedVouchers", { n: claimedList.length })}
               </button>
             </div>
 
@@ -6554,7 +6562,7 @@ function RewardsStoreModal({
               pendingList.length === 0 ? (
                 <div className="empty-passbook-state">
                   <span>🎟️</span>
-                  <p>目前沒有待使用的約定票券喔！快去挑選喜歡的生活獎勵吧！</p>
+                  <h4>{t("noPendingVouchersTitle")}</h4><p>{t("noPendingVouchersDesc")}</p>
                 </div>
               ) : (
                 <div className="ticket-vouchers-grid">
@@ -6588,7 +6596,7 @@ function RewardsStoreModal({
                             </div>
                             <span className="ticket-time-tag">⏱️ 兌換時間：{record.redeemedAt}</span>
                           </div>
-                          <div className="ticket-status-pill pending">⏳ 待爸媽核銷</div>
+                          <div className="ticket-status-pill pending">{t("pendingBadge")}</div>
                         </div>
 
                         <div className="ticket-body-footer">
@@ -6604,7 +6612,7 @@ function RewardsStoreModal({
                               setPinError(null);
                             }}
                           >
-                            👨‍👩‍👧 請父母輸入 PIN 碼核銷{(record.quantity || 1) > 1 ? " (1張)" : ""}
+                            {t("useTicketBtn")}
                           </button>
                         </div>
                       </div>
@@ -6616,7 +6624,7 @@ function RewardsStoreModal({
               claimedList.length === 0 ? (
                 <div className="empty-passbook-state">
                   <span>📜</span>
-                  <p>尚無已核銷的約定紀錄。兌換並經父母核銷後會記錄在此！</p>
+                  <h4>{t("noClaimedVouchersTitle")}</h4><p>{t("noClaimedVouchersDesc")}</p>
                 </div>
               ) : (
                 <div className="ticket-vouchers-grid">
@@ -6645,7 +6653,7 @@ function RewardsStoreModal({
                             <strong>{record.itemName}</strong>
                             <span className="ticket-time-tag">⏱️ 核銷時間：{record.redeemedAt}</span>
                           </div>
-                          <div className="ticket-status-pill claimed">✅ 已核銷履約</div>
+                          <div className="ticket-status-pill claimed">{t("claimedBadge")}</div>
                         </div>
 
                         <div className="ticket-body-footer">
@@ -6675,7 +6683,7 @@ function RewardsStoreModal({
                 <X size={18} />
               </button>
               <div className="pin-verify-icon">🔒</div>
-              <h3>家長安全核銷確認</h3>
+              <h3>{t("parentPinDialogTitle")}</h3>
               <p className="pin-verify-desc">
                 孩子申請兌現生活約定：<b>【{pinDialogTargetRecord.itemName}】</b>
                 {(pinDialogTargetRecord.quantity || 1) > 1 && (
@@ -7376,11 +7384,13 @@ function StageQuizExamModal({
 function LearnerAchievementsModal({
   learner,
   onClose,
-  R
+  R,
+  t
 }: {
   learner: ChildLearner;
   onClose: () => void;
   R: (text: string) => ReactNode;
+  t: (key: string, values?: Record<string, string | number>) => string;
 }) {
   const completedLevels = learner.levelsProgress?.filter((p) => p.status === "completed") || [];
   const completedCount = completedLevels.length;
@@ -7393,55 +7403,13 @@ function LearnerAchievementsModal({
 
   // Badges Definitions with unlock conditions
   const badges = [
-    {
-      id: "b1",
-      icon: "🌅",
-      name: "初學啟航",
-      desc: "成功完成第 1 關生字練字與閱讀",
-      isUnlocked: completedCount >= 1
-    },
-    {
-      id: "b2",
-      icon: "✍️",
-      name: "妙筆生花",
-      desc: "累計完成 5 關田字格標準筆順書寫",
-      isUnlocked: completedCount >= 5
-    },
-    {
-      id: "b3",
-      icon: "📝",
-      name: "闖關小達人",
-      desc: "成功通過第 1 次階段檢核測驗",
-      isUnlocked: completedCount >= 5
-    },
-    {
-      id: "b4",
-      icon: "🔥",
-      name: "全勤之星",
-      desc: "連續 3 天堅持登入並及時通關",
-      isUnlocked: streak >= 3
-    },
-    {
-      id: "b5",
-      icon: "🤙",
-      name: "守信少年",
-      desc: "立下並圓滿達成「3 天打勾勾約定」",
-      isUnlocked: learner.activePinkyPromise?.isCompleted === true || completedCount >= 10
-    },
-    {
-      id: "b6",
-      icon: "🎁",
-      name: "願望成真",
-      desc: "在商城成功兌換並核銷特權獎勵",
-      isUnlocked: (learner.redemptions || []).some((r) => r.status === "claimed")
-    },
-    {
-      id: "b7",
-      icon: "👑",
-      name: "榮譽小狀元",
-      desc: "順利通關第 25 關全冊總複習大驗收",
-      isUnlocked: completedCount >= 25
-    }
+    { id: "b1", icon: "🌅", name: t("badge1Name"), desc: t("badge1Desc"), isUnlocked: completedCount >= 1 },
+    { id: "b2", icon: "✍️", name: t("badge2Name"), desc: t("badge2Desc"), isUnlocked: completedCount >= 5 },
+    { id: "b3", icon: "📝", name: t("badge3Name"), desc: t("badge3Desc"), isUnlocked: completedCount >= 5 },
+    { id: "b4", icon: "🔥", name: t("badge4Name"), desc: t("badge4Desc"), isUnlocked: streak >= 3 },
+    { id: "b5", icon: "🤙", name: t("badge5Name"), desc: t("badge5Desc"), isUnlocked: learner.activePinkyPromise?.isCompleted === true || completedCount >= 10 },
+    { id: "b6", icon: "🎁", name: t("badge6Name"), desc: t("badge6Desc"), isUnlocked: (learner.redemptions || []).some((r) => r.status === "claimed") },
+    { id: "b7", icon: "👑", name: t("badge7Name"), desc: t("badge7Desc"), isUnlocked: completedCount >= 25 }
   ];
 
   const unlockedCount = badges.filter((b) => b.isUnlocked).length;
@@ -7460,8 +7428,8 @@ function LearnerAchievementsModal({
             <span className="achieve-sparkle">🏆</span>
           </div>
           <div className="achieve-header-info">
-            <h2>{learner.name} · 我的榮譽成就</h2>
-            <p>累積每一天的微小堅持，看見量化的飛躍成長！</p>
+            <h2>{learner.name} · {t("achievementsTitle")}</h2>
+            <p>{t("achievementsSub")}</p>
           </div>
         </div>
 
@@ -7471,9 +7439,9 @@ function LearnerAchievementsModal({
             <span className="metric-icon">⏱️</span>
             <div className="metric-text-group">
               <strong className="metric-num">{totalMinutes}</strong>
-              <span className="metric-unit">分鐘</span>
+              <span className="metric-unit">{t("unitMinutes")}</span>
             </div>
-            <span className="metric-label">累計學習時長</span>
+            <span className="metric-label">{t("statMinutes")}</span>
           </div>
 
           <div className="metric-item-card">
@@ -7482,7 +7450,7 @@ function LearnerAchievementsModal({
               <strong className="metric-num">{totalChars}</strong>
               <span className="metric-unit">個</span>
             </div>
-            <span className="metric-label">精熟掌握漢字</span>
+            <span className="metric-label">{t("statChars")}</span>
           </div>
 
           <div className="metric-item-card">
@@ -7491,7 +7459,7 @@ function LearnerAchievementsModal({
               <strong className="metric-num">{totalVocab}</strong>
               <span className="metric-unit">個</span>
             </div>
-            <span className="metric-label">常用生活詞彙</span>
+            <span className="metric-label">{t("statVocab")}</span>
           </div>
 
           <div className="metric-item-card">
@@ -7500,7 +7468,7 @@ function LearnerAchievementsModal({
               <strong className="metric-num">{totalIdioms}</strong>
               <span className="metric-unit">則</span>
             </div>
-            <span className="metric-label">成語故事典故</span>
+            <span className="metric-label">{t("statIdioms")}</span>
           </div>
 
           <div className="metric-item-card">
@@ -7509,7 +7477,7 @@ function LearnerAchievementsModal({
               <strong className="metric-num">{completedCount}</strong>
               <span className="metric-unit">/ 25 關</span>
             </div>
-            <span className="metric-label">已通關主線關卡</span>
+            <span className="metric-label">{t("statLevels")}</span>
           </div>
 
           <div className="metric-item-card">
@@ -7518,14 +7486,14 @@ function LearnerAchievementsModal({
               <strong className="metric-num">{streak}</strong>
               <span className="metric-unit">天</span>
             </div>
-            <span className="metric-label">連續自律學習</span>
+            <span className="metric-label">{t("statStreak")}</span>
           </div>
         </div>
 
         {/* Badges Wall Section */}
         <div className="achieve-badges-section">
           <div className="badges-header-row">
-            <span className="badges-title">🎖️ 榮譽徽章牆（已解鎖 {unlockedCount} / {badges.length}）</span>
+            <span className="badges-title">{t("badgeWallTitle")}（{t("badgeUnlockedCount", { current: unlockedCount, total: badges.length })}）</span>
           </div>
 
           <div className="badges-wall-grid">
@@ -7537,7 +7505,7 @@ function LearnerAchievementsModal({
                 <strong className="badge-name">{b.name}</strong>
                 <p className="badge-desc">{b.desc}</p>
                 <span className={`badge-status-tag ${b.isUnlocked ? "unlocked" : "locked"}`}>
-                  {b.isUnlocked ? "✓ 已獲得" : "待達成"}
+                  {b.isUnlocked ? t("badgeStatusUnlocked") : t("badgeStatusLocked")}
                 </span>
               </div>
             ))}
@@ -7546,7 +7514,7 @@ function LearnerAchievementsModal({
 
         <div className="achieve-footer-action">
           <button type="button" className="achieve-done-btn" onClick={onClose}>
-            🎉 繼續加油學習！
+            {t("achieveDoneBtn")}
           </button>
         </div>
       </div>

@@ -1,14 +1,14 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
-export type DisplayLanguage = "zh-Hant" | "zh-Hans" | "en";
+export type DisplayLanguage = "zh-Hant" | "zh-Hans" | "en" | "ja" | "ko" | "es";
 export type LearningLocale = "zh-TW" | "zh-CN";
 export type AnnotationMode = "AUTO" | "BOPOMOFO" | "PINYIN" | "HIDDEN";
 
-export const DISPLAY_LANGUAGE_KEY = "tongxuan.display-language";
+export const DISPLAY_LANGUAGE_KEY = "tongxuan_display_lang";
 export const LEARNING_LOCALE_KEY = "tongxuan.learning-locale";
 export const ANNOTATION_MODE_KEY = "tongxuan.annotation-mode";
 
-const messages = {
+const messages: Record<DisplayLanguage, Record<string, string>> = {
   "zh-Hant": {
     today: "今天", practice: "練習", library: "學習地圖", parent: "家長", settings: "設定", mySpace: "我的",
     hello: "嗨，{name}", welcome: "準備好探索今天的中文了嗎？", todayPath: "今天的學習旅程", progress: "今日旅程",
@@ -69,23 +69,117 @@ const messages = {
     parentConfirm: "Parent confirmation", redeemTitle: "Redeem {name}", parentAuth: "Ask a parent to confirm. The password is verified securely by the app.", parentPassword: "Parent password", enterParentPassword: "Enter parent password", verifying: "Checking…", confirmRedeem: "Confirm redemption", redeemSuccess: "Redemption requested for {name}.", redeemError: "Redemption failed. Try again soon.", guideSays: "Let's learn together!",
     notationAuto: "Auto · based on learning mode", traditionalHint: "Traditional Chinese uses Zhuyin by default. Change this anytime.", simplifiedHint: "Simplified Chinese uses Pinyin by default. Change this anytime.",
   },
-} satisfies Record<DisplayLanguage, Record<string, string>>;
+  ja: {
+    today: "今日", practice: "練習", library: "学習マップ", parent: "保護者", settings: "設定", mySpace: "マイページ",
+    hello: "こんにちは、{name}", welcome: "今日の中国語学習を始めましょう！", todayPath: "今日の学習ジャーニー", progress: "進捗",
+    points: "獲得スター", start: "学習開始", hear: "発音を聞く", nextUp: "次の漢字",
+    taskCount: "{count} 個の漢字を学習", noTasks: "ミッション準備中", noTasksHint: "保護者の方が新しい課題を設定します。",
+    continue: "続ける", chooseLearner: "学習者を切替", addLearner: "学習者を追加", parentZone: "保護者専用",
+    displayLanguage: "表示言語", learningChinese: "学習中", notation: "フリガナ補助", beginner: "初心者モード",
+    traditional: "繁体字", simplified: "簡体字", english: "English", bopomofo: "注音", pinyin: "ピンイン", hide: "非表示",
+    settingsIntro: "アプリの言語やフリガナ表示を設定します。", familyMembers: "家族メンバー", privacy: "プライバシー",
+    parentTitle: "学習のあゆみ", parentDescription: "日々の練習履歴と今週の進捗を確認。", retry: "再試行", loading: "読み込み中…",
+    rewards: "ご褒美", seeAll: "すべて見る", curriculum: "カリキュラム", tutor: "先生に質問", close: "閉じる", addTitle: "学習者の新規追加",
+    nameLabel: "お子様のお名前", create: "作成", cancel: "キャンセル", namePlaceholder: "例：太郎", createError: "名前を入力してください。",
+    parentRole: "保護者", childRole: "学習者", rewardEmpty: "学習を完了するとスターが貯まります。", skillNote: "各技能ごとの成長を記録します。",
+    childrenError: "データの読み込みに失敗しました。", nameExists: "その名前は既に使用されています。", createFailed: "作成に失敗しました。",
+    practiceTitle: "中国語を練習しよう", practiceHint: "好きなレッスンを選んで楽しく学びましょう。", settingsTitle: "アプリ設定",
+    curriculumTitle: "学習ロードマップ", curriculumIntro: "公式教材に沿って段階的に学びます。", courseZeroTitle: "発音入門ラボ", courseZeroDescription: "注音・ピンインと声調の基礎を学びます。", courseZeroFullIntro: "公式教材の順序に沿って、発音の土台を築きます。", courseZeroBoundary: "学習プレビュー画面です。", courseZeroPracticeTitle: "今日の2つのミッション", courseZeroListenTask: "中国語の音を聞く", courseZeroMatchTask: "注音とピンインを合わせる", backToMap: "マップへ戻る", previous: "前へ", nextStep: "次へ", startFirstLesson: "第1課へ進む", coursePreparing: "準備中", officialCourseTitle: "公式カリキュラム", officialCourseNote: "入門冊 → 基礎冊 → 第1冊の体系的コースです。", pathConfirmed: "ルート確認済", contentImportPending: "教材準備中", firstLessonTitle: "第1課：こんにちは", firstLessonIntro: "公式教材の最初のレッスンです。", lessonImportPending: "レッスン準備中", sourceRecord: "出典記録", openOfficialSource: "公式ページを開く", sourceRecordNote: "ライセンスと教材登録完了後に利用可能になります。", lessonPreparing: "準備中", curriculumChild: "学習者", refreshCurriculum: "更新", completed: "修了", inProgress: "学習中", notStarted: "未着手", asOf: "データ時点",
+    privacyText: "学習データはお使いの端末にのみ保存されます。", diagnostics: "システム状態", scores: "学習スコア", scoresHint: "技能別の練習実績", familySettings: "家族設定", languagePrivacy: "言語とプライバシー",
+    parentConfirm: "保護者確認", redeemTitle: "「{name}」を交換", parentAuth: "保護者パスコードを入力してください。", parentPassword: "PINコード", enterParentPassword: "PINを入力", verifying: "認証中…", confirmRedeem: "交換する", redeemSuccess: "「{name}」を交換しました。", redeemError: "交換に失敗しました。", guideSays: "一緒に頑張ろう！",
+    notationAuto: "自動（学習モード連動）", traditionalHint: "繁体字は注音を標準表示します。", simplifiedHint: "簡体字はピンインを標準表示します。",
+  },
+  ko: {
+    today: "오늘", practice: "연습", library: "학습 지도", parent: "학부모", settings: "설정", mySpace: "내 공간",
+    hello: "안녕, {name}", welcome: "오늘의 중국어 학습을 시작해볼까요?", todayPath: "오늘의 학습 여정", progress: "진도",
+    points: "획득한 별", start: "학습 시작", hear: "발음 듣기", nextUp: "다음 한자",
+    taskCount: "{count}개 글자 학습", noTasks: "미션 준비 중", noTasksHint: "부모님이 곧 새로운 미션을 배정합니다.",
+    continue: "계속 학습", chooseLearner: "학습자 변경", addLearner: "학습자 추가", parentZone: "학부모 영역",
+    displayLanguage: "표시 언어", learningChinese: "학습 중", notation: "발음 보조", beginner: "초급 모드",
+    traditional: "번체자", simplified: "간체자", english: "English", bopomofo: "주음", pinyin: "병음", hide: "숨김",
+    settingsIntro: "앱의 표시 언어와 중국어 표기 방식을 설정합니다.", familyMembers: "가족 구성원", privacy: "개인정보 보호",
+    parentTitle: "학습 여정 보기", parentDescription: "연습 기록과 주간 진도를 확인하세요.", retry: "다시 시도", loading: "준비 중…",
+    rewards: "원하는 보상", seeAll: "전체 보기", curriculum: "커리큘럼", tutor: "선생님 질문", close: "닫기", addTitle: "새 학습자 등록",
+    nameLabel: "아이 이름", create: "생성", cancel: "취소", namePlaceholder: "예: 민수", createError: "이름을 입력해주세요.",
+    parentRole: "학부모", childRole: "학습자", rewardEmpty: "학습을 완료하면 별이 쌓입니다.", skillNote: "각 영역별 성취도를 별도로 기록합니다.",
+    childrenError: "데이터를 불러오지 못했습니다.", nameExists: "이미 사용 중인 이름입니다.", createFailed: "학습자 생성 실패.",
+    practiceTitle: "중국어 연습하기", practiceHint: "원하는 활동을 선택하여 즐겁게 배워보세요.", settingsTitle: "앱 맞춤 설정",
+    curriculumTitle: "학습 로드맵", curriculumIntro: "공식 교재에 맞춰 단계별로 학습합니다.", courseZeroTitle: "발음 기초 랩", courseZeroDescription: "주음부호와 한어병음, 성조 기초를 다집니다.", courseZeroFullIntro: "공식 교재 순서에 따라 튼튼한 기초를 쌓습니다.", courseZeroBoundary: "학습 가이드 미리보기 화면입니다.", courseZeroPracticeTitle: "오늘의 2가지 작은 미션", courseZeroListenTask: "중국어 소리 듣기", courseZeroMatchTask: "주음과 병음 짝 맞추기", backToMap: "지도로 돌아가기", previous: "이전", nextStep: "다음", startFirstLesson: "제1과 시작", coursePreparing: "준비 중", officialCourseTitle: "공식 커리큘럼", officialCourseNote: "입문책 → 기초책 → 제1책으로 이어집니다.", pathConfirmed: "경로 확정", contentImportPending: "콘텐츠 준비 중", firstLessonTitle: "제1과: 안녕하세요", firstLessonIntro: "공식 교재의 첫 단원입니다.", lessonImportPending: "단원 준비 중", sourceRecord: "출처 기록", openOfficialSource: "공식 페이지 열기", sourceRecordNote: "정식 등록 후 학습이 활성화됩니다.", lessonPreparing: "준비 중", curriculumChild: "학습자", refreshCurriculum: "새로고침", completed: "완료", inProgress: "학습 중", notStarted: "미시작", asOf: "기준일",
+    privacyText: "학습 기록은 기기에만 안전하게 보관됩니다.", diagnostics: "시스템 상태", scores: "학습 성취도", scoresHint: "영역별 연습 기록", familySettings: "가족 설정", languagePrivacy: "언어 및 개인정보",
+    parentConfirm: "학부모 확인", redeemTitle: "‘{name}’ 교환", parentAuth: "학부모 PIN 번호를 입력하세요.", parentPassword: "PIN 번호", enterParentPassword: "PIN 입력", verifying: "확인 중…", confirmRedeem: "교환하기", redeemSuccess: "‘{name}’ 교환이 완료되었습니다.", redeemError: "교환 실패. 다시 시도해주세요.", guideSays: "함께 시작해봐요!",
+    notationAuto: "자동 (학습 모드 연동)", traditionalHint: "번체자는 주음부호가 기본 표시됩니다.", simplifiedHint: "간체자는 병음이 기본 표시됩니다.",
+  },
+  es: {
+    today: "Hoy", practice: "Práctica", library: "Mapa de estudio", parent: "Padres", settings: "Ajustes", mySpace: "Mi espacio",
+    hello: "Hola, {name}", welcome: "¿Listo para explorar chino hoy?", todayPath: "Ruta de aprendizaje de hoy", progress: "Progreso",
+    points: "Mis estrellas", start: "Comenzar", hear: "Escuchar", nextUp: "Siguiente carácter",
+    taskCount: "{count} caracteres por aprender", noTasks: "Misión en preparación", noTasksHint: "Un adulto asignará nuevas actividades pronto.",
+    continue: "Continuar", chooseLearner: "Cambiar estudiante", addLearner: "Añadir estudiante", parentZone: "Área de padres",
+    displayLanguage: "Idioma de interfaz", learningChinese: "Aprendiendo", notation: "Ayuda fonética", beginner: "Modo principiante",
+    traditional: "Chino Tradicional", simplified: "Chino Simplificado", english: "English", bopomofo: "Zhuyin", pinyin: "Pinyin", hide: "Oculto",
+    settingsIntro: "Ajusta el idioma de la aplicación y la notación de caracteres.", familyMembers: "Familia", privacy: "Privacidad",
+    parentTitle: "Progreso familiar", parentDescription: "Revisa los registros de práctica y logros semanales.", retry: "Reintentar", loading: "Cargando…",
+    rewards: "Mis premios", seeAll: "Ver todo", curriculum: "Plan de estudios", tutor: "Tutor", close: "Cerrar", addTitle: "Añadir nuevo estudiante",
+    nameLabel: "Nombre del niño/a", create: "Crear espacio", cancel: "Cancelar", namePlaceholder: "Ej: Lucas", createError: "Introduce un nombre.",
+    parentRole: "Administrador", childRole: "Estudiante", rewardEmpty: "Completa lecciones para acumular estrellas.", skillNote: "Cada habilidad se registra por separado.",
+    childrenError: "No se pudieron cargar los datos.", nameExists: "Ese nombre ya existe. Elige otro.", createFailed: "Error al crear.",
+    practiceTitle: "Practiquemos chino", practiceHint: "Elige una actividad corta y diviértete aprendiendo.", settingsTitle: "Ajustes de la app",
+    curriculumTitle: "Mapa de aprendizaje", curriculumIntro: "Sigue los libros oficiales paso a paso.", courseZeroTitle: "Laboratorio de Sonidos", courseZeroDescription: "Aprende Zhuyin, Pinyin y tonos desde la base.", courseZeroFullIntro: "Construye una base sólida antes del Libro 1.", courseZeroBoundary: "Vista previa del curso.", courseZeroPracticeTitle: "Dos pequeñas misiones de hoy", courseZeroListenTask: "Escucha el sonido chino", courseZeroMatchTask: "Empareja Zhuyin y Pinyin", backToMap: "Volver al mapa", previous: "Anterior", nextStep: "Siguiente", startFirstLesson: "Entrar a la Lección 1", coursePreparing: "Próximamente", officialCourseTitle: "Ruta oficial", officialCourseNote: "Iniciación → Básico → Libro 1.", pathConfirmed: "Ruta confirmada", contentImportPending: "Contenido pendiente", firstLessonTitle: "Lección 1: Hola", firstLessonIntro: "Punto de partida del curso oficial.", lessonImportPending: "Lección en preparación", sourceRecord: "Registro de fuente", openOfficialSource: "Abrir fuente oficial", sourceRecordNote: "Disponible tras el registro de licencia.", lessonPreparing: "En preparación", curriculumChild: "Estudiante", refreshCurriculum: "Actualizar", completed: "Completado", inProgress: "En curso", notStarted: "No iniciado", asOf: "Datos a fecha de",
+    privacyText: "Los registros se guardan únicamente en este dispositivo.", diagnostics: "Estado del sistema", scores: "Progreso", scoresHint: "Práctica por habilidad", familySettings: "Ajustes familiares", languagePrivacy: "Idioma y privacidad",
+    parentConfirm: "Confirmación", redeemTitle: "Canjear «{name}»", parentAuth: "Introduce el código PIN de padres.", parentPassword: "Código PIN", enterParentPassword: "PIN de padres", verifying: "Verificando…", confirmRedeem: "Confirmar canje", redeemSuccess: "«{name}» canjeado con éxito.", redeemError: "Error al canjear.", guideSays: "¡Aprendamos juntos!",
+    notationAuto: "Automático", traditionalHint: "Tradicional muestra Zhuyin por defecto.", simplifiedHint: "Simplificado muestra Pinyin por defecto.",
+  }
+};
 
 function detectedLanguage(): DisplayLanguage {
-  const saved = localStorage.getItem(DISPLAY_LANGUAGE_KEY);
-  if (saved === "zh-Hant" || saved === "zh-Hans" || saved === "en") return saved;
-  const browserLanguage = navigator.language.toLowerCase();
-  return browserLanguage.includes("hans") || browserLanguage === "zh-cn" || browserLanguage === "zh-sg" ? "zh-Hans" : browserLanguage.startsWith("zh") ? "zh-Hant" : "en";
+  const saved = typeof localStorage !== "undefined" ? (localStorage.getItem(DISPLAY_LANGUAGE_KEY) || localStorage.getItem("tongxuan.display-language")) : null;
+  if (saved && (saved === "zh-Hant" || saved === "zh-Hans" || saved === "en" || saved === "ja" || saved === "ko" || saved === "es")) {
+    return saved as DisplayLanguage;
+  }
+  const browserLanguage = typeof navigator !== "undefined" && navigator.language ? navigator.language.toLowerCase() : "en";
+  if (browserLanguage.includes("hans") || browserLanguage === "zh-cn" || browserLanguage === "zh-sg") return "zh-Hans";
+  if (browserLanguage.startsWith("ja")) return "ja";
+  if (browserLanguage.startsWith("ko")) return "ko";
+  if (browserLanguage.startsWith("es")) return "es";
+  if (browserLanguage.startsWith("zh")) return "zh-Hant";
+  return "en";
 }
 
-type LocaleContextValue = { language: DisplayLanguage; setLanguage: (language: DisplayLanguage) => void; t: (key: keyof typeof messages.en, values?: Record<string, string | number>) => string };
+type LocaleContextValue = {
+  language: DisplayLanguage;
+  setLanguage: (language: DisplayLanguage) => void;
+  t: (key: string, values?: Record<string, string | number>) => string;
+};
+
 const LocaleContext = createContext<LocaleContextValue | null>(null);
 
 export function LocaleProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<DisplayLanguage>(detectedLanguage);
-  function setLanguage(next: DisplayLanguage) { localStorage.setItem(DISPLAY_LANGUAGE_KEY, next); setLanguageState(next); }
-  useEffect(() => { document.documentElement.lang = language === "zh-Hant" ? "zh-TW" : language === "zh-Hans" ? "zh-CN" : "en"; }, [language]);
-  const value = useMemo<LocaleContextValue>(() => ({ language, setLanguage, t: (key, values = {}) => Object.entries(values).reduce((text, [name, replacement]) => text.replaceAll(`{${name}}`, String(replacement)), messages[language][key] ?? messages.en[key] ?? key) }), [language]);
+
+  function setLanguage(next: DisplayLanguage) {
+    localStorage.setItem(DISPLAY_LANGUAGE_KEY, next);
+    localStorage.setItem("tongxuan.display-language", next);
+    setLanguageState(next);
+  }
+
+  useEffect(() => {
+    document.documentElement.lang =
+      language === "zh-Hant" ? "zh-TW" :
+      language === "zh-Hans" ? "zh-CN" :
+      language === "ja" ? "ja" :
+      language === "ko" ? "ko" :
+      language === "es" ? "es" : "en";
+  }, [language]);
+
+  const value = useMemo<LocaleContextValue>(() => ({
+    language,
+    setLanguage,
+    t: (key, values = {}) => {
+      const msg = messages[language]?.[key] ?? messages["zh-Hant"]?.[key] ?? key;
+      return Object.entries(values).reduce((text, [name, replacement]) => text.replaceAll(`{${name}}`, String(replacement)), msg);
+    }
+  }), [language]);
+
   return <LocaleContext.Provider value={value}>{children}</LocaleContext.Provider>;
 }
 
@@ -95,8 +189,14 @@ export function useLocale() {
   const language = detectedLanguage();
   return {
     language,
-    setLanguage: (next: DisplayLanguage) => localStorage.setItem(DISPLAY_LANGUAGE_KEY, next),
-    t: (key: keyof typeof messages.en, values: Record<string, string | number> = {}) => Object.entries(values).reduce((text, [name, replacement]) => text.replaceAll(`{${name}}`, String(replacement)), messages[language][key] ?? messages.en[key] ?? key),
+    setLanguage: (next: DisplayLanguage) => {
+      localStorage.setItem(DISPLAY_LANGUAGE_KEY, next);
+      localStorage.setItem("tongxuan.display-language", next);
+    },
+    t: (key: string, values: Record<string, string | number> = {}) => {
+      const msg = messages[language]?.[key] ?? messages["zh-Hant"]?.[key] ?? key;
+      return Object.entries(values).reduce((text, [name, replacement]) => text.replaceAll(`{${name}}`, String(replacement)), msg);
+    },
   };
 }
 
