@@ -6,6 +6,12 @@ import { CourseZeroPage } from "./pages/CourseZeroPage";
 import { FirstLessonPage } from "./pages/FirstLessonPage";
 import { DesignPreviewPage } from "./pages/DesignPreviewPage";
 import { DesignPreviewBPage } from "./pages/DesignPreviewBPage";
+import { DesignPreviewPixelPage } from "./pages/DesignPreviewPixelPage";
+import { DesignPreviewReferencePage } from "./pages/DesignPreviewReferencePage";
+import { DesignPreviewDirectionsPage } from "./pages/DesignPreviewDirectionsPage";
+import { LearningDeskPreviewPage } from "./pages/LearningDeskPreviewPage";
+import { LearningCalendarPreviewPage } from "./pages/LearningCalendarPreviewPage";
+import { KidsPrototypesPage } from "./pages/KidsPrototypesPage";
 import { Profile, ACTIVE_PROFILE_STORAGE_KEY, defaultProfiles, loadProfiles, reconcileProfiles, saveProfiles, selectProfile } from "./lib/profiles";
 import { ANNOTATION_MODE_KEY, currentAnnotationMode, currentLearningLocale, LEARNING_LOCALE_KEY, useLocale, type AnnotationMode, type DisplayLanguage, type LearningLocale } from "./lib/i18n";
 
@@ -17,11 +23,16 @@ const TutorPage = lazy(async () => ({ default: (await import("./pages/TutorPage"
 const CommercializationPage = lazy(async () => ({ default: (await import("./pages/CommercializationPage")).CommercializationPage }));
 const DiagnosticsPage = lazy(async () => ({ default: (await import("./pages/DiagnosticsPage")).DiagnosticsPage }));
 type Child = { id: number; name: string };
-type Route = "home" | "practice" | "parent" | "curriculum" | "course-zero" | "first-lesson" | "tutor" | "me" | "commercialization" | "diagnostics" | "preview" | "preview-b";
+type Route = "home" | "practice" | "parent" | "curriculum" | "course-zero" | "first-lesson" | "tutor" | "me" | "commercialization" | "diagnostics" | "preview" | "preview-b" | "preview-pixel" | "preview-reference" | "preview-directions" | "learning-desk" | "learning-calendar" | "preview-kids";
 
 export function routeFromPath(pathname: string): Route {
+  if (pathname === "/kids" || pathname === "/preview-kids" || pathname === "/preview-2") return "preview-kids";
   if (pathname === "/preview") return "preview";
-  if (pathname === "/preview-2") return "preview-b";
+  if (pathname === "/preview-pixel") return "preview-pixel";
+  if (pathname === "/preview-reference") return "preview-reference";
+  if (pathname === "/preview-directions") return "preview-directions";
+  if (pathname === "/learning-desk") return "learning-desk";
+  if (pathname === "/learning-calendar") return "learning-calendar";
   if (pathname === "/parent-dashboard") return "parent";
   if (pathname === "/curriculum") return "curriculum";
   if (pathname === "/course-zero") return "course-zero";
@@ -34,7 +45,7 @@ export function routeFromPath(pathname: string): Route {
   return "home";
 }
 
-const paths: Record<Route, string> = { home: "/", practice: "/practice", parent: "/parent-dashboard", curriculum: "/curriculum", "course-zero": "/course-zero", "first-lesson": "/first-lesson", tutor: "/tutor", me: "/me", commercialization: "/admin/commercialization", diagnostics: "/diagnostics", preview: "/preview", "preview-b": "/preview-2" };
+const paths: Record<Route, string> = { home: "/", practice: "/practice", parent: "/parent-dashboard", curriculum: "/curriculum", "course-zero": "/course-zero", "first-lesson": "/first-lesson", tutor: "/tutor", me: "/me", commercialization: "/admin/commercialization", diagnostics: "/diagnostics", preview: "/preview", "preview-b": "/preview-2", "preview-pixel": "/preview-pixel", "preview-reference": "/preview-reference", "preview-directions": "/preview-directions", "learning-desk": "/learning-desk", "learning-calendar": "/learning-calendar", "preview-kids": "/preview-kids" };
 
 export function AppShell() {
   const { t, language, setLanguage } = useLocale();
@@ -100,10 +111,32 @@ export function AppShell() {
     { id: "me" as Route, label: t("mySpace"), icon: UserRound },
   ], [activeProfile.role, language]);
 
-  return <div className="app-shell">
-    <header className="app-header">
+  const isChildPortal = route === "home" || route === "preview-kids" || route === "preview-b";
+
+  return <div className={`app-shell ${isChildPortal ? "app-shell-child-portal" : ""} ${["preview-directions", "learning-desk", "learning-calendar"].includes(route) ? "app-shell-design-lab" : ""}`}>
+    <header className={`app-header ${isChildPortal ? "app-header-hidden" : ""}`}>
       <button className="brand" onClick={() => navigate("home")} aria-label="TongXuan home"><span className="brand-mark" aria-hidden="true">文</span><span><strong>TongXuan</strong><small>Chinese learning</small></span></button>
       <div className="header-actions">
+        <button
+          className={`proto-quick-link ${route === "preview-kids" ? "active" : ""}`}
+          onClick={() => navigate("preview-kids")}
+          style={{
+            background: route === "preview-kids" ? "#38a169" : "#eef2ff",
+            color: route === "preview-kids" ? "#ffffff" : "#4338ca",
+            border: "1.5px solid",
+            borderColor: route === "preview-kids" ? "#276749" : "#c7d2fe",
+            borderRadius: "999px",
+            padding: "6px 14px",
+            fontSize: "0.8rem",
+            fontWeight: 800,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: "5px"
+          }}
+        >
+          🌟 兒童新入口 (方案 A / B)
+        </button>
         <div className="profile-select">
           <button className="profile-trigger" aria-expanded={profileOpen} aria-haspopup="menu" onClick={() => setProfileOpen((open) => !open)}><span className={`avatar avatar-${activeProfile.color}`}>{activeProfile.name.slice(-1)}</span><span className="profile-name">{activeProfile.name}</span><ChevronDown size={16}/></button>
           {profileOpen && <div className="app-popover profile-menu" role="menu" aria-label={t("chooseLearner")}>
@@ -117,9 +150,14 @@ export function AppShell() {
       <div className="main-column">
         {childrenLoading && <div className="offline-strip" role="status">{t("loading")}</div>}
         {childrenError && <div className="offline-strip error-strip" role="alert">{childrenError} <button className="button button-text" onClick={() => void loadChildren()}>{t("retry")}</button></div>}
+        {route === "preview-kids" && <KidsPrototypesPage />}
         {route === "preview" && <DesignPreviewPage />}
-        {route === "preview-b" && <DesignPreviewBPage />}
-        {route === "home" && <ChildHomePage key={activeProfile.key} child={activeChild} childName={childName} onOpenPractice={() => navigate("practice")} onOpenCurriculum={() => navigate("curriculum")} onOpenSettings={() => navigate("me")} />}
+        {route === "preview-b" && <KidsPrototypesPage />}
+        {route === "preview-pixel" && <DesignPreviewPixelPage />}
+        {route === "preview-reference" && <DesignPreviewReferencePage />}
+        {route === "preview-directions" && <DesignPreviewDirectionsPage />}
+        {route === "learning-desk" && <LearningDeskPreviewPage />}
+        {route === "home" && <KidsPrototypesPage />}
         <Suspense fallback={<AppLoading label={t("loading")} />}>
         {route === "practice" && <div className="app-page practice-page" key={activeProfile.key}><PageHeading kicker={t("practice")} title={t("practiceTitle")} subtitle={t("practiceHint")} icon={<Sparkles/>}/><LearningPage activeChildId={activeChild?.id ?? null} /></div>}
         {route === "parent" && <ParentAreaPage />}
@@ -133,7 +171,7 @@ export function AppShell() {
         </Suspense>
       </div>
     </div>
-    <nav className="app-tabbar" aria-label={activeProfile.role === "parent" ? t("parent") : t("today")}>
+    <nav className={`app-tabbar ${isChildPortal ? "app-tabbar-hidden" : ""}`} aria-label={activeProfile.role === "parent" ? t("parent") : t("today")}>
       {navItems.map(({ id, label, icon: Icon }) => <button key={id} className={route === id ? "app-tab active" : "app-tab"} aria-current={route === id ? "page" : undefined} onClick={() => navigate(id)}><Icon size={22} strokeWidth={route === id ? 2.5 : 2}/><span>{label}</span></button>)}
       {activeProfile.role === "parent" && <button className="app-tab" onClick={() => navigate("practice")}><Sparkles size={22}/><span>{t("practice")}</span></button>}
     </nav>
