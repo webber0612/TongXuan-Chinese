@@ -79,6 +79,13 @@ import {
   completeCourseLevel,
   generateQuizPaper
 } from "../data/learningPathData";
+import {
+  trackLevelPass,
+  trackDomainSelect,
+  trackRewardRedeem,
+  trackDonationClick,
+  trackFeedbackClick
+} from "../lib/analytics";
 
 export type ScriptMode = "zhuyin" | "pinyin" | "dual";
 export type DisplayLang = "zh-Hant" | "zh-Hans" | "en" | "ja" | "ko" | "es";
@@ -218,8 +225,8 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     disclaimerTitle: "📜 公開測試版 (Beta) 免責聲明與隱私條款",
     disclaimerPoint1Title: "⚠️ 公開測試版與進度保存風險：",
     disclaimerPoint1Desc: "本專案目前處於公開 Beta 測試與持續改版階段。當系統升級、發布新功能或您清除瀏覽器快取時，儲存於您設備本地的學習進度（如金幣、星星、答錯記錄、兌換券）可能隨時被重置或調整。本系統不保證歷史資料的永久保存。",
-    disclaimerPoint2Title: "🔒 純本地運算與非託管隱私聲明：",
-    disclaimerPoint2Desc: "本系統採 Local-First 純前端本地架構，伺服器端不設有使用者資料庫，亦不負責託管、備份或恢復任何個人學習記錄或隱私數據。所有數據 100% 僅儲存於您當前的瀏覽器沙盒中，更換設備或清除快取後將無法由開發者端找回。",
+    disclaimerPoint2Title: "🔒 本地優先架構與匿名學習統計說明：",
+    disclaimerPoint2Desc: "本系統採 Local-First 本地架構，嚴格保護兒少隱私，不收集姓名、Email、電話等個人身分資料（PII）。系統僅收集去識別化之匿名學習進度事件（如關卡完成次數、難度流暢度），僅用於改進教材與提升教學體驗。所有個人學習進度 100% 儲存於您設備本地瀏覽器中。",
     disclaimerPoint3Title: "📚 非正式教育機構與學習成效免責：",
     disclaimerPoint3Desc: "本系統為個人開發之自主自學輔助工具，非教育部或官方認證之正式學校機構。本系統不對任何使用者的識字速度、發音標準度、考試成績或特定學習結果提供任何形式之保證。",
     disclaimerPoint4Title: "☕ 開源與贊助性質：",
@@ -356,8 +363,8 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     disclaimerTitle: "📜 公开测试版 (Beta) 免责声明与隐私条款",
     disclaimerPoint1Title: "⚠️ 公开测试版与进度保存风险：",
     disclaimerPoint1Desc: "本项目目前处于公开 Beta 测试与持续改版阶段。当系统升级、发布新功能或您清除浏览器缓存时，储存于您设备本地的学习进度（如金币、星星、答错记录、兑换券）可能随时被重置或调整。本系统不保证历史数据的永久保存。",
-    disclaimerPoint2Title: "🔒 纯本地运算与非托管隐私声明：",
-    disclaimerPoint2Desc: "本系统采 Local-First 纯前端本地架构，服务器端不设有用户数据库，亦不负责托管、备份或恢复任何个人学习记录或隐私数据。所有数据 100% 仅储存于您当前的浏览器沙盒中，更换设备或清除缓存后将无法由开发者端找回。",
+    disclaimerPoint2Title: "🔒 本地优先架构与匿名学习统计说明：",
+    disclaimerPoint2Desc: "本系统采 Local-First 本地架构，严格保护少儿隐私，不收集姓名、Email、电话等个人身份资料（PII）。系统仅收集去识别化之匿名学习进度事件（如关卡完成次数、难度流畅度），仅用于改进教材与提升教学体验。所有个人学习进度 100% 储存于您设备本地浏览器中。",
     disclaimerPoint3Title: "📚 非正式教育机构与学习成效免责：",
     disclaimerPoint3Desc: "本系统为个人开发之自主自学辅助工具，非教育部或官方认证之正式学校机构。本系统不对任何使用者的识字速度、发音标准度、考试成绩或特定学习结果提供任何形式之保证。",
     disclaimerPoint4Title: "☕ 开源与赞助性质：",
@@ -494,8 +501,8 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     disclaimerTitle: "📜 Public Beta Disclaimer & Privacy Policy",
     disclaimerPoint1Title: "⚠️ Public Beta & Local Storage Notice:",
     disclaimerPoint1Desc: "This project is currently in public beta. When upgrading or clearing browser cache, local learning progress (coins, stars, mistakes, passes) may be reset. The system does not guarantee permanent data persistence.",
-    disclaimerPoint2Title: "🔒 Local-First Architecture & No Server Database:",
-    disclaimerPoint2Desc: "TongXuan operates entirely on a Local-First frontend architecture without a server database. We do not host, backup, or recover personal learning records. Data resides 100% in your browser sandbox.",
+    disclaimerPoint2Title: "🔒 Local-First Architecture & Anonymous Analytics:",
+    disclaimerPoint2Desc: "TongXuan adheres strictly to youth privacy standards and collects zero PII (no names, emails, audio uploads, or tracking cookies). We only gather de-identified, aggregated learning milestones (e.g. level completion counts) to improve curriculum quality. All learning records remain 100% in your local browser sandbox.",
     disclaimerPoint3Title: "📚 Educational Tool Non-Guarantee:",
     disclaimerPoint3Desc: "This application is an independent self-study aid and not an accredited academic institution. We make no guarantees regarding learning speed, test scores, or specific examination results.",
     disclaimerPoint4Title: "☕ Open Source & Voluntary Sponsorship:",
@@ -1966,6 +1973,7 @@ export function KidsPrototypesPage() {
         onFinishLesson={(earnedStars) => {
           // 完成關卡並自動解鎖下一關
           const { updatedProgress, unlockedNext } = completeCourseLevel(selectedLevelNum, earnedStars);
+          trackLevelPass(selectedLevelNum, selectedDay?.themeTitle, earnedStars);
 
           updateActiveLearner((prev) => {
             let nextPact = prev.activePinkyPromise ? { ...prev.activePinkyPromise } : null;
@@ -2825,6 +2833,7 @@ export function KidsPrototypesPage() {
                 rel="noopener noreferrer"
                 className="sponsor-feedback-btn"
                 title={t("feedbackBtn")}
+                onClick={() => trackFeedbackClick()}
               >
                 <span className="btn-feedback-emoji">💬</span>
                 <span>{t("feedbackBtn")}</span>
@@ -2835,6 +2844,7 @@ export function KidsPrototypesPage() {
                 rel="noopener noreferrer"
                 className="sponsor-coffee-btn"
                 title={t("sponsorBtn")}
+                onClick={() => trackDonationClick()}
               >
                 <span className="btn-coffee-emoji">☕</span>
                 <span>{t("sponsorBtn")}</span>
@@ -2929,6 +2939,7 @@ export function KidsPrototypesPage() {
               earnedStars,
               score
             );
+            trackLevelPass(activeQuizTargetLevel.levelNumber, activeQuizTargetLevel.title, earnedStars, score);
 
             updateActiveLearner((prev) => {
               return {
@@ -6382,6 +6393,7 @@ function RewardsStoreModal({
   const handleRedeem = (item: RewardItem) => {
     const res = redeemRewardItem(item, points);
     if (res.success) {
+      trackRewardRedeem(item.name, item.costStars || item.costCoins);
       onUpdatePoints(res.newPoints);
       const newHist = getRedemptionHistory();
       setHistory(newHist);
