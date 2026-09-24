@@ -1337,6 +1337,7 @@ export function KidsPrototypesPage() {
 
   const [rewardsShopModalOpen, setRewardsShopModalOpen] = useState(false);
   const [aboutModalOpen, setAboutModalOpen] = useState(false);
+  const [aboutInitialTab, setAboutInitialTab] = useState<"about" | "roadmap" | "legal" | "disclaimer">("about");
   const [customPracticePlan, setCustomPracticePlan] = useState<DailyDayPlan | null>(null);
 
   const menuRef = useRef<HTMLDivElement>(null);
@@ -2440,22 +2441,46 @@ export function KidsPrototypesPage() {
         </div>
         )}
 
-        {/* Soft Community & Sponsor Footer */}
+        {/* Soft Community, Feedback & Sponsor Footer */}
         <footer className="portal-community-footer">
           <div className="portal-sponsor-pill">
-            <span className="sponsor-text">
-              ☕ 童軒中文為免費開源專案 · 若對孩子學習有幫助，歡迎請作者喝杯咖啡支持持續維護！
-            </span>
-            <a
-              href="https://buymeacoffee.com/webber0612"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="sponsor-coffee-btn"
-              title="前往 Buy Me a Coffee 支持作者"
-            >
-              <span className="btn-coffee-emoji">☕</span>
-              <span>請作者喝咖啡</span>
-            </a>
+            <div className="sponsor-text-group">
+              <span className="sponsor-text">
+                ☕ 童軒中文為免費開源專案 · 歡迎回饋使用體驗與建議！
+              </span>
+              <button
+                type="button"
+                className="portal-disclaimer-link-btn"
+                onClick={() => {
+                  setAboutInitialTab("disclaimer");
+                  setAboutModalOpen(true);
+                }}
+              >
+                ⚠️ 目前為公開測試版 (Beta) · 點此查看《免責聲明與隱私條款》
+              </button>
+            </div>
+            <div className="sponsor-actions-row">
+              <a
+                href="mailto:webber0612@gmail.com?subject=【童軒中文】問題回報與改進建議&body=您好！我在使用童軒中文時有以下反饋：%0D%0A%0D%0A1. 使用設備（iPad/電腦/手機）：%0D%0A2. 遇到的問題或建議：%0D%0A"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="sponsor-feedback-btn"
+                title="透過 Email 或表單回報問題與建議"
+              >
+                <span className="btn-feedback-emoji">💬</span>
+                <span>問題與建議回報</span>
+              </a>
+              <a
+                href="https://buymeacoffee.com/webber0612"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="sponsor-coffee-btn"
+                title="前往 Buy Me a Coffee 支持作者"
+              >
+                <span className="btn-coffee-emoji">☕</span>
+                <span>請作者喝咖啡</span>
+              </a>
+            </div>
           </div>
         </footer>
       </main>
@@ -2596,7 +2621,13 @@ export function KidsPrototypesPage() {
 
       {/* 7. About TongXuan & Attribution Modal */}
       {aboutModalOpen && (
-        <AboutTongXuanModal onClose={() => setAboutModalOpen(false)} />
+        <AboutTongXuanModal
+          initialTab={aboutInitialTab}
+          onClose={() => {
+            setAboutModalOpen(false);
+            setAboutInitialTab("about");
+          }}
+        />
       )}
     </div>
   );
@@ -6361,8 +6392,14 @@ function RewardsStoreModal({
 /* ========================================================
    5. 關於童軒中文、版權宣告與檢定進階路線 (About & Roadmap)
    ======================================================== */
-function AboutTongXuanModal({ onClose }: { onClose: () => void }) {
-  const [activeTab, setActiveTab] = useState<"about" | "roadmap" | "legal">("about");
+function AboutTongXuanModal({
+  initialTab = "about",
+  onClose
+}: {
+  initialTab?: "about" | "roadmap" | "legal" | "disclaimer";
+  onClose: () => void;
+}) {
+  const [activeTab, setActiveTab] = useState<"about" | "roadmap" | "legal" | "disclaimer">(initialTab);
 
   return (
     <div className="modal-backdrop">
@@ -6375,7 +6412,7 @@ function AboutTongXuanModal({ onClose }: { onClose: () => void }) {
         <div className="about-modal-header">
           <div className="about-brand-badge">☀️</div>
           <div>
-            <h2>童軒中文 · 關於與課程進階藍圖</h2>
+            <h2>童軒中文 · 關於、藍圖與使用條款</h2>
             <p className="about-sub-lead">
               專為海外兒童與初學者量身打造 · 溫暖、趣味、系統化的華語全景學習平臺
             </p>
@@ -6394,13 +6431,19 @@ function AboutTongXuanModal({ onClose }: { onClose: () => void }) {
             className={`about-tab-btn ${activeTab === "roadmap" ? "active" : ""}`}
             onClick={() => setActiveTab("roadmap")}
           >
-            🗺️ 全景進階路線與檢定目標 (Roadmap)
+            🗺️ 全景進階路線與檢定目標
           </button>
           <button
             className={`about-tab-btn ${activeTab === "legal" ? "active" : ""}`}
             onClick={() => setActiveTab("legal")}
           >
             ⚖️ 教材出處與版權聲明
+          </button>
+          <button
+            className={`about-tab-btn ${activeTab === "disclaimer" ? "active" : ""}`}
+            onClick={() => setActiveTab("disclaimer")}
+          >
+            📜 測試版與免責聲明
           </button>
         </div>
 
@@ -6548,6 +6591,36 @@ function AboutTongXuanModal({ onClose }: { onClose: () => void }) {
               </ul>
               <div className="legal-footer-note">
                 <span>© 2026 童軒中文 (TongXuan Chinese) · 陪伴每一位孩子探索漢字之美</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 4: 測試版免責聲明與隱私條款 */}
+        {activeTab === "disclaimer" && (
+          <div className="about-tab-pane animate-fade">
+            <div className="legal-notice-box">
+              <h3>📜 公開測試版 (Beta) 免責聲明與隱私條款</h3>
+              <ul className="legal-points-list">
+                <li>
+                  <strong>⚠️ 公開測試版與進度保存風險：</strong>
+                  本專案目前處於公開 Beta 測試與持續改版階段。當系統升級、發布新功能或您清除瀏覽器快取時，儲存於您設備本地的學習進度（如金幣、星星、答錯記錄、兌換券）<strong>可能隨時被重置或調整</strong>。本系統不保證歷史資料的永久保存。
+                </li>
+                <li>
+                  <strong>🔒 純本地運算與非託管隱私聲明：</strong>
+                  本系統採 Local-First 純前端本地架構，<strong>伺服器端不設有使用者資料庫，亦不負責託管、備份或恢復任何個人學習記錄或隱私數據</strong>。所有數據 100% 僅儲存於您當前的瀏覽器沙盒中，更換設備或清除快取後將無法由開發者端找回。
+                </li>
+                <li>
+                  <strong>📚 非正式教育機構與學習成效免責：</strong>
+                  本系統為個人開發之自主自學輔助工具，非教育部或官方認證之正式學校機構。本系統不對任何使用者的識字速度、發音標準度、考試成績或特定學習結果提供任何形式之保證。
+                </li>
+                <li>
+                  <strong>☕ 開源與贊助性質：</strong>
+                  本專案程式碼採 MIT 授權開源發布。請作者喝咖啡（Sponsor）屬於個人自願贊助與鼓勵性質，不構成任何商業契約、付費訂閱服務或專屬客服義務。
+                </li>
+              </ul>
+              <div className="legal-footer-note">
+                <span>童軒中文恪守兒少隱私安全規範 · 感謝所有測試家長與教育工作者的理解與支持</span>
               </div>
             </div>
           </div>
