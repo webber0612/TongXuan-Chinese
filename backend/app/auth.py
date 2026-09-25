@@ -89,6 +89,16 @@ def require_child_access(request: Request, child_id: int) -> Session | None:
     return session
 
 
+def require_parent_or_admin_child_access(request: Request, child_id: int) -> Session:
+    """Always authenticate high-impact curriculum unlocks, including local deployments."""
+    session = authenticate(request)
+    if session.role not in {"parent", "admin"}:
+        raise HTTPException(status_code=403, detail="parent_or_admin_required")
+    if session.role == "parent" and child_id not in session.child_ids:
+        raise HTTPException(status_code=403, detail="child_access_denied")
+    return session
+
+
 def require_production_session(request: Request) -> Session | None:
     from .config import load_settings
     return authenticate(request) if load_settings().environment == "production" else None

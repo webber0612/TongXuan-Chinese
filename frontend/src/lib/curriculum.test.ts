@@ -53,7 +53,9 @@ describe("long-term curriculum read model", () => {
   it("records handbook-backed objectives for every lesson in the validated slice", () => {
     const lessons = officialCoursePath.stages.flatMap((stage) => stage.lessons);
     expect(lessons).toHaveLength(27);
-    expect(lessons.every((lesson) => Boolean(lesson.officialObjectiveSummary?.length && lesson.objectiveSourceUrl?.includes("#page=")))).toBe(true);
+    expect(lessons.every((lesson) => Boolean(lesson.tongxuan.handbookSummary.text.length && lesson.tongxuan.handbookSummary.sourceUrl.includes("#page=") && lesson.tongxuan.handbookSummary.authorship === "TONGXUAN_PARAPHRASE"))).toBe(true);
+    expect(lessons.every((lesson) => lesson.tongxuan.domains.length > 0 && lesson.tongxuan.practiceTargets.length > 0)).toBe(true);
+    expect(lessons.every((lesson) => !("domains" in lesson) && !("sourceKind" in lesson.official))).toBe(true);
     expect(officialCoursePath.stages[2].lessons.map((lesson) => lesson.number)).toEqual([1, 2, 3]);
     expect(officialCoursePath.stages.map((stage) => stage.id)).toEqual(["starter", "basic", "book-1"]);
     expect(officialCoursePath.outOfScopeBooks).toEqual([2, 3, 4, 5, 6, 7, 8, 9, 10]);

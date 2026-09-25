@@ -16,11 +16,13 @@ The scheduler stores review state separately for each learner, skill domain, and
 Rules:
 
 - An independent correct response advances one stage, up to the 120-day cap.
-- An assisted correct response does not advance the stage and stays due in the same session.
-- An incorrect response resets that domain/item to stage 0 and stays due immediately for a targeted retry.
+- An assisted correct response does not advance the long-term stage and may be selected again during the same session.
+- An incorrect response resets that domain/item to stage 0 and may be selected again during the same session for a targeted retry.
+- Recognition gives unattempted due items priority, then offers an incorrect or assisted item for at most two retries after its first attempt. A later independent correct response ends the same-session retry; a miss does not loop indefinitely.
 - The same character can have separate recognition, writing, pronunciation, or other skill state; a success in one domain never advances another.
 - Each review writes a current state and an append-only event with prior/next stage, outcome, assistance flag, and interval. The adaptive planner replays events only through its requested `as_of` time.
 - Recognition's next-item selector and the adaptive plan both prefer the new SRS due time when one exists.
+- Typed Zhuyin/Pinyin notation is phonetics practice, not spoken pronunciation, and it does not advance pronunciation SRS.
 - Reading-aloud recording completion is not scored as correct. It cannot advance a speaking/pronunciation SRS stage or create mastery evidence.
 - Existing per-domain attempt and mastery tables remain separate; SRS prioritizes review but does not itself assign lesson mastery.
 

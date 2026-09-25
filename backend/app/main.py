@@ -24,7 +24,7 @@ from .curriculum import get_curriculum, record_progress, seed_catalog
 from .curriculum_policy import assess_lesson, get_phonetic_support, get_validated_curriculum, record_lesson_progress, set_soft_unlock
 from .tutor import tutor_response
 from .commercialization import audit_registry
-from .auth import authenticate, require_commercialization_admin
+from .auth import authenticate, require_commercialization_admin, require_parent_or_admin_child_access
 from .auth import require_child_access, require_production_session, require_reward_redemption_access
 from .config import load_settings, validate_settings
 from .production import readiness, structured_error
@@ -309,9 +309,7 @@ class ValidatedLessonProgressRequest(BaseModel):
 
 
 class ValidatedLessonAssessmentRequest(BaseModel):
-    scores: dict[str, float]
-    assisted_domains: list[str] = Field(default_factory=list)
-    script_mode: str | None = None
+    model_config = {"extra": "forbid"}
 
 
 class ValidatedLessonSoftUnlockRequest(BaseModel):
@@ -408,16 +406,17 @@ def post_validated_lesson_progress(child_id: int, lesson_id: str, request: Valid
 @app.post("/api/children/{child_id}/validated-curriculum/lessons/{lesson_id}/assessment")
 def post_validated_lesson_assessment(child_id: int, lesson_id: str, request: ValidatedLessonAssessmentRequest) -> dict[str, object]:
     try:
-        return assess_lesson(child_id=child_id, lesson_id=lesson_id, scores=request.scores, assisted_domains=set(request.assisted_domains), script_mode=request.script_mode)
+        return assess_lesson(child_id=child_id, lesson_id=lesson_id)
     except ValueError as error:
         detail = str(error)
         raise HTTPException(status_code=400 if detail.startswith(("invalid_", "result_")) else 409 if detail == "prerequisite_not_mastered" else 404, detail=detail) from error
 
 
 @app.post("/api/children/{child_id}/validated-curriculum/lessons/{lesson_id}/soft-unlock")
-def post_validated_lesson_soft_unlock(child_id: int, lesson_id: str, request: ValidatedLessonSoftUnlockRequest) -> dict[str, object]:
+def post_validated_lesson_soft_unlock(child_id: int, lesson_id: str, request: ValidatedLessonSoftUnlockRequest, http_request: Request) -> dict[str, object]:
+    actor = require_parent_or_admin_child_access(http_request, child_id)
     try:
-        return set_soft_unlock(child_id=child_id, lesson_id=lesson_id, unlocked=request.unlocked)
+        return set_soft_unlock(child_id=child_id, lesson_id=lesson_id, unlocked=request.unlocked, actor_subject=actor.subject, actor_role=actor.role)
     except ValueError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
 

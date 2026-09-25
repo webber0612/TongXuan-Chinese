@@ -76,6 +76,8 @@ def test_dashboard_weekly_history_uses_completed_at_and_review_is_historical_as_
         first = api.get("/api/dashboard", params={"child_id": child_id, "window": "7d", "to_at": "2026-01-06T00:00:00Z"}).json()
         assert [entry["id"] for entry in first["weekly_tests"]["history"]] == ["test-completed"]
         assert first["weekly_tests"]["recent"]["id"] == "test-completed"
+        assert first["weekly_tests"]["recent"]["practice_points"] == 1
+        assert "score" not in first["weekly_tests"]["recent"]
         assert [entry["id"] for entry in first["weekly_tests"]["pending"]] == ["test-pending"]
         assert first["activity"]["review_count"] == 1
         with connect() as db:

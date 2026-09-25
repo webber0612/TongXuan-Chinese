@@ -458,7 +458,12 @@ def initialize_database() -> None:
                 ("assessment_blueprint", "TEXT NOT NULL DEFAULT '{}'"),
                 ("domain_scores", "TEXT NOT NULL DEFAULT '{}'"),
             ],
-            "curriculum_skill_evidence": [("script_mode", "TEXT")],
+            "curriculum_skill_evidence": [
+                ("script_mode", "TEXT"),
+                ("evidence_ref", "TEXT"),
+                ("evidence_type", "TEXT"),
+                ("evidence_item_id", "TEXT"),
+            ],
             "ocr_imports": [("confirmed_at", "TEXT")],
         }
         for table, columns in migrations.items():

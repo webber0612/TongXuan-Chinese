@@ -2,7 +2,9 @@
 
 ## Validated lesson checks
 
-The validated slice associates each official title with handbook-backed objective summaries, separate TongXuan-authored practice targets, and a non-collapsing skill-domain blueprint. The domains are taken from `domains` in [validated-curriculum-slice.json](../shared/validated-curriculum-slice.json). Each listed domain has a floor of `0.75` and requires independent evidence. Missing, assisted, or below-floor evidence results in `NEEDS_REVIEW` for that lesson; a high score in another domain cannot compensate.
+The curriculum response keeps source-verified title/source metadata under `official`. TongXuan-authored handbook paraphrases, domains, practice targets, gates, and learner state stay under `tongxuan`. The domains are taken from `domains` in [validated-curriculum-slice.json](../shared/validated-curriculum-slice.json). Each listed domain has a floor of `0.75` and requires independent evidence. The assessment endpoint accepts an empty request only; scores and assistance flags from callers are rejected. The server finds the latest server-scored evidence per linked item and derives the score from those results. Raw attempt rows alone do not count. An evidence reference and attempt type are persisted for audit.
+
+Current server scorers cover recognition, vocabulary word attempts, grammar attempts, and phonetic notation recognition. Typed Zhuyin/Pinyin answers count as phonetics, never spoken pronunciation. Listening, speaking, actual pronunciation, and handwriting-quality mastery have no authoritative provider yet. Those domains have no evidence source and remain missing, so they cannot be passed with fabricated client scores.
 
 Book 1 A's first lessons are mapped to their documented functions:
 
@@ -14,9 +16,9 @@ Every lesson in Starter, Basic, and Book 1 A lessons 1–3 has an `officialObjec
 
 ## Weekly practice assessment
 
-`beginner-multidomain-v1` selects available items deterministically from recognition, word, sentence, writing, pronunciation, grammar, idiom, and reading domains, with a ten-item cap. It returns a separate score/ratio/floor/pass field for every domain. The legacy scalar `score` remains for compatibility only; `overall_score_is_mastery` is always false. A weekly score does not set lesson mastery.
+`guided-practice-review-v2` selects at most ten activities deterministically. Recognition uses a character choice; vocabulary asks for a missing character; sentence practice is a cloze; grammar and reading use their own answer rules; idiom practice uses an authored context-choice scorer; phonetic notation uses the pronunciation-reading scorer; writing stores a `HANZI_WRITER` provider event. It returns item-level practice results only. It does not return per-domain ability scores and does not claim to assess multidomain ability, handwriting quality, or lesson mastery.
 
-Misses update domain-local SRS state. Recognition misses also enter the existing recognition review queue. Other practice-domain state is not merged into recognition state, mastery, or School Queue.
+Each scored activity writes its own attempt type and uses its domain scorer. Phonetic notation attempts are not recorded as pronunciation SRS. Recognition misses also enter the existing recognition review queue. Activity results are not merged into curriculum mastery or School Queue.
 
 ## Adaptive selection
 

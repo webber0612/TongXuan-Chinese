@@ -16,6 +16,15 @@ def setup_child(api: TestClient):
     return child["id"]
 
 
+def visible_recognition_answer(item):
+    target = item["prompt"].split("：", 1)[-1]
+    return next(option["id"] for option in item["options"] if option["label"] == target)
+
+
+def stable_weekly_items(test):
+    return [{key: value for key, value in item.items() if key != "id"} for item in test["items"]]
+
+
 def test_recognition_correct_incorrect_assisted_and_child_isolation(tmp_path):
     with client(tmp_path) as api:
         child_id = setup_child(api)
@@ -102,8 +111,8 @@ def test_weekly_test_prioritizes_known_recent_items_deterministically(tmp_path):
         item = api.get(f"/api/recognition/sessions/{session['id']}/next", params={"child_id": child_id}).json()["item"]
         api.post(f"/api/recognition/sessions/{session['id']}/attempts", params={"child_id": child_id}, json={"item_id": item["id"], "result": "correct"})
         second = api.post("/api/weekly-tests", params={"child_id": child_id}).json()
-        assert second["items"][0]["id"] == item["id"]
-        assert [entry["id"] for entry in first["items"]] == [entry["id"] for entry in api.post("/api/weekly-tests", params={"child_id": child_id}).json()["items"]]
+        assert second["items"][0]["prompt"] == f"選出這個字：{item['character']}"
+        assert stable_weekly_items(first) == stable_weekly_items(api.post("/api/weekly-tests", params={"child_id": child_id}).json())
 
 
 def test_completed_weekly_test_is_immutable(tmp_path):
@@ -111,9 +120,9 @@ def test_completed_weekly_test_is_immutable(tmp_path):
         child_id = setup_child(api)
         test = api.post("/api/weekly-tests", params={"child_id": child_id}).json()
         first = api.post(f"/api/weekly-tests/{test['id']}/submit", params={"child_id": child_id}, json={"answers": {}}).json()
-        second = api.post(f"/api/weekly-tests/{test['id']}/submit", params={"child_id": child_id}, json={"answers": {test['items'][0]['id']: test['items'][0]['character']}})
+        second = api.post(f"/api/weekly-tests/{test['id']}/submit", params={"child_id": child_id}, json={"answers": {test['items'][0]['id']: visible_recognition_answer(test['items'][0])}})
         assert second.status_code == 400
-        assert first["score"] == 0
+        assert first["practice_points"] == 0
 
 
 def test_school_queue_is_separate_and_deterministic(tmp_path):
@@ -131,13 +140,13 @@ def test_weekly_test_reproducible_and_missed_items_are_reported(tmp_path):
     with client(tmp_path) as api:
         child_id = setup_child(api)
         test = api.post("/api/weekly-tests", params={"child_id": child_id}).json()
-        answers = {test["items"][0]["id"]: test["items"][0]["character"]}
+        answers = {test["items"][0]["id"]: visible_recognition_answer(test["items"][0])}
         result = api.post(f"/api/weekly-tests/{test['id']}/submit", params={"child_id": child_id}, json={"answers": answers}).json()
-        assert result["score"] == 1
-        assert result["total"] == 4
-        assert len(result["missed_items"]) == 3
+        assert result["practice_points"] == 1
+        assert result["total"] == test["total"]
+        assert len(result["missed_items"]) == test["total"] - 1
         again = api.post("/api/weekly-tests", params={"child_id": child_id}).json()
-        assert [item["id"] for item in again["items"]] == [item["id"] for item in test["items"]]
+        assert stable_weekly_items(again) == stable_weekly_items(test)
 
 
 def test_points_idempotency_balance_redemption_and_mastery_separation(tmp_path):
@@ -168,8 +177,7 @@ def test_successful_redemption_is_auditable_and_does_not_change_mastery(tmp_path
             api.post(f"/api/recognition/sessions/{session['id']}/attempts", params={"child_id": child_id}, json={"item_id": item["id"], "result": "correct"})
             api.post(f"/api/recognition/sessions/{session['id']}/complete", params={"child_id": child_id})
         test = api.post("/api/weekly-tests", params={"child_id": child_id}).json()
-        submit = {entry["id"]: entry["character"] for entry in test["items"]}
-        assert api.post(f"/api/weekly-tests/{test['id']}/submit", params={"child_id": child_id}, json={"answers": submit}).status_code == 200
+        assert api.post(f"/api/weekly-tests/{test['id']}/submit", params={"child_id": child_id}, json={"answers": {}}).status_code == 200
         with connect() as db:
             before = [dict(row) for row in db.execute("SELECT * FROM recognition_states WHERE child_id=? ORDER BY item_id", (child_id,))]
         points = api.get("/api/points", params={"child_id": child_id}).json()

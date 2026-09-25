@@ -172,7 +172,7 @@ def build_dashboard(*, child_id: int, window: str = "7d", from_at: str | None = 
             f"SELECT id,created_at,total FROM weekly_tests WHERE child_id=? AND {' AND '.join(pending_clauses)} ORDER BY created_at,id",
             [child_id, *pending_args],
         ).fetchall()
-        test_history = [{"id": row["id"], "score": row["score"], "total": row["total"], "created_at": row["created_at"], "completed_at": row["completed_at"], "missed_items": [key for key, value in (json.loads(row["correctness"] or "{}").items()) if not value]} for row in tests]
+        test_history = [{"id": row["id"], "practice_points": row["score"], "total": row["total"], "created_at": row["created_at"], "completed_at": row["completed_at"], "missed_items": [key for key, value in (json.loads(row["correctness"] or "{}").items()) if not value]} for row in tests]
         points = db.execute("SELECT * FROM points_ledger WHERE child_id=? AND timestamp<=? ORDER BY timestamp,id", (child_id, end_text)).fetchall()
         redemptions = db.execute("SELECT id,reward_id,cost,created_at FROM reward_redemptions WHERE child_id=? AND created_at<=? ORDER BY created_at,id", (child_id, end_text)).fetchall()
         ocr_where, ocr_args = _where("created_at", start, end)

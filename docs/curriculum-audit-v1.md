@@ -16,7 +16,7 @@ Basic title index: 你好、家人、同學、早飯、冬天和夏天、生日�
 
 ## Product mapping
 
-- Official metadata is stored per lesson: `sourceKind`, `sourceName`, `sourceUrl`, `sourceBook`, `sourceLesson`, `provenanceStatus`, `licenseStatus`, and `commercialReady`.
+- Official title and source metadata are nested per lesson under `official`. TongXuan-authored teacher-handbook paraphrases, domains, and practice targets remain under `tongxuan`, with the handbook page linked from the paraphrase record.
 - The verified title/objective status does not imply permission to redistribute lesson content. `licenseStatus` is `PERMISSION_REQUIRED`; `commercialReady` is `false`.
 - `officialObjectiveSummary` is a concise TongXuan paraphrase of the teacher handbook objectives. Each lesson records the specific handbook page in `objectiveSourceUrl`. These summaries describe source learning outcomes; TongXuan's `practiceTargets` and domain mapping remain separate learning-engine metadata and are not OCAC assessment rubrics.
 - The existing 25-level and 10-volume samples are retained as `TONGXUAN_AUTHORED` / `INTERNAL_DRAFT` / `INTERNAL_ONLY`, and the child onboarding route no longer presents them as the official series.

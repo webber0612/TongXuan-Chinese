@@ -80,9 +80,9 @@ export function CurriculumPage({ onOpenCourseZero }: { onOpenCourseZero?: () => 
               <summary>{stage.lessons.length} · {t("sourceRecord")}</summary>
               <ol>
                 {stage.lessons.map((lesson) => <li key={lesson.id}>
-                  <a href={lesson.sourceUrl} target="_blank" rel="noreferrer">{lesson.title}</a>
-                  <small>{lesson.sourceBook} · {lesson.sourceLesson}<br />{t("officialObjectivesLabel")}: {lesson.officialObjectiveSummary ?? lesson.practiceTargets.join("；")}<br />{t("practiceTargetsLabel")}: {lesson.practiceTargets.join("；")} · {t("lessonImportPending")}</small>
-                  {lesson.objectiveSourceUrl && <a className="neo-objective-source" href={lesson.objectiveSourceUrl} target="_blank" rel="noreferrer">{t("objectiveSourceLabel")}</a>}
+                  <a href={lesson.official.source.url} target="_blank" rel="noreferrer">{lesson.official.title}</a>
+                  <small>{lesson.official.source.book} · {lesson.official.source.lesson}<br />{t("officialObjectivesLabel")}: {lesson.tongxuan.handbookSummary.text}<br />{t("practiceTargetsLabel")}: {lesson.tongxuan.practiceTargets.join("；")} · {t("lessonImportPending")}</small>
+                  {lesson.tongxuan.handbookSummary.sourceUrl && <a className="neo-objective-source" href={lesson.tongxuan.handbookSummary.sourceUrl} target="_blank" rel="noreferrer">{t("objectiveSourceLabel")}</a>}
                 </li>)}
               </ol>
             </details>

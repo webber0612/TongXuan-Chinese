@@ -1,6 +1,18 @@
 import { useState, useEffect, useRef, type ReactNode } from "react";
 import HanziWriter from "hanzi-writer";
 import {
+  EMPTY_WRITING_PROGRESS,
+  getWritingPlan,
+  isWritingMastered,
+  recordIndependentWritingFailure,
+  recordWritingSuccess,
+  writingProgressKey,
+  writingSuccessCount,
+  type WritingPhase,
+  type WritingProgress,
+  type WritingVariant,
+} from "../lib/adaptiveWriting";
+import {
   Volume2,
   Sparkles,
   Play,
@@ -173,7 +185,7 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     step5Title: "🎯 第五步：測一測 · 課後通關測驗",
     traceCountLabel: "剩餘練習",
     traceOnceBtn: "✍️ 寫好了",
-    traceCountDone: "🎉 10次練習已完成！",
+    traceCountDone: "🎉 書寫階段已完成！",
     dictationHint: "憑記憶在田字格內書寫，忘記可點 💡 提示！",
     dictationClear: "清除",
     dictationToggleHint: "提示",
@@ -217,8 +229,8 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     tabRoadmap: "🗺️ 全景進階路線與檢定目標",
     tabLegal: "⚖️ 教材出處與版權聲明",
     tabDisclaimer: "📜 測試版與免責聲明",
-    aboutFeat1Title: "田字格 10 遍遞減筆順引擎",
-    aboutFeat1Desc: "遵循標準標楷體字形，以 100% ➔ 0% 漸隱提示與即時落點判定，陪伴孩子從臨摹到自信默寫。",
+    aboutFeat1Title: "田字格分階段書寫引擎",
+    aboutFeat1Desc: "提示會依孩子的書寫狀態逐步減少，並在需要時安排針對性重試。",
     aboutFeat2Title: "繁簡注拼雙軌並進",
     aboutFeat2Desc: "同步支援臺灣注音符號（ㄅㄆㄇ）與國際漢語拼音（pīnyīn），繁簡同字或異字自動對照，無縫切換。",
     aboutFeat3Title: "童軒自編示範課程",
@@ -313,7 +325,7 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     step5Title: "🎯 第五步：测一测 · 课后通关测验",
     traceCountLabel: "剩余练习",
     traceOnceBtn: "✍️ 写好了",
-    traceCountDone: "🎉 10次练习已完成！",
+    traceCountDone: "🎉 书写阶段已完成！",
     dictationHint: "凭记忆在田字格内书写，忘记可点 💡 提示！",
     dictationClear: "清除",
     dictationToggleHint: "提示",
@@ -357,8 +369,8 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     tabRoadmap: "🗺️ 全景进阶路线与检定目标",
     tabLegal: "⚖️ 教材出处与版权声明",
     tabDisclaimer: "📜 测试版与免责声明",
-    aboutFeat1Title: "田字格 10 遍递减笔顺引擎",
-    aboutFeat1Desc: "遵循标准标楷体字形，以 100% ➔ 0% 渐隐提示与即时落点判定，陪伴孩子从临摹到自信默写。",
+    aboutFeat1Title: "田字格分阶段书写引擎",
+    aboutFeat1Desc: "提示会根据孩子的书写状态逐步减少，并在需要时安排针对性重试。",
     aboutFeat2Title: "繁简注拼双轨并进",
     aboutFeat2Desc: "同步支持台湾注音符号（ㄅㄆㄇ）与国际汉语拼音（pīnyīn），繁简同字或异字自动对照，无缝切换。",
     aboutFeat3Title: "童轩自编示范课程",
@@ -453,7 +465,7 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     step5Title: "🎯 Step 5: End-of-Lesson Mini Quiz",
     traceCountLabel: "Remaining",
     traceOnceBtn: "✍️ Done",
-    traceCountDone: "🎉 10x Completed!",
+    traceCountDone: "🎉 Writing phase complete!",
     dictationHint: "Write from memory! Tap 💡 Hint if stuck.",
     dictationClear: "Clear",
     dictationToggleHint: "Hint",
@@ -497,8 +509,8 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     tabRoadmap: "🗺️ Learning Roadmap & Exams",
     tabLegal: "⚖️ Curriculum Attribution",
     tabDisclaimer: "📜 Beta Disclaimer & Privacy",
-    aboutFeat1Title: "10-Step Tianzige Stroke Engine",
-    aboutFeat1Desc: "Based on standard KaiTi fonts, with 100% to 0% gradual fading hints and real-time stroke checking.",
+    aboutFeat1Title: "Adaptive Tianzige Writing Practice",
+    aboutFeat1Desc: "Hints fade as each learner progresses, with focused retries when independent writing needs practice.",
     aboutFeat2Title: "Dual Zhuyin & Pinyin Support",
     aboutFeat2Desc: "Supports both Taiwan Zhuyin (Bopomofo) and standard Hanyu Pinyin with instant side-by-side comparison.",
     aboutFeat3Title: "TongXuan-authored course samples",
@@ -593,7 +605,7 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     step5Title: "🎯 ステップ 5: レッスン確認テスト",
     traceCountLabel: "残り回数",
     traceOnceBtn: "✍️ 完了",
-    traceCountDone: "🎉 10回完了！",
+    traceCountDone: "🎉 書字段階を完了！",
     dictationHint: "記憶を頼りに書こう！困ったら 💡 ヒント。",
     dictationClear: "消去",
     dictationToggleHint: "ヒント",
@@ -637,8 +649,8 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     tabRoadmap: "🗺️ ロードマップと検定目標",
     tabLegal: "⚖️ 教材の出典と著作権",
     tabDisclaimer: "📜 ベータ版免責事項",
-    aboutFeat1Title: "田字格 10回漸減筆順エンジン",
-    aboutFeat1Desc: "標準の楷書フォントを採用し、100%から0%への漸減ガイドで自立した書き取りを支援。",
+    aboutFeat1Title: "段階式ヒントの田字格書写練習",
+    aboutFeat1Desc: "学習者の書写状況に合わせてヒントを減らし、必要な字だけ再練習します。",
     aboutFeat2Title: "注音・ピンインのデュアル対応",
     aboutFeat2Desc: "台湾注音（ボポモフォ）と国際漢語ピンインの両方に対応し、繁体・簡体をシームレスに学習。",
     aboutFeat3Title: "童軒作成の学習サンプル",
@@ -733,7 +745,7 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     step5Title: "🎯 5단계: 수업 확인 퀴즈",
     traceCountLabel: "남은 횟수",
     traceOnceBtn: "✍️ 완료",
-    traceCountDone: "🎉 10회 완료!",
+    traceCountDone: "🎉 쓰기 단계를 완료했어요!",
     dictationHint: "기억해서 써보세요! 막히면 💡 힌트.",
     dictationClear: "지우기",
     dictationToggleHint: "힌트",
@@ -777,8 +789,8 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     tabRoadmap: "🗺️ 학습 로드맵 및 검정 목표",
     tabLegal: "⚖️ 교재 출처 및 저작권",
     tabDisclaimer: "📜 베타 면책 조항 및 개인정보",
-    aboutFeat1Title: "10단계 격자 획순 가이드",
-    aboutFeat1Desc: "표준해서 글꼴을 바탕으로 100%에서 0%로 점진적 힌트를 줄여 스스로 쓰기를 돕습니다.",
+    aboutFeat1Title: "단계별 힌트 격자 쓰기 연습",
+    aboutFeat1Desc: "학습 상태에 따라 힌트를 줄이고, 필요한 글자만 골라 다시 연습합니다.",
     aboutFeat2Title: "주음부호 및 한어병음 듀얼 지원",
     aboutFeat2Desc: "대만 주음부호와 표준 한어병음을 모두 지원하여 번체/간체를 손쉽게 학습합니다.",
     aboutFeat3Title: "TongXuan 자체 제작 학습 예시",
@@ -873,7 +885,7 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     step5Title: "🎯 Paso 5: Mini Cuestionario Final",
     traceCountLabel: "Restante",
     traceOnceBtn: "✍️ Listo",
-    traceCountDone: "🎉 ¡10x Completado!",
+    traceCountDone: "🎉 ¡Fase de escritura completada!",
     dictationHint: "¡Escribe de memoria! Toca 💡 Pista.",
     dictationClear: "Borrar",
     dictationToggleHint: "Pista",
@@ -917,8 +929,8 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     tabRoadmap: "🗺️ Hoja de Ruta y Exámenes",
     tabLegal: "⚖️ Fuentes y Derechos de Autor",
     tabDisclaimer: "📜 Descargo de Responsabilidad Beta",
-    aboutFeat1Title: "Motor de Trazos Tianzige en 10 Pasos",
-    aboutFeat1Desc: "Basado en tipografía estándar KaiTi con desvanecimiento progresivo del 100% al 0%.",
+    aboutFeat1Title: "Práctica adaptativa de trazos Tianzige",
+    aboutFeat1Desc: "Las pistas disminuyen según el progreso y se repasan de forma selectiva los caracteres difíciles.",
     aboutFeat2Title: "Soporte Dual Zhuyin y Pinyin",
     aboutFeat2Desc: "Compatible con Zhuyin de Taiwán y Pinyin internacional con comparación instantánea.",
     aboutFeat3Title: "Ejemplos de aprendizaje de TongXuan",
@@ -1972,6 +1984,7 @@ export function ChildPortalPage({ onOpenCurriculum }: { onOpenCurriculum: () => 
     return (
       <InteractiveClassroom
         dayPlan={customPracticePlan || selectedDay}
+        learnerId={activeLearnerId}
         scriptMode={scriptMode}
         displayLang={displayLang}
         showPhonetics={true}
@@ -3039,7 +3052,7 @@ export function ChildPortalPage({ onOpenCurriculum }: { onOpenCurriculum: () => 
 
 /* ========================================================
    FULLSCREEN INTERACTIVE CLASSROOM (分區練字教室)
-   - ① 練字區 (標準標楷體字型 + 10次練習遞減 + 提交檢查 + 描線隨次數漸隱 + 筆畫展示播放 + 整合發音膠囊)
+   - ① 練字區 (標準標楷體字型 + 提示漸退 + 筆順檢查 + 筆畫展示播放 + 整合發音膠囊)
    - ② 資訊區 (解釋、部首、筆順、詞彙、造句)
    - 左右撇子功能切換 (右手模式 / 左手模式)
    ======================================================== */
@@ -3063,6 +3076,7 @@ export const getVariantLabels = (lang: DisplayLang) => {
 
 export function InteractiveClassroom({
   dayPlan,
+  learnerId,
   scriptMode,
   displayLang,
   showPhonetics,
@@ -3080,6 +3094,7 @@ export function InteractiveClassroom({
   onExitClass
 }: {
   dayPlan: DailyDayPlan;
+  learnerId: string;
   scriptMode: ScriptMode;
   displayLang: DisplayLang;
   showPhonetics: boolean;
@@ -3102,14 +3117,17 @@ export function InteractiveClassroom({
   // Character navigation index
   const [currentCharIdx, setCurrentCharIdx] = useState(0);
 
-  // Practice count tracking & persistence
-  const [charPracticeCounts, setCharPracticeCounts] = useState<Record<string, number>>(() => {
+  // Practice state is scoped by learner, character, and script variant.
+  const [writingProgress, setWritingProgress] = useState<Record<string, WritingProgress>>(() => {
     try {
-      return JSON.parse(localStorage.getItem("tongxuan_practice_counts") || "{}");
+      return JSON.parse(localStorage.getItem("tongxuan_writing_progress_v2") || "{}");
     } catch (e) {
       return {};
     }
   });
+  const writingProgressRef = useRef(writingProgress);
+  writingProgressRef.current = writingProgress;
+  const [masteryChecksThisVisit, setMasteryChecksThisVisit] = useState<Record<string, boolean>>({});
 
   // Multilingual Trad / Simp Labels
   const variantLabels = getVariantLabels(displayLang);
@@ -3124,18 +3142,19 @@ export function InteractiveClassroom({
   const totalChars = characters.length;
   const isDiff = currentChar ? currentChar.char !== currentChar.charHans : false;
 
-  const currentPracticeKey = currentChar
-    ? (isDiff ? `${currentChar.char}_${activeVariant}` : currentChar.char)
-    : "";
+  const practiceKeyFor = (character: HanziItem, variant: WritingVariant = "trad") =>
+    writingProgressKey(learnerId, character.char, character.char !== character.charHans ? variant : "trad");
+  const progressFor = (character: HanziItem, variant: WritingVariant = "trad") =>
+    writingProgress[practiceKeyFor(character, variant)] || EMPTY_WRITING_PROGRESS;
+  const practiceDoneFor = (character: HanziItem, variant: WritingVariant = "trad") => {
+    const progress = progressFor(character, variant);
+    return progress.mastered || isWritingMastered(progress);
+  };
 
-  // Remaining practice countdown (starts at 10 - completed count, clamped to [0, 10])
-  const [remainingPractice, setRemainingPractice] = useState<number>(() => {
-    const initKey = currentChar
-      ? (isDiff ? `${currentChar.char}_${scriptMode === "pinyin" ? "hans" : "trad"}` : currentChar.char)
-      : "";
-    const done = charPracticeCounts[initKey] || 0;
-    return Math.max(0, 10 - done);
-  });
+  const currentPracticeKey = currentChar ? practiceKeyFor(currentChar, activeVariant) : "";
+  const currentProgress = currentChar ? progressFor(currentChar, activeVariant) : EMPTY_WRITING_PROGRESS;
+  const currentPlan = getWritingPlan(currentProgress, Boolean(masteryChecksThisVisit[currentPracticeKey]));
+  const [remainingPractice, setRemainingPractice] = useState<number>(currentPlan.remaining);
   
   // Speech speed: "normal" (🐇 兔子) / "slow" (🐢 烏龜)
   const [speechSpeed, setSpeechSpeed] = useState<SpeechSpeed>("normal");
@@ -3166,6 +3185,7 @@ export function InteractiveClassroom({
   const hanziContainerRef = useRef<HTMLDivElement | null>(null);
   const writerRef = useRef<HanziWriter | null>(null);
   const childInkCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const attemptMistakeRef = useRef(false);
 
   const charToRender = isDiff
     ? (activeVariant === "hans" ? currentChar.charHans : currentChar.char)
@@ -3180,28 +3200,12 @@ export function InteractiveClassroom({
     }
   };
 
-  // 描線漸進式淡出階梯（前 4 遍逐步隱藏，第 5 遍起全默寫）：
-  // 第 1 遍 (剩 10): 1.00 (清晰實心)
-  // 第 2 遍 (剩 9):  0.75
-  // 第 3 遍 (剩 8):  0.50
-  // 第 4 遍 (剩 7):  0.25
-  // 第 5~10 遍 (剩 6~0): 0.00 (完全消失，空白田字格純靠記憶默寫)
-  const getOutlineOpacity = (count: number, forceHint: boolean) => {
+  // Hints fade by practice phase and are hidden for independent writing.
+  const getOutlineOpacity = (phase: WritingPhase, forceHint: boolean) => {
     if (forceHint) return 1.0;
-    const opacities: Record<number, number> = {
-      10: 1.0,
-      9: 0.75,
-      8: 0.5,
-      7: 0.25,
-      6: 0.0,
-      5: 0.0,
-      4: 0.0,
-      3: 0.0,
-      2: 0.0,
-      1: 0.0,
-      0: 0.0,
-    };
-    return opacities[count] !== undefined ? opacities[count] : 0.0;
+    if (phase === "guided") return 0.9;
+    if (phase === "reduced_hint") return 0.35;
+    return 0;
   };
 
   const applyOutlineOpacity = (writer: HanziWriter, opacity: number) => {
@@ -3215,15 +3219,28 @@ export function InteractiveClassroom({
     }
   };
 
+  const updateWritingProgress = (key: string, update: (current: WritingProgress) => WritingProgress) => {
+    const current = writingProgressRef.current[key] || EMPTY_WRITING_PROGRESS;
+    const next = { ...writingProgressRef.current, [key]: update(current) };
+    writingProgressRef.current = next;
+    setWritingProgress(next);
+    try {
+      localStorage.setItem("tongxuan_writing_progress_v2", JSON.stringify(next));
+    } catch (e) {}
+    return next[key];
+  };
+
   const recordPracticeSuccess = () => {
-    setCharPracticeCounts((prev) => {
-      const nextCount = (prev[currentPracticeKey] || 0) + 1;
-      const updated = { ...prev, [currentPracticeKey]: nextCount };
-      try {
-        localStorage.setItem("tongxuan_practice_counts", JSON.stringify(updated));
-      } catch (e) {}
-      return updated;
-    });
+    const next = updateWritingProgress(currentPracticeKey, (state) => recordWritingSuccess(state, currentPlan.phase));
+    if (next.mastered) {
+      setMasteryChecksThisVisit((previous) => ({ ...previous, [currentPracticeKey]: true }));
+    }
+    return next;
+  };
+
+  const recordIndependentFailure = () => {
+    const next = updateWritingProgress(currentPracticeKey, recordIndependentWritingFailure);
+    setRemainingPractice(getWritingPlan(next, Boolean(masteryChecksThisVisit[currentPracticeKey])).remaining);
   };
 
   const startInteractiveQuiz = (writer: HanziWriter, outlineOpacity: number) => {
@@ -3236,6 +3253,10 @@ export function InteractiveClassroom({
         acceptBackwardsStrokes: false, // 嚴格禁止反向筆畫
         highlightOnComplete: false, // 不使用電腦字型高亮覆蓋孩子筆跡
         onMistake: (strokeData) => {
+          if (!attemptMistakeRef.current) {
+            attemptMistakeRef.current = true;
+            if (currentPlan.phase === "independent") recordIndependentFailure();
+          }
           // 落筆或筆順錯誤時立即閃爍提示下一筆
           try {
             writer.highlightStroke(strokeData.strokeNum);
@@ -3274,46 +3295,36 @@ export function InteractiveClassroom({
         onComplete: (_summary) => {
           // 保持孩子真實筆跡在畫布上
           writer.hideCharacter();
-          recordPracticeSuccess();
-
-          setRemainingPractice((prev) => {
-            const nextCount = Math.max(0, prev - 1);
-            if (nextCount === 0) {
-              const otherVariant = activeVariant === "trad" ? "hans" : "trad";
-              const otherKey = isDiff ? `${currentChar.char}_${otherVariant}` : currentChar.char;
-              const otherCount = charPracticeCounts[otherKey] || 0;
-              const otherDone = otherCount >= 10;
-
-              if (isDiff && !otherDone) {
-                const currLabel = activeVariant === "trad" ? variantLabels.trad : variantLabels.simp;
-                const nextLabel = activeVariant === "trad" ? variantLabels.simp : variantLabels.trad;
-                setDictationPraiseToast(`🎉 ${currLabel} 10 遍達成！請點擊 ${nextLabel} 繼續練習通關！`);
-              } else {
-                setDictationPraiseToast("🎉 10 遍練習全部達成！原創筆跡已打勾標記！");
-              }
+          const nextProgress = recordPracticeSuccess();
+          attemptMistakeRef.current = false;
+          const nextPlan = getWritingPlan(nextProgress, nextProgress.mastered || Boolean(masteryChecksThisVisit[currentPracticeKey]));
+          setRemainingPractice(nextPlan.remaining);
+          if (nextProgress.mastered && isDiff) {
+            const otherVariant: WritingVariant = activeVariant === "trad" ? "hans" : "trad";
+            if (!practiceDoneFor(currentChar, otherVariant)) {
+              const currLabel = activeVariant === "trad" ? variantLabels.trad : variantLabels.simp;
+              const nextLabel = activeVariant === "trad" ? variantLabels.simp : variantLabels.trad;
+              setDictationPraiseToast(`🎉 ${currLabel} 字形已熟練！接著練 ${nextLabel} 字形。`);
             } else {
-              const praises = [
-                "100% 孩子原創筆跡！寫得真工整！",
-                "太厲害了！筆順精準！",
-                "落點扎實！描線逐漸變淡囉！",
-                "記憶力超強！純靠記憶默寫！"
-              ];
-              const chosen = praises[Math.floor(Math.random() * praises.length)];
-              setDictationPraiseToast(`✨ ${chosen} 剩餘 ${nextCount} 遍`);
+              setDictationPraiseToast("🎉 兩種字形都已熟練！");
             }
-            setTimeout(() => {
-              setDictationPraiseToast(null);
-              clearChildInkCanvas();
-              if (writerRef.current) {
-                writerRef.current.cancelQuiz();
-                writerRef.current.hideCharacter();
-                const nextOpacity = getOutlineOpacity(nextCount, showDictationHint);
-                applyOutlineOpacity(writerRef.current, nextOpacity);
-                startInteractiveQuiz(writerRef.current, nextOpacity);
-              }
-            }, 1600);
-            return nextCount;
-          });
+          } else if (nextProgress.mastered) {
+            setDictationPraiseToast("🎉 這個字已熟練！可以繼續下一個字。");
+          } else {
+            const phaseLabel = nextPlan.phase === "guided" ? "跟著提示" : nextPlan.phase === "reduced_hint" ? "減少提示" : "獨立書寫";
+            setDictationPraiseToast(`✨ ${phaseLabel} · 本階段還要 ${nextPlan.remaining} 次`);
+          }
+          setTimeout(() => {
+            setDictationPraiseToast(null);
+            clearChildInkCanvas();
+            if (writerRef.current) {
+              writerRef.current.cancelQuiz();
+              writerRef.current.hideCharacter();
+              const nextOpacity = getOutlineOpacity(nextPlan.phase, showDictationHint);
+              applyOutlineOpacity(writerRef.current, nextOpacity);
+              startInteractiveQuiz(writerRef.current, nextOpacity);
+            }
+          }, 1600);
         },
       });
     } catch (err) {
@@ -3325,10 +3336,10 @@ export function InteractiveClassroom({
   const handleSelectVariant = (variant: "trad" | "hans") => {
     if (!isDiff) return; // 繁簡同字禁止切換
     setActiveVariant(variant);
-    const newKey = `${currentChar.char}_${variant}`;
-    const done = charPracticeCounts[newKey] || 0;
-    const newRem = Math.max(0, 10 - done);
-    setRemainingPractice(newRem);
+    const key = practiceKeyFor(currentChar, variant);
+    const plan = getWritingPlan(progressFor(currentChar, variant), Boolean(masteryChecksThisVisit[key]));
+    setRemainingPractice(plan.remaining);
+    attemptMistakeRef.current = false;
     clearChildInkCanvas();
   };
 
@@ -3338,7 +3349,7 @@ export function InteractiveClassroom({
     hanziContainerRef.current.innerHTML = "";
     clearChildInkCanvas();
 
-    const outlineOpacity = getOutlineOpacity(remainingPractice, showDictationHint);
+    const outlineOpacity = getOutlineOpacity(currentPlan.phase, showDictationHint);
     const outlineColorStr = `rgba(217, 119, 6, ${outlineOpacity.toFixed(3)})`;
 
     try {
@@ -3370,14 +3381,15 @@ export function InteractiveClassroom({
         writerRef.current?.cancelQuiz();
       } catch (e) {}
     };
-  }, [currentCharIdx, charToRender, activeVariant, showDictationHint]);
+  }, [currentCharIdx, charToRender, activeVariant, showDictationHint, currentPlan.phase]);
 
   const clearCanvas = () => {
+    attemptMistakeRef.current = false;
     clearChildInkCanvas();
     if (writerRef.current) {
       writerRef.current.cancelQuiz();
       writerRef.current.hideCharacter();
-      const outlineOpacity = getOutlineOpacity(remainingPractice, showDictationHint);
+      const outlineOpacity = getOutlineOpacity(currentPlan.phase, showDictationHint);
       applyOutlineOpacity(writerRef.current, outlineOpacity);
       startInteractiveQuiz(writerRef.current, outlineOpacity);
     }
@@ -3410,13 +3422,13 @@ export function InteractiveClassroom({
           setActiveStrokeIndex(-1);
           // Hides filled demonstration character and returns to child handwriting mode
           writer.hideCharacter();
-          const outlineOpacity = getOutlineOpacity(remainingPractice, showDictationHint);
+          const outlineOpacity = getOutlineOpacity(currentPlan.phase, showDictationHint);
           startInteractiveQuiz(writer, outlineOpacity);
         },
       });
     } catch (err) {
       setIsPlayingStrokes(false);
-      const outlineOpacity = getOutlineOpacity(remainingPractice, showDictationHint);
+      const outlineOpacity = getOutlineOpacity(currentPlan.phase, showDictationHint);
       startInteractiveQuiz(writer, outlineOpacity);
     }
   };
@@ -3424,18 +3436,18 @@ export function InteractiveClassroom({
   const handleNextChar = () => {
     // Check if current distinct character has completed both variants
     if (isDiff) {
-      const isTradDone = (charPracticeCounts[`${currentChar.char}_trad`] || 0) >= 10;
-      const isHansDone = (charPracticeCounts[`${currentChar.char}_hans`] || 0) >= 10;
+      const isTradDone = practiceDoneFor(currentChar, "trad");
+      const isHansDone = practiceDoneFor(currentChar, "hans");
 
       if (!isTradDone && activeVariant === "hans") {
         handleSelectVariant("trad");
-        setDictationPraiseToast(`💡 請完成 ${variantLabels.trad} 10 遍練習以通關！`);
+        setDictationPraiseToast(`💡 請先完成 ${variantLabels.trad} 字形的階段練習。`);
         setTimeout(() => setDictationPraiseToast(null), 1800);
         return;
       }
       if (!isHansDone && activeVariant === "trad") {
         handleSelectVariant("hans");
-        setDictationPraiseToast(`💡 請完成 ${variantLabels.simp} 10 遍練習以通關！`);
+        setDictationPraiseToast(`💡 請先完成 ${variantLabels.simp} 字形的階段練習。`);
         setTimeout(() => setDictationPraiseToast(null), 1800);
         return;
       }
@@ -3445,8 +3457,8 @@ export function InteractiveClassroom({
       const nextIdx = currentCharIdx + 1;
       const nextChar = characters[nextIdx];
       const nextIsDiff = nextChar.char !== nextChar.charHans;
-      const nextTradDone = (charPracticeCounts[`${nextChar.char}_trad`] || 0) >= 10;
-      const nextHansDone = (charPracticeCounts[`${nextChar.char}_hans`] || 0) >= 10;
+      const nextTradDone = practiceDoneFor(nextChar, "trad");
+      const nextHansDone = practiceDoneFor(nextChar, "hans");
 
       let nextVariant: "trad" | "hans" = scriptMode === "pinyin" ? "hans" : "trad";
       if (nextIsDiff) {
@@ -3454,12 +3466,12 @@ export function InteractiveClassroom({
         else if (nextHansDone && !nextTradDone) nextVariant = "trad";
       }
 
-      const nextKey = nextIsDiff ? `${nextChar.char}_${nextVariant}` : nextChar.char;
-      const done = charPracticeCounts[nextKey] || 0;
+      const nextKey = practiceKeyFor(nextChar, nextVariant);
+      const nextPlan = getWritingPlan(progressFor(nextChar, nextVariant), Boolean(masteryChecksThisVisit[nextKey]));
 
       setCurrentCharIdx(nextIdx);
       setActiveVariant(nextVariant);
-      setRemainingPractice(Math.max(0, 10 - done));
+      setRemainingPractice(nextPlan.remaining);
       setShowDictationHint(false);
       clearCanvas();
     } else {
@@ -3472,8 +3484,8 @@ export function InteractiveClassroom({
       const prevIdx = currentCharIdx - 1;
       const prevChar = characters[prevIdx];
       const prevIsDiff = prevChar.char !== prevChar.charHans;
-      const prevTradDone = (charPracticeCounts[`${prevChar.char}_trad`] || 0) >= 10;
-      const prevHansDone = (charPracticeCounts[`${prevChar.char}_hans`] || 0) >= 10;
+      const prevTradDone = practiceDoneFor(prevChar, "trad");
+      const prevHansDone = practiceDoneFor(prevChar, "hans");
 
       let prevVariant: "trad" | "hans" = scriptMode === "pinyin" ? "hans" : "trad";
       if (prevIsDiff) {
@@ -3481,21 +3493,21 @@ export function InteractiveClassroom({
         else if (prevHansDone && !prevTradDone) prevVariant = "trad";
       }
 
-      const prevKey = prevIsDiff ? `${prevChar.char}_${prevVariant}` : prevChar.char;
-      const done = charPracticeCounts[prevKey] || 0;
+      const prevKey = practiceKeyFor(prevChar, prevVariant);
+      const prevPlan = getWritingPlan(progressFor(prevChar, prevVariant), Boolean(masteryChecksThisVisit[prevKey]));
 
       setCurrentCharIdx(prevIdx);
       setActiveVariant(prevVariant);
-      setRemainingPractice(Math.max(0, 10 - done));
+      setRemainingPractice(prevPlan.remaining);
       setShowDictationHint(false);
       clearCanvas();
     }
   };
 
-  // Shadow opacity calculation: gradually fades as remainingPractice decreases from 10 to 0
+  // Keep the canvas shadow aligned with the current hint phase.
   const shadowOpacity = showDictationHint
     ? 0.38
-    : Math.max(0, (remainingPractice - 1) / 9 * 0.36);
+    : currentPlan.phase === "guided" ? 0.32 : currentPlan.phase === "reduced_hint" ? 0.16 : 0;
 
   if (quizFinished) {
     return (
@@ -3871,14 +3883,12 @@ export function InteractiveClassroom({
   // ========================================================
   // CHARACTER SPLIT VIEW: ① 練字區 vs ② 資訊區
   // ========================================================
-  const tradCount = isDiff
-    ? (charPracticeCounts[`${currentChar.char}_trad`] || 0)
-    : (charPracticeCounts[currentChar.char] || 0);
-  const hansCount = isDiff
-    ? (charPracticeCounts[`${currentChar.char}_hans`] || 0)
-    : (charPracticeCounts[currentChar.char] || 0);
-  const tradDone = tradCount >= 10;
-  const hansDone = hansCount >= 10;
+  const tradProgress = progressFor(currentChar, "trad");
+  const hansProgress = progressFor(currentChar, "hans");
+  const tradCount = writingSuccessCount(tradProgress);
+  const hansCount = writingSuccessCount(hansProgress);
+  const tradDone = practiceDoneFor(currentChar, "trad");
+  const hansDone = practiceDoneFor(currentChar, "hans");
 
   const WritingPanel = (
     <div className="writing-split-panel animate-fade">
@@ -3901,11 +3911,11 @@ export function InteractiveClassroom({
           <div className={`practice-status-pill ${remainingPractice === 0 ? "is-finished" : ""}`}>
             <span className="practice-pill-icon">🎯</span>
             <span className="practice-pill-text">
-              {remainingPractice === 0 ? "練習完成 🎉" : "練習目標"}
+              {remainingPractice === 0 ? "練習完成 🎉" : currentPlan.phase === "guided" ? "跟著提示練習" : currentPlan.phase === "reduced_hint" ? "減少提示練習" : "獨立書寫練習"}
             </span>
             {remainingPractice > 0 ? (
-              <span className="practice-count-badge" title="剩餘練習遍數">
-                剩 {remainingPractice} 遍
+              <span className="practice-count-badge" title="本階段尚需完成的練習次數">
+                本階段剩 {remainingPractice} 次
               </span>
             ) : (
               <span className="practice-count-badge" style={{ background: "#10b981" }}>
@@ -4147,8 +4157,8 @@ export function InteractiveClassroom({
           {characters.map((c, i) => {
             const cIsDiff = c.char !== c.charHans;
             const isCompleted = cIsDiff
-              ? (charPracticeCounts[`${c.char}_trad`] || 0) >= 10 && (charPracticeCounts[`${c.char}_hans`] || 0) >= 10
-              : (charPracticeCounts[c.char] || 0) >= 10;
+              ? practiceDoneFor(c, "trad") && practiceDoneFor(c, "hans")
+              : practiceDoneFor(c, "trad");
             const isSelected = i === currentCharIdx;
 
             return (
@@ -4157,15 +4167,15 @@ export function InteractiveClassroom({
                 className={`pill-dot ${isSelected ? "active" : ""} ${isCompleted ? "is-char-completed" : ""}`}
                 onClick={() => {
                   const nextVariant = scriptMode === "pinyin" ? "hans" : "trad";
-                  const nextKey = cIsDiff ? `${c.char}_${nextVariant}` : c.char;
-                  const done = charPracticeCounts[nextKey] || 0;
+                  const nextKey = practiceKeyFor(c, nextVariant);
+                  const nextPlan = getWritingPlan(progressFor(c, nextVariant), Boolean(masteryChecksThisVisit[nextKey]));
 
                   setCurrentCharIdx(i);
                   setActiveVariant(nextVariant);
-                  setRemainingPractice(Math.max(0, 10 - done));
+                  setRemainingPractice(nextPlan.remaining);
                   clearCanvas();
                 }}
-                title={`${c.char}${cIsDiff ? ` / ${c.charHans}` : ""} ${isCompleted ? "（已完成 10 遍練習 ✓）" : ""}`}
+                title={`${c.char}${cIsDiff ? ` / ${c.charHans}` : ""} ${isCompleted ? "（已熟練 ✓）" : ""}`}
               >
                 <span className="pill-char-glyph">
                   {scriptMode === "pinyin" ? c.charHans : c.char}
@@ -6344,7 +6354,7 @@ function Hanzi5000LexiconModal({
         {/* Results Counter */}
         <div className="lexicon-results-info-bar">
           <span>找到 <b>{filteredEntries.length}</b> 個符合條件的標準生字</span>
-          <small>點擊任意漢字，即可立即開啟 10 遍田字格漸退描線與筆順落點檢查！</small>
+          <small>點擊任意漢字，即可開啟分階段提示與筆順落點檢查。</small>
         </div>
 
         {/* Character Cards Grid */}

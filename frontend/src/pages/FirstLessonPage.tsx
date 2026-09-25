@@ -7,7 +7,7 @@ type FirstLessonPageProps = { onBack: () => void; onOpenPractice: () => void };
 export function FirstLessonPage({ onBack, onOpenPractice }: FirstLessonPageProps) {
   const { t } = useLocale();
   const lesson = officialCoursePath.stages[2].lessons[0];
-  const objective = lesson.officialObjectiveSummary ?? lesson.practiceTargets.join("；");
+  const objective = lesson.tongxuan.handbookSummary.text;
   return <main className="app-page first-lesson-page">
     <button className="back-link" onClick={onBack}><ArrowLeft size={17}/>{t("backToMap")}</button>
     <header className="lesson-heading">
@@ -18,17 +18,17 @@ export function FirstLessonPage({ onBack, onOpenPractice }: FirstLessonPageProps
     <section className="official-lesson-card" aria-labelledby="first-lesson-title">
       <div className="official-lesson-number">01</div>
       <div className="official-lesson-copy">
-        <p className="eyebrow">{lesson.sourceBook} · {lesson.sourceLesson}</p>
-        <h2 id="first-lesson-title">{lesson.title}</h2>
+        <p className="eyebrow">{lesson.official.source.book} · {lesson.official.source.lesson}</p>
+        <h2 id="first-lesson-title">{lesson.official.title}</h2>
         <p>{objective}</p>
-        <p>{lesson.domains.join(" · ")}</p>
+        <p>{lesson.tongxuan.domains.join(" · ")}</p>
         <div className="source-lock-note"><LockKeyhole size={16}/><span>{t("lessonImportPending")}</span></div>
       </div>
     </section>
     <section className="lesson-source-panel">
       <p className="eyebrow">{t("sourceRecord")}</p>
       <strong>{officialCoursePath.provider}</strong>
-      <a href={lesson.sourceUrl} target="_blank" rel="noreferrer">{t("openOfficialSource")}</a>
+      <a href={lesson.official.source.url} target="_blank" rel="noreferrer">{t("openOfficialSource")}</a>
       <p>{t("sourceRecordNote")}</p>
     </section>
     <div className="lesson-actions">

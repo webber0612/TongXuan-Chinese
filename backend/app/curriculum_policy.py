@@ -91,18 +91,41 @@ def get_validated_curriculum(child_id: int) -> dict[str, Any]:
                 lesson = indexed[raw["id"]]
                 state = _state_row(db, child_id, lesson["id"])
                 required = {domain: DEFAULT_GATE_FLOOR for domain in lesson["domains"]}
+                source = _source_fields(lesson)
                 stage_lessons.append({
-                    **raw,
-                    **_source_fields(lesson),
-                    "sourceLesson": f"第{raw['number']}課",
+                    "id": raw["id"],
+                    "number": raw["number"],
+                    "official": {
+                        "title": raw["title"],
+                        "source": {
+                            "kind": source["sourceKind"],
+                            "name": source["sourceName"],
+                            "url": source["sourceUrl"],
+                            "book": source["sourceBook"],
+                            "lesson": f"第{raw['number']}課",
+                            "provenanceStatus": source["provenanceStatus"],
+                            "licenseStatus": source["licenseStatus"],
+                            "commercialReady": source["commercialReady"],
+                        },
+                    },
+                    "tongxuan": {
+                        "handbookSummary": {
+                            "text": raw["officialObjectiveSummary"],
+                            "sourceUrl": raw["objectiveSourceUrl"],
+                            "authorship": "TONGXUAN_PARAPHRASE",
+                        },
+                        "domains": raw["domains"],
+                        "practiceTargets": raw["practiceTargets"],
+                        "prerequisiteLessonId": previous_id,
+                        "masteryGate": {"independentEvidenceRequired": True, "domainFloors": required},
+                        "state": {
+                            "status": state["status"] if state else "NOT_STARTED",
+                            "softUnlocked": bool(state["soft_unlocked"]) if state else False,
+                            "updatedAt": state["updated_at"] if state else None,
+                        },
+                    },
                     "prerequisiteLessonId": previous_id,
                     "accessible": _is_accessible(db, child_id, lesson, lessons),
-                    "masteryGate": {"independentEvidenceRequired": True, "domainFloors": required},
-                    "state": {
-                        "status": state["status"] if state else "NOT_STARTED",
-                        "softUnlocked": bool(state["soft_unlocked"]) if state else False,
-                        "updatedAt": state["updated_at"] if state else None,
-                    },
                 })
                 previous_id = lesson["id"]
             stages.append({**source_stage, "lessons": stage_lessons})
@@ -154,7 +177,7 @@ def record_lesson_progress(*, child_id: int, lesson_id: str, status: str) -> dic
         return {"id": event_id, "childId": child_id, "lessonId": lesson_id, "status": next_status, "mastered": next_status == "MASTERED", "unlockedNext": False, "updatedAt": updated_at}
 
 
-def set_soft_unlock(*, child_id: int, lesson_id: str, unlocked: bool) -> dict[str, Any]:
+def set_soft_unlock(*, child_id: int, lesson_id: str, unlocked: bool, actor_subject: str, actor_role: str) -> dict[str, Any]:
     from .learning import ensure_child, now, uid
 
     initialize_database()
@@ -174,36 +197,67 @@ def set_soft_unlock(*, child_id: int, lesson_id: str, unlocked: bool) -> dict[st
         event_id = uid("lesson-soft-unlock")
         db.execute(
             "INSERT INTO curriculum_lesson_events(id,child_id,lesson_id,event_type,status,details_json,created_at) VALUES(?,?,?,?,?,?,?)",
-            (event_id, child_id, lesson_id, "SOFT_UNLOCK", status, json.dumps({"softUnlocked": bool(unlocked)}, sort_keys=True), updated_at),
+            (event_id, child_id, lesson_id, "SOFT_UNLOCK", status, json.dumps({"softUnlocked": bool(unlocked), "actor": {"subject": actor_subject, "role": actor_role}}, sort_keys=True), updated_at),
         )
         return {"id": event_id, "childId": child_id, "lessonId": lesson_id, "status": status, "softUnlocked": bool(unlocked), "mastered": status == "MASTERED"}
 
 
-def assess_lesson(*, child_id: int, lesson_id: str, scores: dict[str, float], assisted_domains: set[str] | None = None, script_mode: str | None = None) -> dict[str, Any]:
+def _latest_linked_attempts(db: Any, child_id: int, lesson_id: str, domain: str) -> list[dict[str, Any]]:
+    """Return scorer-issued, lesson-linked evidence, newest per activity item.
+
+    Raw attempt rows submitted by a client are not sufficient for mastery. The
+    evidence ledger is written only by server-scored activity flows.
+    """
+    allowed_types = {
+        "recognition": {"recognition_attempt"},
+        "vocabulary": {"word_attempt"},
+        "grammar": {"grammar_attempt"},
+        "phonetics": {"phonetic_notation_attempt"},
+        "reading": {"reading_attempt"},
+    }.get(domain, set())
+    if not allowed_types:
+        return []
+    rows = db.execute(
+        """SELECT e.id evidence_id,e.evidence_ref,e.evidence_item_id item_id,e.score correct,e.assisted,e.script_mode,e.evidence_type,e.created_at occurred_at,e.rowid row_order
+           FROM curriculum_skill_evidence e JOIN curriculum_item_links l
+             ON l.child_id=e.child_id AND l.skill_domain=e.skill_domain AND l.item_id=e.evidence_item_id AND l.lesson_id=e.lesson_id
+           WHERE e.child_id=? AND e.lesson_id=? AND e.skill_domain=? AND e.evidence_ref IS NOT NULL
+             AND e.evidence_type IN ({})
+           ORDER BY e.created_at,e.rowid""".format(",".join("?" for _ in allowed_types)),
+        (child_id, lesson_id, domain, *sorted(allowed_types)),
+    ).fetchall()
+    newest_by_item: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        newest_by_item[row["item_id"]] = dict(row)
+    return list(newest_by_item.values())
+
+
+def assess_lesson(*, child_id: int, lesson_id: str) -> dict[str, Any]:
     from .learning import ensure_child, now, uid
 
-    assisted_domains = assisted_domains or set()
-    if set(scores) - VALID_DOMAINS or assisted_domains - VALID_DOMAINS:
-        raise ValueError("invalid_assessment_domain")
-    if script_mode is not None and script_mode not in {"zhuyin", "pinyin"}:
-        raise ValueError("invalid_phonetic_script")
-    if any(not isinstance(score, (int, float)) or not 0 <= score <= 1 for score in scores.values()):
-        raise ValueError("invalid_assessment_score")
     initialize_database()
     with connect() as db:
         ensure_child(db, child_id)
         lesson, _ = _resolve_access(db, child_id, lesson_id)
         floors = {domain: DEFAULT_GATE_FLOOR for domain in lesson["domains"]}
-        missing = sorted(set(floors) - set(scores))
-        failed = sorted(domain for domain, floor in floors.items() if domain in scores and (scores[domain] < floor or domain in assisted_domains))
+        scores: dict[str, float] = {}
+        failed: list[str] = []
+        missing: list[str] = []
+        evidence_refs: dict[str, list[str]] = {}
+        created_at = now()
+        for domain, floor in floors.items():
+            attempts = _latest_linked_attempts(db, child_id, lesson_id, domain)
+            if not attempts:
+                missing.append(domain)
+                continue
+            independent_scores = [float(attempt["correct"]) for attempt in attempts if not attempt["assisted"]]
+            score = sum(independent_scores) / len(independent_scores) if independent_scores else 0.0
+            scores[domain] = score
+            evidence_refs[domain] = [attempt["evidence_ref"] for attempt in attempts]
+            if any(attempt["assisted"] for attempt in attempts) or score < floor:
+                failed.append(domain)
         mastered = not missing and not failed
         status = "MASTERED" if mastered else "NEEDS_REVIEW"
-        created_at = now()
-        for domain, score in scores.items():
-            db.execute(
-                "INSERT INTO curriculum_skill_evidence(id,child_id,lesson_id,skill_domain,script_mode,score,assisted,created_at) VALUES(?,?,?,?,?,?,?,?)",
-                (uid("skill-evidence"), child_id, lesson_id, domain, script_mode, float(score), int(domain in assisted_domains), created_at),
-            )
         db.execute(
             "INSERT INTO curriculum_lesson_states(child_id,lesson_id,status,updated_at) VALUES(?,?,?,?) "
             "ON CONFLICT(child_id,lesson_id) DO UPDATE SET status=excluded.status,updated_at=excluded.updated_at",
@@ -212,9 +266,9 @@ def assess_lesson(*, child_id: int, lesson_id: str, scores: dict[str, float], as
         event_id = uid("lesson-assessment")
         db.execute(
             "INSERT INTO curriculum_lesson_events(id,child_id,lesson_id,event_type,status,details_json,created_at) VALUES(?,?,?,?,?,?,?)",
-            (event_id, child_id, lesson_id, "ASSESSMENT", status, json.dumps({"scores": scores, "assistedDomains": sorted(assisted_domains), "missingDomains": missing, "failedDomains": failed, "domainFloors": floors}, sort_keys=True), created_at),
+            (event_id, child_id, lesson_id, "ASSESSMENT", status, json.dumps({"scores": scores, "evidenceRefs": evidence_refs, "missingDomains": sorted(missing), "failedDomains": sorted(failed), "domainFloors": floors}, sort_keys=True), created_at),
         )
-        return {"id": event_id, "childId": child_id, "lessonId": lesson_id, "status": status, "mastered": mastered, "missingDomains": missing, "failedDomains": failed, "domainFloors": floors, "updatedAt": created_at}
+        return {"id": event_id, "childId": child_id, "lessonId": lesson_id, "status": status, "mastered": mastered, "scores": scores, "evidenceRefs": evidence_refs, "missingDomains": sorted(missing), "failedDomains": sorted(failed), "domainFloors": floors, "updatedAt": created_at}
 
 
 def get_phonetic_support(*, child_id: int, script_mode: str) -> dict[str, Any]:

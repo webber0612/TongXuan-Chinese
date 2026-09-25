@@ -14,19 +14,28 @@ export type CurriculumDomain =
 export type OfficialLesson = {
   id: string;
   number: number;
-  title: string;
-  sourceKind: "OFFICIAL_OCAC";
-  sourceName: string;
-  sourceUrl: string;
-  sourceBook: string;
-  sourceLesson: string;
-  provenanceStatus: "VERIFIED_OFFICIAL_TITLE";
-  licenseStatus: "PERMISSION_REQUIRED";
-  commercialReady: false;
-  domains: CurriculumDomain[];
-  practiceTargets: string[];
-  officialObjectiveSummary?: string;
-  objectiveSourceUrl?: string;
+  official: {
+    title: string;
+    source: {
+      kind: "OFFICIAL_OCAC";
+      name: string;
+      url: string;
+      book: string;
+      lesson: string;
+      provenanceStatus: "VERIFIED_OFFICIAL_TITLE";
+      licenseStatus: "PERMISSION_REQUIRED";
+      commercialReady: false;
+    };
+  };
+  tongxuan: {
+    handbookSummary: {
+      text: string;
+      sourceUrl: string;
+      authorship: "TONGXUAN_PARAPHRASE";
+    };
+    domains: CurriculumDomain[];
+    practiceTargets: string[];
+  };
 };
 
 export const officialCoursePath = {
@@ -46,15 +55,30 @@ export const officialCoursePath = {
         ?? stage.sources.find((entry) => entry.sourceBook.startsWith(lesson.sourceBook))
         ?? stage.sources[0];
       return {
-        ...lesson,
-        domains: lesson.domains as CurriculumDomain[],
-        sourceKind: "OFFICIAL_OCAC" as const,
-        sourceName: `${slice.series} · ${lesson.sourceBook}`,
-        sourceUrl: source.sourceUrl,
-        sourceLesson: `第${lesson.number}課`,
-        provenanceStatus: "VERIFIED_OFFICIAL_TITLE" as const,
-        licenseStatus: "PERMISSION_REQUIRED" as const,
-        commercialReady: false as const,
+        id: lesson.id,
+        number: lesson.number,
+        official: {
+          title: lesson.title,
+          source: {
+            kind: "OFFICIAL_OCAC" as const,
+            name: `${slice.series} · ${lesson.sourceBook}`,
+            url: source.sourceUrl,
+            book: lesson.sourceBook,
+            lesson: `第${lesson.number}課`,
+            provenanceStatus: "VERIFIED_OFFICIAL_TITLE" as const,
+            licenseStatus: "PERMISSION_REQUIRED" as const,
+            commercialReady: false as const,
+          },
+        },
+        tongxuan: {
+          handbookSummary: {
+            text: lesson.officialObjectiveSummary,
+            sourceUrl: lesson.objectiveSourceUrl,
+            authorship: "TONGXUAN_PARAPHRASE" as const,
+          },
+          domains: lesson.domains as CurriculumDomain[],
+          practiceTargets: lesson.practiceTargets,
+        },
       } satisfies OfficialLesson;
     }),
   })),
