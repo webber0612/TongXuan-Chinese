@@ -26,6 +26,15 @@ def admin_headers() -> dict[str, str]:
     return {"Authorization": f"Bearer {issue_session(subject='admin-review', role='admin')}"}
 
 
+def link_lesson_item(api: TestClient, child_id: int, lesson_id: str, domain: str, item_id: str) -> None:
+    response = api.post(
+        f"/api/children/{child_id}/validated-curriculum/lessons/{lesson_id}/items",
+        headers=admin_headers(),
+        json={"skill_domain": domain, "item_id": item_id},
+    )
+    assert response.status_code == 200, response.text
+
+
 def test_validated_slice_titles_scope_and_item_provenance(tmp_path):
     with client(tmp_path) as api:
         child_id = child(api)
@@ -235,8 +244,8 @@ def test_phonetic_support_fades_per_script_without_promoting_mastery(tmp_path):
         answers = {}
         for item in weekly["items"]:
             if item["skill"] == "writing_practice":
-                answers[item["id"]] = "trace_complete"
-            elif item["skill"] == "phonetics" and "ZHUYIN" in item["prompt"]:
+                continue
+            if item["skill"] == "phonetics" and "ZHUYIN" in item["prompt"]:
                 answers[item["id"]] = item["options"][0]["id"]
             elif item["skill"] == "phonetics":
                 answers[item["id"]] = item["options"][1]["id"]
@@ -297,24 +306,205 @@ def test_weekly_practice_uses_activity_scorers_and_does_not_claim_multidomain_ab
         answers = {}
         for item in test["items"]:
             if item["skill"] == "writing_practice":
-                answers[item["id"]] = "trace_complete"
-            elif item["skill"] == "recognition":
+                continue
+            if item["skill"] == "recognition":
                 character = item["prompt"].split("：", 1)[1]
                 answers[item["id"]] = next(option["id"] for option in item["options"] if option["label"] == character)
             else:
                 answers[item["id"]] = item["options"][0]["id"]
         result = api.post(f"/api/weekly-tests/{test['id']}/submit?child_id={child_id}", json={"answers": answers}).json()
-        assert result["practice_points"] == result["total"]
+        assert result["practice_points"] == result["total"] - 1
         assert "domain_scores" not in result
         assert result["practice_only"] is True
         assert result["overall_score_is_mastery"] is False
         assert {activity["attemptType"] for activity in result["activity_results"]} == {item["attemptType"] for item in test["items"]}
         trace = next(activity for activity in result["activity_results"] if activity["attemptType"] == "writing_provider_event")
-        assert trace["provider"] == "HANZI_WRITER" and trace["traceEvent"] == "completed"
+        assert trace["provider"] == "HANZI_WRITER" and trace["traceEvent"] == "unverified"
+        assert trace["attemptId"] is None and trace["result"] == "unverified"
         from app.database import connect
         with connect() as db:
-            assert db.execute("SELECT COUNT(*) FROM writing_attempts WHERE child_id=? AND provider='HANZI_WRITER'", (child_id,)).fetchone()[0] == 1
+            assert db.execute("SELECT COUNT(*) FROM writing_attempts WHERE child_id=? AND provider='HANZI_WRITER'", (child_id,)).fetchone()[0] == 0
             assert db.execute("SELECT COUNT(*) FROM sentence_attempts WHERE child_id=? AND correct=1", (child_id,)).fetchone()[0] == 1
             assert db.execute("SELECT COUNT(*) FROM idiom_attempts WHERE child_id=? AND correct=1 AND answer='firsthand'", (child_id,)).fetchone()[0] == 1
             assert db.execute("SELECT COUNT(*) FROM srs_review_states WHERE child_id=? AND skill_domain='pronunciation'", (child_id,)).fetchone()[0] == 0
+            assert db.execute("SELECT COUNT(*) FROM srs_review_states WHERE child_id=? AND skill_domain='writing'", (child_id,)).fetchone()[0] == 0
         assert api.get(f"/api/children/{child_id}/validated-curriculum").json()["stages"][0]["lessons"][0]["tongxuan"]["state"]["status"] == "NOT_STARTED"
+
+
+def test_weekly_writing_rejects_forged_trace_string_without_any_writing_side_effect(tmp_path):
+    with client(tmp_path) as api:
+        child_id = child(api)
+        api.post(f"/api/children/{child_id}/learning-items/seed", json={})
+        api.post(f"/api/sprint-b/seed?child_id={child_id}")
+        test = api.post(f"/api/weekly-tests?child_id={child_id}", json={}).json()
+        writing_item = next(item for item in test["items"] if item["skill"] == "writing_practice")
+        response = api.post(
+            f"/api/weekly-tests/{test['id']}/submit?child_id={child_id}",
+            json={"answers": {writing_item["id"]: "trace_complete"}},
+        )
+        assert response.status_code == 400
+        assert response.json()["detail"] == "writing_provider_event_required"
+        from app.database import connect
+        with connect() as db:
+            assert db.execute("SELECT COUNT(*) FROM writing_attempts WHERE child_id=?", (child_id,)).fetchone()[0] == 0
+            assert db.execute("SELECT COUNT(*) FROM srs_review_events WHERE child_id=? AND skill_domain='writing'", (child_id,)).fetchone()[0] == 0
+
+
+def test_weekly_writing_accepts_only_an_existing_attempt_from_writing_flow(tmp_path):
+    with client(tmp_path) as api:
+        child_id = child(api)
+        api.post(f"/api/children/{child_id}/learning-items/seed", json={})
+        api.post(f"/api/sprint-b/seed?child_id={child_id}")
+        test = api.post(f"/api/weekly-tests?child_id={child_id}", json={}).json()
+        from app.database import connect
+        import json
+        with connect() as db:
+            internal_items = json.loads(db.execute("SELECT item_ids FROM weekly_tests WHERE id=?", (test["id"],)).fetchone()["item_ids"])
+        writing_item = next(item for item in internal_items if item["skill"] == "writing_practice")
+        trace = api.post(
+            f"/api/sprint-b/writing/attempts?child_id={child_id}&character={writing_item['targetId']}",
+            json={"trace_result": "correct", "provider": "HANZI_WRITER"},
+        ).json()
+        submitted = api.post(
+            f"/api/weekly-tests/{test['id']}/submit?child_id={child_id}",
+            json={"answers": {writing_item["id"]: trace["attempt_id"]}},
+        )
+        assert submitted.status_code == 200
+        writing_result = next(item for item in submitted.json()["activity_results"] if item["attemptType"] == "writing_provider_event")
+        assert writing_result["attemptId"] == trace["attempt_id"]
+        assert writing_result["result"] == "correct"
+        with connect() as db:
+            assert db.execute("SELECT COUNT(*) FROM writing_attempts WHERE child_id=?", (child_id,)).fetchone()[0] == 1
+            assert db.execute("SELECT stage FROM srs_review_states WHERE child_id=? AND skill_domain='writing' AND item_id=?", (child_id, writing_item["targetId"])).fetchone()[0] == 1
+
+
+def test_starter_lesson_01_can_master_and_unlock_lesson_02_without_soft_unlock(tmp_path):
+    with client(tmp_path) as api:
+        child_id = child(api)
+        character_item = api.post(f"/api/children/{child_id}/learning-items/seed", json={"characters": ["學"]}).json()["items"][0]
+        sprint_b = api.post(f"/api/sprint-b/seed?child_id={child_id}").json()
+        link_lesson_item(api, child_id, "starter-l01", "listening", character_item["id"])
+        link_lesson_item(api, child_id, "starter-l01", "speaking", character_item["id"])
+        phonetic = next(item for item in sprint_b["readings"] if item["character"] == "學" and item["notation_system"] == "ZHUYIN")
+        link_lesson_item(api, child_id, "starter-l01", "phonetics", phonetic["id"])
+
+        listening = api.post(
+            f"/api/children/{child_id}/validated-curriculum/lessons/starter-l01/listening-attempts",
+            json={"item_id": character_item["id"]},
+        ).json()
+        completed_listen = api.post(f"/api/children/{child_id}/listening-attempts/{listening['id']}/complete", json={"duration_ms": 900})
+        assert completed_listen.status_code == 200
+        assert completed_listen.json()["gateStatus"] == "ATTEMPTED_INDEPENDENTLY"
+
+        read_aloud = api.post(
+            f"/api/reading-aloud/attempts/start?child_id={child_id}",
+            json={"text": "學", "text_kind": "character", "locale": "zh-TW", "source_type": "CURRICULUM", "source_id": character_item["id"], "activity_domain": "speaking"},
+        ).json()
+        completed_speaking = api.post(f"/api/reading-aloud/attempts/{read_aloud['id']}/complete?child_id={child_id}", json={"duration_ms": 1200})
+        assert completed_speaking.status_code == 200
+        scored_phonetics = api.post(
+            f"/api/sprint-b/pronunciation/{phonetic['id']}/attempts?child_id={child_id}",
+            json={"answer": phonetic["notation"]},
+        )
+        assert scored_phonetics.status_code == 200 and scored_phonetics.json()["correct"] is True
+
+        assessment = api.post(f"/api/children/{child_id}/validated-curriculum/lessons/starter-l01/assessment", json={}).json()
+        assert assessment["mastered"] is True
+        assert assessment["scores"] == {"phonetics": 1.0}
+        assert assessment["gateStatuses"] == {"listening": "ATTEMPTED_INDEPENDENTLY", "speaking": "ATTEMPTED_INDEPENDENTLY"}
+        curriculum = api.get(f"/api/children/{child_id}/validated-curriculum").json()
+        starter_lessons = curriculum["stages"][0]["lessons"]
+        assert starter_lessons[0]["tongxuan"]["state"]["softUnlocked"] is False
+        assert starter_lessons[1]["accessible"] is True
+
+
+def test_book1_placement_and_pronunciation_gate_allow_a_later_lesson_to_master(tmp_path):
+    with client(tmp_path) as api:
+        child_id = child(api)
+        character_item = api.post(f"/api/children/{child_id}/learning-items/seed", json={"characters": ["學"]}).json()["items"][0]
+        api.post(f"/api/sprint-b/seed?child_id={child_id}")
+        profile = api.put(
+            f"/api/children/{child_id}/placement-profile",
+            headers=parent_headers(child_id),
+            json={"age_hint_years": 7, "assessment_method": "DIAGNOSTIC", "domain_levels": {"recognition": "BOOK_1", "reading": "BOOK_1", "listening": "STARTER", "speaking": "BASIC", "pronunciation": "STARTER"}},
+        )
+        assert profile.status_code == 200 and profile.json()["mainCurriculumStart"] == "BOOK_1"
+        link_lesson_item(api, child_id, "book1-l01", "listening", character_item["id"])
+        link_lesson_item(api, child_id, "book1-l01", "speaking", character_item["id"])
+        link_lesson_item(api, child_id, "book1-l01", "pronunciation", character_item["id"])
+
+        weekly = api.post(f"/api/weekly-tests?child_id={child_id}", json={}).json()
+        from app.database import connect
+        import json
+        with connect() as db:
+            internal_items = json.loads(db.execute("SELECT item_ids FROM weekly_tests WHERE id=?", (weekly["id"],)).fetchone()["item_ids"])
+        recognition_items = [item for item in internal_items if item["skill"] == "recognition"]
+        answers = {}
+        for item in recognition_items:
+            link_lesson_item(api, child_id, "book1-l01", "recognition", item["targetId"])
+            answers[item["id"]] = item["correctChoice"]
+        scored = api.post(f"/api/weekly-tests/{weekly['id']}/submit?child_id={child_id}", json={"answers": answers})
+        assert scored.status_code == 200
+
+        listening = api.post(f"/api/children/{child_id}/validated-curriculum/lessons/book1-l01/listening-attempts", json={"item_id": character_item["id"]}).json()
+        api.post(f"/api/children/{child_id}/listening-attempts/{listening['id']}/complete", json={})
+        for domain in ("speaking", "pronunciation"):
+            read_aloud = api.post(
+                f"/api/reading-aloud/attempts/start?child_id={child_id}",
+                json={"text": "學", "text_kind": "character", "locale": "zh-TW", "source_type": "CURRICULUM", "source_id": character_item["id"], "activity_domain": domain},
+            ).json()
+            api.post(f"/api/reading-aloud/attempts/{read_aloud['id']}/complete?child_id={child_id}", json={"duration_ms": 1000})
+        assessment = api.post(f"/api/children/{child_id}/validated-curriculum/lessons/book1-l01/assessment", json={}).json()
+        assert assessment["mastered"] is True
+        assert assessment["scores"]["recognition"] == 1.0
+        assert assessment["gateStatuses"] == {"listening": "ATTEMPTED_INDEPENDENTLY", "pronunciation": "ATTEMPTED_INDEPENDENTLY", "speaking": "ATTEMPTED_INDEPENDENTLY"}
+        curriculum = api.get(f"/api/children/{child_id}/validated-curriculum").json()
+        book1 = curriculum["stages"][2]["lessons"]
+        assert book1[0]["accessible"] is True
+        assert book1[1]["accessible"] is True
+
+
+def test_real_writing_provider_attempt_is_a_non_score_gate_not_a_fabricated_percentage(tmp_path, monkeypatch):
+    with client(tmp_path) as api:
+        child_id = child(api)
+        api.post(f"/api/children/{child_id}/learning-items/seed", json={"characters": ["學"]})
+        from app.database import connect
+        import app.curriculum_policy as policy
+        with connect() as db:
+            db.execute("INSERT INTO curriculum_item_links(child_id,skill_domain,item_id,lesson_id) VALUES(?,?,?,?)", (child_id, "writing", "學", "writing-gate-test"))
+        monkeypatch.setattr(policy, "_lesson_map", lambda: {"writing-gate-test": {"id": "writing-gate-test", "stageId": "test", "number": 1, "domains": ["writing"], "sequence": 0}})
+        written = api.post("/api/sprint-b/writing/attempts?child_id={}&character=學".format(child_id), json={"trace_result": "correct", "provider": "HANZI_WRITER"})
+        assert written.status_code == 200
+        evidence = policy.assess_lesson(child_id=child_id, lesson_id="writing-gate-test")
+        assert evidence["mastered"] is True
+        assert evidence["scores"] == {}
+        assert evidence["gateStatuses"] == {"writing": "ATTEMPTED_INDEPENDENTLY"}
+        assert evidence["gateEvidenceRefs"]["writing"] == [written.json()["attempt_id"]]
+
+
+def test_placement_profile_keeps_domains_independent_and_uses_age_only_as_a_hint(tmp_path):
+    with client(tmp_path) as api:
+        alice = child(api, "Alice")
+        bob = child(api, "Bob")
+        alice_profile = api.put(
+            f"/api/children/{alice}/placement-profile",
+            headers=parent_headers(alice),
+            json={"age_hint_years": 7, "assessment_method": "PARENT_OBSERVATION", "domain_levels": {"recognition": "BASIC", "reading": "BASIC", "writing": "STARTER", "zhuyin": "STARTER", "pinyin": "BASIC", "listening": "STARTER", "speaking": "BASIC"}},
+        )
+        bob_profile = api.put(
+            f"/api/children/{bob}/placement-profile",
+            headers=parent_headers(bob),
+            json={"age_hint_years": 7, "assessment_method": "DIAGNOSTIC", "domain_levels": {"recognition": "STARTER", "reading": "STARTER", "writing": "BASIC", "zhuyin": "BASIC", "pinyin": "STARTER", "listening": "BOOK_1", "speaking": "STARTER"}},
+        )
+        assert alice_profile.status_code == bob_profile.status_code == 200
+        alice_data, bob_data = alice_profile.json(), bob_profile.json()
+        assert alice_data["mainCurriculumStart"] == "BASIC"
+        assert bob_data["mainCurriculumStart"] == "STARTER"
+        assert alice_data["ageHintYears"] == bob_data["ageHintYears"] == 7
+        assert alice_data["placementContract"]["ageUsedForPlacement"] is False
+        assert alice_data["domains"]["writing"]["level"] == "STARTER"
+        assert alice_data["domains"]["zhuyin"]["level"] == "STARTER"
+        assert alice_data["domains"]["pinyin"]["level"] == "BASIC"
+        assert api.get(f"/api/children/{alice}/validated-curriculum").json()["stages"][1]["lessons"][0]["accessible"] is True
+        assert api.get(f"/api/children/{bob}/validated-curriculum").json()["stages"][1]["lessons"][0]["accessible"] is False
+        assert api.get(f"/api/children/{alice}/placement-profile").status_code == 401

@@ -17,11 +17,13 @@ from .database import connect, initialize_database
 from .providers import OpenCCProvider
 from .tts import prepare_tts
 from .reading_aloud import abort_attempt, complete_attempt, start_attempt
+from .listening import abort_listening_attempt, complete_listening_attempt, start_listening_attempt
+from .placement import get_placement_profile, save_placement_profile
 from .ocr_import import confirm_candidate, create_candidate
 from .adaptive import build_adaptive_plan
 from .dashboard import build_dashboard
 from .curriculum import get_curriculum, record_progress, seed_catalog
-from .curriculum_policy import assess_lesson, get_phonetic_support, get_validated_curriculum, record_lesson_progress, set_soft_unlock
+from .curriculum_policy import assess_lesson, get_phonetic_support, get_validated_curriculum, link_lesson_item, record_lesson_progress, set_soft_unlock
 from .tutor import tutor_response
 from .commercialization import audit_registry
 from .auth import authenticate, require_commercialization_admin, require_parent_or_admin_child_access
@@ -230,10 +232,26 @@ class ReadingAloudStartRequest(BaseModel):
     source_id: str | None = None
     assisted: bool = False
     manual_review: bool = False
+    activity_domain: str = "speaking"
 
 
 class ReadingAloudCompleteRequest(BaseModel):
     duration_ms: int | None = Field(default=None, ge=0, le=3_600_000)
+
+
+class ListeningStartRequest(BaseModel):
+    item_id: str = Field(min_length=1, max_length=255)
+
+
+class ListeningCompleteRequest(BaseModel):
+    duration_ms: int | None = Field(default=None, ge=0, le=3_600_000)
+
+
+class PlacementProfileRequest(BaseModel):
+    model_config = {"extra": "forbid"}
+    domain_levels: dict[str, str] = Field(default_factory=dict)
+    assessment_method: str = "PARENT_OBSERVATION"
+    age_hint_years: int | None = Field(default=None, ge=3, le=18)
 
 
 class OCRCandidateRequest(BaseModel):
@@ -316,6 +334,12 @@ class ValidatedLessonSoftUnlockRequest(BaseModel):
     unlocked: bool
 
 
+class ValidatedLessonItemLinkRequest(BaseModel):
+    model_config = {"extra": "forbid"}
+    skill_domain: str
+    item_id: str = Field(min_length=1, max_length=255)
+
+
 class TutorRequest(BaseModel):
     mode: str
     prompt: str = Field(min_length=1, max_length=2000)
@@ -384,6 +408,34 @@ def post_curriculum_progress(child_id: int, item_id: str, request: CurriculumPro
 @app.get("/api/children/{child_id}/validated-curriculum")
 def get_child_validated_curriculum(child_id: int) -> dict[str, object]:
     return get_validated_curriculum(child_id)
+
+
+@app.post("/api/children/{child_id}/validated-curriculum/lessons/{lesson_id}/items")
+def post_validated_lesson_item_link(child_id: int, lesson_id: str, request: ValidatedLessonItemLinkRequest, http_request: Request) -> dict[str, object]:
+    require_parent_or_admin_child_access(http_request, child_id)
+    try:
+        return link_lesson_item(child_id=child_id, lesson_id=lesson_id, skill_domain=request.skill_domain, item_id=request.item_id)
+    except ValueError as error:
+        detail = str(error)
+        raise HTTPException(status_code=400 if detail.startswith(("invalid_", "domain_not_required", "curriculum_item_already")) else 404, detail=detail) from error
+
+
+@app.get("/api/children/{child_id}/placement-profile")
+def get_child_placement_profile(child_id: int, http_request: Request) -> dict[str, object]:
+    require_parent_or_admin_child_access(http_request, child_id)
+    try:
+        return get_placement_profile(child_id)
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@app.put("/api/children/{child_id}/placement-profile")
+def put_child_placement_profile(child_id: int, request: PlacementProfileRequest, http_request: Request) -> dict[str, object]:
+    actor = require_parent_or_admin_child_access(http_request, child_id)
+    try:
+        return save_placement_profile(child_id=child_id, domain_levels=request.domain_levels, assessment_method=request.assessment_method, assessed_by=actor.subject, age_hint_years=request.age_hint_years)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
 
 
 @app.get("/api/children/{child_id}/phonetic-support")
@@ -458,7 +510,7 @@ def post_tts(request: TTSRequest) -> dict[str, object]:
 @app.post("/api/reading-aloud/attempts/start")
 def post_reading_aloud_start(child_id: int, request: ReadingAloudStartRequest) -> dict[str, object]:
     try:
-        return start_attempt(child_id=child_id, text=request.text, text_kind=request.text_kind, locale=request.locale, source_type=request.source_type, source_id=request.source_id, assisted=request.assisted, manual_review=request.manual_review)
+        return start_attempt(child_id=child_id, text=request.text, text_kind=request.text_kind, locale=request.locale, source_type=request.source_type, source_id=request.source_id, assisted=request.assisted, manual_review=request.manual_review, activity_domain=request.activity_domain)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
 
@@ -475,6 +527,41 @@ def post_reading_aloud_complete(attempt_id: str, child_id: int, request: Reading
 def abort_reading_aloud_attempt(attempt_id: str, child_id: int) -> dict[str, object]:
     try:
         return abort_attempt(child_id=child_id, attempt_id=attempt_id)
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@app.post("/api/children/{child_id}/validated-curriculum/lessons/{lesson_id}/listening-attempts")
+def post_validated_listening_start(child_id: int, lesson_id: str, request: ListeningStartRequest) -> dict[str, object]:
+    try:
+        return start_listening_attempt(child_id=child_id, lesson_id=lesson_id, item_id=request.item_id)
+    except ValueError as error:
+        detail = str(error)
+        raise HTTPException(status_code=400 if detail.startswith(("invalid_", "listening_item_not_linked")) else 409 if detail == "prerequisite_not_mastered" else 404, detail=detail) from error
+
+
+@app.post("/api/children/{child_id}/listening-attempts")
+def post_listening_start(child_id: int, request: ListeningStartRequest) -> dict[str, object]:
+    try:
+        return start_listening_attempt(child_id=child_id, item_id=request.item_id)
+    except ValueError as error:
+        detail = str(error)
+        raise HTTPException(status_code=409 if detail == "prerequisite_not_mastered" else 404, detail=detail) from error
+
+
+@app.post("/api/children/{child_id}/listening-attempts/{attempt_id}/complete")
+def post_validated_listening_complete(child_id: int, attempt_id: str, request: ListeningCompleteRequest) -> dict[str, object]:
+    try:
+        return complete_listening_attempt(child_id=child_id, attempt_id=attempt_id, duration_ms=request.duration_ms)
+    except ValueError as error:
+        detail = str(error)
+        raise HTTPException(status_code=400 if detail.startswith(("invalid_", "listening_attempt_already")) else 404, detail=detail) from error
+
+
+@app.post("/api/children/{child_id}/listening-attempts/{attempt_id}/abort")
+def post_listening_abort(child_id: int, attempt_id: str) -> dict[str, object]:
+    try:
+        return abort_listening_attempt(child_id=child_id, attempt_id=attempt_id)
     except ValueError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
 

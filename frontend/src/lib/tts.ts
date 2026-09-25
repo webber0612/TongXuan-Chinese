@@ -12,14 +12,19 @@ export type TTSPlaybackPayload = {
   persisted: boolean;
 };
 
+export type TTSPlaybackHandlers = {
+  onEnd?: () => void;
+  onError?: () => void;
+};
+
 export interface TTSProvider {
-  speak(payload: TTSPlaybackPayload): void;
+  speak(payload: TTSPlaybackPayload, handlers?: TTSPlaybackHandlers): void;
   cancel(): void;
 }
 
 /** Browser adapter; the learning domain only receives a transient playback payload. */
 export class BrowserSpeechSynthesisProvider implements TTSProvider {
-  speak(payload: TTSPlaybackPayload): void {
+  speak(payload: TTSPlaybackPayload, handlers?: TTSPlaybackHandlers): void {
     if (!("speechSynthesis" in window) || !("SpeechSynthesisUtterance" in window)) {
       throw new Error("tts_unavailable");
     }
@@ -27,6 +32,8 @@ export class BrowserSpeechSynthesisProvider implements TTSProvider {
     const utterance = new SpeechSynthesisUtterance(payload.text);
     utterance.lang = payload.voice_locale;
     utterance.rate = payload.rate;
+    utterance.onend = () => handlers?.onEnd?.();
+    utterance.onerror = () => handlers?.onError?.();
     window.speechSynthesis.speak(utterance);
   }
 

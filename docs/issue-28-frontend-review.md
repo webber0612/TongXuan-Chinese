@@ -42,3 +42,12 @@ Date: 2026-09-25
 ## Limitation
 
 The public GitHub Pages deployment has no backend configured in this preview environment. The local browser review verified the production route, aliases, archived notice, and source link; it cannot verify live learner data.
+
+## PR #29 re-audit interaction review
+
+- The `/preview-2` production alias still resolves to the current child portal. At 390 × 844 it has no viewport-width overflow; the timeline and lesson content remain in the existing hierarchy.
+- The small interaction change is on the existing secondary `/practice` route: reference TTS completion can close a linked listening attempt, and the read-aloud section labels its non-scored attempt as speaking or pronunciation. No layout or curriculum-page redesign was made.
+- Native controls remain keyboard reachable with a visible focus outline. Replay and profile-dependent actions retain their disabled states; playback errors remain playback-only and do not create a completion gate. Reduced-motion emulation reports the existing near-zero transition duration.
+- Narrow `/practice` review found no document horizontal scroll. The existing OCR file input extends about 13 px past the viewport's right edge inside its section; this unrelated P3 overflow predates this change.
+- No drag interaction or new motion was introduced. Scored learning domains and the separation between speaking, pronunciation, and phonetics remain intact.
+- Verification for this re-audit: frontend tests passed (36 tests), production build passed, and the full backend suite passed (104 tests).

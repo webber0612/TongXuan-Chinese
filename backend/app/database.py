@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 DEFAULT_DB_PATH = Path(__file__).resolve().parents[2] / "data" / "tongxuan.sqlite3"
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 SQLITE_BUSY_TIMEOUT_MS = 5000
 
 
@@ -417,6 +417,40 @@ def initialize_database() -> None:
                 assisted INTEGER NOT NULL DEFAULT 0,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
+            CREATE TABLE IF NOT EXISTS curriculum_skill_gates (
+                id TEXT PRIMARY KEY,
+                child_id INTEGER NOT NULL REFERENCES children(id),
+                lesson_id TEXT NOT NULL,
+                skill_domain TEXT NOT NULL,
+                gate_status TEXT NOT NULL CHECK(gate_status IN ('ATTEMPTED_INDEPENDENTLY','PARENT_VERIFIED')),
+                assisted INTEGER NOT NULL DEFAULT 0 CHECK(assisted IN (0,1)),
+                evidence_ref TEXT NOT NULL,
+                evidence_type TEXT NOT NULL,
+                evidence_item_id TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(child_id,skill_domain,evidence_ref)
+            );
+            CREATE TABLE IF NOT EXISTS listening_attempts (
+                id TEXT PRIMARY KEY,
+                child_id INTEGER NOT NULL REFERENCES children(id),
+                lesson_id TEXT NOT NULL,
+                item_id TEXT NOT NULL,
+                text_snapshot TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'STARTED' CHECK(status IN ('STARTED','COMPLETED','ABORTED')),
+                started_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                completed_at TEXT,
+                duration_ms INTEGER
+            );
+            CREATE TABLE IF NOT EXISTS placement_profiles (
+                child_id INTEGER PRIMARY KEY REFERENCES children(id),
+                profile_version INTEGER NOT NULL,
+                main_curriculum_start TEXT NOT NULL CHECK(main_curriculum_start IN ('STARTER','BASIC','BOOK_1')),
+                domains_json TEXT NOT NULL,
+                age_hint_years INTEGER,
+                assessment_method TEXT NOT NULL CHECK(assessment_method IN ('PARENT_OBSERVATION','DIAGNOSTIC')),
+                assessed_by TEXT NOT NULL,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
             """
         )
         # Keep existing family databases forward-compatible with the Sprint B audit fields.
@@ -452,7 +486,8 @@ def initialize_database() -> None:
             ],
             "reading_aloud_attempts": [
                 ("status", "TEXT NOT NULL DEFAULT 'STARTED'"),
-                ("aborted_at", "TEXT")
+                ("aborted_at", "TEXT"),
+                ("activity_domain", "TEXT NOT NULL DEFAULT 'speaking'")
             ],
             "weekly_tests": [
                 ("assessment_blueprint", "TEXT NOT NULL DEFAULT '{}'"),
@@ -464,6 +499,7 @@ def initialize_database() -> None:
                 ("evidence_type", "TEXT"),
                 ("evidence_item_id", "TEXT"),
             ],
+            "placement_profiles": [("age_hint_years", "INTEGER")],
             "ocr_imports": [("confirmed_at", "TEXT")],
         }
         for table, columns in migrations.items():
@@ -475,5 +511,5 @@ def initialize_database() -> None:
         if current_version > SCHEMA_VERSION:
             raise RuntimeError("database_schema_newer_than_application")
         if current_version < SCHEMA_VERSION:
-            connection.execute("INSERT OR IGNORE INTO schema_migrations(version, description) VALUES (?, ?)", (SCHEMA_VERSION, "baseline schema and additive audit migrations"))
+            connection.execute("INSERT OR IGNORE INTO schema_migrations(version, description) VALUES (?, ?)", (SCHEMA_VERSION, "auditable curriculum gates, placement profiles, and additive audit migrations"))
             connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")

@@ -63,7 +63,7 @@ def _resolve_source(db: sqlite3.Connection, child_id: int, source_type: str, sou
     return provenance
 
 
-def start_attempt(*, child_id: int, text: str, text_kind: str, locale: str, source_type: str, source_id: str | None, assisted: bool, manual_review: bool) -> dict[str, Any]:
+def start_attempt(*, child_id: int, text: str, text_kind: str, locale: str, source_type: str, source_id: str | None, assisted: bool, manual_review: bool, activity_domain: str = "speaking") -> dict[str, Any]:
     if not text.strip():
         raise ValueError("text_required")
     if text_kind not in SUPPORTED_TEXT_KINDS:
@@ -72,6 +72,8 @@ def start_attempt(*, child_id: int, text: str, text_kind: str, locale: str, sour
         raise ValueError("unsupported_locale")
     if source_type not in SUPPORTED_SOURCE_TYPES:
         raise ValueError("unsupported_source")
+    if activity_domain not in {"speaking", "pronunciation"}:
+        raise ValueError("unsupported_reading_aloud_domain")
     initialize_database()
     with connect() as db:
         ensure_child(db, child_id)
@@ -81,9 +83,9 @@ def start_attempt(*, child_id: int, text: str, text_kind: str, locale: str, sour
         db.execute(
             """INSERT INTO reading_aloud_attempts
                (id, child_id, source_type, source_id, text_snapshot, text_kind, locale,
-               started_at, status, assisted, manual_review, provenance_json)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
-            (attempt_id, child_id, source_type, source_id, text.strip(), text_kind, locale, started_at, "STARTED", int(assisted), int(manual_review), json.dumps(provenance, ensure_ascii=False, sort_keys=True) if provenance else None),
+               started_at, status, assisted, manual_review, provenance_json, activity_domain)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (attempt_id, child_id, source_type, source_id, text.strip(), text_kind, locale, started_at, "STARTED", int(assisted), int(manual_review), json.dumps(provenance, ensure_ascii=False, sort_keys=True) if provenance else None, activity_domain),
         )
         return _attempt(db, attempt_id, child_id)
 
@@ -110,6 +112,17 @@ def complete_attempt(*, child_id: int, attempt_id: str, duration_ms: int | None)
         if row["completed_at"] is not None or row["aborted_at"] is not None:
             raise ValueError("reading_aloud_attempt_already_completed")
         db.execute("UPDATE reading_aloud_attempts SET completed_at=?,duration_ms=?,status='COMPLETED' WHERE id=? AND child_id=?", (now(), duration_ms, attempt_id, child_id))
+        if row["source_type"] in {"CURRICULUM", "WORD", "SENTENCE", "PASSAGE"} and row["source_id"] and not row["assisted"] and not row["manual_review"]:
+            from .curriculum_evidence import record_linked_skill_gate
+
+            record_linked_skill_gate(
+                db,
+                child_id=child_id,
+                skill_domain=row["activity_domain"],
+                item_id=row["source_id"],
+                evidence_ref=attempt_id,
+                evidence_type="reading_aloud_completed",
+            )
         return _attempt(db, attempt_id, child_id)
 
 

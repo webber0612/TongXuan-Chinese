@@ -129,18 +129,19 @@ def _record_linked_curriculum_evidence(
     script_mode: str | None = None,
 ) -> str | None:
     """Persist evidence only after a server scorer created its attempt record."""
-    link = db.execute(
-        "SELECT lesson_id FROM curriculum_item_links WHERE child_id=? AND skill_domain=? AND item_id=?",
-        (child_id, skill_domain, item_id),
-    ).fetchone()
-    if link is None:
-        return None
-    evidence_id = uid("skill-evidence")
-    db.execute(
-        "INSERT INTO curriculum_skill_evidence(id,child_id,lesson_id,skill_domain,script_mode,score,assisted,evidence_ref,evidence_type,evidence_item_id,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
-        (evidence_id, child_id, link["lesson_id"], skill_domain, script_mode, float(score), int(assisted), evidence_ref, evidence_type, item_id, now()),
+    from .curriculum_evidence import record_linked_score_evidence
+
+    return record_linked_score_evidence(
+        db,
+        child_id=child_id,
+        skill_domain=skill_domain,
+        item_id=item_id,
+        score=score,
+        assisted=assisted,
+        evidence_ref=evidence_ref,
+        evidence_type=evidence_type,
+        script_mode=script_mode,
     )
-    return evidence_id
 
 
 def finish_session(child_id: int, session_id: str) -> dict[str, Any]:
@@ -307,7 +308,7 @@ def create_weekly_test(child_id: int) -> dict[str, Any]:
 
 
 def submit_weekly_test(child_id: int, test_id: str, answers: dict[str, str]) -> dict[str, Any]:
-    from .sprint_b import practice_grammar, practice_idiom_understanding, practice_pronunciation, practice_sentence, practice_word, practice_writing, submit_reading
+    from .sprint_b import practice_grammar, practice_idiom_understanding, practice_pronunciation, practice_sentence, practice_word, submit_reading
 
     with connect() as db:
         row = db.execute("SELECT * FROM weekly_tests WHERE id=? AND child_id=?", (test_id, child_id)).fetchone()
@@ -318,6 +319,20 @@ def submit_weekly_test(child_id: int, test_id: str, answers: dict[str, str]) -> 
         items = json.loads(row["item_ids"])
         if not all(isinstance(value, str) for value in answers.values()):
             raise ValueError("answers_must_be_choice_ids")
+        writing_events: dict[str, sqlite3.Row] = {}
+        for item in items:
+            if item["skill"] != "writing_practice":
+                continue
+            answer = answers.get(item["id"], "")
+            if not answer:
+                continue
+            writing_event = db.execute(
+                "SELECT trace_result,assisted,provider FROM writing_attempts WHERE id=? AND child_id=? AND character=?",
+                (answer, child_id, item["targetId"]),
+            ).fetchone()
+            if writing_event is None or writing_event["provider"] != item["provider"]:
+                raise ValueError("writing_provider_event_required")
+            writing_events[item["id"]] = writing_event
         correctness: dict[str, bool] = {}
         activity_results: list[dict[str, Any]] = []
         session_id: str | None = None
@@ -346,13 +361,14 @@ def submit_weekly_test(child_id: int, test_id: str, answers: dict[str, str]) -> 
                 attempt_ref = sentence_item["attempt_id"]
             elif skill == "writing_practice":
                 if not answer:
-                    answer = "trace_incomplete"
-                if answer not in {"trace_complete", "trace_incomplete"}:
-                    raise ValueError("writing_provider_event_required")
-                trace = practice_writing(child_id, item["targetId"], "correct" if answer == "trace_complete" else "incorrect", False, item["provider"])
-                correct = answer == "trace_complete"
-                attempt_ref = trace["attempt_id"]
-                attempt_details = {"provider": item["provider"], "traceEvent": "completed" if correct else "incomplete"}
+                    attempt_details = {"provider": item["provider"], "traceEvent": "unverified"}
+                    correct = False
+                    attempt_ref = None
+                else:
+                    trace = writing_events[item["id"]]
+                    correct = trace["trace_result"] == "correct" and not bool(trace["assisted"])
+                    attempt_ref = answer
+                    attempt_details = {"provider": trace["provider"], "traceEvent": "completed" if trace["trace_result"] == "correct" else "incomplete", "assisted": bool(trace["assisted"])}
             elif skill == "phonetics":
                 choice_id = answer
                 notation = next((option["label"] for option in item["options"] if option["id"] == choice_id), "")
@@ -396,7 +412,8 @@ def submit_weekly_test(child_id: int, test_id: str, answers: dict[str, str]) -> 
                 if evidence_id:
                     db.commit()
             correctness[item["id"]] = correct
-            activity_results.append({"itemId": item["id"], "attemptType": item["attemptType"], "attemptId": attempt_ref, "evidenceId": evidence_id, "result": "correct" if correct else "incorrect", **(attempt_details if skill == "writing_practice" else {})})
+            activity_result = "unverified" if skill == "writing_practice" and attempt_ref is None else "correct" if correct else "incorrect"
+            activity_results.append({"itemId": item["id"], "attemptType": item["attemptType"], "attemptId": attempt_ref, "evidenceId": evidence_id, "result": activity_result, **(attempt_details if skill == "writing_practice" else {})})
 
         correct_count = sum(correctness.values())
         db.execute("UPDATE weekly_tests SET submitted_answers=?,correctness=?,score=?,domain_scores='{}',completed_at=? WHERE id=?", (json.dumps(answers, ensure_ascii=False), json.dumps(correctness), correct_count, now(), test_id))

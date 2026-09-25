@@ -13,6 +13,8 @@ SRS_INTERVALS_MINUTES = (10, 1_440, 4_320, 10_080, 20_160, 43_200, 86_400, 172_8
 MASTERY_STATUSES = {"NOT_STARTED", "IN_PROGRESS", "PRACTICED", "READY_FOR_CHECK", "MASTERED", "NEEDS_REVIEW"}
 PROGRESS_STATUSES = {"IN_PROGRESS", "PRACTICED", "READY_FOR_CHECK"}
 VALID_DOMAINS = {"listening", "speaking", "recognition", "writing", "reading", "phonetics", "pronunciation", "vocabulary", "grammar"}
+SCORED_DOMAINS = {"recognition", "reading", "phonetics", "vocabulary", "grammar"}
+NON_SCORE_GATE_DOMAINS = VALID_DOMAINS - SCORED_DOMAINS
 SRS_DOMAINS = (VALID_DOMAINS | {"word", "sentence", "idiom", "reading_aloud"}) - {"phonetics"}
 DEFAULT_GATE_FLOOR = 0.75
 
@@ -62,6 +64,10 @@ def _is_accessible(db: Any, child_id: int, lesson: dict[str, Any], lessons: list
     state = _state_row(db, child_id, lesson["id"])
     if state and state["soft_unlocked"]:
         return True
+    placement = db.execute("SELECT main_curriculum_start FROM placement_profiles WHERE child_id=?", (child_id,)).fetchone()
+    placement_stage = {"STARTER": "starter", "BASIC": "basic", "BOOK_1": "book-1"}.get(placement["main_curriculum_start"] if placement else None)
+    if placement_stage == lesson.get("stageId") and lesson.get("number") == 1:
+        return True
     index = lesson["sequence"]
     if index == 0:
         return True
@@ -90,7 +96,7 @@ def get_validated_curriculum(child_id: int) -> dict[str, Any]:
             for raw in source_stage["lessons"]:
                 lesson = indexed[raw["id"]]
                 state = _state_row(db, child_id, lesson["id"])
-                required = {domain: DEFAULT_GATE_FLOOR for domain in lesson["domains"]}
+                required = {domain: DEFAULT_GATE_FLOOR for domain in lesson["domains"] if domain in SCORED_DOMAINS}
                 source = _source_fields(lesson)
                 stage_lessons.append({
                     "id": raw["id"],
@@ -117,7 +123,12 @@ def get_validated_curriculum(child_id: int) -> dict[str, Any]:
                         "domains": raw["domains"],
                         "practiceTargets": raw["practiceTargets"],
                         "prerequisiteLessonId": previous_id,
-                        "masteryGate": {"independentEvidenceRequired": True, "domainFloors": required},
+                        "masteryGate": {
+                            "independentEvidenceRequired": True,
+                            "domainFloors": required,
+                            "nonScoreGateDomains": [domain for domain in lesson["domains"] if domain in NON_SCORE_GATE_DOMAINS],
+                            "requiredGateStatus": "ATTEMPTED_INDEPENDENTLY",
+                        },
                         "state": {
                             "status": state["status"] if state else "NOT_STARTED",
                             "softUnlocked": bool(state["soft_unlocked"]) if state else False,
@@ -150,6 +161,46 @@ def _resolve_access(db: Any, child_id: int, lesson_id: str) -> tuple[dict[str, A
     if not _is_accessible(db, child_id, lesson, ordered):
         raise ValueError("prerequisite_not_mastered")
     return lesson, ordered
+
+
+def link_lesson_item(*, child_id: int, lesson_id: str, skill_domain: str, item_id: str) -> dict[str, Any]:
+    """Bind an existing child activity to a validated lesson requirement."""
+    from .learning import ensure_child
+
+    if skill_domain not in VALID_DOMAINS or not item_id.strip():
+        raise ValueError("invalid_curriculum_item_link")
+    initialize_database()
+    with connect() as db:
+        ensure_child(db, child_id)
+        lesson = _lesson_map().get(lesson_id)
+        if lesson is None:
+            raise ValueError("validated_lesson_not_found")
+        if skill_domain not in lesson["domains"]:
+            raise ValueError("domain_not_required_by_lesson")
+        child_owned_text_item = """SELECT 1 FROM learning_items WHERE id=? AND child_id=?
+                                  UNION SELECT 1 FROM words WHERE id=? AND child_id=?
+                                  UNION SELECT 1 FROM sentences WHERE id=? AND child_id=?
+                                  UNION SELECT 1 FROM reading_passages WHERE id=? AND child_id=? LIMIT 1"""
+        child_owned_text_args = (item_id, child_id, item_id, child_id, item_id, child_id, item_id, child_id)
+        exists_queries = {
+            "listening": (child_owned_text_item, child_owned_text_args),
+            "speaking": (child_owned_text_item, child_owned_text_args),
+            "pronunciation": (child_owned_text_item, child_owned_text_args),
+            "recognition": ("SELECT 1 FROM learning_items WHERE id=? AND child_id=?", (item_id, child_id)),
+            "writing": ("SELECT 1 FROM learning_items WHERE child_id=? AND character=? UNION SELECT 1 FROM words w JOIN word_characters wc ON wc.word_id=w.id WHERE w.child_id=? AND wc.character=? LIMIT 1", (child_id, item_id, child_id, item_id)),
+            "phonetics": ("SELECT 1 FROM pronunciation_readings WHERE id=?", (item_id,)),
+            "vocabulary": ("SELECT 1 FROM words WHERE id=? AND child_id=?", (item_id, child_id)),
+            "grammar": ("SELECT 1 FROM grammar_exercises WHERE id=?", (item_id,)),
+            "reading": ("SELECT 1 FROM reading_passages WHERE id=? AND child_id=?", (item_id, child_id)),
+        }
+        query, args = exists_queries[skill_domain]
+        if db.execute(query, args).fetchone() is None:
+            raise ValueError("curriculum_item_not_found")
+        existing = db.execute("SELECT lesson_id FROM curriculum_item_links WHERE child_id=? AND skill_domain=? AND item_id=?", (child_id, skill_domain, item_id)).fetchone()
+        if existing and existing["lesson_id"] != lesson_id:
+            raise ValueError("curriculum_item_already_linked")
+        db.execute("INSERT OR IGNORE INTO curriculum_item_links(child_id,skill_domain,item_id,lesson_id) VALUES(?,?,?,?)", (child_id, skill_domain, item_id, lesson_id))
+        return {"childId": child_id, "lessonId": lesson_id, "skillDomain": skill_domain, "itemId": item_id}
 
 
 def record_lesson_progress(*, child_id: int, lesson_id: str, status: str) -> dict[str, Any]:
@@ -232,6 +283,23 @@ def _latest_linked_attempts(db: Any, child_id: int, lesson_id: str, domain: str)
     return list(newest_by_item.values())
 
 
+def _latest_linked_gates(db: Any, child_id: int, lesson_id: str, domain: str) -> list[dict[str, Any]]:
+    if domain not in NON_SCORE_GATE_DOMAINS:
+        return []
+    rows = db.execute(
+        """SELECT g.id evidence_id,g.evidence_ref,g.evidence_item_id item_id,g.gate_status,g.assisted,g.evidence_type,g.created_at occurred_at,g.rowid row_order
+           FROM curriculum_skill_gates g JOIN curriculum_item_links l
+             ON l.child_id=g.child_id AND l.skill_domain=g.skill_domain AND l.item_id=g.evidence_item_id AND l.lesson_id=g.lesson_id
+           WHERE g.child_id=? AND g.lesson_id=? AND g.skill_domain=? AND g.evidence_ref IS NOT NULL
+           ORDER BY g.created_at,g.rowid""",
+        (child_id, lesson_id, domain),
+    ).fetchall()
+    newest_by_item: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        newest_by_item[row["item_id"]] = dict(row)
+    return list(newest_by_item.values())
+
+
 def assess_lesson(*, child_id: int, lesson_id: str) -> dict[str, Any]:
     from .learning import ensure_child, now, uid
 
@@ -241,11 +309,21 @@ def assess_lesson(*, child_id: int, lesson_id: str) -> dict[str, Any]:
         lesson, _ = _resolve_access(db, child_id, lesson_id)
         floors = {domain: DEFAULT_GATE_FLOOR for domain in lesson["domains"]}
         scores: dict[str, float] = {}
+        gate_statuses: dict[str, str] = {}
+        gate_evidence_refs: dict[str, list[str]] = {}
         failed: list[str] = []
         missing: list[str] = []
         evidence_refs: dict[str, list[str]] = {}
         created_at = now()
         for domain, floor in floors.items():
+            if domain in NON_SCORE_GATE_DOMAINS:
+                gates = _latest_linked_gates(db, child_id, lesson_id, domain)
+                if not gates:
+                    missing.append(domain)
+                    continue
+                gate_statuses[domain] = "PARENT_VERIFIED" if any(gate["gate_status"] == "PARENT_VERIFIED" for gate in gates) else "ATTEMPTED_INDEPENDENTLY"
+                gate_evidence_refs[domain] = [gate["evidence_ref"] for gate in gates]
+                continue
             attempts = _latest_linked_attempts(db, child_id, lesson_id, domain)
             if not attempts:
                 missing.append(domain)
@@ -266,9 +344,9 @@ def assess_lesson(*, child_id: int, lesson_id: str) -> dict[str, Any]:
         event_id = uid("lesson-assessment")
         db.execute(
             "INSERT INTO curriculum_lesson_events(id,child_id,lesson_id,event_type,status,details_json,created_at) VALUES(?,?,?,?,?,?,?)",
-            (event_id, child_id, lesson_id, "ASSESSMENT", status, json.dumps({"scores": scores, "evidenceRefs": evidence_refs, "missingDomains": sorted(missing), "failedDomains": sorted(failed), "domainFloors": floors}, sort_keys=True), created_at),
+            (event_id, child_id, lesson_id, "ASSESSMENT", status, json.dumps({"scores": scores, "evidenceRefs": evidence_refs, "gateStatuses": gate_statuses, "gateEvidenceRefs": gate_evidence_refs, "missingDomains": sorted(missing), "failedDomains": sorted(failed), "domainFloors": {domain: floor for domain, floor in floors.items() if domain in SCORED_DOMAINS}}, sort_keys=True), created_at),
         )
-        return {"id": event_id, "childId": child_id, "lessonId": lesson_id, "status": status, "mastered": mastered, "scores": scores, "evidenceRefs": evidence_refs, "missingDomains": sorted(missing), "failedDomains": sorted(failed), "domainFloors": floors, "updatedAt": created_at}
+        return {"id": event_id, "childId": child_id, "lessonId": lesson_id, "status": status, "mastered": mastered, "scores": scores, "evidenceRefs": evidence_refs, "gateStatuses": gate_statuses, "gateEvidenceRefs": gate_evidence_refs, "nonScoreDomains": sorted(NON_SCORE_GATE_DOMAINS.intersection(floors)), "missingDomains": sorted(missing), "failedDomains": sorted(failed), "domainFloors": {domain: floor for domain, floor in floors.items() if domain in SCORED_DOMAINS}, "updatedAt": created_at}
 
 
 def get_phonetic_support(*, child_id: int, script_mode: str) -> dict[str, Any]:
