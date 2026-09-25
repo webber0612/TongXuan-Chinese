@@ -16,10 +16,11 @@ Every design and pedagogical rule in Learning Path v2 carries an explicit policy
 
 | Label | Definition | Examples in v1 |
 | :--- | :--- | :--- |
-| `[TEXTBOOK_DERIVED]` | Official metadata directly derived from approved OCAC curriculum textbooks (*學華語向前走*). | Lesson titles, target utterances, characters (`你`, `好`), vocabulary words (`你好`), and official lesson sequence. |
-| `[SUPPORTED_BY_FRAMEWORK]` | Principles established by established language learning frameworks (ACTFL / CEFR / HSK). | Four-domain separation (Listening, Speaking, Reading/Recognition, Writing); Spaced Repetition (SRS) review scheduling; Meaning-first pedagogy. |
-| `[TONGXUAN_HYPOTHESIS]` | Pedagogical wrapper, step sequencing, and duration defaults designed by TongXuan. | 9-step guided sequence; 15–25 minute session target; 75% scored domain gate floor; "這一課我會了" Fast-Track routing. |
+| `[TEXTBOOK_DERIVED]` | Official metadata directly verified from approved OCAC curriculum publications (*學華語向前走*). | Official series name (*學華語向前走*), book titles (*第一冊* / *入門冊* / *基礎冊*), lesson titles (*你好* / *ㄅㄆㄇㄈ（一）* / *數字一到十*), official handbook objective summaries, and canonical sequence. |
+| `[SUPPORTED_BY_FRAMEWORK]` | Principles established by standard language learning frameworks (ACTFL / CEFR / HSK). | Four-domain separation (Listening, Speaking, Reading/Recognition, Writing); Spaced Repetition (SRS) intervals; Meaning-in-use first. |
+| `[TONGXUAN_HYPOTHESIS]` | Pedagogical wrapper, practice dialogue, exercise design, step sequencing, and duration defaults authored by TongXuan. | 9-step guided sequence; Practice dialogue (*大衛/心美*); Target character/word drills; 15–25 minute session target; 75% scored domain gate floor; "這一課我會了" Fast-Track routing. |
 | `[EXPERIMENTAL]` | Scaffolding features and independent practice gates subject to active field calibration. | 3-tier native-language scaffold (`FULL` → `TAP_TO_REVEAL` → `HIDDEN`); Local-only speech recording tracking `ATTEMPTED_INDEPENDENTLY` without fake percentage scoring. |
+
 
 ---
 
@@ -63,14 +64,14 @@ Step 9: 課堂結算與 SRS (Session Summary & Mastery Assessment)
 1. **Step 1 — 情境理解 `[TONGXUAN_HYPOTHESIS]`**:
    - Understand the communicative greeting context from audio and visual situation ("早晨遇見新朋友打招呼").
    - Character reading is **not** required at this stage.
-2. **Step 2 — 課文與對話 `[TEXTBOOK_DERIVED]`**:
-   - Hear the target utterance `你好！` and `你好！我叫心美。` in dialogue context.
+2. **Step 2 — 課文與對話 `[TONGXUAN_HYPOTHESIS]`**:
+   - Hear the target utterance in TongXuan-authored practice dialogue: `你好！` and `你好！我叫心美。`
    - Dual Zhuyin/Pinyin support is provided according to learner locale preference.
 3. **Step 3 — 核心生詞 `[SUPPORTED_BY_FRAMEWORK]`**:
    - Whole-word meaning taught before isolated characters.
    - Marked as `ACTIVE` vocabulary.
-4. **Step 4 — 認識生字 `[TEXTBOOK_DERIVED]`**:
-   - Strictly teaches `你` (7 strokes, 亻 radical) and `好` (6 strokes, 女 radical).
+4. **Step 4 — 認識生字 `[TONGXUAN_HYPOTHESIS]`**:
+   - Teaches characters composing the title: `你` (7 strokes, 亻 radical) and `好` (6 strokes, 女 radical).
    - Character form, pronunciation, and recognition check.
 5. **Step 5 — 實用句型 `[SUPPORTED_BY_FRAMEWORK]`**:
    - Language pattern: `你好！` and `我叫 ___。`

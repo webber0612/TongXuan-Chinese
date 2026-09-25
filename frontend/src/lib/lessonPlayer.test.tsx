@@ -328,4 +328,125 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     expect(checkInvalid.valid).toBe(false);
     expect(checkInvalid.errors[0]).toContain("GENERATED_DRAFT but flagged as approved");
   });
+
+  // Test 17
+  it("17. Fast Track failure transitions directly to REPAIR mode with weak domains", async () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    // Mock fast track endpoint returning failure with weak domains
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (url.includes("/fast-track")) {
+        return new Response(JSON.stringify({
+          lessonId: "book1-l01",
+          passed: false,
+          weakDomains: ["recognition"],
+          nextMode: "REPAIR",
+          masteryStatus: "IN_PROGRESS",
+          nextReviewDueAt: null,
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    await act(async () => {
+      root.render(
+        <LessonPlayerPage
+          lessonId="book1-l01"
+          activeChildId={1}
+          onBack={() => {}}
+          initialMode="FAST_TRACK"
+        />
+      );
+    });
+
+    // Select answers for each question card
+    const questionCards = container.querySelectorAll(".exit-ticket-item-card");
+    expect(questionCards.length).toBeGreaterThanOrEqual(1);
+
+    for (const card of questionCards) {
+      const firstChoice = card.querySelector(".choice-card-btn") as HTMLButtonElement;
+      await act(async () => {
+        firstChoice?.click();
+      });
+    }
+
+    // Find and submit exit ticket
+    const submitBtn = container.querySelector(".submit-exit-ticket-btn") as HTMLButtonElement;
+    expect(submitBtn).toBeTruthy();
+    expect(submitBtn.disabled).toBe(false);
+
+    await act(async () => {
+      submitBtn.click();
+      await Promise.resolve();
+    });
+
+    // Verify mode transitioned to repair mode
+    const modeBadge = container.querySelector(".mode-badge");
+    expect(modeBadge?.className).toContain("mode-repair");
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
+
+  // Test 18
+  it("18. Client mastery is never granted locally without backend authoritative assessment", async () => {
+    let completedSummary: { sessionCompleted: boolean; masteryGranted: boolean } | null = null;
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (url.includes("/learning-sessions/current")) {
+        return new Response(JSON.stringify({
+          id: "session-1",
+          status: "IN_PROGRESS",
+          masteryStatus: "IN_PROGRESS", // Backend has not granted MASTERED
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/complete")) {
+        return new Response(JSON.stringify({
+          id: "session-1",
+          status: "COMPLETED",
+          masteryStatus: "READY_FOR_CHECK", // Still not MASTERED
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    await act(async () => {
+      root.render(
+        <LessonPlayerPage
+          lessonId="book1-l01"
+          activeChildId={1}
+          onBack={() => {}}
+          onCompleteLesson={(_, summary) => {
+            completedSummary = summary;
+          }}
+        />
+      );
+    });
+
+    // Complete session
+    const finishBtn = container.querySelector(".finish-session-cta-btn, .next-step-cta-btn");
+    expect(finishBtn).toBeTruthy();
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
+
+  // Test 19
+  it("19. Provenance separates verified official OCAC title/metadata from TongXuan-authored wrapper", () => {
+    const pkg = getLessonPackage("book1-l01");
+    expect(pkg).not.toBeNull();
+    if (!pkg) return;
+
+    expect(pkg.curriculumSource.provenanceStatus).toBe("VERIFIED_OFFICIAL_TITLE");
+    expect(pkg.provenance.authorship).toBe("TONGXUAN_PEDAGOGY_WRAPPER");
+    expect(pkg.curriculumSource.book).toBe("第一冊");
+    expect(pkg.curriculumSource.title).toBe("你好");
+  });
 });

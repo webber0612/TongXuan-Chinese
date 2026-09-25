@@ -163,7 +163,7 @@ export function AppShell() {
           navigate("learning-session");
           return true;
         } : undefined} />}
-        {route === "learning-session" && <LearningSessionPage activeChildId={activeChild?.id ?? null} onBack={() => navigate("home")} />}
+        {route === "learning-session" && <LessonPlayerPage activeChildId={activeChild?.id ?? null} onBack={() => navigate("home")} />}
         {route === "lesson-player" && <LessonPlayerPage activeChildId={activeChild?.id ?? null} onBack={() => navigate("home")} />}
         {route === "practice" && <div className="app-page practice-page" key={activeProfile.key}><PageHeading kicker={t("practice")} title={t("practiceTitle")} subtitle={t("practiceHint")} icon={<Sparkles/>}/><LearningPage activeChildId={activeChild?.id ?? null} /></div>}
         {route === "parent" && <ParentAreaPage />}

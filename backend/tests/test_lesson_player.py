@@ -119,6 +119,15 @@ def test_fast_track_endpoint_pass_and_fail(tmp_path):
         assert data_pass["weakDomains"] == []
         assert data_pass["nextMode"] == "REVIEW"
         assert data_pass["masteryStatus"] == "READY_FOR_CHECK"  # Does not directly set unverified MASTERED
+        assert data_pass["nextReviewDueAt"] is not None
+        assert isinstance(data_pass["nextReviewDueAt"], str)
+
+        # Verify real SRS records in SQLite database
+        from app.database import connect
+        with connect() as db:
+            srs_rows = db.execute("SELECT * FROM srs_review_states WHERE child_id=?", (child_id,)).fetchall()
+            assert len(srs_rows) >= 1
+            assert any(r["due_at"] is not None for r in srs_rows)
 
         # 2. Test failing one domain (e.g. recognition ft-q2)
         fail_answers = {
@@ -133,3 +142,4 @@ def test_fast_track_endpoint_pass_and_fail(tmp_path):
         assert data_fail["passed"] is False
         assert "recognition" in data_fail["weakDomains"]
         assert data_fail["nextMode"] == "REPAIR"
+        assert data_fail["nextReviewDueAt"] is None

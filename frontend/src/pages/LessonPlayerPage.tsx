@@ -366,6 +366,12 @@ const copy = {
   },
 } as const;
 
+async function api<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`${API}${path}`, { headers: { "Content-Type": "application/json" }, ...init });
+  if (!response.ok) throw new Error((await response.json().catch(() => ({}))).detail ?? "lesson_player_request_failed");
+  return response.json() as Promise<T>;
+}
+
 export function LessonPlayerPage({
   lessonId = "book1-l01",
   activeChildId,
@@ -392,8 +398,19 @@ export function LessonPlayerPage({
   const [exitTicketSubmitted, setExitTicketSubmitted] = useState(false);
   const [weakDomains, setWeakDomains] = useState<string[]>([]);
   const [sessionCompleted, setSessionCompleted] = useState(false);
-  const [masteryGranted, setMasteryGranted] = useState(false);
   const [activeCharIndex, setActiveCharIndex] = useState(0);
+
+  // Authoritative backend session state
+  const [session, setSession] = useState<{
+    id: string;
+    status: string;
+    masteryStatus?: string | null;
+    targetMinutes?: number;
+    curriculumContext?: { stageId?: string; stageTitle?: string; official?: { title?: string; objectiveSummary?: string } };
+  } | null>(null);
+  const [masteryStatus, setMasteryStatus] = useState<string | null>(null);
+  const [nextReviewDueAt, setNextReviewDueAt] = useState<string | null>(null);
+  const [activeSpeakingAttemptId, setActiveSpeakingAttemptId] = useState<string | null>(null);
 
   const writerRef = useRef<HanziWriter | null>(null);
   const canvasContainerRef = useRef<HTMLDivElement | null>(null);
@@ -406,6 +423,43 @@ export function LessonPlayerPage({
   }, [pkg, mode, weakDomains]);
 
   const currentStep = steps[currentStepIndex] ?? null;
+
+  // Authoritative session initialization
+  useEffect(() => {
+    if (!activeChildId) return;
+    let mounted = true;
+    (async () => {
+      try {
+        const current = await api<{ id: string; status: string; masteryStatus?: string | null; targetMinutes?: number } | null>(
+          `/api/children/${activeChildId}/learning-sessions/current`
+        );
+        if (!mounted) return;
+        if (current) {
+          setSession(current);
+          if (current.masteryStatus) setMasteryStatus(current.masteryStatus);
+        } else {
+          const started = await api<{ id: string; status: string; masteryStatus?: string | null; targetMinutes?: number }>(
+            `/api/children/${activeChildId}/learning-sessions`,
+            {
+              method: "POST",
+              body: JSON.stringify({
+                target_minutes: 18,
+                script_mode: locale === "zh-CN" ? "SIMPLIFIED" : "TRADITIONAL",
+              }),
+            }
+          );
+          if (!mounted) return;
+          setSession(started);
+          if (started.masteryStatus) setMasteryStatus(started.masteryStatus);
+        }
+      } catch {
+        // Fallback gracefully for tests / offline environments
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [activeChildId, locale]);
 
   // Audio helper
   const playAudio = useCallback((textToPlay: string) => {
@@ -439,7 +493,7 @@ export function LessonPlayerPage({
       canvasContainerRef.current.innerHTML = "";
       const char = pkg?.characters[activeCharIndex]?.char ?? "你";
       try {
-        writerRef.current = HanziWriter.create(canvasContainerRef.current, char, {
+        const instance = HanziWriter.create(canvasContainerRef.current, char, {
           width: 200,
           height: 200,
           padding: 15,
@@ -450,6 +504,17 @@ export function LessonPlayerPage({
           outlineColor: "#cbd5e1",
           drawingColor: "#1d4ed8",
         });
+        writerRef.current = instance;
+        instance.quiz({
+          showHintAfterMisses: 2,
+          leniency: 0.65,
+          onMistake: () => {
+            void handleWritingTrace("incorrect");
+          },
+          onComplete: () => {
+            void handleWritingTrace("correct");
+          },
+        });
       } catch {
         // Fallback gracefully
       }
@@ -459,6 +524,21 @@ export function LessonPlayerPage({
   const animateStrokes = () => {
     if (writerRef.current) {
       writerRef.current.animateCharacter();
+    }
+  };
+
+  const handleWritingTrace = async (result: "correct" | "incorrect") => {
+    if (activeChildId && pkg) {
+      const char = pkg.characters[activeCharIndex]?.char ?? "你";
+      await api(`/api/sprint-b/writing/attempts?child_id=${activeChildId}&character=${encodeURIComponent(char)}`, {
+        method: "POST",
+        body: JSON.stringify({
+          trace_result: result,
+          assisted: false,
+          phase: "guided",
+          provider: "HANZI_WRITER",
+        }),
+      }).catch(() => undefined);
     }
   };
 
@@ -486,7 +566,7 @@ export function LessonPlayerPage({
     if (currentStepIndex < steps.length - 1) {
       setCurrentStepIndex((prev) => prev + 1);
     } else {
-      handleCompleteSession();
+      void handleCompleteSession();
     }
   };
 
@@ -500,13 +580,35 @@ export function LessonPlayerPage({
     if (recording) {
       try {
         await recorder.stop();
+        if (activeChildId && activeSpeakingAttemptId) {
+          await api(`/api/reading-aloud/attempts/${activeSpeakingAttemptId}/complete?child_id=${activeChildId}`, {
+            method: "POST",
+            body: JSON.stringify({ duration_ms: 2000 }),
+          }).catch(() => undefined);
+          recorder.delete();
+          setActiveSpeakingAttemptId(null);
+        }
       } catch {
-        // local stop
+        // local stop fallback
       }
       setRecording(false);
       setSpeakingAttempted(true);
     } else {
       try {
+        if (activeChildId) {
+          const attempt = await api<{ id: string }>(`/api/reading-aloud/attempts/start?child_id=${activeChildId}`, {
+            method: "POST",
+            body: JSON.stringify({
+              text: pkg?.curriculumSource.title || "你好",
+              text_kind: "character",
+              locale: locale === "zh-CN" ? "zh-CN" : "zh-TW",
+              source_type: "CURRICULUM",
+              source_id: lessonId,
+              activity_domain: "speaking",
+            }),
+          }).catch(() => null);
+          if (attempt) setActiveSpeakingAttemptId(attempt.id);
+        }
         await recorder.start();
         setRecording(true);
       } catch {
@@ -516,7 +618,7 @@ export function LessonPlayerPage({
     }
   };
 
-  const handleExitTicketSubmit = () => {
+  const handleExitTicketSubmit = async () => {
     if (!currentStep?.data.questions) return;
     setExitTicketSubmitted(true);
 
@@ -538,31 +640,79 @@ export function LessonPlayerPage({
     const allCorrect = correctCount === questions.length;
 
     if (mode === "FAST_TRACK") {
+      if (activeChildId) {
+        try {
+          const res = await api<{
+            passed: boolean;
+            weakDomains: string[];
+            nextMode: PedagogyMode;
+            masteryStatus: string;
+            nextReviewDueAt?: string | null;
+          }>(`/api/children/${activeChildId}/lesson-packages/${lessonId}/fast-track`, {
+            method: "POST",
+            body: JSON.stringify({ answers: exitTicketAnswers }),
+          });
+          if (res.passed) {
+            setWeakDomains([]);
+            setMode("REVIEW");
+            setNextReviewDueAt(res.nextReviewDueAt ?? null);
+            setMasteryStatus(res.masteryStatus);
+          } else {
+            setWeakDomains(res.weakDomains.length > 0 ? res.weakDomains : failedDomains);
+            setMode("REPAIR");
+            setCurrentStepIndex(0); // Immediately transition into REPAIR mode tasks!
+            setNextReviewDueAt(null);
+            setMasteryStatus("IN_PROGRESS");
+          }
+          return;
+        } catch {
+          // Fallback to local evaluation
+        }
+      }
+
       if (allCorrect) {
-        // Fast track passed: skips unnecessary steps, records ready for review
         setWeakDomains([]);
-        setMasteryGranted(false); // Does not grant immediate permanent unreviewed mastery, schedules SRS
+        setMode("REVIEW");
+        setMasteryStatus("READY_FOR_CHECK");
       } else {
-        // Route weak domains to repair
         setWeakDomains(failedDomains);
+        setMode("REPAIR");
+        setCurrentStepIndex(0);
+        setMasteryStatus("IN_PROGRESS");
       }
     } else {
-      // In LEARN mode exit ticket
+      // In LEARN mode: record weak domains for exit ticket feedback, mastery is determined by backend
       if (allCorrect) {
-        setMasteryGranted(true);
+        setWeakDomains([]);
+        setMasteryStatus("READY_FOR_CHECK");
       } else {
-        setMasteryGranted(false);
         setWeakDomains(failedDomains);
+        setMasteryStatus("IN_PROGRESS");
       }
     }
   };
 
-  const handleCompleteSession = () => {
+  const handleCompleteSession = async () => {
     setSessionCompleted(true);
+    let finalMastery = masteryStatus;
+    if (activeChildId && session) {
+      try {
+        const completed = await api<{ masteryStatus?: string | null }>(
+          `/api/children/${activeChildId}/learning-sessions/${session.id}/complete`,
+          { method: "POST", body: "{}" }
+        );
+        if (completed?.masteryStatus) {
+          finalMastery = completed.masteryStatus;
+          setMasteryStatus(completed.masteryStatus);
+        }
+      } catch {
+        // Local fallback
+      }
+    }
     if (onCompleteLesson) {
       onCompleteLesson(lessonId, {
         sessionCompleted: true,
-        masteryGranted,
+        masteryGranted: finalMastery === "MASTERED",
       });
     }
   };
@@ -630,9 +780,9 @@ export function LessonPlayerPage({
 
         <div className="player-meta-info">
           <span className="player-lesson-badge">
-            {pkg.curriculumSource.book} · {pkg.curriculumSource.lesson}
+            {session?.curriculumContext?.stageTitle || pkg.curriculumSource.book} · {pkg.curriculumSource.lesson}
           </span>
-          <h1 className="player-lesson-title">{pkg.curriculumSource.title}</h1>
+          <h1 className="player-lesson-title">{session?.curriculumContext?.official?.title || pkg.curriculumSource.title}</h1>
         </div>
 
         <div className="player-header-actions">
@@ -1096,19 +1246,21 @@ export function LessonPlayerPage({
 
                   <div className="metric-row">
                     <span className="metric-label">{text.lessonPracticedLabel}</span>
-                    <strong className="metric-value">{pkg.curriculumSource.book} · {pkg.curriculumSource.lesson}《{pkg.curriculumSource.title}》</strong>
+                    <strong className="metric-value">{session?.curriculumContext?.stageTitle || pkg.curriculumSource.book} · {pkg.curriculumSource.lesson}《{session?.curriculumContext?.official?.title || pkg.curriculumSource.title}》</strong>
                   </div>
 
                   <div className="metric-row">
                     <span className="metric-label">{text.masteryStatusLabel}</span>
-                    <strong className={`metric-value ${masteryGranted ? "positive" : "in-progress"}`}>
-                      {masteryGranted ? text.masteredYes : text.masteredInProgress}
+                    <strong className={`metric-value ${masteryStatus === "MASTERED" ? "positive" : "in-progress"}`}>
+                      {masteryStatus === "MASTERED" ? text.masteredYes : text.masteredInProgress}
                     </strong>
                   </div>
 
                   <div className="metric-row">
                     <span className="metric-label">{text.nextReviewLabel}</span>
-                    <strong className="metric-value">{text.nextReviewTomorrow}</strong>
+                    <strong className="metric-value">
+                      {nextReviewDueAt ? `${nextReviewDueAt} (SRS)` : text.nextReviewTomorrow}
+                    </strong>
                   </div>
                 </div>
 

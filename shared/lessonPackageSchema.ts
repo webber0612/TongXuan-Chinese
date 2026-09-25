@@ -244,26 +244,57 @@ export interface LessonPackage {
 }
 
 /**
- * Validates whether an unreviewed generated translation is erroneously approved.
+ * Validates review status integrity and provenance separation.
  */
 export function validateReviewStatusIntegrity(pkg: LessonPackage): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
+  const validStatuses: Set<ContentReviewStatus> = new Set(["GENERATED_DRAFT", "REVIEWED", "APPROVED", "REJECTED"]);
 
+  // 1. Provenance check: Official OCAC provenance must be VERIFIED_OFFICIAL_TITLE, while wrapper is TONGXUAN_PEDAGOGY_WRAPPER
+  if (pkg.curriculumSource.provenanceStatus !== "VERIFIED_OFFICIAL_TITLE") {
+    errors.push(`Curriculum source provenance status must be VERIFIED_OFFICIAL_TITLE, got ${pkg.curriculumSource.provenanceStatus}`);
+  }
+  if (pkg.provenance.authorship !== "TONGXUAN_PEDAGOGY_WRAPPER") {
+    errors.push(`Provenance authorship must be TONGXUAN_PEDAGOGY_WRAPPER, got ${pkg.provenance.authorship}`);
+  }
+
+  // 2. Vocabulary review status
   for (const vocab of pkg.vocabulary) {
-    if (vocab.reviewStatus === "GENERATED_DRAFT") {
-      // Drafts must not be considered reviewed or approved
+    if (!validStatuses.has(vocab.reviewStatus)) {
+      errors.push(`Vocab item '${vocab.id}' has invalid review status: ${vocab.reviewStatus}`);
+    }
+    if (vocab.reviewStatus === "GENERATED_DRAFT" && (vocab as any).approved === true) {
+      errors.push(`Vocab item '${vocab.id}' is GENERATED_DRAFT but flagged as approved.`);
     }
   }
 
+  // 3. Native language scaffold review status
   for (const [key, entry] of Object.entries(pkg.nativeLanguageSupport.entries)) {
+    if (!validStatuses.has(entry.reviewStatus)) {
+      errors.push(`Scaffold entry '${key}' has invalid review status: ${entry.reviewStatus}`);
+    }
     if (entry.reviewStatus === "GENERATED_DRAFT" && (entry as any).approved === true) {
-      errors.push(`Scaffold entry ${key} is GENERATED_DRAFT but flagged as approved.`);
+      errors.push(`Scaffold entry '${key}' is GENERATED_DRAFT but flagged as approved.`);
     }
   }
 
+  // 4. Sentence patterns review status
   for (const pattern of pkg.sentencePatterns) {
+    if (!validStatuses.has(pattern.reviewStatus)) {
+      errors.push(`Sentence pattern '${pattern.id}' has invalid review status: ${pattern.reviewStatus}`);
+    }
     if (pattern.reviewStatus === "GENERATED_DRAFT" && (pattern as any).approved === true) {
-      errors.push(`Sentence pattern ${pattern.id} is GENERATED_DRAFT but flagged as approved.`);
+      errors.push(`Sentence pattern '${pattern.id}' is GENERATED_DRAFT but flagged as approved.`);
+    }
+  }
+
+  // 5. Cultural notes review status
+  for (const note of pkg.culturalNotes) {
+    if (!validStatuses.has(note.reviewStatus)) {
+      errors.push(`Cultural note '${note.id}' has invalid review status: ${note.reviewStatus}`);
+    }
+    if (note.reviewStatus === "GENERATED_DRAFT" && (note as any).approved === true) {
+      errors.push(`Cultural note '${note.id}' is GENERATED_DRAFT but flagged as approved.`);
     }
   }
 
@@ -272,3 +303,4 @@ export function validateReviewStatusIntegrity(pkg: LessonPackage): { valid: bool
     errors,
   };
 }
+

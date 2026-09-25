@@ -1012,6 +1012,20 @@ def post_lesson_fast_track(child_id: int, lesson_id: str, request: FastTrackRequ
         
         if passed:
             record_lesson_progress(child_id=child_id, lesson_id=lesson_id, status="READY_FOR_CHECK")
+            from .learning_flow import _ensure_lesson_materials, _lesson_map
+            from .curriculum_policy import record_srs_review
+
+            lesson = _lesson_map().get(lesson_id)
+            latest_srs_due = None
+            if lesson:
+                materials = _ensure_lesson_materials(db, child_id, lesson)
+                for char_id in materials.get("characters", []):
+                    srs = record_srs_review(db, child_id=child_id, skill_domain="recognition", item_id=char_id, result="correct", assisted=False)
+                    latest_srs_due = srs.get("due_at")
+                if materials.get("phrase"):
+                    srs_phrase = record_srs_review(db, child_id=child_id, skill_domain="listening", item_id=materials["phrase"], result="correct", assisted=False)
+                    latest_srs_due = srs_phrase.get("due_at") or latest_srs_due
+
             return {
                 "lessonId": lesson_id,
                 "passed": True,
@@ -1019,7 +1033,8 @@ def post_lesson_fast_track(child_id: int, lesson_id: str, request: FastTrackRequ
                 "weakDomains": [],
                 "nextMode": "REVIEW",
                 "masteryStatus": "READY_FOR_CHECK",
-                "nextReviewDue": "tomorrow",
+                "nextReviewDue": latest_srs_due,
+                "nextReviewDueAt": latest_srs_due,
                 "notice": "Fast track passed. Light SRS review scheduled."
             }
         else:
@@ -1031,6 +1046,7 @@ def post_lesson_fast_track(child_id: int, lesson_id: str, request: FastTrackRequ
                 "nextMode": "REPAIR",
                 "masteryStatus": "IN_PROGRESS",
                 "nextReviewDue": None,
+                "nextReviewDueAt": None,
                 "notice": "Some domains need targeted repair."
             }
 
