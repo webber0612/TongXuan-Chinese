@@ -4,6 +4,7 @@ import React, { act } from "react";
 import { createRoot } from "react-dom/client";
 import { buildCurriculumPath, progressLabel } from "./curriculum";
 import { CurriculumPage } from "../pages/CurriculumPage";
+import { officialCoursePath } from "../data/officialCoursePath";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -45,6 +46,30 @@ describe("long-term curriculum read model", () => {
     await act(async () => { refresh.click(); await Promise.resolve(); });
     expect(calls.some((call) => call.url.includes("/api/children/2/curriculum"))).toBe(true);
     expect(calls.every((call) => call.method === "GET")).toBe(true);
+    root.unmount();
+    vi.unstubAllGlobals();
+  });
+
+  it("records handbook-backed objectives for every lesson in the validated slice", () => {
+    const lessons = officialCoursePath.stages.flatMap((stage) => stage.lessons);
+    expect(lessons).toHaveLength(27);
+    expect(lessons.every((lesson) => Boolean(lesson.tongxuan.handbookSummary.text.length && lesson.tongxuan.handbookSummary.sourceUrl.includes("#page=") && lesson.tongxuan.handbookSummary.authorship === "TONGXUAN_PARAPHRASE"))).toBe(true);
+    expect(lessons.every((lesson) => lesson.tongxuan.domains.length > 0 && lesson.tongxuan.practiceTargets.length > 0)).toBe(true);
+    expect(lessons.every((lesson) => !("domains" in lesson) && !("sourceKind" in lesson.official))).toBe(true);
+    expect(officialCoursePath.stages[2].lessons.map((lesson) => lesson.number)).toEqual([1, 2, 3]);
+    expect(officialCoursePath.stages.map((stage) => stage.id)).toEqual(["starter", "basic", "book-1"]);
+    expect(officialCoursePath.outOfScopeBooks).toEqual([2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  });
+
+  it("shows an empty learner state instead of leaving the progress panel loading", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify([]), { status: 200, headers: { "Content-Type": "application/json" } })));
+    document.body.innerHTML = '<div id="root"></div>';
+    const root = createRoot(document.getElementById("root")!);
+    await act(async () => { root.render(React.createElement(CurriculumPage)); await Promise.resolve(); await Promise.resolve(); });
+    const status = document.querySelector('[role="status"]');
+    expect(status?.textContent).toContain("No learners yet");
+    expect(document.querySelector('[aria-label="Curriculum child"]')).toHaveProperty("disabled", true);
+    expect(document.body.textContent).not.toContain("Getting things ready");
     root.unmount();
     vi.unstubAllGlobals();
   });

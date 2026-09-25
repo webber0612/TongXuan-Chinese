@@ -21,6 +21,8 @@ describe("BrowserSpeechSynthesisProvider", () => {
     class MockUtterance {
       lang = "";
       rate = 1;
+      onend?: () => void;
+      onerror?: () => void;
       constructor(public text: string) {}
     }
     vi.stubGlobal("window", { speechSynthesis: { cancel, speak }, SpeechSynthesisUtterance: MockUtterance });
@@ -40,5 +42,27 @@ describe("BrowserSpeechSynthesisProvider", () => {
   it("reports tts_unavailable when Web Speech API is absent", () => {
     vi.stubGlobal("window", {});
     expect(() => new BrowserSpeechSynthesisProvider().speak(payload("zh-TW"))).toThrow("tts_unavailable");
+  });
+
+  it("reports completed playback only after the browser playback event ends", () => {
+    const speak = vi.fn();
+    class MockUtterance {
+      lang = "";
+      rate = 1;
+      onend?: () => void;
+      onerror?: () => void;
+      constructor(public text: string) {}
+    }
+    vi.stubGlobal("window", { speechSynthesis: { cancel: vi.fn(), speak }, SpeechSynthesisUtterance: MockUtterance });
+    vi.stubGlobal("SpeechSynthesisUtterance", MockUtterance);
+    const onEnd = vi.fn();
+    const onError = vi.fn();
+    new BrowserSpeechSynthesisProvider().speak(payload("zh-TW"), { onEnd, onError });
+    const utterance = speak.mock.calls[0][0] as MockUtterance;
+    expect(onEnd).not.toHaveBeenCalled();
+    expect(onError).not.toHaveBeenCalled();
+    utterance.onend?.();
+    expect(onEnd).toHaveBeenCalledOnce();
+    expect(onError).not.toHaveBeenCalled();
   });
 });

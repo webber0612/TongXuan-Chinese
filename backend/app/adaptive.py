@@ -7,6 +7,7 @@ from typing import Any
 from .database import connect, initialize_database
 from .lifecycle import reconstruct_lifecycle
 from .learning import ensure_child
+from .curriculum_policy import lesson_is_accessible
 
 WEIGHTS = {"overdue": 30, "recent_error": 25, "assisted": 10, "low_independent": 15, "repeated_misses": 10, "staleness": 5, "school_urgency": 20, "review_reason": 15, "novelty": 10, "preference": 20, "source_balance": 8, "skill_balance": 12}
 SOURCES = ("SCHOOL_QUEUE", "REVIEW", "CURRICULUM")
@@ -55,8 +56,29 @@ def _historical_state(db: Any, child_id: int, domain: str, key: str, as_of: date
     state_key = {"recognition":"item_id", "word":"word_id", "sentence":"sentence_id", "writing":"character", "pronunciation":"reading_id", "grammar":"exercise_id", "idiom":"idiom_id", "reading":"passage_id"}[domain]
     state = db.execute(f"SELECT * FROM {state_table} WHERE child_id=? AND {state_key}=?", (child_id, key)).fetchone()
     due_at = _dt(state["due_at"]) if state and "due_at" in state.keys() and (not _dt(state["updated_at"]) or _dt(state["updated_at"]) <= as_of) else None
+    srs_rows = db.execute(
+        "SELECT occurred_at,interval_minutes FROM srs_review_events WHERE child_id=? AND skill_domain=? AND item_id=? AND occurred_at<=? ORDER BY occurred_at,id",
+        (child_id, domain, key, cutoff),
+    ).fetchall()
+    if srs_rows:
+        last = srs_rows[-1]
+        occurred = _dt(last["occurred_at"])
+        if occurred is not None:
+            due_at = occurred + timedelta(minutes=int(last["interval_minutes"]))
     latest = _dt(rows[-1][timestamp]) if rows else None
     return {"independent_correct": independent, "incorrect": incorrect, "assisted": assisted, "latest": latest, "due_at": due_at}
+
+
+def _curriculum_candidate_is_eligible(db: Any, item: dict[str, Any]) -> bool:
+    if item["source"] != "CURRICULUM":
+        return True
+    ids = list(dict.fromkeys([str(item["source_id"]), str(item["item_id"])]))
+    placeholders = ",".join("?" for _ in ids)
+    link = db.execute(
+        f"SELECT lesson_id FROM curriculum_item_links WHERE child_id=? AND skill_domain=? AND item_id IN ({placeholders}) ORDER BY lesson_id LIMIT 1",
+        (item["child_id"], item["skill"], *ids),
+    ).fetchone()
+    return not link or lesson_is_accessible(db, item["child_id"], link["lesson_id"])
 
 
 def _recent_incorrect(db: Any, table: str, key_column: str, key: str, timestamp_column: str, incorrect_sql: str, child_id: int, as_of: datetime) -> tuple[int, datetime | None]:
@@ -169,4 +191,5 @@ def build_adaptive_plan(*, child_id: int, as_of: str, limit: int, adaptive: bool
                 attempt = ATTEMPTS.get(domain)
                 recent = _recent_incorrect(db, attempt[0], attempt[1], key, attempt[2], attempt[4], child_id, as_of_dt) if attempt else (0, None)
                 candidates.append(_candidate(item_id=f"{skill}:{key}", child_id=child_id, source="CURRICULUM", skill=skill, text=row[text_column], source_id=key, source_detail=skill, state=state, as_of=as_of_dt, preference=preference, recent=recent, item_created=row["created_at"] if "created_at" in row.keys() else None))
-        return {"child_id": child_id, "as_of": as_of_text, "limit": limit, "adaptive": adaptive, "preference": preference, "weights": WEIGHTS, "items": _rank(candidates, limit, adaptive)}
+        eligible = [item for item in candidates if _curriculum_candidate_is_eligible(db, item)]
+        return {"child_id": child_id, "as_of": as_of_text, "limit": limit, "adaptive": adaptive, "preference": preference, "weights": WEIGHTS, "items": _rank(eligible, limit, adaptive)}

@@ -35,7 +35,7 @@ describe("parent dashboard read model UI contract", () => {
     const root = createRoot(document.getElementById("root")!);
     await act(async () => { root.render(React.createElement(DashboardPage)); await Promise.resolve(); await Promise.resolve(); });
     expect(document.body.textContent).toContain("School Queue");
-    expect(document.body.textContent).toContain("Weekly Tests");
+    expect(document.body.textContent).toContain("Weekly Practice · activity points");
     expect(document.body.textContent).toContain("Points & Rewards");
     expect(document.body.textContent).toContain("Reading Aloud");
     expect(document.body.textContent).toContain("OCR Imports");

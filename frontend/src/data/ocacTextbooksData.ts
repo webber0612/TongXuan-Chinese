@@ -1,7 +1,6 @@
-// 僑委會《學華語向前走》/ 僑教標準中文教材 完整 10 冊體系架構與課程資料庫
-// 涵蓋 第 1 冊 (入門啟蒙) 至 第 10 冊 (高階深讀)
+// Legacy internal sample data. This unverified prototype is not an OCAC textbook catalog.
 
-export interface OCACLesson {
+export interface AuthoredDraftLesson {
   lessonId: string;
   lessonNumber: number;
   title: string;
@@ -48,9 +47,17 @@ export interface OCACLesson {
     options: { text: string; subText?: string; isCorrect: boolean }[];
     explanation: string;
   }[];
+  sourceKind?: "TONGXUAN_AUTHORED";
+  sourceName?: string;
+  sourceUrl?: string;
+  sourceBook?: string;
+  sourceLesson?: string;
+  provenanceStatus?: "INTERNAL_DRAFT";
+  licenseStatus?: "INTERNAL_ONLY";
+  commercialReady?: false;
 }
 
-export interface OCACVolume {
+export interface AuthoredDraftVolume {
   volume: number;
   gradeName: string;
   targetAudience: string;
@@ -58,10 +65,18 @@ export interface OCACVolume {
   totalChars: number;
   badgeIcon: string;
   colorTheme: string;
-  lessons: OCACLesson[];
+  lessons: AuthoredDraftLesson[];
+  sourceKind?: "TONGXUAN_AUTHORED";
+  sourceName?: string;
+  sourceUrl?: string;
+  sourceBook?: string;
+  sourceLesson?: string;
+  provenanceStatus?: "INTERNAL_DRAFT";
+  licenseStatus?: "INTERNAL_ONLY";
+  commercialReady?: false;
 }
 
-export const OCAC_VOLUMES: OCACVolume[] = [
+const LEGACY_UNVERIFIED_VOLUME_DATA: AuthoredDraftVolume[] = [
   {
     volume: 1,
     gradeName: "第一冊 · 啟蒙與基礎感知",
@@ -365,3 +380,37 @@ export const OCAC_VOLUMES: OCACVolume[] = [
     lessons: []
   }
 ];
+
+type DraftStamped = {
+  sourceKind: "TONGXUAN_AUTHORED";
+  sourceName: "TongXuan legacy sample content";
+  sourceUrl: string;
+  sourceBook: string;
+  sourceLesson: string;
+  provenanceStatus: "INTERNAL_DRAFT";
+  licenseStatus: "INTERNAL_ONLY";
+  commercialReady: false;
+};
+
+function stampLegacyDraft(value: unknown, volume: number, lesson?: number): unknown {
+  if (Array.isArray(value)) return value.map((entry) => stampLegacyDraft(entry, volume, lesson));
+  if (!value || typeof value !== "object") return value;
+  const record = value as Record<string, unknown>;
+  const lessonNumber = typeof record.lessonNumber === "number" ? record.lessonNumber : lesson;
+  const children = Object.fromEntries(Object.entries(record).map(([key, entry]) => [key, stampLegacyDraft(entry, volume, lessonNumber)]));
+  const provenance: DraftStamped = {
+    sourceKind: "TONGXUAN_AUTHORED",
+    sourceName: "TongXuan legacy sample content",
+    sourceUrl: "https://github.com/webber0612/TongXuan-Chinese/blob/main/frontend/src/data/ocacTextbooksData.ts",
+    sourceBook: `UNVERIFIED_LEGACY_VOLUME_${volume}`,
+    sourceLesson: lessonNumber ? `TONGXUAN_LEGACY_LESSON_${lessonNumber}` : "UNVERIFIED",
+    provenanceStatus: "INTERNAL_DRAFT",
+    licenseStatus: "INTERNAL_ONLY",
+    commercialReady: false,
+  };
+  return { ...children, ...provenance };
+}
+
+/** Explicitly non-official legacy material retained for internal prototype use. */
+export const TONGXUAN_AUTHORED_DRAFT_VOLUMES: AuthoredDraftVolume[] =
+  LEGACY_UNVERIFIED_VOLUME_DATA.map((volume) => stampLegacyDraft(volume, volume.volume) as AuthoredDraftVolume);

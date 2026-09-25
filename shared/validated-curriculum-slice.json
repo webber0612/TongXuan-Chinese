@@ -1,0 +1,101 @@
+{
+  "schemaVersion": 1,
+  "series": "學華語向前走",
+  "provider": "僑務委員會・全球華文網 HuayuWorld",
+  "sourceUrl": "https://www.huayuworld.org/Ebook/LearnMandarinChildren",
+  "canonicalHierarchy": [
+    {"id":"starter","title":"入門冊","contentStatus":"VALIDATED_SLICE","includedLessons":12,"officialLessonCount":12},
+    {"id":"basic","title":"基礎冊","contentStatus":"VALIDATED_SLICE","includedLessons":12,"officialLessonCount":12},
+    {"id":"book-1","title":"第1冊","contentStatus":"VALIDATED_SLICE","includedLessons":3,"officialLessonCount":12},
+    {"id":"book-2","title":"第2冊","contentStatus":"OUT_OF_SCOPE"},
+    {"id":"book-3","title":"第3冊","contentStatus":"OUT_OF_SCOPE"},
+    {"id":"book-4","title":"第4冊","contentStatus":"OUT_OF_SCOPE"},
+    {"id":"book-5","title":"第5冊","contentStatus":"OUT_OF_SCOPE"},
+    {"id":"book-6","title":"第6冊","contentStatus":"OUT_OF_SCOPE"},
+    {"id":"book-7","title":"第7冊","contentStatus":"OUT_OF_SCOPE"},
+    {"id":"book-8","title":"第8冊","contentStatus":"OUT_OF_SCOPE"},
+    {"id":"book-9","title":"第9冊","contentStatus":"OUT_OF_SCOPE"},
+    {"id":"book-10","title":"第10冊","contentStatus":"OUT_OF_SCOPE"}
+  ],
+  "scope": ["starter", "basic", "book-1-lesson-1-to-3"],
+  "stages": [
+    {
+      "id": "starter",
+      "title": "入門冊",
+      "shortTitle": "入門冊",
+      "description": "以口語溝通帶入語音；注音版與拼音版內容對應。",
+      "notation": "ZHUYIN_PINYIN",
+      "sources": [
+        {"sourceBook":"入門冊 A 注音版","sourceUrl":"https://www.huayuworld.org/Ebook/ebookDetail?EID=623"},
+        {"sourceBook":"入門冊 B 注音版","sourceUrl":"https://www.huayuworld.org/Ebook/ebookDetail?EID=624"},
+        {"sourceBook":"入門冊 A 拼音版","sourceUrl":"https://www.huayuworld.org/Ebook/ebookDetail?EID=625"},
+        {"sourceBook":"入門冊 B 拼音版","sourceUrl":"https://www.huayuworld.org/Ebook/ebookDetail?EID=626"},
+        {"sourceBook":"入門冊教師手冊","sourceUrl":"https://www.huayuworld.org/upload/eBookstore/PDF/%E7%AC%AC%E4%BA%8C%E8%AA%9E%E8%A8%80%E6%95%99%E6%9D%90/070.%E5%AD%B8%E8%8F%AF%E8%AA%9E%E5%90%91%E5%89%8D%E8%B5%B0%E5%85%A5%E9%96%80%E5%86%8A-%E6%95%99%E5%B8%AB%E6%89%8B%E5%86%8A.pdf"}
+      ],
+      "lessons": [
+        {"id":"starter-l01","number":1,"title":"你好","sourceBook":"入門冊 A","domains":["listening","speaking","phonetics"],"practiceTargets":["聽辨並模仿問候語音","用簡短問候回應他人"],"officialObjectiveSummary":"準確發出本課指定聲韻；聽懂並使用「你好」問候；理解本課生詞；用「我是……」說出姓名。","objectiveSourceUrl":"https://www.huayuworld.org/upload/eBookstore/PDF/%E7%AC%AC%E4%BA%8C%E8%AA%9E%E8%A8%80%E6%95%99%E6%9D%90/070.%E5%AD%B8%E8%8F%AF%E8%AA%9E%E5%90%91%E5%89%8D%E8%B5%B0%E5%85%A5%E9%96%80%E5%86%8A-%E6%95%99%E5%B8%AB%E6%89%8B%E5%86%8A.pdf#page=5"},
+        {"id":"starter-l02","number":2,"title":"我七歲","sourceBook":"入門冊 A","domains":["listening","speaking","phonetics","vocabulary"],"practiceTargets":["聽辨年齡與數字表達","用口語說出年齡"],"officialObjectiveSummary":"準確發出本課指定聲韻；口頭數數並理解本課生詞；用「我……歲／他……歲」說出自己或他人的年齡。","objectiveSourceUrl":"https://www.huayuworld.org/upload/eBookstore/PDF/%E7%AC%AC%E4%BA%8C%E8%AA%9E%E8%A8%80%E6%95%99%E6%9D%90/070.%E5%AD%B8%E8%8F%AF%E8%AA%9E%E5%90%91%E5%89%8D%E8%B5%B0%E5%85%A5%E9%96%80%E5%86%8A-%E6%95%99%E5%B8%AB%E6%89%8B%E5%86%8A.pdf#page=18"},
+        {"id":"starter-l03","number":3,"title":"爸爸媽媽","sourceBook":"入門冊 A","domains":["listening","speaking","phonetics","vocabulary"],"practiceTargets":["辨識家庭稱呼的語音","用口語介紹家人"],"officialObjectiveSummary":"準確發出本課指定聲韻與聲調；理解家人詞語；用「我有……」介紹家人。","objectiveSourceUrl":"https://www.huayuworld.org/upload/eBookstore/PDF/%E7%AC%AC%E4%BA%8C%E8%AA%9E%E8%A8%80%E6%95%99%E6%9D%90/070.%E5%AD%B8%E8%8F%AF%E8%AA%9E%E5%90%91%E5%89%8D%E8%B5%B0%E5%85%A5%E9%96%80%E5%86%8A-%E6%95%99%E5%B8%AB%E6%89%8B%E5%86%8A.pdf#page=25"},
+        {"id":"starter-l04","number":4,"title":"小狗","sourceBook":"入門冊 A","domains":["listening","speaking","phonetics","recognition"],"practiceTargets":["聽辨本課語音與圖像線索","口頭描述熟悉的動物"],"officialObjectiveSummary":"準確發出本課指定聲韻；理解動物詞語；用「我有……」及數詞、量詞加動物詞說明擁有的動物。","objectiveSourceUrl":"https://www.huayuworld.org/upload/eBookstore/PDF/%E7%AC%AC%E4%BA%8C%E8%AA%9E%E8%A8%80%E6%95%99%E6%9D%90/070.%E5%AD%B8%E8%8F%AF%E8%AA%9E%E5%90%91%E5%89%8D%E8%B5%B0%E5%85%A5%E9%96%80%E5%86%8A-%E6%95%99%E5%B8%AB%E6%89%8B%E5%86%8A.pdf#page=32"},
+        {"id":"starter-l05","number":5,"title":"我的妹妹","sourceBook":"入門冊 A","domains":["listening","speaking","phonetics","vocabulary"],"practiceTargets":["辨識親屬稱呼","用口語描述家庭成員"],"officialObjectiveSummary":"準確發出本課指定聲韻與四聲；理解親屬詞語；用本課句型介紹妹妹與家庭成員。","objectiveSourceUrl":"https://www.huayuworld.org/upload/eBookstore/PDF/%E7%AC%AC%E4%BA%8C%E8%AA%9E%E8%A8%80%E6%95%99%E6%9D%90/070.%E5%AD%B8%E8%8F%AF%E8%AA%9E%E5%90%91%E5%89%8D%E8%B5%B0%E5%85%A5%E9%96%80%E5%86%8A-%E6%95%99%E5%B8%AB%E6%89%8B%E5%86%8A.pdf#page=40"},
+        {"id":"starter-l06","number":6,"title":"我是李大文","sourceBook":"入門冊 A","domains":["listening","speaking","phonetics"],"practiceTargets":["聽辨姓名介紹","用口語說出自己的姓名"],"officialObjectiveSummary":"準確發出本課指定聲韻；理解本課生詞；運用已學詞語與句型完成自我介紹。","objectiveSourceUrl":"https://www.huayuworld.org/upload/eBookstore/PDF/%E7%AC%AC%E4%BA%8C%E8%AA%9E%E8%A8%80%E6%95%99%E6%9D%90/070.%E5%AD%B8%E8%8F%AF%E8%AA%9E%E5%90%91%E5%89%8D%E8%B5%B0%E5%85%A5%E9%96%80%E5%86%8A-%E6%95%99%E5%B8%AB%E6%89%8B%E5%86%8A.pdf#page=54"},
+        {"id":"starter-l07","number":7,"title":"大文喜歡紅色","sourceBook":"入門冊 B","domains":["listening","speaking","phonetics","vocabulary"],"practiceTargets":["聽辨顏色詞","用口語表達喜好"],"officialObjectiveSummary":"準確發出本課指定韻母與聲調；理解顏色詞；用「喜歡」表達顏色喜好並認識基本顏色。","objectiveSourceUrl":"https://www.huayuworld.org/upload/eBookstore/PDF/%E7%AC%AC%E4%BA%8C%E8%AA%9E%E8%A8%80%E6%95%99%E6%9D%90/070.%E5%AD%B8%E8%8F%AF%E8%AA%9E%E5%90%91%E5%89%8D%E8%B5%B0%E5%85%A5%E9%96%80%E5%86%8A-%E6%95%99%E5%B8%AB%E6%89%8B%E5%86%8A.pdf#page=62"},
+        {"id":"starter-l08","number":8,"title":"西瓜是圓的","sourceBook":"入門冊 B","domains":["listening","speaking","phonetics","recognition"],"practiceTargets":["聽辨形狀描述","用口語描述熟悉物品"],"officialObjectiveSummary":"準確發出本課指定韻母；理解形狀詞語；用「A 是 B 形的」描述物品形狀。","objectiveSourceUrl":"https://www.huayuworld.org/upload/eBookstore/PDF/%E7%AC%AC%E4%BA%8C%E8%AA%9E%E8%A8%80%E6%95%99%E6%9D%90/070.%E5%AD%B8%E8%8F%AF%E8%AA%9E%E5%90%91%E5%89%8D%E8%B5%B0%E5%85%A5%E9%96%80%E5%86%8A-%E6%95%99%E5%B8%AB%E6%89%8B%E5%86%8A.pdf#page=80"},
+        {"id":"starter-l09","number":9,"title":"文文喜歡吃蘋果","sourceBook":"入門冊 B","domains":["listening","speaking","phonetics","vocabulary"],"practiceTargets":["聽辨常見水果詞","用口語表達飲食喜好"],"officialObjectiveSummary":"準確發出本課指定韻母與聲調；理解水果詞語；用「喜歡吃……」表達飲食喜好。","objectiveSourceUrl":"https://www.huayuworld.org/upload/eBookstore/PDF/%E7%AC%AC%E4%BA%8C%E8%AA%9E%E8%A8%80%E6%95%99%E6%9D%90/070.%E5%AD%B8%E8%8F%AF%E8%AA%9E%E5%90%91%E5%89%8D%E8%B5%B0%E5%85%A5%E9%96%80%E5%86%8A-%E6%95%99%E5%B8%AB%E6%89%8B%E5%86%8A.pdf#page=90"},
+        {"id":"starter-l10","number":10,"title":"畫雪人","sourceBook":"入門冊 B","domains":["listening","speaking","phonetics","recognition"],"practiceTargets":["聽辨動作與圖像線索","依口語指令完成簡單配對"],"officialObjectiveSummary":"準確發出本課指定韻母；理解本課生詞；用「畫……」說出要畫的物品，並說出身體部位。","objectiveSourceUrl":"https://www.huayuworld.org/upload/eBookstore/PDF/%E7%AC%AC%E4%BA%8C%E8%AA%9E%E8%A8%80%E6%95%99%E6%9D%90/070.%E5%AD%B8%E8%8F%AF%E8%AA%9E%E5%90%91%E5%89%8D%E8%B5%B0%E5%85%A5%E9%96%80%E5%86%8A-%E6%95%99%E5%B8%AB%E6%89%8B%E5%86%8A.pdf#page=99"},
+        {"id":"starter-l11","number":11,"title":"心美喜歡聽音樂","sourceBook":"入門冊 B","domains":["listening","speaking","phonetics","vocabulary"],"practiceTargets":["聽辨休閒活動詞","用口語談喜歡的活動"],"officialObjectiveSummary":"準確發出本課指定韻母與聲調；理解休閒活動詞語；用「喜歡……」表達活動喜好。","objectiveSourceUrl":"https://www.huayuworld.org/upload/eBookstore/PDF/%E7%AC%AC%E4%BA%8C%E8%AA%9E%E8%A8%80%E6%95%99%E6%9D%90/070.%E5%AD%B8%E8%8F%AF%E8%AA%9E%E5%90%91%E5%89%8D%E8%B5%B0%E5%85%A5%E9%96%80%E5%86%8A-%E6%95%99%E5%B8%AB%E6%89%8B%E5%86%8A.pdf#page=105"},
+        {"id":"starter-l12","number":12,"title":"我是林東明","sourceBook":"入門冊 B","domains":["listening","speaking","phonetics","recognition"],"practiceTargets":["聽辨姓名與音節","口頭完成姓名介紹"],"officialObjectiveSummary":"準確發出本課指定聲韻；理解本課生詞；運用第一至十二課已學詞語與句型完成自我介紹。","objectiveSourceUrl":"https://www.huayuworld.org/upload/eBookstore/PDF/%E7%AC%AC%E4%BA%8C%E8%AA%9E%E8%A8%80%E6%95%99%E6%9D%90/070.%E5%AD%B8%E8%8F%AF%E8%AA%9E%E5%90%91%E5%89%8D%E8%B5%B0%E5%85%A5%E9%96%80%E5%86%8A-%E6%95%99%E5%B8%AB%E6%89%8B%E5%86%8A.pdf#page=114"}
+      ]
+    },
+    {
+      "id": "basic",
+      "title": "基礎冊",
+      "shortTitle": "基礎冊",
+      "description": "官方設計為入門冊與第一冊之間的銜接。",
+      "notation": "BRIDGE",
+      "sources": [
+        {"sourceBook":"基礎冊 A","sourceUrl":"https://www.huayuworld.org/Ebook/ebookDetail?EID=627"},
+        {"sourceBook":"基礎冊 B","sourceUrl":"https://www.huayuworld.org/Ebook/ebookDetail?EID=628"},
+        {"sourceBook":"基礎冊教師手冊","sourceUrl":"https://www.huayuworld.org/upload/eBookstore/PDF/%E7%AC%AC%E4%BA%8C%E8%AA%9E%E8%A8%80%E6%95%99%E6%9D%90/071.%E5%AD%B8%E8%8F%AF%E8%AA%9E%E5%90%91%E5%89%8D%E8%B5%B0%E5%9F%BA%E7%A4%8E%E5%86%8A-%E6%95%99%E5%B8%AB%E6%89%8B%E5%86%8A.pdf"}
+      ],
+      "lessons": [
+        {"id":"basic-l01","number":1,"title":"你好","sourceBook":"基礎冊 A","domains":["listening","speaking","recognition","vocabulary"],"practiceTargets":["辨識問候與姓名表達","在簡短對話中問候並回應"],"officialObjectiveSummary":"用「你好」問候並回應；聽懂姓名詢問並說出姓名。","objectiveSourceUrl":"https://www.huayuworld.org/upload/eBookstore/PDF/%E7%AC%AC%E4%BA%8C%E8%AA%9E%E8%A8%80%E6%95%99%E6%9D%90/071.%E5%AD%B8%E8%8F%AF%E8%AA%9E%E5%90%91%E5%89%8D%E8%B5%B0%E5%9F%BA%E7%A4%8E%E5%86%8A-%E6%95%99%E5%B8%AB%E6%89%8B%E5%86%8A.pdf#page=5"},
+        {"id":"basic-l02","number":2,"title":"家人","sourceBook":"基礎冊 A","domains":["listening","speaking","recognition","vocabulary"],"practiceTargets":["辨識家庭成員詞語","聽懂並回答家庭成員問題"],"officialObjectiveSummary":"詢問並理解家中人數；使用「幾個」與量詞「個」；說出家庭成員並數一至五。","objectiveSourceUrl":"https://www.huayuworld.org/upload/eBookstore/PDF/%E7%AC%AC%E4%BA%8C%E8%AA%9E%E8%A8%80%E6%95%99%E6%9D%90/071.%E5%AD%B8%E8%8F%AF%E8%AA%9E%E5%90%91%E5%89%8D%E8%B5%B0%E5%9F%BA%E7%A4%8E%E5%86%8A-%E6%95%99%E5%B8%AB%E6%89%8B%E5%86%8A.pdf#page=19"},
+        {"id":"basic-l03","number":3,"title":"同學","sourceBook":"基礎冊 A","domains":["listening","speaking","recognition","vocabulary"],"practiceTargets":["辨識同學與數量詞語","口頭談論同學"],"officialObjectiveSummary":"詢問並回答班上同學人數；數一至十；理解並使用「二／兩」及同學稱謂。","objectiveSourceUrl":"https://www.huayuworld.org/upload/eBookstore/PDF/%E7%AC%AC%E4%BA%8C%E8%AA%9E%E8%A8%80%E6%95%99%E6%9D%90/071.%E5%AD%B8%E8%8F%AF%E8%AA%9E%E5%90%91%E5%89%8D%E8%B5%B0%E5%9F%BA%E7%A4%8E%E5%86%8A-%E6%95%99%E5%B8%AB%E6%89%8B%E5%86%8A.pdf#page=26"},
+        {"id":"basic-l04","number":4,"title":"早飯","sourceBook":"基礎冊 A","domains":["listening","speaking","recognition","vocabulary"],"practiceTargets":["辨識早餐相關詞語","聽懂並回答早餐內容"],"officialObjectiveSummary":"辨識牛奶、麵包等食物飲品；用「吃／喝」談早餐、午餐和晚餐。","objectiveSourceUrl":"https://www.huayuworld.org/upload/eBookstore/PDF/%E7%AC%AC%E4%BA%8C%E8%AA%9E%E8%A8%80%E6%95%99%E6%9D%90/071.%E5%AD%B8%E8%8F%AF%E8%AA%9E%E5%90%91%E5%89%8D%E8%B5%B0%E5%9F%BA%E7%A4%8E%E5%86%8A-%E6%95%99%E5%B8%AB%E6%89%8B%E5%86%8A.pdf#page=33"},
+        {"id":"basic-l05","number":5,"title":"冬天和夏天","sourceBook":"基礎冊 A","domains":["listening","speaking","recognition","vocabulary"],"practiceTargets":["辨識季節與天氣詞語","比較兩種季節"],"officialObjectiveSummary":"用「很」描述情況；說出冬天、夏天與春天；用「喜歡／不喜歡」表達偏好，並使用「呢」詢問。","objectiveSourceUrl":"https://www.huayuworld.org/upload/eBookstore/PDF/%E7%AC%AC%E4%BA%8C%E8%AA%9E%E8%A8%80%E6%95%99%E6%9D%90/071.%E5%AD%B8%E8%8F%AF%E8%AA%9E%E5%90%91%E5%89%8D%E8%B5%B0%E5%9F%BA%E7%A4%8E%E5%86%8A-%E6%95%99%E5%B8%AB%E6%89%8B%E5%86%8A.pdf#page=39"},
+        {"id":"basic-l06","number":6,"title":"生日","sourceBook":"基礎冊 A","domains":["listening","speaking","recognition","vocabulary"],"practiceTargets":["辨識生日情境詞語","在生日情境中進行簡短對話"],"officialObjectiveSummary":"說出一至十二及月份日期「月／號」；詢問和回答生日日期。","objectiveSourceUrl":"https://www.huayuworld.org/upload/eBookstore/PDF/%E7%AC%AC%E4%BA%8C%E8%AA%9E%E8%A8%80%E6%95%99%E6%9D%90/071.%E5%AD%B8%E8%8F%AF%E8%AA%9E%E5%90%91%E5%89%8D%E8%B5%B0%E5%9F%BA%E7%A4%8E%E5%86%8A-%E6%95%99%E5%B8%AB%E6%89%8B%E5%86%8A.pdf#page=45"},
+        {"id":"basic-l07","number":7,"title":"畫雪人","sourceBook":"基礎冊 B","domains":["listening","speaking","recognition","vocabulary"],"practiceTargets":["聽懂簡單活動指令","用口語描述活動步驟"],"officialObjectiveSummary":"用「一起」邀請並回應活動；理解身體部位詞語；用「我要……／你要不要……」談活動。","objectiveSourceUrl":"https://www.huayuworld.org/upload/eBookstore/PDF/%E7%AC%AC%E4%BA%8C%E8%AA%9E%E8%A8%80%E6%95%99%E6%9D%90/071.%E5%AD%B8%E8%8F%AF%E8%AA%9E%E5%90%91%E5%89%8D%E8%B5%B0%E5%9F%BA%E7%A4%8E%E5%86%8A-%E6%95%99%E5%B8%AB%E6%89%8B%E5%86%8A.pdf#page=52"},
+        {"id":"basic-l08","number":8,"title":"下課以後","sourceBook":"基礎冊 B","domains":["listening","speaking","recognition","vocabulary"],"practiceTargets":["辨識下課後活動詞語","談論下課後安排"],"officialObjectiveSummary":"談論下課後活動與個人喜好；用「V 以後」連接事件，並練習「也／可是」表達關係。","objectiveSourceUrl":"https://www.huayuworld.org/upload/eBookstore/PDF/%E7%AC%AC%E4%BA%8C%E8%AA%9E%E8%A8%80%E6%95%99%E6%9D%90/071.%E5%AD%B8%E8%8F%AF%E8%AA%9E%E5%90%91%E5%89%8D%E8%B5%B0%E5%9F%BA%E7%A4%8E%E5%86%8A-%E6%95%99%E5%B8%AB%E6%89%8B%E5%86%8A.pdf#page=63"},
+        {"id":"basic-l09","number":9,"title":"在哪裡","sourceBook":"基礎冊 B","domains":["listening","speaking","recognition","vocabulary"],"practiceTargets":["辨識位置問答詞語","詢問並回答位置"],"officialObjectiveSummary":"用「在哪裡」詢問並回答位置；理解家具名稱及上、下、裡、外、前、後等方位詞。","objectiveSourceUrl":"https://www.huayuworld.org/upload/eBookstore/PDF/%E7%AC%AC%E4%BA%8C%E8%AA%9E%E8%A8%80%E6%95%99%E6%9D%90/071.%E5%AD%B8%E8%8F%AF%E8%AA%9E%E5%90%91%E5%89%8D%E8%B5%B0%E5%9F%BA%E7%A4%8E%E5%86%8A-%E6%95%99%E5%B8%AB%E6%89%8B%E5%86%8A.pdf#page=70"},
+        {"id":"basic-l10","number":10,"title":"爺爺和奶奶","sourceBook":"基礎冊 B","domains":["listening","speaking","recognition","vocabulary"],"practiceTargets":["辨識長輩稱呼","介紹家庭成員"],"officialObjectiveSummary":"說出祖父母與相關家庭成員；練習量詞「張」及人數表達，並用「誰」提問。","objectiveSourceUrl":"https://www.huayuworld.org/upload/eBookstore/PDF/%E7%AC%AC%E4%BA%8C%E8%AA%9E%E8%A8%80%E6%95%99%E6%9D%90/071.%E5%AD%B8%E8%8F%AF%E8%AA%9E%E5%90%91%E5%89%8D%E8%B5%B0%E5%9F%BA%E7%A4%8E%E5%86%8A-%E6%95%99%E5%B8%AB%E6%89%8B%E5%86%8A.pdf#page=76"},
+        {"id":"basic-l11","number":11,"title":"去學校","sourceBook":"基礎冊 B","domains":["listening","speaking","recognition","vocabulary"],"practiceTargets":["聽懂上學情境詞語","談論上學方式或行程"],"officialObjectiveSummary":"詢問如何前往學校並說出坐車、搭車、走路等交通方式；理解及使用「送」。","objectiveSourceUrl":"https://www.huayuworld.org/upload/eBookstore/PDF/%E7%AC%AC%E4%BA%8C%E8%AA%9E%E8%A8%80%E6%95%99%E6%9D%90/071.%E5%AD%B8%E8%8F%AF%E8%AA%9E%E5%90%91%E5%89%8D%E8%B5%B0%E5%9F%BA%E7%A4%8E%E5%86%8A-%E6%95%99%E5%B8%AB%E6%89%8B%E5%86%8A.pdf#page=83"},
+        {"id":"basic-l12","number":12,"title":"在家嗎","sourceBook":"基礎冊 B","domains":["listening","speaking","recognition","vocabulary"],"practiceTargets":["辨識在家與否的問答","進行簡短情境對話"],"officialObjectiveSummary":"模擬電話詢問是否在家；辨認電話對話身份；使用電話用語與敬稱「您」。","objectiveSourceUrl":"https://www.huayuworld.org/upload/eBookstore/PDF/%E7%AC%AC%E4%BA%8C%E8%AA%9E%E8%A8%80%E6%95%99%E6%9D%90/071.%E5%AD%B8%E8%8F%AF%E8%AA%9E%E5%90%91%E5%89%8D%E8%B5%B0%E5%9F%BA%E7%A4%8E%E5%86%8A-%E6%95%99%E5%B8%AB%E6%89%8B%E5%86%8A.pdf#page=89"}
+      ]
+    },
+    {
+      "id": "book-1",
+      "title": "第一冊（僅前三課）",
+      "shortTitle": "第一冊・前三課",
+      "description": "這次只登錄第一冊 A 前三課；第四課起不在本次切片。",
+      "notation": "TEXTBOOK",
+      "sources": [
+        {"sourceBook":"第一冊 A","sourceUrl":"https://www.huayuworld.org/Ebook/ebookDetail?EID=629"},
+        {"sourceBook":"第一冊 A 課本 PDF（課 1–4）","sourceUrl":"https://www.huayuworld.org/upload/epaper/106/B1-L1-4.pdf"}
+      ],
+      "lessons": [
+        {"id":"book1-l01","number":1,"title":"你好","sourceBook":"第一冊 A","domains":["listening","speaking","recognition","pronunciation"],"practiceTargets":["理解問候及姓名詢問","使用問候語並介紹姓名"],"officialObjectiveSummary":"問候、聽懂姓名詢問、介紹自己的姓名","objectiveSourceUrl":"https://huayuworld.org/upload/epaper/106/B1-L1-4.pdf#page=1"},
+        {"id":"book1-l02","number":2,"title":"你家有幾個人？","sourceBook":"第一冊 A","domains":["listening","speaking","recognition","vocabulary","grammar"],"practiceTargets":["詢問並回答家庭人數","辨識家庭成員與數量表達"],"officialObjectiveSummary":"理解家庭人數提問；使用疑問詞與量詞；說出家庭成員並數數一至五","objectiveSourceUrl":"https://huayuworld.org/upload/epaper/106/B1-L1-4.pdf#page=15"},
+        {"id":"book1-l03","number":3,"title":"你們班有幾個同學？","sourceBook":"第一冊 A","domains":["listening","speaking","recognition","vocabulary","grammar"],"practiceTargets":["詢問並回答班級人數","練習量詞前兩的用法與也"],"officialObjectiveSummary":"詢問及回答班級人數；使用量詞前的兩與也；數數六至十","objectiveSourceUrl":"https://huayuworld.org/upload/epaper/106/B1-L1-4.pdf#page=29"}
+      ]
+    }
+  ],
+  "outOfScopeBooks": [2,3,4,5,6,7,8,9,10],
+  "provenanceDefaults": {
+    "sourceKind": "OFFICIAL_OCAC",
+    "provenanceStatus": "VERIFIED_OFFICIAL_TITLE",
+    "licenseStatus": "PERMISSION_REQUIRED",
+    "commercialReady": false,
+    "commercialAction": "Do not reproduce textbook text, audio, images, or exercises until written permission is recorded."
+  }
+}
