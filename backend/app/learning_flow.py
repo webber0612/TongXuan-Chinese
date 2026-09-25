@@ -52,17 +52,42 @@ def _as_of(value: str | None) -> tuple[datetime, str]:
     return parsed, parsed.strftime("%Y-%m-%d %H:%M:%S")
 
 
-def _parse_stamp(value: str | None) -> datetime | None:
+def _parse_stamp(value: str | datetime | None) -> datetime | None:
     if not value:
         return None
+    if isinstance(value, datetime):
+        if value.tzinfo is not None:
+            return value.astimezone(timezone.utc).replace(tzinfo=None)
+        return value
+    if isinstance(value, str):
+        raw = value.strip()
+        if not raw:
+            return None
+        try:
+            parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        except ValueError:
+            for fmt in (
+                "%Y-%m-%d %H:%M:%S",
+                "%Y-%m-%d %H:%M:%S.%f",
+                "%Y-%m-%dT%H:%M:%S",
+                "%Y-%m-%dT%H:%M:%S.%f",
+                "%Y-%m-%d",
+            ):
+                try:
+                    parsed = datetime.strptime(raw, fmt)
+                    break
+                except ValueError:
+                    continue
+            else:
+                return None
+        if parsed.tzinfo is not None:
+            parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
+        return parsed
+    return None
 
 
 def _utcnow_naive() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
-    try:
-        return datetime.fromisoformat(value.replace("Z", "+00:00")).replace(tzinfo=None)
-    except ValueError:
-        return None
 
 
 def _lesson_rows() -> dict[str, dict[str, Any]]:
@@ -496,6 +521,11 @@ def get_learning_session(*, child_id: int, session_id: str, resumed: bool = Fals
         session = db.execute("SELECT * FROM learning_flow_sessions WHERE id=? AND child_id=?", (session_id, child_id)).fetchone()
         if session is None:
             raise ValueError("learning_session_not_found")
+        if session["status"] == "IN_PROGRESS":
+            last_resume = _parse_stamp(session["last_resumed_at"])
+            if last_resume and (_utcnow_naive() - last_resume).total_seconds() + session["active_seconds"] >= session["target_minutes"] * 60:
+                _pause(db, session, "SESSION_TARGET_REACHED", None, now())
+                session = db.execute("SELECT * FROM learning_flow_sessions WHERE id=?", (session["id"],)).fetchone()
         return _session_payload(db, session, resumed)
 
 
@@ -642,7 +672,8 @@ def _update_task_attempt(*, child_id: int, session_id: str, task: dict[str, Any]
                 next_state = "DEFERRED"
                 completed_at = None
         started = _parse_stamp(row["started_at"]) or _parse_stamp(stamp)
-        duration = max(0, int((datetime.strptime(stamp, "%Y-%m-%d %H:%M:%S") - started).total_seconds())) if started else 0
+        stamp_dt = _parse_stamp(stamp) or _utcnow_naive()
+        duration = max(0, int((stamp_dt - started).total_seconds())) if started else 0
         if row["task_type"].startswith("WRITING_") and correct is True:
             repeat_count = int(task.get("taskData", {}).get("repeatCount", 1))
             prior_successes = int(db.execute("""SELECT COUNT(*) FROM learning_flow_task_attempts a
@@ -660,7 +691,7 @@ def _update_task_attempt(*, child_id: int, session_id: str, task: dict[str, Any]
             _log(db, session_id, child_id, "hint_used", task["id"], row["skill_domain"], {"taskType": row["task_type"], "attemptCount": previous_attempts + total_attempts}, stamp)
         if row["source_queue"] == "REVIEW":
             due_at = _parse_stamp(task.get("taskData", {}).get("dueAt"))
-            due_age_days = max(0, (datetime.strptime(stamp, "%Y-%m-%d %H:%M:%S") - due_at).days) if due_at else None
+            due_age_days = max(0, (stamp_dt - due_at).days) if due_at else None
             review_details = {"taskType": row["task_type"], "result": result, "correct": correct, "assisted": assisted, "dueAgeDays": due_age_days}
             _log(db, session_id, child_id, "review_result", task["id"], row["skill_domain"], review_details, stamp)
             if due_age_days is not None and due_age_days >= 6:
@@ -802,7 +833,8 @@ def attach_learning_evidence(*, child_id: int, session_id: str, task_id: str, ev
             completed_at = now() if state == "COMPLETED" else None
         stamp = now()
         start = _parse_stamp(row["started_at"]) or _parse_stamp(stamp)
-        duration = max(0, int((datetime.strptime(stamp, "%Y-%m-%d %H:%M:%S") - start).total_seconds())) if start else 0
+        stamp_dt = _parse_stamp(stamp) or _utcnow_naive()
+        duration = max(0, int((stamp_dt - start).total_seconds())) if start else 0
         db.execute("INSERT OR IGNORE INTO learning_flow_task_attempts(id,session_id,task_id,child_id,skill_domain,result,score,assisted,evidence_ref,scorer_version,occurred_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)", (uid("flow-attempt"), session_id, task_id, child_id, row["skill_domain"], result, None, int(assisted), evidence_ref, evidence_type, stamp))
         db.execute("UPDATE learning_flow_tasks SET state=?,failure_count=?,attempt_count=attempt_count+1,completed_at=?,elapsed_seconds=elapsed_seconds+?,deferred_reason=?,evidence_ref=COALESCE(?,evidence_ref) WHERE id=? AND session_id=?", (state, failure_count, completed_at, duration, deferred_reason, evidence_ref, task_id, session_id))
         _log(db, session_id, child_id, "task_evidence_attached" if result != "incorrect" else "task_attempted", task_id, row["skill_domain"], {"taskType": row["task_type"], "result": result, "assisted": assisted, "durationSeconds": duration}, stamp)
@@ -946,7 +978,12 @@ def get_parent_learning_report(*, child_id: int, from_at: str | None = None, to_
             for row in failed:
                 if row["skill_domain"]:
                     weak[row["skill_domain"]] = weak.get(row["skill_domain"], 0) + row["n"]
-            summaries.append({"sessionId": session["id"], "lessonId": session["lesson_id"], "status": session["status"], "durationSeconds": session["active_seconds"], "taskCount": len(tasks), "deferredCount": sum(task["state"] == "DEFERRED" for task in tasks), "masteryStatus": session["mastery_status"], "rewardPoints": session["reward_points"]})
+            duration_seconds = int(session["active_seconds"])
+            if session["status"] == "IN_PROGRESS":
+                last_resume = _parse_stamp(session["last_resumed_at"])
+                if last_resume:
+                    duration_seconds += max(0, int((_utcnow_naive() - last_resume).total_seconds()))
+            summaries.append({"sessionId": session["id"], "lessonId": session["lesson_id"], "status": session["status"], "durationSeconds": duration_seconds, "taskCount": len(tasks), "deferredCount": sum(task["state"] == "DEFERRED" for task in tasks), "masteryStatus": session["mastery_status"], "rewardPoints": session["reward_points"]})
         due = db.execute("SELECT skill_domain,COUNT(*) n FROM srs_review_states WHERE child_id=? AND due_at<=? GROUP BY skill_domain", (child_id, end)).fetchall()
         due_counts = {row["skill_domain"]: row["n"] for row in due}
         return {"childId": child_id, "from": start, "to": end, "sessions": summaries, "taskCounts": task_counts, "weakDomains": weak, "deferredTasks": deferred, "masteryChanges": [{"sessionId": session["id"], "status": session["mastery_status"]} for session in sessions if session["mastery_status"]], "reviewDueCounts": due_counts, "privacy": {"rawAudioStored": False, "learnerAnswersStored": False, "identifyingTelemetry": False}}

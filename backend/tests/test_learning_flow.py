@@ -424,3 +424,184 @@ def test_parent_report_is_scoped_and_excludes_raw_audio(tmp_path):
         assert report.status_code == 200, report.text
         assert report.json()["privacy"]["rawAudioStored"] is False
         assert "weakDomains" in report.json() and "deferredTasks" in report.json()
+from app.auth import issue_session
+from app.database import connect
+from app.learning_flow import _parse_stamp
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from fastapi.testclient import TestClient
+from tests.test_learning_flow import client, child, place, session
+
+
+def test_parse_stamp_supports_persisted_formats():
+    assert _parse_stamp(None) is None
+    assert _parse_stamp("") is None
+    assert _parse_stamp("   ") is None
+
+    # Standard app format from now()
+    parsed1 = _parse_stamp("2026-09-20 08:30:00")
+    assert parsed1 == datetime(2026, 9, 20, 8, 30, 0)
+
+    # ISO with Z
+    parsed2 = _parse_stamp("2026-09-20T08:30:00Z")
+    assert parsed2 == datetime(2026, 9, 20, 8, 30, 0)
+
+    # ISO with offset
+    parsed3 = _parse_stamp("2026-09-20T08:30:00+00:00")
+    assert parsed3 == datetime(2026, 9, 20, 8, 30, 0)
+
+    # ISO with microseconds
+    parsed4 = _parse_stamp("2026-09-20 08:30:00.123456")
+    assert parsed4 == datetime(2026, 9, 20, 8, 30, 0, 123456)
+
+    # Datetime object
+    dt = datetime(2026, 9, 20, 8, 30, 0)
+    assert _parse_stamp(dt) == dt
+
+
+def test_session_target_time_exceeded_pauses_before_accepting_task_or_evidence(tmp_path):
+    """Regression 1: Set last_resumed_at > target_minutes ago and verify new task/evidence first pauses session with SESSION_TARGET_REACHED."""
+    with client(tmp_path) as api:
+        child_id = child(api)
+        place(child_id, "STARTER")
+        current = session(api, child_id)
+        session_id = current["id"]
+
+        # Backdate last_resumed_at to 20 minutes ago (> 18 target_minutes)
+        past_stamp = (datetime.now(timezone.utc) - timedelta(minutes=20)).strftime("%Y-%m-%d %H:%M:%S")
+        with connect() as db:
+            db.execute("UPDATE learning_flow_sessions SET last_resumed_at=? WHERE id=?", (past_stamp, session_id))
+
+        first_task = current["tasks"][0]
+
+        # Submitting answer should be rejected because target time was exceeded and session is paused
+        ans_resp = api.post(f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{first_task['id']}/answer", json={"selected_option_id": "opt1"})
+        assert ans_resp.status_code in (400, 409)
+
+        # Verify session state transitioned to PAUSED with SESSION_TARGET_REACHED
+        check_sess = api.get(f"/api/children/{child_id}/learning-sessions/{session_id}").json()
+        assert check_sess["status"] == "PAUSED"
+        assert check_sess["terminationReason"] == "SESSION_TARGET_REACHED"
+        assert check_sess["activeSeconds"] >= 20 * 60
+
+        # Incomplete tasks should be deferred with STOP_SESSION_TARGET_REACHED
+        for t in check_sess["tasks"]:
+            if t["state"] == "DEFERRED":
+                assert t["deferredReason"] in ("STOP_SESSION_TARGET_REACHED", "SESSION_TARGET_REACHED")
+
+        # Starting a task or attaching evidence on this paused session must also fail
+        start_resp = api.post(f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{first_task['id']}/start")
+        assert start_resp.status_code in (400, 409)
+
+        evidence_resp = api.post(f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{first_task['id']}/evidence", json={"evidence_ref": "any-ref"})
+        assert evidence_resp.status_code in (400, 409)
+
+
+def test_session_pause_accumulates_active_seconds_and_preserves_across_resume(tmp_path):
+    """Regressions 2 & 5: Pause after known interval verifies active_seconds > 0; resume preserves prior active time and adds only new segment."""
+    with client(tmp_path) as api:
+        child_id = child(api)
+        place(child_id, "STARTER")
+        current = session(api, child_id)
+        session_id = current["id"]
+
+        # Backdate last_resumed_at to 300 seconds ago (5 mins)
+        stamp_300s_ago = (datetime.now(timezone.utc) - timedelta(seconds=300)).strftime("%Y-%m-%d %H:%M:%S")
+        with connect() as db:
+            db.execute("UPDATE learning_flow_sessions SET last_resumed_at=? WHERE id=?", (stamp_300s_ago, session_id))
+
+        # Regression 2: Pause session after known interval
+        stopped = api.post(f"/api/children/{child_id}/learning-sessions/{session_id}/stop", json={"reason": "FATIGUE"})
+        assert stopped.status_code == 200
+        paused_data = stopped.json()
+        assert paused_data["status"] == "PAUSED"
+        assert paused_data["terminationReason"] == "FATIGUE"
+        assert 295 <= paused_data["activeSeconds"] <= 310
+        first_segment_active = paused_data["activeSeconds"]
+
+        # Regression 5: Resume paused session
+        resumed = api.post(f"/api/children/{child_id}/learning-sessions", json={"target_minutes": 18, "script_mode": "TRADITIONAL"})
+        assert resumed.status_code == 200
+        resumed_data = resumed.json()
+        assert resumed_data["status"] == "IN_PROGRESS"
+        assert resumed_data["resumed"] is True
+        # Prior active time is preserved
+        assert resumed_data["activeSeconds"] == first_segment_active
+
+        # Simulate second active segment of 120 seconds
+        stamp_120s_ago = (datetime.now(timezone.utc) - timedelta(seconds=120)).strftime("%Y-%m-%d %H:%M:%S")
+        with connect() as db:
+            db.execute("UPDATE learning_flow_sessions SET last_resumed_at=? WHERE id=?", (stamp_120s_ago, session_id))
+
+        stopped_again = api.post(f"/api/children/{child_id}/learning-sessions/{session_id}/stop", json={"reason": "PARENT_LIMIT"})
+        assert stopped_again.status_code == 200
+        second_paused_data = stopped_again.json()
+        assert second_paused_data["status"] == "PAUSED"
+        assert second_paused_data["terminationReason"] == "PARENT_LIMIT"
+        # Total active time = prior segment + second segment
+        assert first_segment_active + 115 <= second_paused_data["activeSeconds"] <= first_segment_active + 130
+
+
+def test_task_start_and_completion_records_elapsed_seconds_and_telemetry(tmp_path):
+    """Regression 3: Start/complete a task with known interval and verify elapsed_seconds > 0 and telemetry durationSeconds."""
+    import json
+    with client(tmp_path) as api:
+        child_id = child(api)
+        place(child_id, "BOOK_1")
+        current = session(api, child_id)
+        session_id = current["id"]
+
+        # Pick a task, start it
+        task = next(t for t in current["tasks"] if t["taskType"] == "RECOGNITION")
+        started = api.post(f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{task['id']}/start")
+        assert started.status_code == 200
+
+        # Backdate task started_at to 45 seconds ago
+        task_start_stamp = (datetime.now(timezone.utc) - timedelta(seconds=45)).strftime("%Y-%m-%d %H:%M:%S")
+        with connect() as db:
+            db.execute("UPDATE learning_flow_tasks SET started_at=? WHERE id=?", (task_start_stamp, task["id"]))
+
+        # Answer task correctly
+        with connect() as db:
+            expected_char = db.execute("SELECT character FROM learning_items WHERE child_id=? AND id=?", (child_id, task["itemId"])).fetchone()[0]
+        choice = next(opt["id"] for opt in task["taskData"]["choices"] if opt["label"] == expected_char)
+
+        answered = api.post(f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{task['id']}/answer", json={"selected_option_id": choice})
+        assert answered.status_code == 200
+
+        updated_task = next(t for t in answered.json()["tasks"] if t["id"] == task["id"])
+        assert updated_task["state"] == "COMPLETED"
+        assert 40 <= updated_task["elapsedSeconds"] <= 55
+
+        # Check telemetry durationSeconds
+        with connect() as db:
+            attempt_row = db.execute("SELECT details_json FROM learning_flow_telemetry WHERE session_id=? AND task_id=? AND event_type='task_attempted'", (session_id, task["id"])).fetchone()
+            assert attempt_row is not None
+            details = json.loads(attempt_row["details_json"])
+            assert 40 <= details["durationSeconds"] <= 55
+
+
+def test_parent_report_reflects_persisted_session_duration(tmp_path):
+    """Regression 4: Verify the parent report returns the persisted non-zero duration."""
+    with client(tmp_path) as api:
+        child_id = child(api)
+        place(child_id, "STARTER")
+        current = session(api, child_id)
+        session_id = current["id"]
+
+        # Backdate last_resumed_at by 240 seconds
+        past_stamp = (datetime.now(timezone.utc) - timedelta(seconds=240)).strftime("%Y-%m-%d %H:%M:%S")
+        with connect() as db:
+            db.execute("UPDATE learning_flow_sessions SET last_resumed_at=? WHERE id=?", (past_stamp, session_id))
+
+        # Pause session
+        api.post(f"/api/children/{child_id}/learning-sessions/{session_id}/stop", json={"reason": "FATIGUE"})
+
+        # Query parent report
+        parent_headers = {"Authorization": f"Bearer {issue_session(subject='parent-a', role='parent', child_ids=[child_id])}"}
+        report_resp = api.get(f"/api/children/{child_id}/learning-sessions/report", headers=parent_headers)
+        assert report_resp.status_code == 200
+        report = report_resp.json()
+
+        session_summary = next(s for s in report["sessions"] if s["sessionId"] == session_id)
+        assert 235 <= session_summary["durationSeconds"] <= 255
