@@ -433,9 +433,12 @@ export function LessonPlayerPage({
   const [masteryStatus, setMasteryStatus] = useState<string | null>(null);
   const [nextReviewDueAt, setNextReviewDueAt] = useState<string | null>(null);
   const [activeSpeakingAttemptIds, setActiveSpeakingAttemptIds] = useState<{ speaking?: string; pronunciation?: string }>({});
+  const activeSpeakingAttemptIdsRef = useRef<{ speaking?: string; pronunciation?: string }>({});
 
   const writerRef = useRef<HanziWriter | null>(null);
   const canvasContainerRef = useRef<HTMLDivElement | null>(null);
+  const sessionRef = useRef(session);
+  sessionRef.current = session;
   const submittedAnswersRef = useRef<Record<string, { optionId?: string | null; answersKey?: string }>>({});
   const submittedEvidenceRef = useRef<Record<string, string>>({});
   const submittedSkipsRef = useRef<Record<string, boolean>>({});
@@ -469,6 +472,7 @@ export function LessonPlayerPage({
         `/api/children/${activeChildId}/learning-sessions/current`
       );
       if (current && (current.status === "IN_PROGRESS" || current.status === "PAUSED")) {
+        sessionRef.current = current;
         setSession(current);
         if (current.masteryStatus) setMasteryStatus(current.masteryStatus);
       } else {
@@ -492,6 +496,7 @@ export function LessonPlayerPage({
           }
         );
         if (started) {
+          sessionRef.current = started;
           setSession(started);
           if (started.masteryStatus) setMasteryStatus(started.masteryStatus);
         }
@@ -514,8 +519,9 @@ export function LessonPlayerPage({
     answers?: Record<string, string>,
     assisted = false
   ): Promise<boolean> => {
-    if (!activeChildId || !session?.id || !session.tasks) return true;
-    const matchingTask = session.tasks.find((t) => matcher(t) && t.state !== "COMPLETED" && t.state !== "DEFERRED");
+    const currentSess = sessionRef.current;
+    if (!activeChildId || !currentSess?.id || !currentSess.tasks) return true;
+    const matchingTask = currentSess.tasks.find((t) => matcher(t) && t.state !== "COMPLETED" && t.state !== "DEFERRED");
     if (!matchingTask) return true;
     const answersKey = JSON.stringify(answers ?? {});
     const recorded = submittedAnswersRef.current[matchingTask.id];
@@ -525,7 +531,7 @@ export function LessonPlayerPage({
     try {
       setError(null);
       const updated = await api<typeof session>(
-        `/api/children/${activeChildId}/learning-sessions/${session.id}/tasks/${matchingTask.id}/answer`,
+        `/api/children/${activeChildId}/learning-sessions/${currentSess.id}/tasks/${matchingTask.id}/answer`,
         {
           method: "POST",
           body: JSON.stringify({
@@ -536,6 +542,7 @@ export function LessonPlayerPage({
         }
       );
       if (updated) {
+        sessionRef.current = updated;
         submittedAnswersRef.current[matchingTask.id] = {
           optionId: selectedOptionId || null,
           answersKey,
@@ -554,8 +561,9 @@ export function LessonPlayerPage({
     matcher: (t: { id: string; key: string; taskType: string; state: string; itemId?: string; taskData?: any }) => boolean,
     evidenceRef: string
   ): Promise<boolean> => {
-    if (!activeChildId || !session?.id || !session.tasks) return true;
-    const matchingTask = session.tasks.find((t) => matcher(t) && t.state !== "COMPLETED" && t.state !== "DEFERRED");
+    const currentSess = sessionRef.current;
+    if (!activeChildId || !currentSess?.id || !currentSess.tasks) return true;
+    const matchingTask = currentSess.tasks.find((t) => matcher(t) && t.state !== "COMPLETED" && t.state !== "DEFERRED");
     if (!matchingTask) return true;
     if (submittedEvidenceRef.current[matchingTask.id] === evidenceRef) {
       return true;
@@ -563,7 +571,7 @@ export function LessonPlayerPage({
     try {
       setError(null);
       const updated = await api<typeof session>(
-        `/api/children/${activeChildId}/learning-sessions/${session.id}/tasks/${matchingTask.id}/evidence`,
+        `/api/children/${activeChildId}/learning-sessions/${currentSess.id}/tasks/${matchingTask.id}/evidence`,
         {
           method: "POST",
           body: JSON.stringify({
@@ -572,6 +580,7 @@ export function LessonPlayerPage({
         }
       );
       if (updated) {
+        sessionRef.current = updated;
         submittedEvidenceRef.current[matchingTask.id] = evidenceRef;
         setSession(updated);
         if (updated.masteryStatus) setMasteryStatus(updated.masteryStatus);
@@ -586,8 +595,9 @@ export function LessonPlayerPage({
   const skipBackendTask = async (
     matcher: (t: { id: string; key: string; taskType: string; state: string; itemId?: string; taskData?: any }) => boolean
   ): Promise<boolean> => {
-    if (!activeChildId || !session?.id || !session.tasks) return true;
-    const matchingTask = session.tasks.find((t) => matcher(t) && t.state !== "COMPLETED" && t.state !== "DEFERRED");
+    const currentSess = sessionRef.current;
+    if (!activeChildId || !currentSess?.id || !currentSess.tasks) return true;
+    const matchingTask = currentSess.tasks.find((t) => matcher(t) && t.state !== "COMPLETED" && t.state !== "DEFERRED");
     if (!matchingTask) return true;
     if (submittedSkipsRef.current[matchingTask.id]) {
       return true;
@@ -595,12 +605,13 @@ export function LessonPlayerPage({
     try {
       setError(null);
       const updated = await api<typeof session>(
-        `/api/children/${activeChildId}/learning-sessions/${session.id}/tasks/${matchingTask.id}/skip`,
+        `/api/children/${activeChildId}/learning-sessions/${currentSess.id}/tasks/${matchingTask.id}/skip`,
         {
           method: "POST",
         }
       );
       if (updated) {
+        sessionRef.current = updated;
         submittedSkipsRef.current[matchingTask.id] = true;
         setSession(updated);
         if (updated.masteryStatus) setMasteryStatus(updated.masteryStatus);
@@ -726,7 +737,8 @@ export function LessonPlayerPage({
   const handleWritingTrace = async (result: "correct" | "incorrect") => {
     if (activeChildId && pkg) {
       const char = pkg.characters[activeCharIndex]?.char ?? "你";
-      const writingTask = session?.tasks?.find((t) => t.taskType.startsWith("WRITING_") || t.key.startsWith("writing"));
+      const currentSess = sessionRef.current;
+      const writingTask = currentSess?.tasks?.find((t) => t.taskType.startsWith("WRITING_") || t.key.startsWith("writing"));
       const phase = writingTask?.taskData?.phase || "guided";
       const scriptMode = writingTask?.taskData?.scriptMode || (locale === "zh-CN" ? "SIMPLIFIED" : "TRADITIONAL");
       const writingRes = await api<{ id?: string; attempt_id?: string }>(`/api/sprint-b/writing/attempts?child_id=${activeChildId}&character=${encodeURIComponent(char)}`, {
@@ -773,10 +785,11 @@ export function LessonPlayerPage({
 
   const handleNextStep = async () => {
     if (!currentStep || !pkg) return;
+    const currentSess = sessionRef.current;
 
     // 1. Context step: ensure listening task is completed
-    if (currentStep.stepKey === "context" && activeChildId && session?.tasks) {
-      const listenTask = session.tasks.find(
+    if (currentStep.stepKey === "context" && activeChildId && currentSess?.tasks) {
+      const listenTask = currentSess.tasks.find(
         (t) => (t.taskType === "LISTENING" || t.key === "listen") && t.state !== "COMPLETED" && t.state !== "DEFERRED"
       );
       if (listenTask) {
@@ -792,8 +805,9 @@ export function LessonPlayerPage({
         setError(text.pleaseAnswerQuestion);
         return;
       }
-      if (activeChildId && session?.tasks) {
-        const vocabTask = session.tasks.find(
+      const sessAfterVocab = sessionRef.current;
+      if (activeChildId && sessAfterVocab?.tasks) {
+        const vocabTask = sessAfterVocab.tasks.find(
           (t) => (t.taskType === "VOCABULARY" || t.key === "vocabulary") && t.state !== "COMPLETED" && t.state !== "DEFERRED"
         );
         if (vocabTask) {
@@ -821,8 +835,9 @@ export function LessonPlayerPage({
           return;
         }
       }
-      if (activeChildId && session?.tasks) {
-        const pendingRecog = session.tasks.filter(
+      const sessAfterRecog = sessionRef.current;
+      if (activeChildId && sessAfterRecog?.tasks) {
+        const pendingRecog = sessAfterRecog.tasks.filter(
           (t) => (t.taskType === "RECOGNITION" || t.taskType === "MINI_CHECK" || t.key.startsWith("recognition-")) &&
                  t.state !== "COMPLETED" && t.state !== "DEFERRED" && t.key !== "mini-check-reflection"
         );
@@ -846,8 +861,9 @@ export function LessonPlayerPage({
         setError(text.pleaseAnswerQuestion);
         return;
       }
-      if (activeChildId && session?.tasks) {
-        const sentTask = session.tasks.find(
+      const sessAfterSent = sessionRef.current;
+      if (activeChildId && sessAfterSent?.tasks) {
+        const sentTask = sessAfterSent.tasks.find(
           (t) => (t.taskType === "SENTENCE_PATTERN" || t.key === "sentence-pattern") && t.state !== "COMPLETED" && t.state !== "DEFERRED"
         );
         if (sentTask) {
@@ -858,20 +874,22 @@ export function LessonPlayerPage({
     }
 
     // 5. Speaking step: ensure speaking attempts are completed
-    if (currentStep.stepKey === "speaking" && activeChildId && session?.tasks) {
-      const pendingSpeaking = session.tasks.filter(
+    if (currentStep.stepKey === "speaking" && activeChildId && sessionRef.current?.tasks) {
+      const sessAfterSpeaking = sessionRef.current;
+      const pendingSpeaking = (sessAfterSpeaking?.tasks ?? []).filter(
         (t) => (t.taskType === "SPEAKING_ATTEMPT" || t.taskType === "PRONUNCIATION_ATTEMPT" || t.key === "speaking" || t.key === "pronunciation") &&
                t.state !== "COMPLETED" && t.state !== "DEFERRED"
       );
-      if (pendingSpeaking.length > 0 && !speakingAttempted) {
+      if (pendingSpeaking.length > 0) {
         setError(text.taskFailed);
         return;
       }
     }
 
     // 6. Writing step: if writing is not completed, and user is advancing, skip optional writing
-    if (currentStep.stepKey === "writing" && activeChildId && session?.tasks) {
-      const writingTask = session.tasks.find(
+    if (currentStep.stepKey === "writing" && activeChildId && sessionRef.current?.tasks) {
+      const sessAfterWriting = sessionRef.current;
+      const writingTask = sessAfterWriting?.tasks?.find(
         (t) => t.taskType.startsWith("WRITING_") && t.state !== "COMPLETED" && t.state !== "DEFERRED"
       );
       if (writingTask) {
@@ -881,8 +899,9 @@ export function LessonPlayerPage({
     }
 
     // 7. Exit Ticket step in LEARN mode: ensure mini-check reflection is answered
-    if (currentStep.stepKey === "exit_ticket" && mode === "LEARN" && activeChildId && session?.tasks) {
-      const refTask = session.tasks.find(
+    if (currentStep.stepKey === "exit_ticket" && mode === "LEARN" && activeChildId && sessionRef.current?.tasks) {
+      const sessAfterTicket = sessionRef.current;
+      const refTask = sessAfterTicket?.tasks?.find(
         (t) => (t.key === "mini-check-reflection" || (t.taskType === "MINI_CHECK" && t.taskData?.mode === "reflection")) &&
                t.state !== "COMPLETED" && t.state !== "DEFERRED"
       );
@@ -910,29 +929,31 @@ export function LessonPlayerPage({
       try {
         await recorder.stop();
         if (activeChildId) {
+          const ids = activeSpeakingAttemptIdsRef.current;
           // Complete speaking attempt and attach evidence
-          if (activeSpeakingAttemptIds.speaking) {
-            await api(`/api/reading-aloud/attempts/${activeSpeakingAttemptIds.speaking}/complete?child_id=${activeChildId}`, {
+          if (ids.speaking) {
+            await api(`/api/reading-aloud/attempts/${ids.speaking}/complete?child_id=${activeChildId}`, {
               method: "POST",
               body: JSON.stringify({ duration_ms: 2000 }),
             });
             await submitBackendTaskEvidence(
               (t) => t.taskType === "SPEAKING_ATTEMPT" || t.key === "speaking",
-              activeSpeakingAttemptIds.speaking
+              ids.speaking
             );
           }
           // Complete pronunciation attempt and attach evidence
-          if (activeSpeakingAttemptIds.pronunciation) {
-            await api(`/api/reading-aloud/attempts/${activeSpeakingAttemptIds.pronunciation}/complete?child_id=${activeChildId}`, {
+          if (ids.pronunciation) {
+            await api(`/api/reading-aloud/attempts/${ids.pronunciation}/complete?child_id=${activeChildId}`, {
               method: "POST",
               body: JSON.stringify({ duration_ms: 2000 }),
             });
             await submitBackendTaskEvidence(
               (t) => t.taskType === "PRONUNCIATION_ATTEMPT" || t.key === "pronunciation",
-              activeSpeakingAttemptIds.pronunciation
+              ids.pronunciation
             );
           }
           recorder.delete();
+          activeSpeakingAttemptIdsRef.current = {};
           setActiveSpeakingAttemptIds({});
         }
       } catch (err: any) {
@@ -942,11 +963,12 @@ export function LessonPlayerPage({
       setSpeakingAttempted(true);
     } else {
       try {
-        if (activeChildId && session?.tasks) {
-          const speakingTask = session.tasks.find(
+        const currentSess = sessionRef.current;
+        if (activeChildId && currentSess?.tasks) {
+          const speakingTask = currentSess.tasks.find(
             (t) => (t.taskType === "SPEAKING_ATTEMPT" || t.key === "speaking") && t.state !== "COMPLETED"
           );
-          const pronTask = session.tasks.find(
+          const pronTask = currentSess.tasks.find(
             (t) => (t.taskType === "PRONUNCIATION_ATTEMPT" || t.key === "pronunciation") && t.state !== "COMPLETED"
           );
           const ids: { speaking?: string; pronunciation?: string } = {};
@@ -981,6 +1003,7 @@ export function LessonPlayerPage({
             if (attempt?.id) ids.pronunciation = attempt.id;
           }
 
+          activeSpeakingAttemptIdsRef.current = ids;
           setActiveSpeakingAttemptIds(ids);
         }
         await recorder.start();

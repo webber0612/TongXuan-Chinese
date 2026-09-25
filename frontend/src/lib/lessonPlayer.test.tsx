@@ -708,6 +708,22 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
       { id: "s1:wrap-up", key: "wrap-up", taskType: "LESSON_WRAP_UP", state: "PENDING", required: false },
     ];
 
+    const track = { stop: vi.fn() };
+    const stream = { getTracks: () => [track] };
+    class MockMediaRecorder {
+      state = "inactive";
+      mimeType = "audio/webm";
+      ondataavailable = (_event: { data: Blob }) => {};
+      onstop = () => {};
+      onerror = () => {};
+      constructor(public stream: unknown) {}
+      start() { this.state = "recording"; }
+      stop() { this.state = "inactive"; this.ondataavailable({ data: new Blob(["audio"]) }); this.onstop(); }
+    }
+    const getUserMedia = vi.fn().mockResolvedValue(stream);
+    vi.stubGlobal("navigator", { ...navigator, mediaDevices: { getUserMedia } });
+    vi.stubGlobal("MediaRecorder", MockMediaRecorder);
+
     const currentSession = {
       id: "session-e2e-1",
       childId: 1,
@@ -764,7 +780,7 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
 
       // 4. Submit task evidence
       if (url.includes("/tasks/") && url.includes("/evidence") && init?.method === "POST") {
-        const taskId = url.split("/tasks/")[1].split("/evidence")[0];
+        const taskId = decodeURIComponent(url.split("/tasks/")[1].split("/evidence")[0]);
         const task = tasksState.find((t) => t.id === taskId);
         if (task) {
           task.state = "COMPLETED";
@@ -1679,6 +1695,76 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     expect(container.querySelector(".step-sentence-body")).toBeTruthy();
     expect(recogCalls["t-recog-1"].length).toBe(1); // Still 1!
     expect(recogCalls["t-recog-2"].length).toBe(1); // Still 1!
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
+
+  it("35. Speaking step progression gate strictly checks backend authoritative task completion", async () => {
+    let tasksState: any[] = [
+      { id: "s1:listen", key: "listen", taskType: "LISTENING", state: "COMPLETED", itemId: "p-1" },
+      { id: "s1:vocab", key: "vocabulary", taskType: "VOCABULARY", state: "COMPLETED", itemId: "v-1" },
+      { id: "s1:recog-1", key: "recognition-1", taskType: "RECOGNITION", state: "COMPLETED", itemId: "你" },
+      { id: "s1:recog-2", key: "recognition-2", taskType: "RECOGNITION", state: "COMPLETED", itemId: "好" },
+      { id: "s1:sentence", key: "sentence-pattern", taskType: "SENTENCE_PATTERN", state: "COMPLETED", itemId: "s-1" },
+      { id: "s1:speaking", key: "speaking", taskType: "SPEAKING_ATTEMPT", state: "PENDING", itemId: "phrase-1" },
+      { id: "s1:pron", key: "pronunciation", taskType: "PRONUNCIATION_ATTEMPT", state: "PENDING", itemId: "phrase-1" },
+    ];
+
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes("/learning-sessions/current")) {
+        return new Response(JSON.stringify({
+          id: "s-speak-gate",
+          status: "IN_PROGRESS",
+          curriculumContext: { lessonId: "book1-l01" },
+          tasks: tasksState,
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} initialMode="LEARN" />);
+    });
+
+    const nextBtn = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
+    // Step 1 -> 2 (Dialogue)
+    await act(async () => { nextBtn.click(); });
+    // Step 2 -> 3 (Vocab)
+    await act(async () => { nextBtn.click(); });
+
+    // Step 3 (Vocab) -> select answer and advance
+    const vocabChoices = container.querySelectorAll(".choice-card-btn");
+    await act(async () => { (vocabChoices[0] as HTMLButtonElement)?.click(); });
+    await act(async () => { nextBtn.click(); }); // to Step 4 (Characters)
+
+    // Step 4 (Characters) -> select recog for char 0 and char 1 and advance
+    const charChoices1 = container.querySelectorAll(".char-choice-card");
+    await act(async () => { (charChoices1[0] as HTMLButtonElement)?.click(); });
+    await act(async () => { nextBtn.click(); }); // switches to char 1
+    const charChoices2 = container.querySelectorAll(".char-choice-card");
+    await act(async () => { (charChoices2[1] as HTMLButtonElement)?.click(); });
+    await act(async () => { nextBtn.click(); }); // to Step 5 (Sentence Pattern)
+
+    // Step 5 (Sentence Pattern) -> select answer and advance
+    const sentChoices = container.querySelectorAll(".choice-card-btn");
+    await act(async () => { (sentChoices[0] as HTMLButtonElement)?.click(); });
+    await act(async () => { nextBtn.click(); }); // to Step 6 (Speaking)
+
+    expect(container.querySelector(".step-speaking-body")).toBeTruthy();
+
+    // Click Next WITHOUT completing speaking task on backend
+    await act(async () => { nextBtn.click(); });
+
+    // Progression gate MUST block advancing to Writing (Step 7)
+    expect(container.querySelector(".step-speaking-body")).toBeTruthy();
+    expect(container.querySelector(".step-writing-body")).toBeNull();
+    expect(container.querySelector(".error-strip")).toBeTruthy();
 
     root.unmount();
     container.remove();
