@@ -1,0 +1,1163 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import HanziWriter from "hanzi-writer";
+import {
+  ArrowLeft,
+  BookOpen,
+  Check,
+  CheckCircle2,
+  ChevronRight,
+  Eye,
+  EyeOff,
+  Globe,
+  Headphones,
+  Mic,
+  PenTool,
+  Play,
+  RotateCcw,
+  Sparkles,
+  Volume2,
+  Zap,
+} from "lucide-react";
+
+import { useLocale, currentLearningLocale } from "../lib/i18n";
+import { BrowserSpeechSynthesisProvider } from "../lib/tts";
+import { BrowserMediaRecorderAdapter } from "../lib/readingAloud";
+import {
+  getLessonPackage,
+  getStepsForMode,
+  getScaffoldText,
+  type LessonPackage,
+  type LessonStepDefinition,
+  type PedagogyMode,
+  type ScaffoldVisibilityMode,
+  type CurriculumDomain,
+  type ContentReviewStatus,
+} from "../data/lessonPackages";
+
+const API = import.meta.env.VITE_API_BASE ?? "";
+
+export interface LessonPlayerProps {
+  lessonId?: string;
+  activeChildId: number | null;
+  onBack: () => void;
+  onCompleteLesson?: (lessonId: string, summary: { sessionCompleted: boolean; masteryGranted: boolean }) => void;
+  initialMode?: PedagogyMode;
+  initialScaffoldMode?: ScaffoldVisibilityMode;
+}
+
+const copy = {
+  "zh-Hant": {
+    back: "返回",
+    lessonPlayer: "課堂學習播放器",
+    learnMode: "完整學習模式",
+    fastTrackMode: "這一課我會了 · 快速挑戰",
+    reviewMode: "到期複習模式",
+    repairMode: "弱項補強模式",
+    fastTrackBtn: "這一課我會了",
+    fastTrackHint: "若您已掌握本課內容，可直接進行快速挑戰！",
+    step: "步驟",
+    of: "／",
+    nextStep: "下一步",
+    prevStep: "上一步",
+    finishLesson: "完成今日課程",
+    correct: "答對了！太棒了！",
+    wrong: "再想想看，聽聽看提示喔！",
+    listenAudio: "播放語音",
+    recordStart: "按住開始開口跟讀",
+    recordStop: "完成錄音",
+    recording: "錄音中… 請大聲說出來",
+    speakingSaved: "已記錄開口練習（獨立嘗試完成）",
+    speechNote: "錄音僅在裝置端短暫處理，不會上傳或產生未驗證之分數評級。",
+    skipWriting: "略過書寫（已掌握或選修）",
+    showStroke: "播放筆順提示",
+    tapToRevealScaffold: "點擊查看英文輔助說明",
+    hideScaffold: "隱藏輔助說明",
+    scaffoldFull: "完整顯示",
+    scaffoldTap: "點擊查看",
+    scaffoldHidden: "隱藏翻譯",
+    scaffoldLabel: "母語鷹架",
+    sessionSummaryTitle: "今日課堂結算",
+    sessionCompletedLabel: "今天的練習完成：",
+    lessonPracticedLabel: "本課已練習：",
+    masteryStatusLabel: "本課是否達到目前精熟條件：",
+    nextReviewLabel: "下一次複習時間：",
+    masteredYes: "已達成精熟條件",
+    masteredInProgress: "練習中（需累積更多有效領域證據）",
+    nextReviewTomorrow: "明天 (SRS 間隔複習)",
+    sessionNotice: "注意：課堂完成代表已完成今日練習，精熟度將依各領域客觀作答證據另行獨立判定。",
+    reviewStatusApproved: "已審核官方課程內容",
+    reviewStatusDraft: "自動生成草稿（待審核）",
+    activeRole: "活躍使用詞彙 (Active)",
+    receptiveRole: "理解辨識詞彙 (Receptive)",
+    exitTicketScore: "小挑戰得分",
+    fastTrackPassed: "恭喜通過快速挑戰！已為您排入輕量複習排程。",
+    fastTrackFailed: "部分領域需要再加強，正在為您安排精準補強練習…",
+    domainListening: "聽力理解",
+    domainRecognition: "生字認讀",
+    domainVocabulary: "生詞理解",
+    domainGrammar: "句型運用",
+    domainWriting: "筆順書寫",
+    domainSpeaking: "開口使用",
+  },
+  "zh-Hans": {
+    back: "返回",
+    lessonPlayer: "课堂学习播放器",
+    learnMode: "完整学习模式",
+    fastTrackMode: "这一课我会了 · 快速挑战",
+    reviewMode: "到期复习模式",
+    repairMode: "弱项补强模式",
+    fastTrackBtn: "这一课我会了",
+    fastTrackHint: "若您已掌握本课内容，可直接进行快速挑战！",
+    step: "步骤",
+    of: "／",
+    nextStep: "下一步",
+    prevStep: "上一步",
+    finishLesson: "完成今日课程",
+    correct: "答对了！太棒了！",
+    wrong: "再想想看，听听看提示喔！",
+    listenAudio: "播放语音",
+    recordStart: "按住开始开口跟读",
+    recordStop: "完成录音",
+    recording: "录音中… 请大声说出来",
+    speakingSaved: "已记录开口练习（独立尝试完成）",
+    speechNote: "录音仅在设备端短暂处理，不会上传或产生未验证之分数评级。",
+    skipWriting: "跳过书写（已掌握或选修）",
+    showStroke: "播放笔顺提示",
+    tapToRevealScaffold: "点击查看英文辅助说明",
+    hideScaffold: "隐藏辅助说明",
+    scaffoldFull: "完整显示",
+    scaffoldTap: "点击查看",
+    scaffoldHidden: "隐藏翻译",
+    scaffoldLabel: "母语鹰架",
+    sessionSummaryTitle: "今日课堂结算",
+    sessionCompletedLabel: "今天的练习完成：",
+    lessonPracticedLabel: "本课已练习：",
+    masteryStatusLabel: "本课是否达到目前熟练条件：",
+    nextReviewLabel: "下一次复习时间：",
+    masteredYes: "已达成熟练条件",
+    masteredInProgress: "练习中（需累积更多有效领域证据）",
+    nextReviewTomorrow: "明天 (SRS 间隔复习)",
+    sessionNotice: "注意：课堂完成代表已完成今日练习，熟练度将依各领域客观作答证据另行独立判定。",
+    reviewStatusApproved: "已审核官方课程内容",
+    reviewStatusDraft: "自动生成草稿（待审核）",
+    activeRole: "活跃使用词汇 (Active)",
+    receptiveRole: "理解辨识词汇 (Receptive)",
+    exitTicketScore: "小挑战得分",
+    fastTrackPassed: "恭喜通过快速挑战！已为您排入轻量复习排程。",
+    fastTrackFailed: "部分领域需要再加强，正在为您安排精准补强练习…",
+    domainListening: "听力理解",
+    domainRecognition: "生字认读",
+    domainVocabulary: "生词理解",
+    domainGrammar: "句型运用",
+    domainWriting: "笔顺书写",
+    domainSpeaking: "开口使用",
+  },
+  en: {
+    back: "Back",
+    lessonPlayer: "Lesson Player",
+    learnMode: "Full Learning Mode",
+    fastTrackMode: "I Know This · Fast Track",
+    reviewMode: "Due Review Mode",
+    repairMode: "Targeted Repair Mode",
+    fastTrackBtn: "I know this lesson",
+    fastTrackHint: "Already familiar with this lesson? Jump straight into the challenge!",
+    step: "Step",
+    of: "of",
+    nextStep: "Next Step",
+    prevStep: "Previous Step",
+    finishLesson: "Finish Today's Lesson",
+    correct: "Correct! Great job!",
+    wrong: "Try again! Listen closely to the hint.",
+    listenAudio: "Play Audio",
+    recordStart: "Hold to record speaking",
+    recordStop: "Stop recording",
+    recording: "Recording… Speak clearly",
+    speakingSaved: "Speaking practice recorded (Attempted Independently)",
+    speechNote: "Audio is processed locally and discarded. No unverified speech percentage scores are generated.",
+    skipWriting: "Skip writing (Already proficient / Optional)",
+    showStroke: "Show stroke order",
+    tapToRevealScaffold: "Tap to reveal English explanation",
+    hideScaffold: "Hide explanation",
+    scaffoldFull: "Full",
+    scaffoldTap: "Tap to reveal",
+    scaffoldHidden: "Hidden",
+    scaffoldLabel: "Scaffold",
+    sessionSummaryTitle: "Session Summary & Settlement",
+    sessionCompletedLabel: "Today's practice completed:",
+    lessonPracticedLabel: "Lesson practiced:",
+    masteryStatusLabel: "Mastery criteria met:",
+    nextReviewLabel: "Next review scheduled:",
+    masteredYes: "Mastered (Verified by domain evidence)",
+    masteredInProgress: "In Progress (Domain evidence accumulating)",
+    nextReviewTomorrow: "Tomorrow (SRS Interval)",
+    sessionNotice: "Note: Session completion marks daily practice. Domain mastery is independently evaluated from valid attempt evidence.",
+    reviewStatusApproved: "Approved official curriculum content",
+    reviewStatusDraft: "Generated draft (pending review)",
+    activeRole: "Active Vocabulary",
+    receptiveRole: "Receptive Vocabulary",
+    exitTicketScore: "Exit Ticket Score",
+    fastTrackPassed: "Fast Track Passed! Scheduled for lightweight SRS review.",
+    fastTrackFailed: "Some domains need reinforcement. Launching targeted repair...",
+    domainListening: "Listening",
+    domainRecognition: "Recognition",
+    domainVocabulary: "Vocabulary",
+    domainGrammar: "Sentence Pattern",
+    domainWriting: "Handwriting",
+    domainSpeaking: "Speaking",
+  },
+  ja: {
+    back: "戻る",
+    lessonPlayer: "レッスンプレイヤー",
+    learnMode: "標準学習モード",
+    fastTrackMode: "このレッスンは知っています",
+    reviewMode: "復習モード",
+    repairMode: "弱点補強モード",
+    fastTrackBtn: "このレッスンは知っています",
+    fastTrackHint: "すでに知っている場合は、テストに直接挑戦できます！",
+    step: "ステップ",
+    of: "／",
+    nextStep: "次へ",
+    prevStep: "前へ",
+    finishLesson: "今日の学習を完了",
+    correct: "正解です！よくできました！",
+    wrong: "もう一度挑戦してみましょう。",
+    listenAudio: "音声を聞く",
+    recordStart: "長押しで発音録音",
+    recordStop: "録音終了",
+    recording: "録音中… はっきりと発音してください",
+    speakingSaved: "発音練習を記録しました（自主挑戦完了）",
+    speechNote: "音声は端末内でのみ処理されます。",
+    skipWriting: "書く練習をスキップ",
+    showStroke: "筆順を表示",
+    tapToRevealScaffold: "タップして解説を表示",
+    hideScaffold: "解説を隠す",
+    scaffoldFull: "全文表示",
+    scaffoldTap: "タップで表示",
+    scaffoldHidden: "非表示",
+    scaffoldLabel: "言語サポート",
+    sessionSummaryTitle: "学習完了サマリー",
+    sessionCompletedLabel: "本日の練習完了：",
+    lessonPracticedLabel: "練習したレッスン：",
+    masteryStatusLabel: "習熟判定：",
+    nextReviewLabel: "次回復習日：",
+    masteredYes: "習熟達成",
+    masteredInProgress: "練習中（領域別の証拠を蓄積中）",
+    nextReviewTomorrow: "明日 (SRS復習)",
+    sessionNotice: "注：完了と習熟は別個に評価されます。",
+    reviewStatusApproved: "承認済みカリキュラム",
+    reviewStatusDraft: "ドラフト",
+    activeRole: "重要語彙 (Active)",
+    receptiveRole: "理解語彙 (Receptive)",
+    exitTicketScore: "テストスコア",
+    fastTrackPassed: "テスト合格！復習がスケジュールされました。",
+    fastTrackFailed: "一部の項目で補強が必要です。",
+    domainListening: "リスニング",
+    domainRecognition: "文字認識",
+    domainVocabulary: "語彙",
+    domainGrammar: "文型",
+    domainWriting: "書く",
+    domainSpeaking: "発音",
+  },
+  ko: {
+    back: "뒤로",
+    lessonPlayer: "학습 플레이어",
+    learnMode: "정규 학습 모드",
+    fastTrackMode: "이 수업은 이미 알아요",
+    reviewMode: "복습 모드",
+    repairMode: "약점 보강 모드",
+    fastTrackBtn: "이 수업은 이미 알아요",
+    fastTrackHint: "이미 내용을 알고 있다면 바로 도전에 참여하세요!",
+    step: "단계",
+    of: "／",
+    nextStep: "다음",
+    prevStep: "이전",
+    finishLesson: "오늘 학습 완료",
+    correct: "정답입니다! 잘했어요!",
+    wrong: "다시 한 번 생각해 보세요.",
+    listenAudio: "음성 듣기",
+    recordStart: "누르고 따라 읽기",
+    recordStop: "녹음 완료",
+    recording: "녹음 중… 큰 소리로 말해보세요",
+    speakingSaved: "말하기 연습 기록 완료 (독립 시도 완료)",
+    speechNote: "음성은 기기에서만 처리됩니다.",
+    skipWriting: "쓰기 건너뛰기",
+    showStroke: "획순 보기",
+    tapToRevealScaffold: "탭하여 영어 설명 보기",
+    hideScaffold: "설명 숨기기",
+    scaffoldFull: "전체 표시",
+    scaffoldTap: "탭하여 표시",
+    scaffoldHidden: "숨기기",
+    scaffoldLabel: "언어 지원",
+    sessionSummaryTitle: "오늘의 학습 결과",
+    sessionCompletedLabel: "오늘 연습 완료:",
+    lessonPracticedLabel: "연습한 수업:",
+    masteryStatusLabel: "숙달 기준 충족:",
+    nextReviewLabel: "다음 복습 일정:",
+    masteredYes: "숙달 달성",
+    masteredInProgress: "연습 중 (영역별 평가 진행 중)",
+    nextReviewTomorrow: "내일 (SRS 간격 복습)",
+    sessionNotice: "참고: 수업 완료와 숙달 달성은 별도로 평가됩니다.",
+    reviewStatusApproved: "승인된 공식 콘텐츠",
+    reviewStatusDraft: "초안",
+    activeRole: "핵심 어휘 (Active)",
+    receptiveRole: "수용 어휘 (Receptive)",
+    exitTicketScore: "도전 점수",
+    fastTrackPassed: "도전 통과! 가벼운 복습이 예약되었습니다.",
+    fastTrackFailed: "일부 영역의 보강이 필요합니다.",
+    domainListening: "듣기",
+    domainRecognition: "글자 인식",
+    domainVocabulary: "어휘",
+    domainGrammar: "문형",
+    domainWriting: "쓰기",
+    domainSpeaking: "말하기",
+  },
+  es: {
+    back: "Volver",
+    lessonPlayer: "Reproductor de lección",
+    learnMode: "Modo de aprendizaje",
+    fastTrackMode: "Ya conozco esta lección",
+    reviewMode: "Modo de repaso",
+    repairMode: "Modo de refuerzo",
+    fastTrackBtn: "Ya conozco esta lección",
+    fastTrackHint: "¿Ya dominas esta lección? ¡Pasa directo al desafío!",
+    step: "Paso",
+    of: "de",
+    nextStep: "Siguiente",
+    prevStep: "Anterior",
+    finishLesson: "Terminar lección de hoy",
+    correct: "¡Correcto! ¡Muy bien!",
+    wrong: "Inténtalo de nuevo.",
+    listenAudio: "Escuchar audio",
+    recordStart: "Mantén presionado para hablar",
+    recordStop: "Terminar grabación",
+    recording: "Grabando… habla con claridad",
+    speakingSaved: "Práctica oral registrada (Intento independiente)",
+    speechNote: "El audio se procesa localmente en el dispositivo.",
+    skipWriting: "Omitir escritura",
+    showStroke: "Ver orden de trazos",
+    tapToRevealScaffold: "Toca para ver la explicación en inglés",
+    hideScaffold: "Ocultar explicación",
+    scaffoldFull: "Completo",
+    scaffoldTap: "Tocar para ver",
+    scaffoldHidden: "Oculto",
+    scaffoldLabel: "Apoyo en tu idioma",
+    sessionSummaryTitle: "Resumen de la lección",
+    sessionCompletedLabel: "Práctica de hoy completada:",
+    lessonPracticedLabel: "Lección practicada:",
+    masteryStatusLabel: "Criterio de dominio alcanzado:",
+    nextReviewLabel: "Próximo repaso programado:",
+    masteredYes: "Dominado (Verificado por evidencia)",
+    masteredInProgress: "En progreso (Acumulando evidencia)",
+    nextReviewTomorrow: "Mañana (Repaso SRS)",
+    sessionNotice: "Nota: Completar la sesión registra la práctica; el dominio se evalúa por separado.",
+    reviewStatusApproved: "Contenido oficial aprobado",
+    reviewStatusDraft: "Borrador generado",
+    activeRole: "Vocabulario activo",
+    receptiveRole: "Vocabulario receptivo",
+    exitTicketScore: "Puntaje del desafío",
+    fastTrackPassed: "¡Desafío rápido aprobado! Programado para repaso ligero.",
+    fastTrackFailed: "Algunas áreas necesitan refuerzo.",
+    domainListening: "Comprensión auditiva",
+    domainRecognition: "Reconocimiento",
+    domainVocabulary: "Vocabulario",
+    domainGrammar: "Patrón de oración",
+    domainWriting: "Escritura",
+    domainSpeaking: "Expresión oral",
+  },
+} as const;
+
+export function LessonPlayerPage({
+  lessonId = "book1-l01",
+  activeChildId,
+  onBack,
+  onCompleteLesson,
+  initialMode = "LEARN",
+  initialScaffoldMode = "FULL",
+}: LessonPlayerProps) {
+  const { language } = useLocale();
+  const text = copy[language] ?? copy.en;
+  const locale = currentLearningLocale();
+  const speech = useMemo(() => new BrowserSpeechSynthesisProvider(), []);
+  const recorder = useMemo(() => new BrowserMediaRecorderAdapter(), []);
+
+  const [mode, setMode] = useState<PedagogyMode>(initialMode);
+  const [scaffoldMode, setScaffoldMode] = useState<ScaffoldVisibilityMode>(initialScaffoldMode);
+  const [revealedKeys, setRevealedKeys] = useState<Record<string, boolean>>({});
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [selectedChoices, setSelectedChoices] = useState<Record<string, string>>({});
+  const [speakingAttempted, setSpeakingAttempted] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [writingSkipped, setWritingSkipped] = useState(false);
+  const [exitTicketAnswers, setExitTicketAnswers] = useState<Record<string, string>>({});
+  const [exitTicketSubmitted, setExitTicketSubmitted] = useState(false);
+  const [weakDomains, setWeakDomains] = useState<string[]>([]);
+  const [sessionCompleted, setSessionCompleted] = useState(false);
+  const [masteryGranted, setMasteryGranted] = useState(false);
+  const [activeCharIndex, setActiveCharIndex] = useState(0);
+
+  const writerRef = useRef<HanziWriter | null>(null);
+  const canvasContainerRef = useRef<HTMLDivElement | null>(null);
+
+  const pkg: LessonPackage | null = useMemo(() => getLessonPackage(lessonId), [lessonId]);
+
+  const steps: LessonStepDefinition[] = useMemo(() => {
+    if (!pkg) return [];
+    return getStepsForMode(pkg, mode, weakDomains);
+  }, [pkg, mode, weakDomains]);
+
+  const currentStep = steps[currentStepIndex] ?? null;
+
+  // Audio helper
+  const playAudio = useCallback((textToPlay: string) => {
+    const ttsLocale = locale === "zh-CN" ? "zh-CN" : "zh-TW";
+    speech.speak(
+      {
+        provider: "browser",
+        locale: ttsLocale,
+        voice_locale: ttsLocale,
+        text: textToPlay,
+        text_kind: "sentence",
+        rate: 0.85,
+        playback_only: true,
+        persisted: false,
+      },
+      {}
+    );
+  }, [locale, speech]);
+
+  // Clean up
+  useEffect(() => {
+    return () => {
+      speech.cancel();
+      recorder.delete();
+    };
+  }, [recorder, speech]);
+
+  // HanziWriter initialization for writing step
+  useEffect(() => {
+    if (currentStep?.stepKey === "writing" && canvasContainerRef.current) {
+      canvasContainerRef.current.innerHTML = "";
+      const char = pkg?.characters[activeCharIndex]?.char ?? "你";
+      try {
+        writerRef.current = HanziWriter.create(canvasContainerRef.current, char, {
+          width: 200,
+          height: 200,
+          padding: 15,
+          showOutline: true,
+          strokeAnimationSpeed: 1,
+          delayBetweenStrokes: 200,
+          strokeColor: "#2563eb",
+          outlineColor: "#cbd5e1",
+          drawingColor: "#1d4ed8",
+        });
+      } catch {
+        // Fallback gracefully
+      }
+    }
+  }, [currentStep?.stepKey, activeCharIndex, pkg]);
+
+  const animateStrokes = () => {
+    if (writerRef.current) {
+      writerRef.current.animateCharacter();
+    }
+  };
+
+  const handleToggleScaffoldMode = () => {
+    setScaffoldMode((prev) => {
+      if (prev === "FULL") return "TAP_TO_REVEAL";
+      if (prev === "TAP_TO_REVEAL") return "HIDDEN";
+      return "FULL";
+    });
+  };
+
+  const handleRevealTap = (key: string) => {
+    setRevealedKeys((prev) => ({ ...prev, [key]: true }));
+  };
+
+  const handleStartFastTrack = () => {
+    setMode("FAST_TRACK");
+    setCurrentStepIndex(0);
+    setSelectedChoices({});
+    setExitTicketAnswers({});
+    setExitTicketSubmitted(false);
+  };
+
+  const handleNextStep = () => {
+    if (currentStepIndex < steps.length - 1) {
+      setCurrentStepIndex((prev) => prev + 1);
+    } else {
+      handleCompleteSession();
+    }
+  };
+
+  const handlePrevStep = () => {
+    if (currentStepIndex > 0) {
+      setCurrentStepIndex((prev) => prev - 1);
+    }
+  };
+
+  const handleRecordSpeaking = async () => {
+    if (recording) {
+      try {
+        await recorder.stop();
+      } catch {
+        // local stop
+      }
+      setRecording(false);
+      setSpeakingAttempted(true);
+    } else {
+      try {
+        await recorder.start();
+        setRecording(true);
+      } catch {
+        // fallback to mark attempted
+        setSpeakingAttempted(true);
+      }
+    }
+  };
+
+  const handleExitTicketSubmit = () => {
+    if (!currentStep?.data.questions) return;
+    setExitTicketSubmitted(true);
+
+    const questions = currentStep.data.questions;
+    const failedDomains: string[] = [];
+    let correctCount = 0;
+
+    for (const q of questions) {
+      const selected = exitTicketAnswers[q.id];
+      if (selected === q.correctChoiceId) {
+        correctCount++;
+      } else {
+        if (!failedDomains.includes(q.domain)) {
+          failedDomains.push(q.domain);
+        }
+      }
+    }
+
+    const allCorrect = correctCount === questions.length;
+
+    if (mode === "FAST_TRACK") {
+      if (allCorrect) {
+        // Fast track passed: skips unnecessary steps, records ready for review
+        setWeakDomains([]);
+        setMasteryGranted(false); // Does not grant immediate permanent unreviewed mastery, schedules SRS
+      } else {
+        // Route weak domains to repair
+        setWeakDomains(failedDomains);
+      }
+    } else {
+      // In LEARN mode exit ticket
+      if (allCorrect) {
+        setMasteryGranted(true);
+      } else {
+        setMasteryGranted(false);
+        setWeakDomains(failedDomains);
+      }
+    }
+  };
+
+  const handleCompleteSession = () => {
+    setSessionCompleted(true);
+    if (onCompleteLesson) {
+      onCompleteLesson(lessonId, {
+        sessionCompleted: true,
+        masteryGranted,
+      });
+    }
+  };
+
+  if (!pkg) {
+    return (
+      <div className="lesson-player-container" role="main">
+        <div className="lesson-player-card">
+          <h2>課程載入錯誤</h2>
+          <p>找不到課堂教材 ({lessonId})</p>
+          <button type="button" className="button button-primary" onClick={onBack}>
+            {text.back}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Helper to render scaffold translation
+  const renderScaffold = (scaffoldKey?: string) => {
+    if (!scaffoldKey) return null;
+    const info = getScaffoldText(pkg, scaffoldKey, scaffoldMode);
+    if (!info.visibleText && scaffoldMode === "HIDDEN") return null;
+
+    const isRevealed = revealedKeys[scaffoldKey] || scaffoldMode === "FULL";
+
+    return (
+      <div className="scaffold-box" data-review-status={info.reviewStatus}>
+        {info.isTapToReveal && !isRevealed ? (
+          <button
+            type="button"
+            className="scaffold-tap-btn"
+            onClick={() => handleRevealTap(scaffoldKey)}
+            aria-label={text.tapToRevealScaffold}
+          >
+            <Globe size={14} />
+            <span>{text.tapToRevealScaffold}</span>
+          </button>
+        ) : (
+          <div className="scaffold-content">
+            <span className="scaffold-text">{info.visibleText}</span>
+            {info.notes && <span className="scaffold-notes">({info.notes})</span>}
+            <span className="scaffold-status-pill" title={info.reviewStatus === "APPROVED" ? text.reviewStatusApproved : text.reviewStatusDraft}>
+              {info.reviewStatus === "APPROVED" ? "✓ Verified" : "Draft"}
+            </span>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <main className="lesson-player-container" role="main" aria-label={text.lessonPlayer}>
+      {/* Top Header Bar */}
+      <header className="lesson-player-topbar">
+        <button
+          type="button"
+          className="button button-text player-back-btn"
+          onClick={onBack}
+          aria-label={text.back}
+        >
+          <ArrowLeft size={20} />
+          <span>{text.back}</span>
+        </button>
+
+        <div className="player-meta-info">
+          <span className="player-lesson-badge">
+            {pkg.curriculumSource.book} · {pkg.curriculumSource.lesson}
+          </span>
+          <h1 className="player-lesson-title">{pkg.curriculumSource.title}</h1>
+        </div>
+
+        <div className="player-header-actions">
+          {/* Scaffold Switcher Button */}
+          <button
+            type="button"
+            className="scaffold-switcher-btn"
+            onClick={handleToggleScaffoldMode}
+            title={`${text.scaffoldLabel}: ${scaffoldMode === "FULL" ? text.scaffoldFull : scaffoldMode === "TAP_TO_REVEAL" ? text.scaffoldTap : text.scaffoldHidden}`}
+            aria-label={`${text.scaffoldLabel}切換`}
+          >
+            <Globe size={16} />
+            <span className="scaffold-mode-label">
+              EN: {scaffoldMode === "FULL" ? text.scaffoldFull : scaffoldMode === "TAP_TO_REVEAL" ? text.scaffoldTap : text.scaffoldHidden}
+            </span>
+          </button>
+
+          {/* Fast Track Trigger in LEARN mode */}
+          {mode === "LEARN" && !sessionCompleted && (
+            <button
+              type="button"
+              className="fast-track-trigger-btn"
+              onClick={handleStartFastTrack}
+              title={text.fastTrackHint}
+            >
+              <Zap size={16} />
+              <span>{text.fastTrackBtn}</span>
+            </button>
+          )}
+        </div>
+      </header>
+
+      {/* Mode Badge & Step Progress Indicator */}
+      <section className="lesson-player-progress-section" aria-label="進度">
+        <div className="progress-header-row">
+          <span className={`mode-badge mode-${mode.toLowerCase()}`}>
+            {mode === "LEARN" && text.learnMode}
+            {mode === "FAST_TRACK" && text.fastTrackMode}
+            {mode === "REVIEW" && text.reviewMode}
+            {mode === "REPAIR" && text.repairMode}
+          </span>
+          <span className="step-counter-text">
+            {text.step} {currentStepIndex + 1} {text.of} {steps.length}
+          </span>
+        </div>
+
+        <div className="step-progress-track" role="progressbar" aria-valuenow={currentStepIndex + 1} aria-valuemin={1} aria-valuemax={steps.length}>
+          {steps.map((s, idx) => (
+            <div
+              key={`${s.stepKey}-${idx}`}
+              className={`step-segment ${idx === currentStepIndex ? "active" : idx < currentStepIndex ? "completed" : "pending"}`}
+              title={`${s.stepNumber}. ${s.title}`}
+            />
+          ))}
+        </div>
+      </section>
+
+      {/* Primary Single Column Content View */}
+      {currentStep && (
+        <article className="lesson-step-card" data-step-key={currentStep.stepKey}>
+          <header className="step-card-header">
+            <div className="step-badge-pill">
+              {currentStep.domain ? (
+                <span className="domain-pill">
+                  {currentStep.domain === "listening" && text.domainListening}
+                  {currentStep.domain === "recognition" && text.domainRecognition}
+                  {currentStep.domain === "vocabulary" && text.domainVocabulary}
+                  {currentStep.domain === "grammar" && text.domainGrammar}
+                  {currentStep.domain === "writing" && text.domainWriting}
+                  {currentStep.domain === "speaking" && text.domainSpeaking}
+                </span>
+              ) : null}
+              <span className="step-num-pill">Step {currentStep.stepNumber}</span>
+            </div>
+            <h2 className="step-card-title">{currentStep.title}</h2>
+            <p className="step-card-subtitle">{currentStep.subtitle}</p>
+          </header>
+
+          {/* STEP 1: Situational Context */}
+          {currentStep.stepKey === "context" && (
+            <div className="step-body step-context-body">
+              <div className="context-illustration-box">
+                <div className="context-visual-scene">
+                  <span className="scene-tag">☀️ 情境：早晨遇見朋友</span>
+                  <button
+                    type="button"
+                    className="audio-play-large-btn"
+                    onClick={() => playAudio(currentStep.data.audioText || "你好")}
+                    aria-label={text.listenAudio}
+                  >
+                    <Volume2 size={32} />
+                    <span>聽發音「{currentStep.data.audioText || "你好"}」</span>
+                  </button>
+                </div>
+              </div>
+
+              {renderScaffold("greeting")}
+
+              <p className="interaction-prompt">{currentStep.data.prompt}</p>
+
+              <div className="choices-vertical-list" role="radiogroup">
+                {currentStep.data.choices?.map((choice) => {
+                  const isSelected = selectedChoices["context"] === choice.id;
+                  return (
+                    <button
+                      key={choice.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={isSelected}
+                      className={`choice-card-btn ${isSelected ? "selected" : ""}`}
+                      onClick={() => setSelectedChoices((prev) => ({ ...prev, context: choice.id }))}
+                    >
+                      <span className="choice-label">{choice.label}</span>
+                      {choice.subLabel && <span className="choice-sublabel">{choice.subLabel}</span>}
+                      {isSelected && choice.isCorrect && <span className="feedback-badge positive">✓</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* STEP 2: Dialogue in Context */}
+          {currentStep.stepKey === "dialogue" && (
+            <div className="step-body step-dialogue-body">
+              <div className="dialogue-lines-container">
+                {currentStep.data.dialogueRows?.map((row) => (
+                  <div key={row.id} className="dialogue-line-card">
+                    <div className="dialogue-speaker-avatar">{row.speaker ? row.speaker[0] : "話"}</div>
+                    <div className="dialogue-bubble">
+                      <div className="speaker-name">{row.speaker}</div>
+                      <div className="dialogue-chinese-text">
+                        <span className="char-text">{row.text}</span>
+                        {row.zhuyin && <span className="phonetic-zhuyin">{row.zhuyin}</span>}
+                        {row.pinyin && <span className="phonetic-pinyin">{row.pinyin}</span>}
+                      </div>
+                      <button
+                        type="button"
+                        className="button button-text dialogue-audio-btn"
+                        onClick={() => playAudio(row.text)}
+                        aria-label={`播放 ${row.speaker} 的語音`}
+                      >
+                        <Volume2 size={18} />
+                        <span>聽這句</span>
+                      </button>
+                      {renderScaffold(row.scaffoldKey)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* STEP 3: Vocabulary */}
+          {currentStep.stepKey === "vocabulary" && (
+            <div className="step-body step-vocab-body">
+              <div className="vocab-highlight-card">
+                <div className="vocab-word-large">
+                  <span className="vocab-hanzi">你好</span>
+                  <span className="vocab-role-pill">{text.activeRole}</span>
+                </div>
+                <div className="vocab-phonetics-row">
+                  <span className="pinyin-tag">nǐ hǎo</span>
+                  <span className="zhuyin-tag">ㄋㄧˇ ㄏㄠˇ</span>
+                  <button
+                    type="button"
+                    className="button button-icon-subtle"
+                    onClick={() => playAudio("你好")}
+                    aria-label="播放生詞發音"
+                  >
+                    <Volume2 size={20} />
+                  </button>
+                </div>
+                <div className="vocab-example-sentence">
+                  <p><strong>例句：</strong> 你好！我叫大衛。</p>
+                </div>
+                {renderScaffold("greeting")}
+              </div>
+
+              <p className="interaction-prompt">{currentStep.data.prompt}</p>
+
+              <div className="choices-vertical-list">
+                {currentStep.data.choices?.map((choice) => {
+                  const isSelected = selectedChoices["vocab"] === choice.id;
+                  return (
+                    <button
+                      key={choice.id}
+                      type="button"
+                      className={`choice-card-btn ${isSelected ? "selected" : ""}`}
+                      onClick={() => setSelectedChoices((prev) => ({ ...prev, vocab: choice.id }))}
+                    >
+                      <span className="choice-label">{choice.label}</span>
+                      {isSelected && choice.isCorrect && <span className="feedback-badge positive">✓</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* STEP 4: Characters */}
+          {currentStep.stepKey === "characters" && (
+            <div className="step-body step-characters-body">
+              <div className="character-tabs-row" role="tablist">
+                {pkg.characters.map((c, idx) => (
+                  <button
+                    key={c.char}
+                    type="button"
+                    role="tab"
+                    aria-selected={activeCharIndex === idx}
+                    className={`character-tab-btn ${activeCharIndex === idx ? "active" : ""}`}
+                    onClick={() => setActiveCharIndex(idx)}
+                  >
+                    <span className="tab-char">{c.char}</span>
+                    <span className="tab-pinyin">{c.pronunciation.pinyin}</span>
+                  </button>
+                ))}
+              </div>
+
+              {pkg.characters[activeCharIndex] && (
+                <div className="character-detail-display">
+                  <div className="char-hero-box">
+                    <span className="large-char-display">{pkg.characters[activeCharIndex].char}</span>
+                    <button
+                      type="button"
+                      className="button button-text"
+                      onClick={() => playAudio(pkg.characters[activeCharIndex].char)}
+                      aria-label={`播放「${pkg.characters[activeCharIndex].char}」的發音`}
+                    >
+                      <Volume2 size={20} />
+                      <span>{pkg.characters[activeCharIndex].pronunciation.pinyin} / {pkg.characters[activeCharIndex].pronunciation.zhuyin}</span>
+                    </button>
+                  </div>
+
+                  <div className="char-info-grid">
+                    <div className="info-cell">
+                      <span className="info-cell-label">部首</span>
+                      <strong className="info-cell-val">{pkg.characters[activeCharIndex].radical} 部</strong>
+                    </div>
+                    <div className="info-cell">
+                      <span className="info-cell-label">筆畫</span>
+                      <strong className="info-cell-val">{pkg.characters[activeCharIndex].strokeCount} 畫</strong>
+                    </div>
+                    <div className="info-cell">
+                      <span className="info-cell-label">字義</span>
+                      <strong className="info-cell-val">{pkg.characters[activeCharIndex].meaning.zh}</strong>
+                    </div>
+                  </div>
+
+                  {renderScaffold(pkg.characters[activeCharIndex].char === "你" ? "char_ni" : "char_hao")}
+                </div>
+              )}
+
+              {/* Recognition check */}
+              {currentStep.data.recognitionCheck && (
+                <div className="recognition-mini-check">
+                  <p className="interaction-prompt">{currentStep.data.recognitionCheck.prompt}</p>
+                  <button
+                    type="button"
+                    className="button button-secondary play-recog-audio-btn"
+                    onClick={() => playAudio(currentStep.data.recognitionCheck?.audioText || "你")}
+                  >
+                    <Volume2 size={18} />
+                    <span>播放題目音檔</span>
+                  </button>
+                  <div className="choices-horizontal-row">
+                    {currentStep.data.recognitionCheck.choices?.map((choice: { id: string; label: string; isCorrect?: boolean }) => {
+                      const isSelected = selectedChoices["recog"] === choice.id;
+                      return (
+                        <button
+                          key={choice.id}
+                          type="button"
+                          className={`char-choice-card ${isSelected ? "selected" : ""}`}
+                          onClick={() => setSelectedChoices((prev) => ({ ...prev, recog: choice.id }))}
+                        >
+                          <span className="char-choice-text">{choice.label}</span>
+                          {isSelected && choice.isCorrect && <span className="feedback-badge positive">✓</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* STEP 5: Sentence Pattern */}
+          {currentStep.stepKey === "sentence_pattern" && (
+            <div className="step-body step-sentence-body">
+              <div className="sentence-pattern-card">
+                <span className="pattern-badge">常用句型</span>
+                <h3 className="pattern-formula">你好！我叫 ___。</h3>
+                <p className="pattern-explanation">見面時打招呼並自我介紹名字的萬用句型。</p>
+                {renderScaffold("greeting_intro")}
+              </div>
+
+              <p className="interaction-prompt">{currentStep.data.prompt}</p>
+
+              <div className="choices-vertical-list">
+                {currentStep.data.choices?.map((choice) => {
+                  const isSelected = selectedChoices["sentence"] === choice.id;
+                  return (
+                    <button
+                      key={choice.id}
+                      type="button"
+                      className={`choice-card-btn ${isSelected ? "selected" : ""}`}
+                      onClick={() => setSelectedChoices((prev) => ({ ...prev, sentence: choice.id }))}
+                    >
+                      <span className="choice-label">{choice.label}</span>
+                      {isSelected && choice.isCorrect && <span className="feedback-badge positive">✓</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* STEP 6: Speaking */}
+          {currentStep.stepKey === "speaking" && (
+            <div className="step-body step-speaking-body">
+              <div className="speaking-prompt-box">
+                <p className="speaking-instruction">
+                  {currentStep.data.speakingPrompt?.instruction || "請對著麥克風說一次：「你好！」"}
+                </p>
+                <div className="speaking-target-phrase">「你好！」</div>
+              </div>
+
+              <div className="speaking-control-center">
+                <button
+                  type="button"
+                  className={`mic-record-btn ${recording ? "is-recording" : ""} ${speakingAttempted ? "is-attempted" : ""}`}
+                  onClick={handleRecordSpeaking}
+                  aria-label={recording ? text.recordStop : text.recordStart}
+                >
+                  <Mic size={36} />
+                </button>
+                <p className="recording-status-label">
+                  {recording ? text.recording : speakingAttempted ? text.speakingSaved : text.recordStart}
+                </p>
+                <p className="recording-privacy-note">
+                  {text.speechNote}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 7: Writing */}
+          {currentStep.stepKey === "writing" && (
+            <div className="step-body step-writing-body">
+              <div className="hanzi-writing-card">
+                <div className="writing-canvas-frame" ref={canvasContainerRef} />
+                <div className="writing-actions-row">
+                  <button type="button" className="button button-secondary" onClick={animateStrokes}>
+                    <RotateCcw size={16} />
+                    <span>{text.showStroke}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="button button-text skip-writing-btn"
+                    onClick={() => {
+                      setWritingSkipped(true);
+                      handleNextStep();
+                    }}
+                  >
+                    {text.skipWriting}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 8: Exit Ticket / Mini Check */}
+          {currentStep.stepKey === "exit_ticket" && (
+            <div className="step-body step-exit-ticket-body">
+              <div className="exit-ticket-question-list">
+                {currentStep.data.questions?.map((q, qIndex) => {
+                  const selected = exitTicketAnswers[q.id];
+                  return (
+                    <div key={q.id} className="exit-ticket-item-card">
+                      <div className="question-header">
+                        <span className="q-badge">題目 {qIndex + 1}</span>
+                        <span className="domain-sub-badge">{q.domain}</span>
+                      </div>
+                      <p className="q-prompt">{q.prompt}</p>
+
+                      {q.audioText && (
+                        <button
+                          type="button"
+                          className="button button-secondary q-audio-btn"
+                          onClick={() => playAudio(q.audioText || "")}
+                        >
+                          <Volume2 size={16} />
+                          <span>聽題目音檔</span>
+                        </button>
+                      )}
+
+                      <div className="choices-vertical-list">
+                        {q.choices.map((c) => {
+                          const isPicked = selected === c.id;
+                          return (
+                            <button
+                              key={c.id}
+                              type="button"
+                              className={`choice-card-btn ${isPicked ? "selected" : ""}`}
+                              onClick={() => setExitTicketAnswers((prev) => ({ ...prev, [q.id]: c.id }))}
+                            >
+                              <span className="choice-label">{c.label}</span>
+                              {exitTicketSubmitted && c.isCorrect && <span className="feedback-badge positive">✓ 正確</span>}
+                              {exitTicketSubmitted && isPicked && !c.isCorrect && <span className="feedback-badge negative">✗</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {!exitTicketSubmitted ? (
+                <button
+                  type="button"
+                  className="button button-primary submit-exit-ticket-btn"
+                  onClick={handleExitTicketSubmit}
+                  disabled={
+                    Object.keys(exitTicketAnswers).length !== (currentStep.data.questions?.length ?? 0)
+                  }
+                >
+                  送出小挑戰答案
+                </button>
+              ) : (
+                <div className="exit-ticket-feedback-banner">
+                  {weakDomains.length === 0 ? (
+                    <p className="feedback-text positive">
+                      <Sparkles size={20} />
+                      {mode === "FAST_TRACK" ? text.fastTrackPassed : text.correct}
+                    </p>
+                  ) : (
+                    <p className="feedback-text warning">
+                      {mode === "FAST_TRACK" ? text.fastTrackFailed : "已記錄作答結果，可繼續進行收尾結算。"}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* STEP 9: Wrap-up / Settlement */}
+          {currentStep.stepKey === "wrap_up" && (
+            <div className="step-body step-wrap-up-body">
+              <div className="session-settlement-card">
+                <div className="settlement-trophy-icon">
+                  <Sparkles size={48} className="sparkle-gold" />
+                </div>
+                <h3 className="settlement-title">{text.sessionSummaryTitle}</h3>
+
+                <div className="settlement-metrics-grid">
+                  <div className="metric-row">
+                    <span className="metric-label">{text.sessionCompletedLabel}</span>
+                    <strong className="metric-value positive">是 (已獲得 10 顆星星 ⭐)</strong>
+                  </div>
+
+                  <div className="metric-row">
+                    <span className="metric-label">{text.lessonPracticedLabel}</span>
+                    <strong className="metric-value">{pkg.curriculumSource.book} · {pkg.curriculumSource.lesson}《{pkg.curriculumSource.title}》</strong>
+                  </div>
+
+                  <div className="metric-row">
+                    <span className="metric-label">{text.masteryStatusLabel}</span>
+                    <strong className={`metric-value ${masteryGranted ? "positive" : "in-progress"}`}>
+                      {masteryGranted ? text.masteredYes : text.masteredInProgress}
+                    </strong>
+                  </div>
+
+                  <div className="metric-row">
+                    <span className="metric-label">{text.nextReviewLabel}</span>
+                    <strong className="metric-value">{text.nextReviewTomorrow}</strong>
+                  </div>
+                </div>
+
+                <div className="settlement-disclaimer-box">
+                  <p>{text.sessionNotice}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Step Navigation Controls */}
+          <footer className="step-card-footer">
+            {currentStepIndex > 0 && (
+              <button
+                type="button"
+                className="button button-secondary"
+                onClick={handlePrevStep}
+              >
+                {text.prevStep}
+              </button>
+            )}
+
+            <div className="footer-right-action">
+              {currentStepIndex < steps.length - 1 ? (
+                <button
+                  type="button"
+                  className="button button-primary next-step-cta-btn"
+                  onClick={handleNextStep}
+                  disabled={
+                    currentStep.stepKey === "exit_ticket" && !exitTicketSubmitted
+                  }
+                >
+                  <span>{text.nextStep}</span>
+                  <ChevronRight size={18} />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="button button-primary finish-session-cta-btn"
+                  onClick={handleCompleteSession}
+                >
+                  <CheckCircle2 size={18} />
+                  <span>{text.finishLesson}</span>
+                </button>
+              )}
+            </div>
+          </footer>
+        </article>
+      )}
+    </main>
+  );
+}

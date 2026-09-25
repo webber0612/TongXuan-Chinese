@@ -15,8 +15,9 @@ const TutorPage = lazy(async () => ({ default: (await import("./pages/TutorPage"
 const CommercializationPage = lazy(async () => ({ default: (await import("./pages/CommercializationPage")).CommercializationPage }));
 const DiagnosticsPage = lazy(async () => ({ default: (await import("./pages/DiagnosticsPage")).DiagnosticsPage }));
 const LearningSessionPage = lazy(async () => ({ default: (await import("./pages/LearningSessionPage")).LearningSessionPage }));
+const LessonPlayerPage = lazy(async () => ({ default: (await import("./pages/LessonPlayerPage")).LessonPlayerPage }));
 type Child = { id: number; name: string };
-type Route = "home" | "practice" | "parent" | "curriculum" | "course-zero" | "first-lesson" | "learning-session" | "tutor" | "me" | "commercialization" | "diagnostics" | "archived-preview";
+type Route = "home" | "practice" | "parent" | "curriculum" | "course-zero" | "first-lesson" | "learning-session" | "lesson-player" | "tutor" | "me" | "commercialization" | "diagnostics" | "archived-preview";
 
 function appBaseAt(pathname: string): string {
   const normalized = pathname.replace(/\/+$/, "") || "/";
@@ -33,6 +34,8 @@ export function routeFromPath(pathname: string): Route {
     : normalized;
   if (["/kids", "/preview-kids", "/preview-2", "/preview-b"].includes(appPath)) return "home";
   if (["/preview", "/preview-pixel", "/preview-reference", "/preview-directions", "/learning-desk", "/learning-calendar"].includes(appPath)) return "archived-preview";
+  if (appPath === "/lesson-player" || appPath === "/player") return "lesson-player";
+
   if (appPath === "/parent-dashboard") return "parent";
   if (appPath === "/curriculum") return "curriculum";
   if (appPath === "/course-zero") return "course-zero";
@@ -46,7 +49,7 @@ export function routeFromPath(pathname: string): Route {
   return "home";
 }
 
-const paths: Record<Exclude<Route, "archived-preview">, string> = { home: "/", practice: "/practice", parent: "/parent-dashboard", curriculum: "/curriculum", "course-zero": "/course-zero", "first-lesson": "/first-lesson", "learning-session": "/learning-session", tutor: "/tutor", me: "/me", commercialization: "/admin/commercialization", diagnostics: "/diagnostics" };
+const paths: Record<Exclude<Route, "archived-preview">, string> = { home: "/", practice: "/practice", parent: "/parent-dashboard", curriculum: "/curriculum", "course-zero": "/course-zero", "first-lesson": "/first-lesson", "learning-session": "/learning-session", "lesson-player": "/lesson-player", tutor: "/tutor", me: "/me", commercialization: "/admin/commercialization", diagnostics: "/diagnostics" };
 
 export function isCanonicalHomePath(pathname: string): boolean {
   const normalized = pathname.replace(/\/+$/, "") || "/";
@@ -161,6 +164,7 @@ export function AppShell() {
           return true;
         } : undefined} />}
         {route === "learning-session" && <LearningSessionPage activeChildId={activeChild?.id ?? null} onBack={() => navigate("home")} />}
+        {route === "lesson-player" && <LessonPlayerPage activeChildId={activeChild?.id ?? null} onBack={() => navigate("home")} />}
         {route === "practice" && <div className="app-page practice-page" key={activeProfile.key}><PageHeading kicker={t("practice")} title={t("practiceTitle")} subtitle={t("practiceHint")} icon={<Sparkles/>}/><LearningPage activeChildId={activeChild?.id ?? null} /></div>}
         {route === "parent" && <ParentAreaPage />}
         {route === "curriculum" && <CurriculumPage onOpenCourseZero={() => navigate("course-zero")} />}

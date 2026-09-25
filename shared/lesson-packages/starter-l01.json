@@ -1,0 +1,311 @@
+{
+  "schemaVersion": "v2.0",
+  "lessonId": "starter-l01",
+  "stageId": "starter",
+  "lessonNumber": 1,
+  "curriculumSource": {
+    "kind": "OFFICIAL_OCAC",
+    "series": "學華語向前走",
+    "book": "入門冊",
+    "lesson": "第1課",
+    "title": "ㄅㄆㄇㄈ（一）",
+    "url": "https://www.huayuworld.org/learning-materials-detail.php?id=382",
+    "provenanceStatus": "VERIFIED_OFFICIAL_TITLE",
+    "licenseStatus": "PERMISSION_REQUIRED",
+    "commercialReady": false
+  },
+  "objectives": [
+    "認識聲母 ㄅ、ㄆ、ㄇ、ㄈ 的發音與字形",
+    "能聽辨並對應ㄅㄆㄇㄈ與相應拼音 b, p, m, f",
+    "完成初步發音開口跟讀"
+  ],
+  "textBlocks": [
+    {
+      "id": "tb-s1",
+      "text": "ㄅ ㄆ ㄇ ㄈ",
+      "pinyin": "b p m f",
+      "zhuyin": "ㄅ ㄆ ㄇ ㄈ",
+      "audioKey": "starter-l01-text-1"
+    }
+  ],
+  "vocabulary": [],
+  "characters": [],
+  "sentencePatterns": [],
+  "nativeLanguageSupport": {
+    "defaultLanguage": "en",
+    "mode": "FULL",
+    "entries": {
+      "bpmf_intro": {
+        "naturalMeaning": "Phonetic symbols: b, p, m, f",
+        "notes": "Initial consonants of Zhuyin/Pinyin phonetic systems.",
+        "reviewStatus": "APPROVED"
+      }
+    }
+  },
+  "culturalNotes": [],
+  "taskBlueprint": {
+    "learnSteps": [
+      {
+        "stepNumber": 1,
+        "stepKey": "context",
+        "domain": "listening",
+        "title": "情境與發音聆聽",
+        "subtitle": "聽一聽四個基本聲母：ㄅ、ㄆ、ㄇ、ㄈ",
+        "primaryAction": "聆聽發音",
+        "estimatedMinutes": 2,
+        "required": true,
+        "data": {
+          "prompt": "點擊播放，聆聽四個聲母的讀音：",
+          "audioText": "ㄅ ㄆ ㄇ ㄈ"
+        }
+      },
+      {
+        "stepNumber": 2,
+        "stepKey": "dialogue",
+        "domain": "phonetics",
+        "title": "符號認讀",
+        "subtitle": "認識ㄅㄆㄇㄈ的形狀與拼音對應",
+        "primaryAction": "認讀符號",
+        "estimatedMinutes": 3,
+        "required": true,
+        "data": {
+          "prompt": "對應注音符號與漢語拼音：",
+          "choices": [
+            { "id": "b", "label": "ㄅ (b)", "isCorrect": true },
+            { "id": "p", "label": "ㄆ (p)", "isCorrect": true }
+          ]
+        }
+      },
+      {
+        "stepNumber": 3,
+        "stepKey": "vocabulary",
+        "domain": "phonetics",
+        "title": "聲母辨音",
+        "subtitle": "聽一聽辨別是哪一個聲母",
+        "primaryAction": "辨音選擇",
+        "estimatedMinutes": 3,
+        "required": true,
+        "data": {
+          "prompt": "聽一聽發音「b」，選出對應的注音符號：",
+          "audioText": "ㄅ",
+          "choices": [
+            { "id": "c1", "label": "ㄅ", "isCorrect": true },
+            { "id": "c2", "label": "ㄆ", "isCorrect": false }
+          ],
+          "correctChoiceId": "c1"
+        }
+      },
+      {
+        "stepNumber": 4,
+        "stepKey": "characters",
+        "domain": "phonetics",
+        "title": "符號筆順與結構",
+        "subtitle": "認識ㄅㄆㄇㄈ的書寫形體",
+        "primaryAction": "觀察筆形",
+        "estimatedMinutes": 2,
+        "required": true,
+        "data": {
+          "prompt": "觀察ㄅ的筆畫形狀"
+        }
+      },
+      {
+        "stepNumber": 5,
+        "stepKey": "sentence_pattern",
+        "domain": "phonetics",
+        "title": "聲母拼讀初步",
+        "subtitle": "體驗聲母發音",
+        "primaryAction": "確認發音",
+        "estimatedMinutes": 2,
+        "required": true,
+        "data": {
+          "prompt": "聽發音並選擇正確符號"
+        }
+      },
+      {
+        "stepNumber": 6,
+        "stepKey": "speaking",
+        "domain": "speaking",
+        "title": "聲母朗讀",
+        "subtitle": "開口朗讀ㄅㄆㄇㄈ",
+        "primaryAction": "錄音開口",
+        "estimatedMinutes": 2,
+        "required": true,
+        "data": {
+          "speakingPrompt": {
+            "instruction": "請朗讀：「ㄅ、ㄆ、ㄇ、ㄈ」",
+            "expectedText": "ㄅ ㄆ ㄇ ㄈ",
+            "audioPolicy": "LOCAL_ONLY"
+          }
+        }
+      },
+      {
+        "stepNumber": 7,
+        "stepKey": "writing",
+        "domain": "writing",
+        "title": "符號書寫",
+        "subtitle": "嘗試書寫注音符號ㄅ",
+        "primaryAction": "書寫練習",
+        "estimatedMinutes": 2,
+        "required": false,
+        "skippableIfMastered": true,
+        "data": {}
+      },
+      {
+        "stepNumber": 8,
+        "stepKey": "exit_ticket",
+        "domain": null,
+        "title": "小挑戰 Exit Ticket",
+        "subtitle": "快速檢測ㄅㄆㄇㄈ掌握情況",
+        "primaryAction": "完成挑戰",
+        "estimatedMinutes": 2,
+        "required": true,
+        "data": {
+          "questions": [
+            {
+              "id": "st-q1",
+              "domain": "phonetics",
+              "prompt": "聽發音「m」，選出對應符號：",
+              "audioText": "ㄇ",
+              "choices": [
+                { "id": "c1", "label": "ㄇ (m)", "isCorrect": true },
+                { "id": "c2", "label": "ㄈ (f)", "isCorrect": false }
+              ],
+              "correctChoiceId": "c1"
+            }
+          ]
+        }
+      },
+      {
+        "stepNumber": 9,
+        "stepKey": "wrap_up",
+        "domain": null,
+        "title": "今日學習完成",
+        "subtitle": "恭喜完成入門第一課！",
+        "primaryAction": "結束練習",
+        "estimatedMinutes": 1,
+        "required": true,
+        "data": {
+          "wrapUpSummary": {
+            "completionText": "入門冊第一課練習完成！",
+            "masteryNotice": "精熟度依照各領域獨立判定。"
+          }
+        }
+      }
+    ],
+    "fastTrackSteps": [
+      {
+        "stepNumber": 1,
+        "stepKey": "exit_ticket",
+        "domain": null,
+        "title": "入門冊快速挑戰",
+        "subtitle": "快速測試ㄅㄆㄇㄈ辨識能力",
+        "primaryAction": "完成送出",
+        "estimatedMinutes": 2,
+        "required": true,
+        "data": {
+          "questions": [
+            {
+              "id": "ft-st-1",
+              "domain": "phonetics",
+              "prompt": "聽發音「b」，選出對應符號：",
+              "audioText": "ㄅ",
+              "choices": [
+                { "id": "c1", "label": "ㄅ", "isCorrect": true },
+                { "id": "c2", "label": "ㄆ", "isCorrect": false }
+              ],
+              "correctChoiceId": "c1"
+            }
+          ]
+        }
+      },
+      {
+        "stepNumber": 2,
+        "stepKey": "wrap_up",
+        "domain": null,
+        "title": "挑戰完成",
+        "subtitle": "已記錄快速挑戰結果",
+        "primaryAction": "完成",
+        "estimatedMinutes": 1,
+        "required": true,
+        "data": {
+          "wrapUpSummary": {
+            "completionText": "快速挑戰通過！",
+            "masteryNotice": "已為您安排後續間隔複習。"
+          }
+        }
+      }
+    ],
+    "reviewSteps": [
+      {
+        "stepNumber": 1,
+        "stepKey": "exit_ticket",
+        "domain": null,
+        "title": "到期複習",
+        "subtitle": "快速回想ㄅㄆㄇㄈ",
+        "primaryAction": "送出",
+        "estimatedMinutes": 2,
+        "required": true,
+        "data": {
+          "questions": [
+            {
+              "id": "rev-st-1",
+              "domain": "phonetics",
+              "prompt": "選出注音符號「ㄅ」對應的拼音：",
+              "choices": [
+                { "id": "c1", "label": "b", "isCorrect": true },
+                { "id": "c2", "label": "p", "isCorrect": false }
+              ],
+              "correctChoiceId": "c1"
+            }
+          ]
+        }
+      },
+      {
+        "stepNumber": 2,
+        "stepKey": "wrap_up",
+        "domain": null,
+        "title": "複習完成",
+        "subtitle": "今日複習完成！",
+        "primaryAction": "完成",
+        "estimatedMinutes": 1,
+        "required": true,
+        "data": {
+          "wrapUpSummary": {
+            "completionText": "到期複習完成！",
+            "masteryNotice": "已記錄至 SRS 系統。"
+          }
+        }
+      }
+    ],
+    "repairStepsByDomain": {}
+  },
+  "masteryPolicy": {
+    "domainRequirements": {
+      "listening": { "gateType": "NON_SCORE_GATE" },
+      "speaking": { "gateType": "NON_SCORE_GATE" },
+      "recognition": { "gateType": "SCORED", "passScore": 0.75 },
+      "writing": { "gateType": "NON_SCORE_GATE" },
+      "reading": { "gateType": "SCORED", "passScore": 0.75 },
+      "phonetics": { "gateType": "SCORED", "passScore": 0.75 },
+      "pronunciation": { "gateType": "NON_SCORE_GATE" },
+      "vocabulary": { "gateType": "SCORED", "passScore": 0.75 },
+      "grammar": { "gateType": "SCORED", "passScore": 0.75 }
+    },
+    "fastTrackPassThreshold": 1.0,
+    "srsIntervalsMinutes": [10, 1440, 4320, 10080]
+  },
+  "difficultyProfile": {
+    "pacing": "GENTLE",
+    "targetMinutes": {
+      "learn": 16,
+      "fastTrack": 3,
+      "review": 2,
+      "repair": 4
+    }
+  },
+  "provenance": {
+    "authorship": "TONGXUAN_PEDAGOGY_WRAPPER",
+    "curriculumSourceProvenance": "VERIFIED_OFFICIAL_TITLE",
+    "licenseNote": "Official OCAC curriculum metadata verified."
+  }
+}

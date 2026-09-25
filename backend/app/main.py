@@ -250,6 +250,13 @@ class AnswerRequest(BaseModel):
     assisted: bool = False
 
 
+class FastTrackRequest(BaseModel):
+    model_config = {"extra": "forbid"}
+    answers: dict[str, str] = Field(default_factory=dict)
+    as_of: str | None = None
+
+
+
 class SchoolPinyinPromptRequest(BaseModel):
     reading_id: str | None = None
     context: str | None = None
@@ -940,3 +947,90 @@ def post_redeem(reward_id: str, child_id: int, request: RewardRedemptionRequest,
         return redeem_reward(child_id, reward_id)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@app.get("/api/curriculum/lesson-packages/{lesson_id}")
+def get_lesson_package_by_id(lesson_id: str) -> dict[str, object]:
+    from .lesson_packages import get_lesson_package
+    pkg = get_lesson_package(lesson_id)
+    if pkg is None:
+        raise HTTPException(status_code=404, detail="lesson_package_not_found")
+    return pkg
+
+
+@app.get("/api/curriculum/lesson-packages")
+def get_all_lesson_packages() -> list[dict[str, object]]:
+    from .lesson_packages import list_lesson_packages
+    return list_lesson_packages()
+
+
+@app.post("/api/children/{child_id}/lesson-packages/{lesson_id}/fast-track")
+def post_lesson_fast_track(child_id: int, lesson_id: str, request: FastTrackRequest) -> dict[str, object]:
+    from .lesson_packages import get_lesson_package
+    from .database import connect, initialize_database
+    from .learning import ensure_child, now
+    from .curriculum_policy import lesson_is_accessible, record_lesson_progress
+    
+    pkg = get_lesson_package(lesson_id)
+    if pkg is None:
+        raise HTTPException(status_code=404, detail="lesson_package_not_found")
+    
+    initialize_database()
+    with connect() as db:
+        ensure_child(db, child_id)
+        if not lesson_is_accessible(db, child_id, lesson_id):
+            raise HTTPException(status_code=409, detail="prerequisite_not_mastered")
+        
+        # Evaluate questions in fast-track steps
+        questions = []
+        for step in pkg.get("taskBlueprint", {}).get("fastTrackSteps", []):
+            if step.get("stepKey") == "exit_ticket":
+                questions.extend(step.get("data", {}).get("questions", []))
+        
+        if not questions:
+            for step in pkg.get("taskBlueprint", {}).get("learnSteps", []):
+                if step.get("stepKey") == "exit_ticket":
+                    questions.extend(step.get("data", {}).get("questions", []))
+        
+        domain_results: dict[str, list[bool]] = {}
+        for q in questions:
+            domain = q.get("domain", "general")
+            selected = request.answers.get(q.get("id"))
+            correct_id = q.get("correctChoiceId")
+            is_correct = bool(selected and selected == correct_id)
+            domain_results.setdefault(domain, []).append(is_correct)
+        
+        weak_domains: list[str] = []
+        scores: dict[str, float] = {}
+        for domain, results in domain_results.items():
+            score = sum(1 for r in results if r) / len(results) if results else 0.0
+            scores[domain] = score
+            if score < 1.0:
+                weak_domains.append(domain)
+        
+        passed = len(weak_domains) == 0 and len(domain_results) > 0
+        
+        if passed:
+            record_lesson_progress(child_id=child_id, lesson_id=lesson_id, status="READY_FOR_CHECK")
+            return {
+                "lessonId": lesson_id,
+                "passed": True,
+                "scores": scores,
+                "weakDomains": [],
+                "nextMode": "REVIEW",
+                "masteryStatus": "READY_FOR_CHECK",
+                "nextReviewDue": "tomorrow",
+                "notice": "Fast track passed. Light SRS review scheduled."
+            }
+        else:
+            return {
+                "lessonId": lesson_id,
+                "passed": False,
+                "scores": scores,
+                "weakDomains": weak_domains,
+                "nextMode": "REPAIR",
+                "masteryStatus": "IN_PROGRESS",
+                "nextReviewDue": None,
+                "notice": "Some domains need targeted repair."
+            }
+
