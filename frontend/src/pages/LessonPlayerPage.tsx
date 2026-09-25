@@ -85,7 +85,7 @@ const copy = {
     masteredInProgress: "練習中（需累積更多有效領域證據）",
     nextReviewTomorrow: "明天 (SRS 間隔複習)",
     sessionNotice: "注意：課堂完成代表已完成今日練習，精熟度將依各領域客觀作答證據另行獨立判定。",
-    reviewStatusApproved: "已審核官方課程內容",
+    reviewStatusApproved: "內容已審核",
     reviewStatusDraft: "自動生成草稿（待審核）",
     activeRole: "活躍使用詞彙 (Active)",
     receptiveRole: "理解辨識詞彙 (Receptive)",
@@ -100,6 +100,7 @@ const copy = {
     domainSpeaking: "開口使用",
     retry: "重試",
     taskFailed: "任務操作失敗，請點擊重試",
+    pleaseAnswerQuestion: "請先完成目前題目再繼續",
   },
   "zh-Hans": {
     back: "返回",
@@ -140,7 +141,7 @@ const copy = {
     masteredInProgress: "练习中（需累积更多有效领域证据）",
     nextReviewTomorrow: "明天 (SRS 间隔复习)",
     sessionNotice: "注意：课堂完成代表已完成今日练习，熟练度将依各领域客观作答证据另行独立判定。",
-    reviewStatusApproved: "已审核官方课程内容",
+    reviewStatusApproved: "内容已审核",
     reviewStatusDraft: "自动生成草稿（待审核）",
     activeRole: "活跃使用词汇 (Active)",
     receptiveRole: "理解辨识词汇 (Receptive)",
@@ -155,6 +156,7 @@ const copy = {
     domainSpeaking: "开口使用",
     retry: "重试",
     taskFailed: "任务操作失败，请点击重试",
+    pleaseAnswerQuestion: "请先完成当前题目再继续",
   },
   en: {
     back: "Back",
@@ -195,7 +197,7 @@ const copy = {
     masteredInProgress: "In Progress (Domain evidence accumulating)",
     nextReviewTomorrow: "Tomorrow (SRS Interval)",
     sessionNotice: "Note: Session completion marks daily practice. Domain mastery is independently evaluated from valid attempt evidence.",
-    reviewStatusApproved: "Approved official curriculum content",
+    reviewStatusApproved: "TongXuan-reviewed",
     reviewStatusDraft: "Generated draft (pending review)",
     activeRole: "Active Vocabulary",
     receptiveRole: "Receptive Vocabulary",
@@ -210,6 +212,7 @@ const copy = {
     domainSpeaking: "Speaking",
     retry: "Retry",
     taskFailed: "Task operation failed. Please retry.",
+    pleaseAnswerQuestion: "Please answer the current question to continue",
   },
   ja: {
     back: "戻る",
@@ -250,7 +253,7 @@ const copy = {
     masteredInProgress: "練習中（領域別の証拠を蓄積中）",
     nextReviewTomorrow: "明日 (SRS復習)",
     sessionNotice: "注：完了と習熟は別個に評価されます。",
-    reviewStatusApproved: "承認済みカリキュラム",
+    reviewStatusApproved: "確認済みコンテンツ",
     reviewStatusDraft: "ドラフト",
     activeRole: "重要語彙 (Active)",
     receptiveRole: "理解語彙 (Receptive)",
@@ -265,6 +268,7 @@ const copy = {
     domainSpeaking: "発音",
     retry: "再試行",
     taskFailed: "操作に失敗しました。再試行してください。",
+    pleaseAnswerQuestion: "現在の問題に答えてから進んでください",
   },
   ko: {
     back: "뒤로",
@@ -305,7 +309,7 @@ const copy = {
     masteredInProgress: "연습 중 (영역별 평가 진행 중)",
     nextReviewTomorrow: "내일 (SRS 간격 복습)",
     sessionNotice: "참고: 수업 완료와 숙달 달성은 별도로 평가됩니다.",
-    reviewStatusApproved: "승인된 공식 콘텐츠",
+    reviewStatusApproved: "검토 완료 콘텐츠",
     reviewStatusDraft: "초안",
     activeRole: "핵심 어휘 (Active)",
     receptiveRole: "수용 어휘 (Receptive)",
@@ -320,6 +324,7 @@ const copy = {
     domainSpeaking: "말하기",
     retry: "다시 시도",
     taskFailed: "작업에 실패했습니다. 다시 시도해 주세요.",
+    pleaseAnswerQuestion: "현재 문제를 먼저 완료하고 계속 진행하세요",
   },
   es: {
     back: "Volver",
@@ -360,7 +365,7 @@ const copy = {
     masteredInProgress: "En progreso (Acumulando evidencia)",
     nextReviewTomorrow: "Mañana (Repaso SRS)",
     sessionNotice: "Nota: Completar la sesión registra la práctica; el dominio se evalúa por separado.",
-    reviewStatusApproved: "Contenido oficial aprobado",
+    reviewStatusApproved: "Contenido revisado",
     reviewStatusDraft: "Borrador generado",
     activeRole: "Vocabulario activo",
     receptiveRole: "Vocabulario receptivo",
@@ -375,6 +380,7 @@ const copy = {
     domainSpeaking: "Expresión oral",
     retry: "Reintentar",
     taskFailed: "Error en la operación. Intente nuevamente.",
+    pleaseAnswerQuestion: "Por favor complete la pregunta actual para continuar",
   },
 } as const;
 
@@ -482,8 +488,10 @@ export function LessonPlayerPage({
             }),
           }
         );
-        setSession(started);
-        if (started.masteryStatus) setMasteryStatus(started.masteryStatus);
+        if (started) {
+          setSession(started);
+          if (started.masteryStatus) setMasteryStatus(started.masteryStatus);
+        }
       }
     } catch (err: any) {
       setError(err?.message || text.taskFailed);
@@ -741,7 +749,7 @@ export function LessonPlayerPage({
   };
 
   const handleNextStep = async () => {
-    if (!currentStep) return;
+    if (!currentStep || !pkg) return;
 
     // 1. Context step: ensure listening task is completed
     if (currentStep.stepKey === "context" && activeChildId && session?.tasks) {
@@ -754,41 +762,75 @@ export function LessonPlayerPage({
       }
     }
 
-    // 2. Vocabulary step: ensure vocabulary task is completed
-    if (currentStep.stepKey === "vocabulary" && activeChildId && session?.tasks) {
-      const vocabTask = session.tasks.find(
-        (t) => (t.taskType === "VOCABULARY" || t.key === "vocabulary") && t.state !== "COMPLETED" && t.state !== "DEFERRED"
-      );
-      if (vocabTask) {
-        const selected = selectedChoices["vocab"] || "opt-hello";
-        const ok = await submitBackendTaskAnswer((t) => t.id === vocabTask.id, selected);
-        if (!ok) return;
+    // 2. Vocabulary step: ensure vocabulary choice was made
+    if (currentStep.stepKey === "vocabulary") {
+      const selected = selectedChoices["vocab"];
+      if (!selected) {
+        setError(text.pleaseAnswerQuestion);
+        return;
+      }
+      if (activeChildId && session?.tasks) {
+        const vocabTask = session.tasks.find(
+          (t) => (t.taskType === "VOCABULARY" || t.key === "vocabulary") && t.state !== "COMPLETED" && t.state !== "DEFERRED"
+        );
+        if (vocabTask) {
+          const ok = await submitBackendTaskAnswer((t) => t.id === vocabTask.id, selected);
+          if (!ok) return;
+        }
       }
     }
 
     // 3. Characters step: ensure all recognition tasks are completed
-    if (currentStep.stepKey === "characters" && activeChildId && session?.tasks) {
-      const pendingRecog = session.tasks.filter(
-        (t) => (t.taskType === "RECOGNITION" || t.taskType === "MINI_CHECK" || t.key.startsWith("recognition-")) &&
-               t.state !== "COMPLETED" && t.state !== "DEFERRED" && t.key !== "mini-check-reflection"
-      );
-      for (const t of pendingRecog) {
-        const idx = t.key === "recognition-1" ? 0 : 1;
-        const selected = selectedChoices[`recog-${idx}`] || (t.key === "recognition-1" ? "opt-ni" : "opt-hao");
-        const ok = await submitBackendTaskAnswer((task) => task.id === t.id, selected);
-        if (!ok) return;
+    if (currentStep.stepKey === "characters") {
+      const currentAnswer = selectedChoices[`recog-${activeCharIndex}`];
+      if (!currentAnswer) {
+        setError(text.pleaseAnswerQuestion);
+        return;
+      }
+      if (activeCharIndex < pkg.characters.length - 1) {
+        setActiveCharIndex((prev) => prev + 1);
+        setError(null);
+        return;
+      }
+      for (let i = 0; i < pkg.characters.length; i++) {
+        if (!selectedChoices[`recog-${i}`]) {
+          setError(text.pleaseAnswerQuestion);
+          return;
+        }
+      }
+      if (activeChildId && session?.tasks) {
+        const pendingRecog = session.tasks.filter(
+          (t) => (t.taskType === "RECOGNITION" || t.taskType === "MINI_CHECK" || t.key.startsWith("recognition-")) &&
+                 t.state !== "COMPLETED" && t.state !== "DEFERRED" && t.key !== "mini-check-reflection"
+        );
+        for (const t of pendingRecog) {
+          const idx = t.key === "recognition-1" ? 0 : 1;
+          const selected = selectedChoices[`recog-${idx}`];
+          if (!selected) {
+            setError(text.pleaseAnswerQuestion);
+            return;
+          }
+          const ok = await submitBackendTaskAnswer((task) => task.id === t.id, selected);
+          if (!ok) return;
+        }
       }
     }
 
-    // 4. Sentence Pattern step: ensure sentence-pattern task is completed
-    if (currentStep.stepKey === "sentence_pattern" && activeChildId && session?.tasks) {
-      const sentTask = session.tasks.find(
-        (t) => (t.taskType === "SENTENCE_PATTERN" || t.key === "sentence-pattern") && t.state !== "COMPLETED" && t.state !== "DEFERRED"
-      );
-      if (sentTask) {
-        const selected = selectedChoices["sentence"] || "opt-correct-order";
-        const ok = await submitBackendTaskAnswer((t) => t.id === sentTask.id, selected);
-        if (!ok) return;
+    // 4. Sentence Pattern step: ensure sentence-pattern choice was made
+    if (currentStep.stepKey === "sentence_pattern") {
+      const selected = selectedChoices["sentence"];
+      if (!selected) {
+        setError(text.pleaseAnswerQuestion);
+        return;
+      }
+      if (activeChildId && session?.tasks) {
+        const sentTask = session.tasks.find(
+          (t) => (t.taskType === "SENTENCE_PATTERN" || t.key === "sentence-pattern") && t.state !== "COMPLETED" && t.state !== "DEFERRED"
+        );
+        if (sentTask) {
+          const ok = await submitBackendTaskAnswer((t) => t.id === sentTask.id, selected);
+          if (!ok) return;
+        }
       }
     }
 
@@ -963,7 +1005,6 @@ export function LessonPlayerPage({
           });
           if (res.passed) {
             setWeakDomains([]);
-            setMode("REVIEW");
             setNextReviewDueAt(res.nextReviewDueAt ?? null);
             setMasteryStatus(res.masteryStatus);
           } else {
@@ -981,7 +1022,6 @@ export function LessonPlayerPage({
 
       if (allCorrect) {
         setWeakDomains([]);
-        setMode("REVIEW");
         setMasteryStatus("READY_FOR_CHECK");
       } else {
         setWeakDomains(failedDomains);
@@ -1084,7 +1124,7 @@ export function LessonPlayerPage({
             <span className="scaffold-text">{info.visibleText}</span>
             {info.notes && <span className="scaffold-notes">({info.notes})</span>}
             <span className="scaffold-status-pill" title={info.reviewStatus === "APPROVED" ? text.reviewStatusApproved : text.reviewStatusDraft}>
-              {info.reviewStatus === "APPROVED" ? "✓ Verified" : "Draft"}
+              {info.reviewStatus === "APPROVED" ? text.reviewStatusApproved : text.reviewStatusDraft}
             </span>
           </div>
         )}
