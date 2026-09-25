@@ -409,6 +409,10 @@ def test_mastered_placement_lesson_unlocks_next_lesson_in_that_stage(tmp_path):
         assert after_lesson["accessible"] is True
         queue = api.get(f"/api/children/{child_id}/learning-daily-queue").json()
         assert queue["nextAccessibleLesson"]["lessonId"] == "book1-l02"
+        assert queue["newLesson"] is None
+        assert queue["currentLessonComplete"] is True
+        assert queue["completedLesson"]["lessonId"] == "book1-l01"
+        assert queue["nextLessonComingSoon"] is True
 
 
 def test_parent_report_is_scoped_and_excludes_raw_audio(tmp_path):
@@ -605,3 +609,35 @@ def test_parent_report_reflects_persisted_session_duration(tmp_path):
 
         session_summary = next(s for s in report["sessions"] if s["sessionId"] == session_id)
         assert 235 <= session_summary["durationSeconds"] <= 255
+
+
+def test_mastered_book1_learner_daily_queue_and_session_safety(tmp_path):
+    """Regression: When Book 1 Lesson 1 is mastered, daily queue reports completed state without newLesson, and sessions without due review do not restart L1 as new."""
+    with client(tmp_path) as api:
+        child_id = child(api, "MasteredLearner")
+        place(child_id, "BOOK_1")
+
+        # Initial queue has book1-l01 as newLesson
+        init_queue = api.get(f"/api/children/{child_id}/learning-daily-queue").json()
+        assert init_queue["newLesson"]["lessonId"] == "book1-l01"
+        assert init_queue["currentLessonComplete"] is False
+
+        # Complete session to master book1-l01
+        sess = session(api, child_id)
+        completed = complete_session(api, child_id, sess)
+        assert completed["masteryStatus"] == "MASTERED"
+
+        # After mastery, dailyQueue reflects completion and next lesson preview
+        post_queue = api.get(f"/api/children/{child_id}/learning-daily-queue").json()
+        assert post_queue["newLesson"] is None
+        assert post_queue["currentLessonComplete"] is True
+        assert post_queue["completedLesson"]["lessonId"] == "book1-l01"
+        assert post_queue["completedLesson"]["title"] == "你好"
+        assert post_queue["nextLessonComingSoon"] is True
+        assert post_queue["nextAccessibleLesson"]["lessonId"] == "book1-l02"
+        assert post_queue["nextAccessibleLesson"]["availableInLearningFlowV1"] is False
+
+        # Attempting to start a new session when lesson is mastered and no reviews are due returns 409 Conflict
+        start_attempt = api.post(f"/api/children/{child_id}/learning-sessions", json={})
+        assert start_attempt.status_code == 409
+        assert "no_eligible_learning_tasks" in start_attempt.text

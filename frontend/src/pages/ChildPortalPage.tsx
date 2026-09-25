@@ -119,8 +119,17 @@ export type ValidatedDailyQueue = {
     domains: string[];
     status: string;
     availableInLearningFlowV1: boolean;
-  };
-  nextAccessibleLesson: { lessonId: string; title: string } | null;
+  } | null;
+  completedLesson?: {
+    sourceQueue: "CURRICULUM";
+    lessonId: string;
+    title: string;
+    domains: string[];
+    status: string;
+  } | null;
+  currentLessonComplete?: boolean;
+  nextLessonComingSoon?: boolean;
+  nextAccessibleLesson: { lessonId: string; title: string; availableInLearningFlowV1?: boolean } | null;
   activeSession: { id: string; status: string } | null;
   schoolQueueSeparate: boolean;
   targetMinutes: number;
@@ -289,7 +298,15 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     vocabularyDomain: "語彙",
     grammarDomain: "語法",
     writingDomain: "書寫",
-    readingDomain: "閱讀"
+    readingDomain: "閱讀",
+    curriculumPreviewBadge: "課綱預覽",
+    previewLockNotice: "此課為後續課綱內容 · 請先完成今日課程",
+    backToTodayLesson: "返回今日課程",
+    lessonMasteredBanner: "🎉 本課已掌握通關！",
+    todayGoalCompleted: "今日學習已達成 🎉",
+    startReviewSession: "開始複習任務 ({n} 字待複習)",
+    nextLessonComingSoon: "👉 下一課《{title}》即將推出，敬請期待！",
+    draftTasksTitle: "關卡 {n} 自編練習卡片"
   },
   "zh-Hans": {
     morning: "早安",
@@ -446,7 +463,15 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     vocabularyDomain: "词汇",
     grammarDomain: "语法",
     writingDomain: "书写",
-    readingDomain: "阅读"
+    readingDomain: "阅读",
+    curriculumPreviewBadge: "课纲预览",
+    previewLockNotice: "此课为后续课纲内容 · 请先完成今日课程",
+    backToTodayLesson: "返回今日课程",
+    lessonMasteredBanner: "🎉 本课已掌握通关！",
+    todayGoalCompleted: "今日学习已达成 🎉",
+    startReviewSession: "开始复习任务 ({n} 字待复习)",
+    nextLessonComingSoon: "👉 下一课《{title}》即将推出，敬请期待！",
+    draftTasksTitle: "关卡 {n} 自编练习卡片"
   },
   "en": {
     morning: "Good Morning",
@@ -603,7 +628,15 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     vocabularyDomain: "Vocabulary",
     grammarDomain: "Grammar",
     writingDomain: "Writing",
-    readingDomain: "Reading"
+    readingDomain: "Reading",
+    curriculumPreviewBadge: "Curriculum Preview",
+    previewLockNotice: "Upcoming curriculum lesson · Please complete today's lesson first",
+    backToTodayLesson: "Return to Today's Lesson",
+    lessonMasteredBanner: "🎉 Lesson Mastered!",
+    todayGoalCompleted: "Today's Goal Completed 🎉",
+    startReviewSession: "Start Review Task ({n} due)",
+    nextLessonComingSoon: "👉 Next lesson 《{title}》 coming soon!",
+    draftTasksTitle: "Level {n} Practice Cards"
   },
   "ja": {
     morning: "おはよう",
@@ -760,7 +793,15 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     vocabularyDomain: "語彙",
     grammarDomain: "文法",
     writingDomain: "書き取り",
-    readingDomain: "読解"
+    readingDomain: "読解",
+    curriculumPreviewBadge: "カリキュラムプレビュー",
+    previewLockNotice: "今後のカリキュラム内容です · まず今日のレッスンを完了してください",
+    backToTodayLesson: "今日のレッスンに戻る",
+    lessonMasteredBanner: "🎉 このレッスンは習得完了です！",
+    todayGoalCompleted: "今日の学習目標達成 🎉",
+    startReviewSession: "復習タスクを開始 ({n} 件)",
+    nextLessonComingSoon: "👉 次のレッスン《{title}》近日公開予定！",
+    draftTasksTitle: "レベル {n} 練習カード"
   },
   "ko": {
     morning: "좋은 아침",
@@ -917,7 +958,15 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     vocabularyDomain: "어휘",
     grammarDomain: "문법",
     writingDomain: "쓰기",
-    readingDomain: "읽기"
+    readingDomain: "읽기",
+    curriculumPreviewBadge: "교육과정 미리보기",
+    previewLockNotice: "다음 교육과정 내용입니다 · 오늘의 수업을 먼저 완료해주세요",
+    backToTodayLesson: "오늘의 수업으로 돌아가기",
+    lessonMasteredBanner: "🎉 이번 수업을 마스터했습니다!",
+    todayGoalCompleted: "오늘의 학습 목표 달성 🎉",
+    startReviewSession: "복습 시작 ({n}개 대기 중)",
+    nextLessonComingSoon: "👉 다음 수업 《{title}》 곧 공개됩니다!",
+    draftTasksTitle: "레벨 {n} 연습 카드"
   },
   "es": {
     morning: "Buenos días",
@@ -1074,7 +1123,15 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     vocabularyDomain: "Vocabulario",
     grammarDomain: "Gramática",
     writingDomain: "Escritura",
-    readingDomain: "Lectura"
+    readingDomain: "Lectura",
+    curriculumPreviewBadge: "Vista previa del plan de estudios",
+    previewLockNotice: "Contenido curricular posterior · Complete primero la lección de hoy",
+    backToTodayLesson: "Volver a la lección de hoy",
+    lessonMasteredBanner: "🎉 ¡Lección dominada con éxito!",
+    todayGoalCompleted: "Objetivo de hoy completado 🎉",
+    startReviewSession: "Iniciar repaso ({n} pendientes)",
+    nextLessonComingSoon: "👉 ¡Próxima lección 《{title}》 muy pronto!",
+    draftTasksTitle: "Tarjetas de práctica del nivel {n}"
   }
 };
 
@@ -1943,10 +2000,30 @@ export function ChildPortalPage({
 
   const stageIdFromDailyQueue = (queue: ValidatedDailyQueue | null): string => {
     if (!queue) return "starter";
-    if (queue.newLesson?.lessonId?.startsWith("book1") || queue.placementStart === "BOOK_1") return "book-1";
-    if (queue.newLesson?.lessonId?.startsWith("basic") || queue.placementStart === "BASIC") return "basic";
+    const currentId = queue.newLesson?.lessonId || queue.completedLesson?.lessonId;
+    if (currentId?.startsWith("book1") || queue.placementStart === "BOOK_1") return "book-1";
+    if (currentId?.startsWith("basic") || queue.placementStart === "BASIC") return "basic";
     return "starter";
   };
+
+  const findLessonAndStage = (id: string): { stage: (typeof officialCoursePath.stages)[0]; lesson: OfficialLesson } => {
+    for (const st of officialCoursePath.stages) {
+      const ls = st.lessons.find((l) => l.id === id);
+      if (ls) return { stage: st, lesson: ls };
+    }
+    return { stage: officialCoursePath.stages[0], lesson: officialCoursePath.stages[0].lessons[0] };
+  };
+
+  const authoritativeLessonId =
+    dailyQueue?.newLesson?.lessonId ||
+    dailyQueue?.completedLesson?.lessonId ||
+    (dailyQueue?.placementStart === "BOOK_1"
+      ? "book1-l01"
+      : dailyQueue?.placementStart === "BASIC"
+      ? "basic-l01"
+      : "starter-l01");
+
+  const { stage: authoritativeStage, lesson: authoritativeLesson } = findLessonAndStage(authoritativeLessonId);
 
   const [selectedStageId, setSelectedStageId] = useState<string>("starter");
   const [selectedOfficialLessonId, setSelectedOfficialLessonId] = useState<string>("starter-l01");
@@ -1966,11 +2043,12 @@ export function ChildPortalPage({
             return fetch(`${API}/api/children/${matchingChild.id}/learning-daily-queue`)
               .then((r) => (r.ok ? r.json() : null))
               .then((queueData) => {
-                if (!cancelled && queueData && queueData.newLesson) {
+                if (!cancelled && queueData) {
                   setDailyQueue(queueData);
-                  const sId = stageIdFromDailyQueue(queueData);
-                  setSelectedStageId(sId);
-                  setSelectedOfficialLessonId(queueData.newLesson.lessonId || (sId === "book-1" ? "book1-l01" : sId === "basic" ? "basic-l01" : "starter-l01"));
+                  const authId = queueData.newLesson?.lessonId || queueData.completedLesson?.lessonId || (queueData.placementStart === "BOOK_1" ? "book1-l01" : queueData.placementStart === "BASIC" ? "basic-l01" : "starter-l01");
+                  const found = findLessonAndStage(authId);
+                  setSelectedStageId(found.stage.id);
+                  setSelectedOfficialLessonId(found.lesson.id);
                 }
               });
           }
@@ -1982,11 +2060,12 @@ export function ChildPortalPage({
     fetch(`${API}/api/children/${targetChildId}/learning-daily-queue`)
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (!cancelled && data && data.newLesson) {
+        if (!cancelled && data) {
           setDailyQueue(data);
-          const sId = stageIdFromDailyQueue(data);
-          setSelectedStageId(sId);
-          setSelectedOfficialLessonId(data.newLesson.lessonId || (sId === "book-1" ? "book1-l01" : sId === "basic" ? "basic-l01" : "starter-l01"));
+          const authId = data.newLesson?.lessonId || data.completedLesson?.lessonId || (data.placementStart === "BOOK_1" ? "book1-l01" : data.placementStart === "BASIC" ? "basic-l01" : "starter-l01");
+          const found = findLessonAndStage(authId);
+          setSelectedStageId(found.stage.id);
+          setSelectedOfficialLessonId(found.lesson.id);
         }
       })
       .catch(() => {});
@@ -1996,9 +2075,10 @@ export function ChildPortalPage({
     };
   }, [activeChildId, activeLearner.name]);
 
-  const activeStage = officialCoursePath.stages.find((s) => s.id === selectedStageId) || officialCoursePath.stages[0];
-  const activeLesson = activeStage.lessons.find((l) => l.id === selectedOfficialLessonId) || activeStage.lessons[0];
-  const activeStageIndex = officialCoursePath.stages.findIndex((s) => s.id === activeStage.id);
+  const browsingStage = officialCoursePath.stages.find((s) => s.id === selectedStageId) || authoritativeStage;
+  const browsingStageIndex = officialCoursePath.stages.findIndex((s) => s.id === browsingStage.id);
+  const previewLesson = browsingStage.lessons.find((l) => l.id === selectedOfficialLessonId) || browsingStage.lessons[0];
+  const isBrowsingDifferentLesson = previewLesson.id !== authoritativeLesson.id;
 
   const selectedLevel = TONGXUAN_AUTHORED_DRAFT_LEVELS.find((l) => l.levelNumber === selectedLevelNum) || TONGXUAN_AUTHORED_DRAFT_LEVELS[0];
   const selectedLevelProgress = learnerLevelsProgress.find((p) => p.levelNumber === selectedLevelNum) || {
@@ -2550,15 +2630,15 @@ export function ChildPortalPage({
       </div>
 
       {/* 2. COMPACT SPRINT TRACK: Official Stages & Lessons */}
-      <section className="compact-sprint-panel">
+      <section className="compact-sprint-panel" aria-label="官方教材課程路徑">
         <div className="compact-sprint-header">
           <div className="sprint-stage-switch">
             <button
               type="button"
               className="sprint-stage-arrow-btn"
-              disabled={activeStageIndex <= 0}
+              disabled={browsingStageIndex <= 0}
               onClick={() => {
-                const prevStage = officialCoursePath.stages[Math.max(0, activeStageIndex - 1)];
+                const prevStage = officialCoursePath.stages[Math.max(0, browsingStageIndex - 1)];
                 setSelectedStageId(prevStage.id);
                 setSelectedOfficialLessonId(prevStage.lessons[0].id);
               }}
@@ -2567,14 +2647,14 @@ export function ChildPortalPage({
               ◀
             </button>
             <span className="sprint-stage-badge">
-              {activeStage.shortTitle}
+              {browsingStage.shortTitle}
             </span>
             <button
               type="button"
               className="sprint-stage-arrow-btn"
-              disabled={activeStageIndex >= officialCoursePath.stages.length - 1}
+              disabled={browsingStageIndex >= officialCoursePath.stages.length - 1}
               onClick={() => {
-                const nextStage = officialCoursePath.stages[Math.min(officialCoursePath.stages.length - 1, activeStageIndex + 1)];
+                const nextStage = officialCoursePath.stages[Math.min(officialCoursePath.stages.length - 1, browsingStageIndex + 1)];
                 setSelectedStageId(nextStage.id);
                 setSelectedOfficialLessonId(nextStage.lessons[0].id);
               }}
@@ -2587,10 +2667,10 @@ export function ChildPortalPage({
 
         <div className="compact-sprint-nodes-track">
           <div className="sprint-track-line" />
-          {activeStage.lessons.map((lesson) => {
-            const isCurrent = (dailyQueue?.newLesson?.lessonId === lesson.id) || (selectedOfficialLessonId === lesson.id);
+          {browsingStage.lessons.map((lesson) => {
+            const isCurrent = authoritativeLesson.id === lesson.id;
             const isSelected = selectedOfficialLessonId === lesson.id;
-            const isDone = dailyQueue?.newLesson?.lessonId === lesson.id && dailyQueue.newLesson.status === "MASTERED";
+            const isDone = Boolean(dailyQueue?.currentLessonComplete && isCurrent);
 
             return (
               <button
@@ -2617,22 +2697,56 @@ export function ChildPortalPage({
             );
           })}
         </div>
+
+        {/* If browsing a lesson different from today's active lesson, show explicit Course Preview card */}
+        {isBrowsingDifferentLesson && (
+          <div className="official-course-preview-card" data-testid="official-course-preview">
+            <div className="preview-card-header">
+              <div className="preview-badge-row">
+                <span className="preview-badge">📖 {t("curriculumPreviewBadge")} · {browsingStage.shortTitle} 第 {previewLesson.number} 課</span>
+                <span className="preview-status-pill">🔒 即將推出</span>
+              </div>
+              <h4 className="preview-lesson-title">{R(previewLesson.official.title)}</h4>
+            </div>
+            <p className="preview-desc">{previewLesson.tongxuan.handbookSummary.text}</p>
+            <div className="preview-targets-row">
+              {previewLesson.tongxuan.practiceTargets.map((target, idx) => (
+                <span key={idx} className="preview-target-chip">✓ {target}</span>
+              ))}
+            </div>
+            <div className="preview-footer-row">
+              <span className="preview-lock-notice">
+                {t("previewLockNotice")}（目前進行中：《{authoritativeLesson.official.title}》）
+              </span>
+              <button
+                type="button"
+                className="preview-back-to-today-btn"
+                onClick={() => {
+                  setSelectedStageId(authoritativeStage.id);
+                  setSelectedOfficialLessonId(authoritativeLesson.id);
+                }}
+              >
+                {t("backToTodayLesson")}
+              </button>
+            </div>
+          </div>
+        )}
       </section>
 
-      {/* 3. CENTER MAIN HERO: Authoritative Official Lesson */}
+      {/* 3. CENTER MAIN HERO: Authoritative Official Lesson (Pinned to Today's Learning Task) */}
       <main className="weekly-main-hero">
         <div className="daily-story-textbook-panel official-lesson-hero">
           <div className="story-meta-bar">
             <div className="story-badges-group">
-              <span className="story-day-tag">{activeStage.shortTitle} · 第 {activeLesson.number} 課</span>
+              <span className="story-day-tag">{authoritativeStage.shortTitle} · 第 {authoritativeLesson.number} 課</span>
               <span className="story-duration-pill">⏱️ 約 {dailyQueue?.targetMinutes || 18} 分鐘</span>
-              <span className="official-source-tag">🏛️ {activeLesson.official.source.book}</span>
+              <span className="official-source-tag">🏛️ {authoritativeLesson.official.source.book}</span>
             </div>
             <button
               className="story-listen-audio-btn"
               onClick={() =>
                 playSound(
-                  `${activeLesson.official.title}。${activeLesson.tongxuan.handbookSummary.text}`,
+                  `${authoritativeLesson.official.title}。${authoritativeLesson.tongxuan.handbookSummary.text}`,
                   "normal",
                   true
                 )
@@ -2652,10 +2766,16 @@ export function ChildPortalPage({
             <div className="story-title-section">
               <div className="official-provenance-pill">
                 <span className="provenance-dot" />
-                <span>{activeLesson.official.source.name} · {t("officialCurriculumBadge")}</span>
+                <span>{authoritativeLesson.official.source.name} · {t("officialCurriculumBadge")}</span>
               </div>
-              <h2 className="story-main-title">{R(activeLesson.official.title)}</h2>
-              <p className="official-lesson-summary">{activeLesson.tongxuan.handbookSummary.text}</p>
+              {dailyQueue?.currentLessonComplete && (
+                <div className="official-mastered-banner">
+                  <Check size={18} className="mastered-icon" />
+                  <span>{t("lessonMasteredBanner")}</span>
+                </div>
+              )}
+              <h2 className="story-main-title">{R(authoritativeLesson.official.title)}</h2>
+              <p className="official-lesson-summary">{authoritativeLesson.tongxuan.handbookSummary.text}</p>
             </div>
 
             <div className="official-targets-section">
@@ -2664,13 +2784,13 @@ export function ChildPortalPage({
                 <strong>{t("practiceTargetsLabel")}</strong>
               </div>
               <div className="targets-list">
-                {activeLesson.tongxuan.practiceTargets.map((target, idx) => (
+                {authoritativeLesson.tongxuan.practiceTargets.map((target, idx) => (
                   <span key={idx} className="target-chip">✓ {target}</span>
                 ))}
               </div>
               <div className="domains-badges-row">
                 <span className="domains-label-tag">{t("domainsLabel")}：</span>
-                {activeLesson.tongxuan.domains.map((domain) => (
+                {authoritativeLesson.tongxuan.domains.map((domain) => (
                   <span key={domain} className="domain-pill">
                     {t(`${domain}Domain`)}
                   </span>
@@ -2678,20 +2798,53 @@ export function ChildPortalPage({
               </div>
             </div>
 
+            {dailyQueue?.currentLessonComplete && dailyQueue?.nextLessonComingSoon && (
+              <p className="next-lesson-coming-soon-note">
+                {t("nextLessonComingSoon").replace("{title}", dailyQueue.nextAccessibleLesson?.title || "")}
+              </p>
+            )}
+
             <div className="hero-primary-cta-row">
-              <button
-                type="button"
-                className="launch-quiz-cta-btn validated-session-entry"
-                onClick={() => {
-                  if (onStartLearningSession) {
-                    const started = onStartLearningSession(activeLearner.name);
-                    setSessionProfileError(!started);
-                  }
-                }}
-              >
-                <Play size={20} fill="currentColor" />
-                <span>{t("startValidatedSession")}</span>
-              </button>
+              {dailyQueue?.currentLessonComplete ? (
+                (dailyQueue.review?.dueCount ?? 0) > 0 ? (
+                  <button
+                    type="button"
+                    className="launch-quiz-cta-btn validated-session-entry"
+                    onClick={() => {
+                      if (onStartLearningSession) {
+                        const started = onStartLearningSession(activeLearner.name);
+                        setSessionProfileError(!started);
+                      }
+                    }}
+                  >
+                    <Play size={20} fill="currentColor" />
+                    <span>{t("startReviewSession").replace("{n}", String(dailyQueue.review.dueCount))}</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="launch-quiz-cta-btn validated-session-entry is-completed-btn"
+                    disabled
+                  >
+                    <Check size={20} />
+                    <span>{t("todayGoalCompleted")}</span>
+                  </button>
+                )
+              ) : (
+                <button
+                  type="button"
+                  className="launch-quiz-cta-btn validated-session-entry"
+                  onClick={() => {
+                    if (onStartLearningSession) {
+                      const started = onStartLearningSession(activeLearner.name);
+                      setSessionProfileError(!started);
+                    }
+                  }}
+                >
+                  <Play size={20} fill="currentColor" />
+                  <span>{t("startValidatedSession")}</span>
+                </button>
+              )}
               {sessionProfileError && (
                 <span className="session-profile-error" role="alert">
                   {t("sessionProfileMissing")}
@@ -2715,11 +2868,10 @@ export function ChildPortalPage({
               <button
                 key={lvl.levelId}
                 type="button"
-                className="authored-draft-level-btn"
+                className={`authored-draft-level-btn ${selectedLevelNum === lvl.levelNumber ? "is-active-draft" : ""}`}
                 onClick={() => {
                   setSelectedLevelNum(lvl.levelNumber);
                   setCustomPracticePlan(courseLevelToDayPlan(lvl));
-                  setInClassroom(true);
                 }}
               >
                 <span className="draft-lvl-num">關卡 {lvl.levelNumber}</span>
@@ -2728,166 +2880,173 @@ export function ChildPortalPage({
               </button>
             ))}
           </div>
-        </section>
 
-        {/* 3 Star Task Cards Grid (Show for lesson levels) */}
-        {selectedLevel.type === "lesson" && (
-        <div className="three-star-cards-grid">
-          {/* CARD 1: 生字 */}
-          <div
-            className="interactive-star-card star-card-stroke"
-            onClick={() => startLessonAtStep(1, "char")}
-            title="點擊進入生字「聽說讀寫」完整分區練字教室"
-          >
-            <div className="star-card-topbar">
-              <div className="star-card-title-group">
-                <span className="star-card-icon-badge">✍️</span>
-                <h3>{t("cardStrokeTitle")}</h3>
-              </div>
-              <div className="star-card-goal-star" title="第 1 顆星：生字聽說讀寫">
-                <Star
-                  size={28}
-                  className={selectedDay.status === "completed" ? "star-earned-gold" : "star-pending-dark"}
-                  fill="currentColor"
-                />
-              </div>
-            </div>
-
-            <div className="star-card-middle-content">
-              <div className="char-tianzige-grid-6">
-                {selectedDay.characters.map((c) => {
-                  const isDiff = c.char !== c.charHans;
-                  return (
-                    <div key={c.char} className={`char-tianzi-card-mini ${scriptMode === "dual" && isDiff ? "dual-card-mini" : ""}`}>
-                      {scriptMode === "zhuyin" ? (
-                        <span className="tianzi-glyph-mini">{c.char}</span>
-                      ) : scriptMode === "pinyin" ? (
-                        <span className="tianzi-glyph-mini">{c.charHans}</span>
-                      ) : isDiff ? (
-                        <div className="dual-glyphs-mini-row">
-                          <span className="tianzi-glyph-mini glyph-trad" title="繁體">{c.char}</span>
-                          <span className="dual-vs-sep">/</span>
-                          <span className="tianzi-glyph-mini glyph-hans" title="簡體">{c.charHans}</span>
-                        </div>
-                      ) : (
-                        <span className="tianzi-glyph-mini">{c.char}</span>
-                      )}
-
-                      <span className="tianzi-phonetic-badge-mini">
-                        {scriptMode === "zhuyin"
-                          ? `${c.zhuyin}${c.zhuyinTone}`
-                          : scriptMode === "pinyin"
-                          ? c.pinyin
-                          : `${c.zhuyin}${c.zhuyinTone} · ${c.pinyin}`}
-                      </span>
-
-                      <span className="tianzi-stroke-pill-mini">
-                        {scriptMode === "dual" && isDiff
-                          ? `繁${c.strokeCount}/簡${c.strokeCountHans || c.strokeCount}畫`
-                          : `${scriptMode === "pinyin" ? (c.strokeCountHans || c.strokeCount) : c.strokeCount} 畫`}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-              <p className="card-sub-hint">
-                {scriptMode === "dual"
-                  ? t("cardStrokeDualHint")
-                  : t("cardStrokeSingleHint")}
-              </p>
-            </div>
-          </div>
-
-          {/* CARD 2: 生詞 */}
-          <div
-            className="interactive-star-card star-card-vocab"
-            onClick={() => startLessonAtStep(1, "vocab")}
-            title="點擊進入生詞認讀與造句練習"
-          >
-            <div className="star-card-topbar">
-              <div className="star-card-title-group">
-                <span className="star-card-icon-badge">📚</span>
-                <h3>{t("cardVocabTitle")}</h3>
-              </div>
-              <div className="star-card-goal-star" title="第 2 顆星：生詞認讀造句">
-                <Star
-                  size={28}
-                  className={selectedDay.status === "completed" ? "star-earned-gold" : "star-pending-dark"}
-                  fill="currentColor"
-                />
-              </div>
-            </div>
-
-            <div className="star-card-middle-content">
-              <div className="vocab-grid-6">
-                {(selectedDay.vocabulary || []).map((v) => (
-                  <div key={v.word} className="vocab-item-mini">
-                    <div className="vocab-top-row">
-                      <span className="vocab-icon-mini">{v.icon}</span>
-                      <span className="vocab-word-text">{v.word}</span>
-                    </div>
-
-                    {scriptMode === "dual" ? (
-                      <div className="vocab-phonetic-dual-col">
-                        <span className="vocab-phonetic-sub zhuyin-sub">{v.zhuyin}</span>
-                        <span className="vocab-phonetic-sub pinyin-sub">{v.pinyin}</span>
-                      </div>
-                    ) : (
-                      <span className="vocab-phonetic-pill">
-                        {scriptMode === "zhuyin" ? v.zhuyin : v.pinyin}
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-              <p className="card-sub-hint">
-                {t("cardVocabHint")}
-              </p>
-            </div>
-          </div>
-
-          {/* CARD 3: 成語 */}
-          <div
-            className="interactive-star-card star-card-idiom"
-            onClick={() => startLessonAtStep(1, "idiom")}
-            title="點擊進入成語故事閱讀與情境理解"
-          >
-            <div className="star-card-topbar">
-              <div className="star-card-title-group">
-                <span className="star-card-icon-badge">📖</span>
-                <h3>{t("cardIdiomTitle")}</h3>
-              </div>
-              <div className="star-card-goal-star" title="第 3 顆星：成語故事閱讀">
-                <Star
-                  size={28}
-                  className={selectedDay.status === "completed" ? "star-earned-gold" : "star-pending-dark"}
-                  fill="currentColor"
-                />
-              </div>
-            </div>
-
-            <div className="star-card-middle-content">
-              <div className="idiom-callout-hero">
-                <span className="idiom-big-icon">{selectedDay.idiom?.idiomIcon || "📖"}</span>
-                <strong className="idiom-title-text">
-                  {selectedDay.idiom?.idiomTitle || "成語精選"}
-                </strong>
-
-                <span className="idiom-pinyin-sub">
-                  {scriptMode === "zhuyin"
-                    ? selectedDay.idiom?.idiomZhuyin || selectedDay.idiom?.idiomPinyin
-                    : scriptMode === "pinyin"
-                    ? selectedDay.idiom?.idiomPinyin
-                    : `${selectedDay.idiom?.idiomZhuyin || ""} · ${selectedDay.idiom?.idiomPinyin}`}
+          {/* 3 Star Task Cards Grid nested cleanly inside Authored Draft Practice Section */}
+          {selectedLevel.type === "lesson" && (
+            <div className="authored-draft-cards-container">
+              <div className="draft-cards-section-header">
+                <span className="draft-cards-badge">
+                  {t("draftTasksTitle").replace("{n}", String(selectedLevelNum))}（{selectedDay.themeTitle}）
                 </span>
               </div>
-              <p className="idiom-meaning-desc">
-                {selectedDay.idiom?.idiomMeaning || t("cardIdiomHint")}
-              </p>
+              <div className="three-star-cards-grid">
+                {/* CARD 1: 生字 */}
+                <div
+                  className="interactive-star-card star-card-stroke"
+                  onClick={() => startLessonAtStep(1, "char")}
+                  title="點擊進入生字「聽說讀寫」完整分區練字教室"
+                >
+                  <div className="star-card-topbar">
+                    <div className="star-card-title-group">
+                      <span className="star-card-icon-badge">✍️</span>
+                      <h3>{t("cardStrokeTitle")}</h3>
+                    </div>
+                    <div className="star-card-goal-star" title="第 1 顆星：生字聽說讀寫">
+                      <Star
+                        size={28}
+                        className={selectedDay.status === "completed" ? "star-earned-gold" : "star-pending-dark"}
+                        fill="currentColor"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="star-card-middle-content">
+                    <div className="char-tianzige-grid-6">
+                      {selectedDay.characters.map((c) => {
+                        const isDiff = c.char !== c.charHans;
+                        return (
+                          <div key={c.char} className={`char-tianzi-card-mini ${scriptMode === "dual" && isDiff ? "dual-card-mini" : ""}`}>
+                            {scriptMode === "zhuyin" ? (
+                              <span className="tianzi-glyph-mini">{c.char}</span>
+                            ) : scriptMode === "pinyin" ? (
+                              <span className="tianzi-glyph-mini">{c.charHans}</span>
+                            ) : isDiff ? (
+                              <div className="dual-glyphs-mini-row">
+                                <span className="tianzi-glyph-mini glyph-trad" title="繁體">{c.char}</span>
+                                <span className="dual-vs-sep">/</span>
+                                <span className="tianzi-glyph-mini glyph-hans" title="簡體">{c.charHans}</span>
+                              </div>
+                            ) : (
+                              <span className="tianzi-glyph-mini">{c.char}</span>
+                            )}
+
+                            <span className="tianzi-phonetic-badge-mini">
+                              {scriptMode === "zhuyin"
+                                ? `${c.zhuyin}${c.zhuyinTone}`
+                                : scriptMode === "pinyin"
+                                ? c.pinyin
+                                : `${c.zhuyin}${c.zhuyinTone} · ${c.pinyin}`}
+                            </span>
+
+                            <span className="tianzi-stroke-pill-mini">
+                              {scriptMode === "dual" && isDiff
+                                ? `繁${c.strokeCount}/簡${c.strokeCountHans || c.strokeCount}畫`
+                                : `${scriptMode === "pinyin" ? (c.strokeCountHans || c.strokeCount) : c.strokeCount} 畫`}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <p className="card-sub-hint">
+                      {scriptMode === "dual"
+                        ? t("cardStrokeDualHint")
+                        : t("cardStrokeSingleHint")}
+                    </p>
+                  </div>
+                </div>
+
+                {/* CARD 2: 生詞 */}
+                <div
+                  className="interactive-star-card star-card-vocab"
+                  onClick={() => startLessonAtStep(1, "vocab")}
+                  title="點擊進入生詞認讀與造句練習"
+                >
+                  <div className="star-card-topbar">
+                    <div className="star-card-title-group">
+                      <span className="star-card-icon-badge">📚</span>
+                      <h3>{t("cardVocabTitle")}</h3>
+                    </div>
+                    <div className="star-card-goal-star" title="第 2 顆星：生詞認讀造句">
+                      <Star
+                        size={28}
+                        className={selectedDay.status === "completed" ? "star-earned-gold" : "star-pending-dark"}
+                        fill="currentColor"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="star-card-middle-content">
+                    <div className="vocab-grid-6">
+                      {(selectedDay.vocabulary || []).map((v) => (
+                        <div key={v.word} className="vocab-item-mini">
+                          <div className="vocab-top-row">
+                            <span className="vocab-icon-mini">{v.icon}</span>
+                            <span className="vocab-word-text">{v.word}</span>
+                          </div>
+
+                          {scriptMode === "dual" ? (
+                            <div className="vocab-phonetic-dual-col">
+                              <span className="vocab-phonetic-sub zhuyin-sub">{v.zhuyin}</span>
+                              <span className="vocab-phonetic-sub pinyin-sub">{v.pinyin}</span>
+                            </div>
+                          ) : (
+                            <span className="vocab-phonetic-pill">
+                              {scriptMode === "zhuyin" ? v.zhuyin : v.pinyin}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <p className="card-sub-hint">
+                      {t("cardVocabHint")}
+                    </p>
+                  </div>
+                </div>
+
+                {/* CARD 3: 成語 */}
+                <div
+                  className="interactive-star-card star-card-idiom"
+                  onClick={() => startLessonAtStep(1, "idiom")}
+                  title="點擊進入成語故事閱讀與情境理解"
+                >
+                  <div className="star-card-topbar">
+                    <div className="star-card-title-group">
+                      <span className="star-card-icon-badge">📖</span>
+                      <h3>{t("cardIdiomTitle")}</h3>
+                    </div>
+                    <div className="star-card-goal-star" title="第 3 顆星：成語故事閱讀">
+                      <Star
+                        size={28}
+                        className={selectedDay.status === "completed" ? "star-earned-gold" : "star-pending-dark"}
+                        fill="currentColor"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="star-card-middle-content">
+                    <div className="idiom-callout-hero">
+                      <span className="idiom-big-icon">{selectedDay.idiom?.idiomIcon || "📖"}</span>
+                      <strong className="idiom-title-text">
+                        {selectedDay.idiom?.idiomTitle || "成語精選"}
+                      </strong>
+
+                      <span className="idiom-pinyin-sub">
+                        {scriptMode === "zhuyin"
+                          ? selectedDay.idiom?.idiomZhuyin || selectedDay.idiom?.idiomPinyin
+                          : scriptMode === "pinyin"
+                          ? selectedDay.idiom?.idiomPinyin
+                          : `${selectedDay.idiom?.idiomZhuyin || ""} · ${selectedDay.idiom?.idiomPinyin}`}
+                      </span>
+                    </div>
+                    <p className="idiom-meaning-desc">
+                      {selectedDay.idiom?.idiomMeaning || t("cardIdiomHint")}
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-        )}
+          )}
+        </section>
 
         {/* Soft Community, Feedback & Sponsor Footer */}
         <footer className="portal-community-footer">

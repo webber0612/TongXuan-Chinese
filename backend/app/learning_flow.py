@@ -321,16 +321,17 @@ def _session_plan(db: Any, child_id: int, as_of_text: str, lesson: dict[str, Any
                         data={"character": character, "phase": phase, "scriptMode": script_mode, "repeatCount": min(remaining, 2), "hintPolicy": phase},
                     ))
 
-    # A short reflection is not a score and cannot create mastery.
-    tasks.append(_task(
-        "mini-check-reflection", "MINI_CHECK", lesson_id, skill=None, required=True,
-        minutes=2, mastery_impact="NONE", data={"mode": "reflection", "prompt": "你覺得今天的練習怎麼樣？", "choices": [{"id": "practiced", "label": "我練習過了"}, {"id": "more", "label": "下次再練一次"}]},
-    ))
-    tasks.append(_task(
-        "wrap-up", "LESSON_WRAP_UP", lesson_id, required=True, minutes=1,
-        mastery_impact="NONE", reward_impact="SESSION_COMPLETION_ONLY",
-        data={"label": "完成今天練習", "masteryNotice": "是否精熟會依照各領域的有效證據另外判定。"},
-    ))
+    if tasks:
+        # A short reflection is not a score and cannot create mastery.
+        tasks.append(_task(
+            "mini-check-reflection", "MINI_CHECK", lesson_id, skill=None, required=True,
+            minutes=2, mastery_impact="NONE", data={"mode": "reflection", "prompt": "你覺得今天的練習怎麼樣？", "choices": [{"id": "practiced", "label": "我練習過了"}, {"id": "more", "label": "下次再練一次"}]},
+        ))
+        tasks.append(_task(
+            "wrap-up", "LESSON_WRAP_UP", lesson_id, required=True, minutes=1,
+            mastery_impact="NONE", reward_impact="SESSION_COMPLETION_ONLY",
+            data={"label": "完成今天練習", "masteryNotice": "是否精熟會依照各領域的有效證據另外判定。"},
+        ))
 
     totals = {
         "reviewMinutes": sum(task["estimatedMinutes"] for task in tasks if task["sourceQueue"] == "REVIEW"),
@@ -941,6 +942,7 @@ def get_learning_daily_queue(*, child_id: int, as_of: str | None = None) -> dict
         lessons = _lesson_rows()
         current = lessons[start_id]
         state = db.execute("SELECT status FROM curriculum_lesson_states WHERE child_id=? AND lesson_id=?", (child_id, start_id)).fetchone()
+        is_mastered = bool(state and state["status"] == "MASTERED")
         reviews = _due_recognition(db, child_id, stamp)
         active = db.execute("SELECT id,status FROM learning_flow_sessions WHERE child_id=? AND status IN ('IN_PROGRESS','PAUSED') ORDER BY started_at DESC LIMIT 1", (child_id,)).fetchone()
         accessible_next = next((lesson for lesson in _ordered_lessons() if lesson["id"] not in FLOW_LESSONS and lesson_is_accessible(db, child_id, lesson["id"])), None)
@@ -949,8 +951,11 @@ def get_learning_daily_queue(*, child_id: int, as_of: str | None = None) -> dict
             "asOf": stamp,
             "placementStart": placement["main_curriculum_start"] if placement else "STARTER",
             "review": {"sourceQueue": "REVIEW", "dueCount": len(reviews), "items": [{"id": item["item_id"], "character": item["character"], "lessonId": item["lesson_id"], "dueAt": item["due_at"]} for item in reviews]},
-            "newLesson": {"sourceQueue": "CURRICULUM", "lessonId": start_id, "title": current["title"], "domains": current["domains"], "status": state["status"] if state else "NOT_STARTED", "availableInLearningFlowV1": not state or state["status"] != "MASTERED"},
-            "nextAccessibleLesson": {"lessonId": accessible_next["id"], "title": accessible_next["title"]} if accessible_next else None,
+            "newLesson": None if is_mastered else {"sourceQueue": "CURRICULUM", "lessonId": start_id, "title": current["title"], "domains": current["domains"], "status": state["status"] if state else "NOT_STARTED", "availableInLearningFlowV1": True},
+            "completedLesson": {"sourceQueue": "CURRICULUM", "lessonId": start_id, "title": current["title"], "domains": current["domains"], "status": "MASTERED"} if is_mastered else None,
+            "currentLessonComplete": is_mastered,
+            "nextLessonComingSoon": bool(is_mastered and accessible_next),
+            "nextAccessibleLesson": {"lessonId": accessible_next["id"], "title": accessible_next["title"], "availableInLearningFlowV1": False} if accessible_next else None,
             "activeSession": dict(active) if active else None,
             "schoolQueueSeparate": True,
             "targetMinutes": DEFAULT_TARGET_MINUTES,

@@ -320,4 +320,313 @@ describe("child-first shell contracts", () => {
       vi.unstubAllGlobals();
     }
   });
+
+  it("browsing or selecting Book 1 Lesson 2 in track keeps primary hero CTA launching book1-l01 and shows preview card", async () => {
+    localStorage.clear();
+    localStorage.setItem(DISPLAY_LANGUAGE_KEY, "zh-Hant");
+    window.history.replaceState({}, "", "/TongXuan-Chinese/");
+
+    let launchedLessonId = "";
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (url.endsWith("/api/children")) {
+        return new Response(JSON.stringify([{ id: 1, name: "樂樂" }]), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/api/children/1/learning-daily-queue")) {
+        return new Response(JSON.stringify({
+          childId: 1,
+          asOf: "2026-09-25T08:00:00Z",
+          placementStart: "BOOK_1",
+          review: { sourceQueue: "REVIEW", dueCount: 0, items: [] },
+          newLesson: {
+            sourceQueue: "CURRICULUM",
+            lessonId: "book1-l01",
+            title: "你好",
+            domains: ["listening", "speaking", "phonetics"],
+            status: "NOT_STARTED",
+            availableInLearningFlowV1: true
+          },
+          nextAccessibleLesson: { lessonId: "book1-l02", title: "你家幾個人", availableInLearningFlowV1: false },
+          activeSession: null,
+          schoolQueueSeparate: true,
+          targetMinutes: 18
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/api/children/1/learning-sessions/current")) {
+        return new Response("null", { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/api/children/1/learning-sessions/plan")) {
+        return new Response(JSON.stringify({
+          targetMinutes: 18,
+          curriculumContext: {
+            stageId: "book-1",
+            stageTitle: "第1冊",
+            lessonId: "book1-l01",
+            official: { title: "你好", objectiveSummary: "問候打招呼" }
+          },
+          tasks: [],
+          composition: { review: 0, newLesson: 0, closing: 0 }
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/api/children/1/learning-sessions")) {
+        launchedLessonId = "book1-l01";
+        return new Response(JSON.stringify({
+          id: "session-123",
+          status: "IN_PROGRESS",
+          targetMinutes: 18,
+          activeSeconds: 0,
+          tasks: [],
+          curriculumContext: {
+            stageId: "book-1",
+            stageTitle: "第1冊",
+            lessonId: "book1-l01",
+            official: { title: "你好", objectiveSummary: "問候打招呼" }
+          },
+          reward: { points: 0, earned: false }
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify({ balance: 0, rewards: [] }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    document.body.innerHTML = '<div id="root"></div>';
+    const root = createRoot(document.getElementById("root")!);
+    await act(async () => {
+      root.render(React.createElement(AppShell));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+
+    // 1. Initially on Book 1 L1
+    const heroTitle = document.querySelector(".official-lesson-hero .story-main-title");
+    expect(heroTitle?.textContent).toMatch(/你.*好/);
+
+    // 2. Click Lesson 2 in the track nodes
+    const lessonNodes = document.querySelectorAll(".sprint-node-btn");
+    const lesson2Node = Array.from(lessonNodes).find((node) => node.textContent?.includes("第 2 課")) as HTMLButtonElement;
+    expect(lesson2Node).toBeTruthy();
+    await act(async () => {
+      lesson2Node.click();
+      await Promise.resolve();
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+
+    // 3. Verify Course Preview card appears for Lesson 2
+    const previewCard = document.querySelector("[data-testid='official-course-preview']");
+    expect(previewCard).toBeTruthy();
+    expect(previewCard?.textContent).toMatch(/你.*家.*幾.*個.*人/);
+    expect(previewCard?.textContent).toContain("此課為後續課綱內容 · 請先完成今日課程");
+
+    // 4. Verify Main Hero is STILL pinned to Lesson 1 (你好)
+    const heroTitleAfterBrowse = document.querySelector(".official-lesson-hero .story-main-title");
+    expect(heroTitleAfterBrowse?.textContent).toMatch(/你.*好/);
+
+    // 5. Click Primary CTA on Hero, verify it launches book1-l01
+    const ctaBtn = document.querySelector(".validated-session-entry") as HTMLButtonElement;
+    expect(ctaBtn).toBeTruthy();
+    await act(async () => {
+      ctaBtn.click();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+
+    expect(window.location.pathname).toBe("/TongXuan-Chinese/learning-session");
+    expect(document.body.textContent).toContain("第1冊");
+    expect(document.body.textContent).toMatch(/你.*好/);
+
+    root.unmount();
+    vi.unstubAllGlobals();
+  });
+
+  it("switching visible stage tab in track cannot silently change the lesson launched by the primary CTA", async () => {
+    localStorage.clear();
+    localStorage.setItem(DISPLAY_LANGUAGE_KEY, "zh-Hant");
+    window.history.replaceState({}, "", "/TongXuan-Chinese/");
+
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (url.endsWith("/api/children")) {
+        return new Response(JSON.stringify([{ id: 1, name: "樂樂" }]), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/api/children/1/learning-daily-queue")) {
+        return new Response(JSON.stringify({
+          childId: 1,
+          asOf: "2026-09-25T08:00:00Z",
+          placementStart: "BOOK_1",
+          review: { sourceQueue: "REVIEW", dueCount: 0, items: [] },
+          newLesson: {
+            sourceQueue: "CURRICULUM",
+            lessonId: "book1-l01",
+            title: "你好",
+            domains: ["listening", "speaking", "phonetics"],
+            status: "NOT_STARTED",
+            availableInLearningFlowV1: true
+          },
+          nextAccessibleLesson: null,
+          activeSession: null,
+          schoolQueueSeparate: true,
+          targetMinutes: 18
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/api/children/1/learning-sessions/current")) {
+        return new Response("null", { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/api/children/1/learning-sessions/plan")) {
+        return new Response(JSON.stringify({
+          targetMinutes: 18,
+          curriculumContext: {
+            stageId: "book-1",
+            stageTitle: "第1冊",
+            lessonId: "book1-l01",
+            official: { title: "你好", objectiveSummary: "問候打招呼" }
+          },
+          tasks: [],
+          composition: { review: 0, newLesson: 0, closing: 0 }
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/api/children/1/learning-sessions")) {
+        return new Response(JSON.stringify({
+          id: "session-123",
+          status: "IN_PROGRESS",
+          targetMinutes: 18,
+          activeSeconds: 0,
+          tasks: [],
+          curriculumContext: {
+            stageId: "book-1",
+            stageTitle: "第1冊",
+            lessonId: "book1-l01",
+            official: { title: "你好", objectiveSummary: "問候打招呼" }
+          },
+          reward: { points: 0, earned: false }
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify({ balance: 0, rewards: [] }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    document.body.innerHTML = '<div id="root"></div>';
+    const root = createRoot(document.getElementById("root")!);
+    await act(async () => {
+      root.render(React.createElement(AppShell));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+
+    // 1. Switch stage arrow left to Starter/Basic
+    const leftArrow = document.querySelector(".sprint-stage-arrow-btn[title='上一階段']") as HTMLButtonElement;
+    expect(leftArrow).toBeTruthy();
+    await act(async () => {
+      leftArrow.click();
+      await Promise.resolve();
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+
+    // 2. Verify Hero remains pinned to Book 1 L1 (你好)
+    const heroTitle = document.querySelector(".official-lesson-hero .story-main-title");
+    expect(heroTitle?.textContent).toMatch(/你.*好/);
+
+    // 3. Click Hero primary CTA and verify it launches Book 1 L1
+    const ctaBtn = document.querySelector(".validated-session-entry") as HTMLButtonElement;
+    expect(ctaBtn).toBeTruthy();
+    await act(async () => {
+      ctaBtn.click();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+
+    expect(window.location.pathname).toBe("/TongXuan-Chinese/learning-session");
+    expect(document.body.textContent).toContain("第1冊");
+    expect(document.body.textContent).toMatch(/你.*好/);
+
+    root.unmount();
+    vi.unstubAllGlobals();
+  });
+
+  it("renders mastered state on home when Book 1 L1 is mastered: displays mastered banner, next lesson preview, does not restart L1 as new, and nests draft cards", async () => {
+    localStorage.clear();
+    localStorage.setItem(DISPLAY_LANGUAGE_KEY, "zh-Hant");
+    window.history.replaceState({}, "", "/TongXuan-Chinese/");
+
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (url.endsWith("/api/children")) {
+        return new Response(JSON.stringify([{ id: 1, name: "樂樂" }]), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/api/children/1/learning-daily-queue")) {
+        return new Response(JSON.stringify({
+          childId: 1,
+          asOf: "2026-09-25T08:00:00Z",
+          placementStart: "BOOK_1",
+          review: { sourceQueue: "REVIEW", dueCount: 0, items: [] },
+          newLesson: null,
+          completedLesson: {
+            sourceQueue: "CURRICULUM",
+            lessonId: "book1-l01",
+            title: "你好",
+            domains: ["listening", "speaking", "phonetics"],
+            status: "MASTERED"
+          },
+          currentLessonComplete: true,
+          nextLessonComingSoon: true,
+          nextAccessibleLesson: {
+            lessonId: "book1-l02",
+            title: "你家幾個人",
+            availableInLearningFlowV1: false
+          },
+          activeSession: null,
+          schoolQueueSeparate: true,
+          targetMinutes: 18
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify({ balance: 0, rewards: [] }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    document.body.innerHTML = '<div id="root"></div>';
+    const root = createRoot(document.getElementById("root")!);
+    await act(async () => {
+      root.render(React.createElement(AppShell));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+
+    // 1. Verify Mastered banner is present
+    const masteredBanner = document.querySelector(".official-mastered-banner");
+    expect(masteredBanner).toBeTruthy();
+    expect(masteredBanner?.textContent).toContain("本課已掌握通關");
+
+    // 2. Verify Next Lesson note is present
+    const nextLessonNote = document.querySelector(".next-lesson-coming-soon-note");
+    expect(nextLessonNote).toBeTruthy();
+    expect(nextLessonNote?.textContent).toContain("下一課《你家幾個人》即將推出");
+
+    // 3. Verify CTA button indicates completion and is disabled (not restarting L1 as new)
+    const ctaBtn = document.querySelector(".hero-primary-cta-row .validated-session-entry") as HTMLButtonElement;
+    expect(ctaBtn).toBeTruthy();
+    expect(ctaBtn.disabled).toBe(true);
+    expect(ctaBtn.textContent).toContain("今日學習已達成");
+
+    // 4. Verify draft cards are strictly contained inside authored-draft-practice-section
+    const draftSection = document.querySelector(".authored-draft-practice-section");
+    expect(draftSection).toBeTruthy();
+    const threeStarGrid = draftSection?.querySelector(".three-star-cards-grid");
+    expect(threeStarGrid).toBeTruthy();
+    expect(draftSection?.querySelector(".draft-cards-badge")?.textContent).toContain("自編練習卡片");
+
+    root.unmount();
+    vi.unstubAllGlobals();
+  });
 });
