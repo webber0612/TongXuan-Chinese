@@ -175,9 +175,19 @@ def test_fast_track_cleans_up_stale_active_session(tmp_path):
 
         # Verify active session in DB was cleaned up / completed
         with connect() as db:
-            session_row = db.execute("SELECT status, mastery_status FROM learning_flow_sessions WHERE id=?", (session_id,)).fetchone()
+            session_row = db.execute("SELECT status, mastery_status, termination_reason FROM learning_flow_sessions WHERE id=?", (session_id,)).fetchone()
             assert session_row["status"] == "COMPLETED"
             assert session_row["mastery_status"] == "READY_FOR_CHECK"
+            assert session_row["termination_reason"] == "FAST_TRACK_BYPASS"
+
+            # Check that pending tasks were marked DEFERRED with FAST_TRACK_BYPASS
+            deferred_tasks = db.execute("SELECT state, deferred_reason FROM learning_flow_tasks WHERE session_id=?", (session_id,)).fetchall()
+            assert len(deferred_tasks) > 0
+            assert all(t["state"] == "DEFERRED" and t["deferred_reason"] == "FAST_TRACK_BYPASS" for t in deferred_tasks)
+
+            # Check audit event
+            event_row = db.execute("SELECT event_type FROM learning_flow_telemetry WHERE session_id=? AND event_type='session_fast_track_bypassed'", (session_id,)).fetchone()
+            assert event_row is not None
 
             # Check that there are no lingering IN_PROGRESS sessions
             lingering = db.execute("SELECT COUNT(*) FROM learning_flow_sessions WHERE child_id=? AND status='IN_PROGRESS'", (child_id,)).fetchone()[0]
@@ -216,4 +226,137 @@ def test_due_driven_review_retrieval(tmp_path):
         assert len(review_tasks) >= 1
         assert review_tasks[0]["taskType"] == "REVIEW_RECOGNITION"
         assert review_tasks[0]["skillDomain"] == "recognition"
+
+
+def test_real_book1_l01_end_to_end_completion_flow(tmp_path):
+    from app.auth import issue_session
+    from app.database import connect
+    with make_client(tmp_path) as client:
+        # 1. Create child + BOOK_1 placement
+        child_resp = client.post("/api/children", json={"name": "小明"})
+        assert child_resp.status_code == 200
+        child_id = child_resp.json()["id"]
+
+        parent_token = issue_session(subject="parent", role="parent", child_ids=[child_id])
+        parent_headers = {"Authorization": f"Bearer {parent_token}"}
+        client.put(
+            f"/api/children/{child_id}/placement-profile",
+            headers=parent_headers,
+            json={"domain_levels": {"listening": "BOOK_1", "recognition": "BOOK_1", "speaking": "BOOK_1", "writing": "STARTER"}},
+        )
+
+        # 2. Start learning flow session for book1-l01
+        start_resp = client.post(f"/api/children/{child_id}/learning-sessions", json={"target_minutes": 18, "lesson_id": "book1-l01"})
+        assert start_resp.status_code == 200
+        session_data = start_resp.json()
+        session_id = session_data["id"]
+        tasks = session_data["tasks"]
+
+        # 3. Step through all tasks providing real provider evidence or answers
+        for t in tasks:
+            task_type = t["taskType"]
+            task_id = t["id"]
+            if task_type == "LISTENING":
+                # Start and complete listening attempt
+                l_start = client.post(f"/api/children/{child_id}/listening-attempts", json={"item_id": t["itemId"]})
+                assert l_start.status_code == 200
+                attempt_id = l_start.json()["id"]
+                l_comp = client.post(f"/api/children/{child_id}/listening-attempts/{attempt_id}/complete", json={"duration_ms": 1500})
+                assert l_comp.status_code == 200
+                ev_resp = client.post(f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{task_id}/evidence", json={"evidence_ref": attempt_id})
+                assert ev_resp.status_code == 200
+            elif task_type == "RECOGNITION":
+                ans_resp = client.post(f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{task_id}/answer", json={"selected_option_id": "option-2"})
+                assert ans_resp.status_code == 200
+            elif task_type == "MINI_CHECK" and t.get("taskData", {}).get("mode") != "reflection":
+                ans_resp = client.post(f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{task_id}/answer", json={"selected_option_id": "option-1"})
+                assert ans_resp.status_code == 200
+            elif task_type == "VOCABULARY":
+                ans_resp = client.post(f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{task_id}/answer", json={"selected_option_id": "greeting"})
+                assert ans_resp.status_code == 200
+            elif task_type == "SENTENCE_PATTERN":
+                ans_resp = client.post(f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{task_id}/answer", json={"selected_option_id": "greeting"})
+                assert ans_resp.status_code == 200
+            elif task_type == "SPEAKING_ATTEMPT":
+                sp_start = client.post(f"/api/reading-aloud/attempts/start?child_id={child_id}", json={
+                    "text": "你好", "text_kind": "character", "locale": "zh-TW", "source_type": "CURRICULUM", "source_id": t["itemId"], "activity_domain": "speaking"
+                })
+                assert sp_start.status_code == 200
+                attempt_id = sp_start.json()["id"]
+                sp_comp = client.post(f"/api/reading-aloud/attempts/{attempt_id}/complete?child_id={child_id}", json={"duration_ms": 2000})
+                assert sp_comp.status_code == 200
+                ev_resp = client.post(f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{task_id}/evidence", json={"evidence_ref": attempt_id})
+                assert ev_resp.status_code == 200
+            elif task_type == "PRONUNCIATION_ATTEMPT":
+                pr_start = client.post(f"/api/reading-aloud/attempts/start?child_id={child_id}", json={
+                    "text": "你好", "text_kind": "character", "locale": "zh-TW", "source_type": "CURRICULUM", "source_id": t["itemId"], "activity_domain": "pronunciation"
+                })
+                assert pr_start.status_code == 200
+                attempt_id = pr_start.json()["id"]
+                pr_comp = client.post(f"/api/reading-aloud/attempts/{attempt_id}/complete?child_id={child_id}", json={"duration_ms": 2000})
+                assert pr_comp.status_code == 200
+                ev_resp = client.post(f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{task_id}/evidence", json={"evidence_ref": attempt_id})
+                assert ev_resp.status_code == 200
+            elif task_type.startswith("WRITING_"):
+                # Writing is optional in this flow, test skip
+                skip_resp = client.post(f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{task_id}/skip")
+                assert skip_resp.status_code == 200
+            elif task_type == "MINI_CHECK" and t.get("taskData", {}).get("mode") == "reflection":
+                ans_resp = client.post(f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{task_id}/answer", json={"selected_option_id": "practiced"})
+                assert ans_resp.status_code == 200
+
+        # 4. Call authoritative complete endpoint
+        comp_resp = client.post(f"/api/children/{child_id}/learning-sessions/{session_id}/complete")
+        assert comp_resp.status_code == 200
+        comp_data = comp_resp.json()
+        assert comp_data["status"] == "COMPLETED"
+        assert comp_data["reward"]["points"] == 5
+
+        # 5. Verify DB state
+        with connect() as db:
+            session_row = db.execute("SELECT status, reward_points FROM learning_flow_sessions WHERE id=?", (session_id,)).fetchone()
+            assert session_row["status"] == "COMPLETED"
+            assert session_row["reward_points"] == 5
+
+
+def test_incomplete_required_evidence_rejects_session_completion(tmp_path):
+    from app.auth import issue_session
+    from app.database import connect
+    with make_client(tmp_path) as client:
+        # Create child + BOOK_1 placement
+        child_resp = client.post("/api/children", json={"name": "小圓"})
+        assert child_resp.status_code == 200
+        child_id = child_resp.json()["id"]
+
+        parent_token = issue_session(subject="parent", role="parent", child_ids=[child_id])
+        parent_headers = {"Authorization": f"Bearer {parent_token}"}
+        client.put(
+            f"/api/children/{child_id}/placement-profile",
+            headers=parent_headers,
+            json={"domain_levels": {"listening": "BOOK_1", "recognition": "BOOK_1", "speaking": "BOOK_1", "writing": "STARTER"}},
+        )
+
+        # Start session
+        start_resp = client.post(f"/api/children/{child_id}/learning-sessions", json={"target_minutes": 18, "lesson_id": "book1-l01"})
+        assert start_resp.status_code == 200
+        session_id = start_resp.json()["id"]
+
+        # Complete only listening task, leaving remaining required tasks unfinished
+        listen_task = next(t for t in start_resp.json()["tasks"] if t["taskType"] == "LISTENING")
+        l_start = client.post(f"/api/children/{child_id}/listening-attempts", json={"item_id": listen_task["itemId"]})
+        assert l_start.status_code == 200
+        attempt_id = l_start.json()["id"]
+        client.post(f"/api/children/{child_id}/listening-attempts/{attempt_id}/complete", json={"duration_ms": 1500})
+        client.post(f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{listen_task['id']}/evidence", json={"evidence_ref": attempt_id})
+
+        # Try to complete session prematurely
+        comp_resp = client.post(f"/api/children/{child_id}/learning-sessions/{session_id}/complete")
+        assert comp_resp.status_code == 409
+        assert comp_resp.json()["detail"] == "required_learning_tasks_incomplete"
+
+        # Verify session is still IN_PROGRESS in DB
+        with connect() as db:
+            session_row = db.execute("SELECT status, completed_at FROM learning_flow_sessions WHERE id=?", (session_id,)).fetchone()
+            assert session_row["status"] == "IN_PROGRESS"
+            assert session_row["completed_at"] is None
 

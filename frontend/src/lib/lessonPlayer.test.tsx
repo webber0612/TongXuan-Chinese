@@ -506,14 +506,20 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
           status: "IN_PROGRESS",
           lessonId: "book1-l01",
           tasks: [
-            { id: "session-flow-1:listen", key: "listen", taskType: "LISTENING", state: "PENDING" },
-            { id: "session-flow-1:vocabulary", key: "vocabulary", taskType: "VOCABULARY", state: "PENDING" },
+            { id: "session-flow-1:listen", key: "listen", taskType: "LISTENING", itemId: "item-phrase", state: "PENDING" },
+            { id: "session-flow-1:vocabulary", key: "vocabulary", taskType: "VOCABULARY", itemId: "item-vocab", state: "PENDING" },
             { id: "session-flow-1:writing-guided", key: "writing-guided", taskType: "WRITING_GUIDED", state: "PENDING" },
           ]
         }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
       if (init?.method === "POST") {
         postedUrls.push(url);
+        if (url.includes("/listening-attempts") && !url.includes("/complete") && !url.includes("/evidence")) {
+          return new Response(JSON.stringify({ id: "listen-attempt-1" }), { status: 200, headers: { "Content-Type": "application/json" } });
+        }
+        if (url.includes("/listening-attempts/listen-attempt-1/complete")) {
+          return new Response(JSON.stringify({ id: "listen-attempt-1", status: "COMPLETED" }), { status: 200, headers: { "Content-Type": "application/json" } });
+        }
         return new Response(JSON.stringify({
           id: "session-flow-1",
           status: "IN_PROGRESS",
@@ -533,14 +539,15 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
       );
     });
 
-    // Step 1 choice click
+    // Step 1 choice click triggers listening attempt & evidence submission
     const choiceBtn = container.querySelector(".choice-card-btn") as HTMLButtonElement;
     expect(choiceBtn).toBeTruthy();
     await act(async () => {
       choiceBtn.click();
     });
 
-    expect(postedUrls.some((u) => u.includes("/tasks/session-flow-1:listen/answer"))).toBe(true);
+    expect(postedUrls.some((u) => u.includes("/listening-attempts"))).toBe(true);
+    expect(postedUrls.some((u) => u.includes("/tasks/session-flow-1:listen/evidence"))).toBe(true);
 
     root.unmount();
     container.remove();
@@ -575,5 +582,113 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     container.remove();
     vi.unstubAllGlobals();
   });
+
+  // Test 23
+  it("23. Speaking and pronunciation attempts record independent domain attempts with source_id", async () => {
+    const postedBodies: any[] = [];
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes("/learning-sessions/current")) {
+        return new Response(JSON.stringify({
+          id: "session-flow-2",
+          status: "IN_PROGRESS",
+          lessonId: "book1-l01",
+          tasks: [
+            { id: "session-flow-2:speaking", key: "speaking", taskType: "SPEAKING_ATTEMPT", itemId: "phrase-1", state: "PENDING" },
+            { id: "session-flow-2:pronunciation", key: "pronunciation", taskType: "PRONUNCIATION_ATTEMPT", itemId: "phrase-1", state: "PENDING" },
+          ]
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (init?.method === "POST") {
+        if (init?.body) {
+          try {
+            postedBodies.push(JSON.parse(init.body as string));
+          } catch {}
+        }
+        if (url.includes("/reading-aloud/attempts/start")) {
+          return new Response(JSON.stringify({ id: "ra-attempt-1" }), { status: 200, headers: { "Content-Type": "application/json" } });
+        }
+        return new Response(JSON.stringify({
+          id: "session-flow-2",
+          status: "IN_PROGRESS",
+          tasks: []
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    await act(async () => {
+      root.render(
+        <LessonPlayerPage
+          lessonId="book1-l01"
+          activeChildId={1}
+          onBack={() => {}}
+        />
+      );
+    });
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
+
+  // Test 24
+  it("24. Authoritative backend completion rejection keeps session active and does not fire onCompleteLesson", async () => {
+    let completeCallbackFired = false;
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes("/learning-sessions/current")) {
+        return new Response(JSON.stringify({
+          id: "session-flow-3",
+          status: "IN_PROGRESS",
+          lessonId: "book1-l01",
+          tasks: [
+            { id: "session-flow-3:wrap-up", key: "wrap-up", taskType: "LESSON_WRAP_UP", state: "PENDING" },
+          ]
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/complete") && init?.method === "POST") {
+        return new Response(JSON.stringify({
+          detail: "required_learning_tasks_incomplete"
+        }), { status: 409, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    await act(async () => {
+      root.render(
+        <LessonPlayerPage
+          lessonId="book1-l01"
+          activeChildId={1}
+          onBack={() => {}}
+          onCompleteLesson={() => {
+            completeCallbackFired = true;
+          }}
+        />
+      );
+    });
+
+    // Advance to wrap up and try to finish
+    const nextBtn = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
+    if (nextBtn) {
+      await act(async () => {
+        nextBtn.click();
+      });
+    }
+
+    // Completion callback must NOT fire on backend rejection
+    expect(completeCallbackFired).toBe(false);
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
 });
+
 

@@ -20,6 +20,7 @@ from .reading_aloud import abort_attempt, complete_attempt, start_attempt
 from .listening import abort_listening_attempt, complete_listening_attempt, start_listening_attempt
 from .placement import get_placement_profile, save_placement_profile
 from .learning_flow import (
+    _log,
     attach_learning_evidence,
     complete_learning_session,
     get_current_learning_session,
@@ -1026,20 +1027,22 @@ def post_lesson_fast_track(child_id: int, lesson_id: str, request: FastTrackRequ
                     srs_phrase = record_srs_review(db, child_id=child_id, skill_domain="listening", item_id=materials["phrase"], result="correct", assisted=False)
                     latest_srs_due = srs_phrase.get("due_at") or latest_srs_due
 
-            # Clean up / complete active session to avoid stale sessions
+            # Clean up / bypass active session with accurate audit semantics
             active_session = db.execute(
                 "SELECT id, status FROM learning_flow_sessions WHERE child_id=? AND status IN ('IN_PROGRESS','PAUSED')",
                 (child_id,)
             ).fetchone()
             if active_session:
+                stamp = now()
                 db.execute(
-                    "UPDATE learning_flow_sessions SET status='COMPLETED', completed_at=?, mastery_status='READY_FOR_CHECK' WHERE id=?",
-                    (now(), active_session["id"])
+                    "UPDATE learning_flow_sessions SET status='COMPLETED', completed_at=?, termination_reason='FAST_TRACK_BYPASS', mastery_status='READY_FOR_CHECK' WHERE id=?",
+                    (stamp, active_session["id"])
                 )
                 db.execute(
-                    "UPDATE learning_flow_tasks SET state='COMPLETED', completed_at=? WHERE session_id=? AND state IN ('IN_PROGRESS','PENDING')",
-                    (now(), active_session["id"])
+                    "UPDATE learning_flow_tasks SET state='DEFERRED', deferred_reason='FAST_TRACK_BYPASS' WHERE session_id=? AND state IN ('IN_PROGRESS','PENDING')",
+                    (active_session["id"],)
                 )
+                _log(db, active_session["id"], child_id, "session_fast_track_bypassed", None, None, {"lessonId": lesson_id}, stamp)
 
             return {
                 "lessonId": lesson_id,
@@ -1059,10 +1062,12 @@ def post_lesson_fast_track(child_id: int, lesson_id: str, request: FastTrackRequ
                 (child_id,)
             ).fetchone()
             if active_session:
+                stamp = now()
                 db.execute(
-                    "UPDATE learning_flow_sessions SET status='PAUSED', last_resumed_at=? WHERE id=?",
-                    (now(), active_session["id"])
+                    "UPDATE learning_flow_sessions SET status='PAUSED', last_resumed_at=?, termination_reason='FAST_TRACK_FAILED' WHERE id=?",
+                    (stamp, active_session["id"])
                 )
+                _log(db, active_session["id"], child_id, "session_fast_track_failed", None, None, {"lessonId": lesson_id, "weakDomains": weak_domains}, stamp)
 
             return {
                 "lessonId": lesson_id,

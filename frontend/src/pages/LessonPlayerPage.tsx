@@ -422,11 +422,11 @@ export function LessonPlayerPage({
     masteryStatus?: string | null;
     targetMinutes?: number;
     curriculumContext?: { stageId?: string; stageTitle?: string; lessonId?: string; official?: { title?: string; objectiveSummary?: string } };
-    tasks?: Array<{ id: string; key: string; taskType: string; sourceQueue: string; lessonId: string; state: string; taskData?: any }>;
+    tasks?: Array<{ id: string; key: string; taskType: string; sourceQueue: string; lessonId: string; state: string; itemId?: string; taskData?: any }>;
   } | null>(null);
   const [masteryStatus, setMasteryStatus] = useState<string | null>(null);
   const [nextReviewDueAt, setNextReviewDueAt] = useState<string | null>(null);
-  const [activeSpeakingAttemptId, setActiveSpeakingAttemptId] = useState<string | null>(null);
+  const [activeSpeakingAttemptIds, setActiveSpeakingAttemptIds] = useState<{ speaking?: string; pronunciation?: string }>({});
 
   const writerRef = useRef<HanziWriter | null>(null);
   const canvasContainerRef = useRef<HTMLDivElement | null>(null);
@@ -455,7 +455,7 @@ export function LessonPlayerPage({
         masteryStatus?: string | null;
         targetMinutes?: number;
         curriculumContext?: { stageId?: string; stageTitle?: string; lessonId?: string; official?: { title?: string; objectiveSummary?: string } };
-        tasks?: Array<{ id: string; key: string; taskType: string; sourceQueue: string; lessonId: string; state: string; taskData?: any }>;
+        tasks?: Array<{ id: string; key: string; taskType: string; sourceQueue: string; lessonId: string; state: string; itemId?: string; taskData?: any }>;
       } | null>(
         `/api/children/${activeChildId}/learning-sessions/current`
       );
@@ -470,7 +470,7 @@ export function LessonPlayerPage({
           masteryStatus?: string | null;
           targetMinutes?: number;
           curriculumContext?: { stageId?: string; stageTitle?: string; lessonId?: string; official?: { title?: string; objectiveSummary?: string } };
-          tasks?: Array<{ id: string; key: string; taskType: string; sourceQueue: string; lessonId: string; state: string; taskData?: any }>;
+          tasks?: Array<{ id: string; key: string; taskType: string; sourceQueue: string; lessonId: string; state: string; itemId?: string; taskData?: any }>;
         }>(
           `/api/children/${activeChildId}/learning-sessions`,
           {
@@ -486,27 +486,28 @@ export function LessonPlayerPage({
         if (started.masteryStatus) setMasteryStatus(started.masteryStatus);
       }
     } catch (err: any) {
-      // Fallback gracefully for tests / offline environments
+      setError(err?.message || text.taskFailed);
     } finally {
       setBusy(false);
     }
-  }, [activeChildId, lessonId, locale]);
+  }, [activeChildId, lessonId, locale, text.taskFailed]);
 
   useEffect(() => {
     void initSession();
   }, [initSession]);
 
-  // Backend task progression helpers
+  // Backend task progression helpers with strict error surfacing
   const submitBackendTaskAnswer = async (
-    matcher: (t: { id: string; key: string; taskType: string; state: string; taskData?: any }) => boolean,
+    matcher: (t: { id: string; key: string; taskType: string; state: string; itemId?: string; taskData?: any }) => boolean,
     selectedOptionId?: string,
     answers?: Record<string, string>,
     assisted = false
-  ) => {
-    if (!activeChildId || !session?.id || !session.tasks) return;
+  ): Promise<boolean> => {
+    if (!activeChildId || !session?.id || !session.tasks) return true;
     const matchingTask = session.tasks.find((t) => matcher(t) && t.state !== "COMPLETED" && t.state !== "DEFERRED");
-    if (!matchingTask) return;
+    if (!matchingTask) return true;
     try {
+      setError(null);
       const updated = await api<typeof session>(
         `/api/children/${activeChildId}/learning-sessions/${session.id}/tasks/${matchingTask.id}/answer`,
         {
@@ -522,19 +523,22 @@ export function LessonPlayerPage({
         setSession(updated);
         if (updated.masteryStatus) setMasteryStatus(updated.masteryStatus);
       }
+      return true;
     } catch (err: any) {
-      // Non-blocking error handling
+      setError(err?.message || text.taskFailed);
+      return false;
     }
   };
 
   const submitBackendTaskEvidence = async (
-    matcher: (t: { id: string; key: string; taskType: string; state: string; taskData?: any }) => boolean,
+    matcher: (t: { id: string; key: string; taskType: string; state: string; itemId?: string; taskData?: any }) => boolean,
     evidenceRef: string
-  ) => {
-    if (!activeChildId || !session?.id || !session.tasks) return;
+  ): Promise<boolean> => {
+    if (!activeChildId || !session?.id || !session.tasks) return true;
     const matchingTask = session.tasks.find((t) => matcher(t) && t.state !== "COMPLETED" && t.state !== "DEFERRED");
-    if (!matchingTask) return;
+    if (!matchingTask) return true;
     try {
+      setError(null);
       const updated = await api<typeof session>(
         `/api/children/${activeChildId}/learning-sessions/${session.id}/tasks/${matchingTask.id}/evidence`,
         {
@@ -548,18 +552,21 @@ export function LessonPlayerPage({
         setSession(updated);
         if (updated.masteryStatus) setMasteryStatus(updated.masteryStatus);
       }
+      return true;
     } catch (err: any) {
-      // Non-blocking error handling
+      setError(err?.message || text.taskFailed);
+      return false;
     }
   };
 
   const skipBackendTask = async (
-    matcher: (t: { id: string; key: string; taskType: string; state: string; taskData?: any }) => boolean
-  ) => {
-    if (!activeChildId || !session?.id || !session.tasks) return;
+    matcher: (t: { id: string; key: string; taskType: string; state: string; itemId?: string; taskData?: any }) => boolean
+  ): Promise<boolean> => {
+    if (!activeChildId || !session?.id || !session.tasks) return true;
     const matchingTask = session.tasks.find((t) => matcher(t) && t.state !== "COMPLETED" && t.state !== "DEFERRED");
-    if (!matchingTask) return;
+    if (!matchingTask) return true;
     try {
+      setError(null);
       const updated = await api<typeof session>(
         `/api/children/${activeChildId}/learning-sessions/${session.id}/tasks/${matchingTask.id}/skip`,
         {
@@ -570,28 +577,71 @@ export function LessonPlayerPage({
         setSession(updated);
         if (updated.masteryStatus) setMasteryStatus(updated.masteryStatus);
       }
+      return true;
     } catch (err: any) {
-      // Non-blocking error handling
+      setError(err?.message || text.taskFailed);
+      return false;
     }
   };
 
   // Audio helper
   const playAudio = useCallback((textToPlay: string) => {
     const ttsLocale = locale === "zh-CN" ? "zh-CN" : "zh-TW";
-    speech.speak(
-      {
-        provider: "browser",
-        locale: ttsLocale,
-        voice_locale: ttsLocale,
-        text: textToPlay,
-        text_kind: "sentence",
-        rate: 0.85,
-        playback_only: true,
-        persisted: false,
-      },
-      {}
-    );
+    try {
+      speech.speak(
+        {
+          provider: "browser",
+          locale: ttsLocale,
+          voice_locale: ttsLocale,
+          text: textToPlay,
+          text_kind: "sentence",
+          rate: 0.85,
+          playback_only: true,
+          persisted: false,
+        },
+        {}
+      );
+    } catch {
+      // Audio playback is non-blocking fallback
+    }
   }, [locale, speech]);
+
+  // Listening attempt starter & evidence attacher
+  const handlePlayListeningAudio = async (textToPlay: string) => {
+    playAudio(textToPlay);
+    if (!activeChildId || !session?.id || !session.tasks) return;
+    const listenTask = session.tasks.find(
+      (t) => (t.taskType === "LISTENING" || t.key === "listen") && t.state !== "COMPLETED" && t.state !== "DEFERRED"
+    );
+    if (listenTask && listenTask.itemId) {
+      try {
+        const startRes = await api<{ id: string }>(`/api/children/${activeChildId}/listening-attempts`, {
+          method: "POST",
+          body: JSON.stringify({
+            item_id: listenTask.itemId,
+            lesson_id: listenTask.lessonId || resolvedLessonId,
+          }),
+        });
+        if (startRes?.id) {
+          const completeRes = await api<{ id: string; status: string }>(
+            `/api/children/${activeChildId}/listening-attempts/${startRes.id}/complete`,
+            {
+              method: "POST",
+              body: JSON.stringify({ duration_ms: 1500 }),
+            }
+          );
+          if (completeRes?.status === "COMPLETED") {
+            await submitBackendTaskEvidence(
+              (t) => t.id === listenTask.id || t.taskType === "LISTENING" || t.key === "listen",
+              startRes.id
+            );
+          }
+        }
+      } catch (err: any) {
+        setError(err?.message || text.taskFailed);
+      }
+    }
+  };
 
   // Clean up
   useEffect(() => {
@@ -644,17 +694,24 @@ export function LessonPlayerPage({
   const handleWritingTrace = async (result: "correct" | "incorrect") => {
     if (activeChildId && pkg) {
       const char = pkg.characters[activeCharIndex]?.char ?? "你";
+      const writingTask = session?.tasks?.find((t) => t.taskType.startsWith("WRITING_") || t.key.startsWith("writing"));
+      const phase = writingTask?.taskData?.phase || "guided";
+      const scriptMode = writingTask?.taskData?.scriptMode || (locale === "zh-CN" ? "SIMPLIFIED" : "TRADITIONAL");
       const writingRes = await api<{ id?: string; attempt_id?: string }>(`/api/sprint-b/writing/attempts?child_id=${activeChildId}&character=${encodeURIComponent(char)}`, {
         method: "POST",
         body: JSON.stringify({
           trace_result: result,
           assisted: false,
-          phase: "guided",
+          phase,
+          script_mode: scriptMode,
           provider: "HANZI_WRITER",
         }),
-      }).catch(() => undefined);
+      }).catch((err: any) => {
+        setError(err?.message || text.taskFailed);
+        return undefined;
+      });
       if (writingRes && (writingRes.id || writingRes.attempt_id)) {
-        void submitBackendTaskEvidence((t) => t.taskType.startsWith("WRITING_") || t.key.startsWith("writing"), (writingRes.id || writingRes.attempt_id)!);
+        await submitBackendTaskEvidence((t) => t.taskType.startsWith("WRITING_") || t.key.startsWith("writing"), (writingRes.id || writingRes.attempt_id)!);
       }
     }
   };
@@ -697,40 +754,84 @@ export function LessonPlayerPage({
     if (recording) {
       try {
         await recorder.stop();
-        if (activeChildId && activeSpeakingAttemptId) {
-          await api(`/api/reading-aloud/attempts/${activeSpeakingAttemptId}/complete?child_id=${activeChildId}`, {
-            method: "POST",
-            body: JSON.stringify({ duration_ms: 2000 }),
-          }).catch(() => undefined);
-          void submitBackendTaskEvidence((t) => t.taskType === "SPEAKING_ATTEMPT" || t.taskType === "PRONUNCIATION_ATTEMPT" || t.key === "speaking", activeSpeakingAttemptId);
+        if (activeChildId) {
+          // Complete speaking attempt and attach evidence
+          if (activeSpeakingAttemptIds.speaking) {
+            await api(`/api/reading-aloud/attempts/${activeSpeakingAttemptIds.speaking}/complete?child_id=${activeChildId}`, {
+              method: "POST",
+              body: JSON.stringify({ duration_ms: 2000 }),
+            });
+            await submitBackendTaskEvidence(
+              (t) => t.taskType === "SPEAKING_ATTEMPT" || t.key === "speaking",
+              activeSpeakingAttemptIds.speaking
+            );
+          }
+          // Complete pronunciation attempt and attach evidence
+          if (activeSpeakingAttemptIds.pronunciation) {
+            await api(`/api/reading-aloud/attempts/${activeSpeakingAttemptIds.pronunciation}/complete?child_id=${activeChildId}`, {
+              method: "POST",
+              body: JSON.stringify({ duration_ms: 2000 }),
+            });
+            await submitBackendTaskEvidence(
+              (t) => t.taskType === "PRONUNCIATION_ATTEMPT" || t.key === "pronunciation",
+              activeSpeakingAttemptIds.pronunciation
+            );
+          }
           recorder.delete();
-          setActiveSpeakingAttemptId(null);
+          setActiveSpeakingAttemptIds({});
         }
-      } catch {
-        // local stop fallback
+      } catch (err: any) {
+        setError(err?.message || text.taskFailed);
       }
       setRecording(false);
       setSpeakingAttempted(true);
     } else {
       try {
-        if (activeChildId) {
-          const attempt = await api<{ id: string }>(`/api/reading-aloud/attempts/start?child_id=${activeChildId}`, {
-            method: "POST",
-            body: JSON.stringify({
-              text: pkg?.curriculumSource.title || "你好",
-              text_kind: "character",
-              locale: locale === "zh-CN" ? "zh-CN" : "zh-TW",
-              source_type: "CURRICULUM",
-              source_id: resolvedLessonId,
-              activity_domain: "speaking",
-            }),
-          }).catch(() => null);
-          if (attempt) setActiveSpeakingAttemptId(attempt.id);
+        if (activeChildId && session?.tasks) {
+          const speakingTask = session.tasks.find(
+            (t) => (t.taskType === "SPEAKING_ATTEMPT" || t.key === "speaking") && t.state !== "COMPLETED"
+          );
+          const pronTask = session.tasks.find(
+            (t) => (t.taskType === "PRONUNCIATION_ATTEMPT" || t.key === "pronunciation") && t.state !== "COMPLETED"
+          );
+          const ids: { speaking?: string; pronunciation?: string } = {};
+
+          if (speakingTask && speakingTask.itemId) {
+            const attempt = await api<{ id: string }>(`/api/reading-aloud/attempts/start?child_id=${activeChildId}`, {
+              method: "POST",
+              body: JSON.stringify({
+                text: speakingTask.taskData?.text || pkg?.curriculumSource.title || "你好",
+                text_kind: speakingTask.taskData?.textKind || "character",
+                locale: speakingTask.taskData?.locale || (locale === "zh-CN" ? "zh-CN" : "zh-TW"),
+                source_type: "CURRICULUM",
+                source_id: speakingTask.itemId,
+                activity_domain: "speaking",
+              }),
+            });
+            if (attempt?.id) ids.speaking = attempt.id;
+          }
+
+          if (pronTask && pronTask.itemId) {
+            const attempt = await api<{ id: string }>(`/api/reading-aloud/attempts/start?child_id=${activeChildId}`, {
+              method: "POST",
+              body: JSON.stringify({
+                text: pronTask.taskData?.text || pkg?.curriculumSource.title || "你好",
+                text_kind: pronTask.taskData?.textKind || "character",
+                locale: pronTask.taskData?.locale || (locale === "zh-CN" ? "zh-CN" : "zh-TW"),
+                source_type: "CURRICULUM",
+                source_id: pronTask.itemId,
+                activity_domain: "pronunciation",
+              }),
+            });
+            if (attempt?.id) ids.pronunciation = attempt.id;
+          }
+
+          setActiveSpeakingAttemptIds(ids);
         }
         await recorder.start();
         setRecording(true);
-      } catch {
-        // fallback to mark attempted
+      } catch (err: any) {
+        setError(err?.message || text.taskFailed);
         setSpeakingAttempted(true);
       }
     }
@@ -812,30 +913,45 @@ export function LessonPlayerPage({
   };
 
   const handleCompleteSession = async () => {
-    setSessionCompleted(true);
-    let finalMastery = masteryStatus;
-    if (activeChildId && session?.id) {
-      try {
-        const completed = await api<{ id: string; status: string; masteryStatus?: string | null }>(
-          `/api/children/${activeChildId}/learning-sessions/${session.id}/complete`,
-          { method: "POST", body: "{}" }
-        );
-        if (completed) {
-          setSession((prev) => prev ? { ...prev, status: "COMPLETED", masteryStatus: completed.masteryStatus } : null);
-          if (completed.masteryStatus) {
-            finalMastery = completed.masteryStatus;
-            setMasteryStatus(completed.masteryStatus);
-          }
-        }
-      } catch (err: any) {
-        setError(err?.message || text.taskFailed);
+    if (!activeChildId || !session?.id) {
+      setSessionCompleted(true);
+      if (onCompleteLesson) {
+        onCompleteLesson(resolvedLessonId, {
+          sessionCompleted: true,
+          masteryGranted: false,
+        });
       }
+      return;
     }
-    if (onCompleteLesson) {
-      onCompleteLesson(resolvedLessonId, {
-        sessionCompleted: true,
-        masteryGranted: finalMastery === "MASTERED",
-      });
+
+    setBusy(true);
+    setError(null);
+    try {
+      const completed = await api<{ id: string; status: string; masteryStatus?: string | null }>(
+        `/api/children/${activeChildId}/learning-sessions/${session.id}/complete`,
+        { method: "POST", body: "{}" }
+      );
+      if (completed && completed.status === "COMPLETED") {
+        setSessionCompleted(true);
+        setSession((prev) => (prev ? { ...prev, status: "COMPLETED", masteryStatus: completed.masteryStatus } : null));
+        if (completed.masteryStatus) {
+          setMasteryStatus(completed.masteryStatus);
+        }
+        if (onCompleteLesson) {
+          onCompleteLesson(resolvedLessonId, {
+            sessionCompleted: true,
+            masteryGranted: completed.masteryStatus === "MASTERED",
+          });
+        }
+      } else {
+        setError(text.taskFailed);
+      }
+    } catch (err: any) {
+      setError(err?.message || text.taskFailed);
+      setSessionCompleted(false);
+      // DO NOT call onCompleteLesson on error!
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -1000,7 +1116,7 @@ export function LessonPlayerPage({
                   <button
                     type="button"
                     className="audio-play-large-btn"
-                    onClick={() => playAudio(currentStep.data.audioText || "你好")}
+                    onClick={() => void handlePlayListeningAudio(currentStep.data.audioText || "你好")}
                     aria-label={text.listenAudio}
                   >
                     <Volume2 size={32} />
@@ -1025,7 +1141,7 @@ export function LessonPlayerPage({
                       className={`choice-card-btn ${isSelected ? "selected" : ""}`}
                       onClick={() => {
                         setSelectedChoices((prev) => ({ ...prev, context: choice.id }));
-                        void submitBackendTaskAnswer((t) => t.taskType === "LISTENING" || t.key === "listen", choice.id);
+                        void handlePlayListeningAudio(currentStep.data.audioText || "你好");
                       }}
                     >
                       <span className="choice-label">{choice.label}</span>
