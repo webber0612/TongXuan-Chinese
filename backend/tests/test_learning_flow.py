@@ -82,9 +82,9 @@ def complete_session(api: TestClient, child_id: int, current: dict, assisted_sco
             if task["taskData"].get("mode") == "reflection":
                 selected = "practiced"
             elif task["taskType"] == "VOCABULARY":
-                selected = next(option["id"] for option in task["taskData"]["choices"] if option["label"] == "打招呼")
+                selected = next(option["id"] for option in task["taskData"]["choices"] if option["id"] in {"greeting", "opt-hello"} or "打招呼" in option["label"])
             elif task["taskType"] == "SENTENCE_PATTERN":
-                selected = next(option["id"] for option in task["taskData"]["choices"] if option["id"] == "greeting")
+                selected = next(option["id"] for option in task["taskData"]["choices"] if option["id"] in {"greeting", "opt-correct-order"} or option.get("isCorrect"))
             else:
                 if task["taskType"] == "REVIEW_RECOGNITION":
                     expected = task["taskData"]["audioText"]

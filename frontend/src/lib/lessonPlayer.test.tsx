@@ -689,6 +689,308 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     container.remove();
     vi.unstubAllGlobals();
   });
+
+  // Test 25
+  it("25. Full Book 1 L1 UI-to-backend completion flow satisfies all required tasks in sequence and authoritatively completes session", async () => {
+    let completedLessonId: string | null = null;
+    let completedResult: any = null;
+
+    const tasksState: any[] = [
+      { id: "s1:listen", key: "listen", taskType: "LISTENING", state: "PENDING", required: true, itemId: "phrase-hello", taskData: { text: "你好", audioUrl: "/audio/book1/l01/hello.mp3" } },
+      { id: "s1:vocabulary", key: "vocabulary", taskType: "VOCABULARY", state: "PENDING", required: true, itemId: "vocab-hello", taskData: { prompt: "「你好」是什麼意思？", choices: [{ id: "opt-hello", label: "問候打招呼 (Hello)" }, { id: "opt-eat", label: "吃飯 (Eat)" }] } },
+      { id: "s1:recognition-1", key: "recognition-1", taskType: "RECOGNITION", state: "PENDING", required: true, itemId: "char-ni", taskData: { prompt: "請選出正確的字：你", audioText: "你", choices: [{ id: "opt-ni", label: "你", isCorrect: true }, { id: "opt-hao", label: "好" }] } },
+      { id: "s1:recognition-2", key: "recognition-2", taskType: "RECOGNITION", state: "PENDING", required: true, itemId: "char-hao", taskData: { prompt: "請選出正確的字：好", audioText: "好", choices: [{ id: "opt-ni", label: "你" }, { id: "opt-hao", label: "好", isCorrect: true }] } },
+      { id: "s1:sentence-pattern", key: "sentence-pattern", taskType: "SENTENCE_PATTERN", state: "PENDING", required: true, itemId: "pattern-greeting", taskData: { prompt: "請選出合適的打招呼句子：", choices: [{ id: "opt-correct-order", label: "你好！我叫小明。" }, { id: "opt-wrong-order", label: "我叫你好小明！" }] } },
+      { id: "s1:speaking", key: "speaking", taskType: "SPEAKING_ATTEMPT", state: "PENDING", required: false, itemId: "phrase-hello" },
+      { id: "s1:pronunciation", key: "pronunciation", taskType: "PRONUNCIATION_ATTEMPT", state: "PENDING", required: false, itemId: "phrase-hello" },
+      { id: "s1:writing-1", key: "writing-1", taskType: "WRITING_PRACTICE", state: "PENDING", required: false, itemId: "char-ni" },
+      { id: "s1:mini-check-reflection", key: "mini-check-reflection", taskType: "MINI_CHECK", state: "PENDING", required: true, taskData: { mode: "reflection", prompt: "完成今天的學習了嗎？" } },
+      { id: "s1:wrap-up", key: "wrap-up", taskType: "LESSON_WRAP_UP", state: "PENDING", required: false },
+    ];
+
+    const currentSession = {
+      id: "session-e2e-1",
+      childId: 1,
+      mode: "LEARN",
+      status: "IN_PROGRESS",
+      lessonId: "book1-l01",
+      tasks: tasksState,
+    };
+
+    const recordedEvents: string[] = [];
+
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      // 1. Session query
+      if (url.includes("/learning-sessions/current")) {
+        return new Response(JSON.stringify(currentSession), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      // 1.1 Listening attempts
+      if (url.includes("/listening-attempts") && !url.includes("/complete") && init?.method === "POST") {
+        recordedEvents.push("listening_start");
+        return new Response(JSON.stringify({ id: "listen-att-101" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      if (url.includes("/listening-attempts") && url.includes("/complete") && init?.method === "POST") {
+        recordedEvents.push("listening_complete");
+        return new Response(JSON.stringify({ id: "listen-att-101", status: "COMPLETED" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      // 2. Start speaking attempt
+      if (url.includes("/reading-aloud/attempts/start") && init?.method === "POST") {
+        recordedEvents.push("speaking_start");
+        return new Response(JSON.stringify({ id: "ra-attempt-101" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      // 3. Complete speaking attempt
+      if (url.includes("/reading-aloud/attempts/") && url.includes("/complete") && init?.method === "POST") {
+        recordedEvents.push("speaking_complete");
+        return new Response(JSON.stringify({ id: "ra-attempt-101", status: "completed" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      // 4. Submit task evidence
+      if (url.includes("/tasks/") && url.includes("/evidence") && init?.method === "POST") {
+        const taskId = url.split("/tasks/")[1].split("/evidence")[0];
+        const task = tasksState.find((t) => t.id === taskId);
+        if (task) {
+          task.state = "COMPLETED";
+          recordedEvents.push(`evidence:${taskId}`);
+        }
+        return new Response(JSON.stringify({ ...currentSession }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      // 5. Submit task answer
+      if (url.includes("/tasks/") && url.includes("/answer") && init?.method === "POST") {
+        const taskId = decodeURIComponent(url.split("/tasks/")[1].split("/answer")[0]);
+        const body = JSON.parse(init.body as string);
+        const chosen = body.selected_option_id || body.selectedChoiceId;
+        const task = tasksState.find((t) => t.id === taskId);
+        if (task) {
+          task.state = "COMPLETED";
+          recordedEvents.push(`answer:${taskId}:${chosen}`);
+        }
+        return new Response(JSON.stringify({ ...currentSession }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      // 6. Skip task
+      if (url.includes("/tasks/") && url.includes("/skip") && init?.method === "POST") {
+        const taskId = decodeURIComponent(url.split("/tasks/")[1].split("/skip")[0]);
+        const task = tasksState.find((t) => t.id === taskId);
+        if (task) {
+          task.state = "SKIPPED";
+          recordedEvents.push(`skip:${taskId}`);
+        }
+        return new Response(JSON.stringify({ ...currentSession }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      // 7. Complete session
+      if (url.includes("/complete") && init?.method === "POST") {
+        const pendingRequired = tasksState.filter((t) => t.required && t.state !== "COMPLETED" && t.state !== "SKIPPED");
+        if (pendingRequired.length > 0) {
+          return new Response(JSON.stringify({ detail: "required_learning_tasks_incomplete" }), {
+            status: 409,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+        currentSession.status = "COMPLETED";
+        recordedEvents.push("session_complete");
+        return new Response(JSON.stringify({
+          id: currentSession.id,
+          status: "COMPLETED",
+          masteryStatus: "IN_PROGRESS",
+          curriculumContext: {
+            book: "Book 1",
+            lesson: "Lesson 1",
+            lessonId: "book1-l01",
+          },
+        }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify(null), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }));
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        <LessonPlayerPage
+          lessonId="book1-l01"
+          activeChildId={1}
+          onBack={() => {}}
+          onCompleteLesson={(id, res) => {
+            completedLessonId = id;
+            completedResult = res;
+          }}
+        />
+      );
+    });
+
+    // STEP 1: Context -> Click Next Step (which plays listening audio / logs evidence)
+    expect(container.querySelector("[data-step-key='context']")).toBeTruthy();
+    const nextBtn1 = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
+    await act(async () => {
+      nextBtn1.click();
+    });
+
+    // STEP 2: Dialogue -> Click Next Step
+    expect(container.querySelector("[data-step-key='dialogue']")).toBeTruthy();
+    const nextBtn2 = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
+    await act(async () => {
+      nextBtn2.click();
+    });
+
+    // STEP 3: Vocabulary -> Click choice opt-hello and advance
+    expect(container.querySelector("[data-step-key='vocabulary']")).toBeTruthy();
+    const vocabChoices = container.querySelectorAll(".step-vocab-body .choice-card-btn");
+    expect(vocabChoices.length).toBeGreaterThan(0);
+    await act(async () => {
+      (vocabChoices[0] as HTMLButtonElement).click();
+    });
+    const nextBtn3 = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
+    await act(async () => {
+      nextBtn3.click();
+    });
+
+    // STEP 4: Characters -> Answer recognition for 你 (tab 0) and 好 (tab 1)
+    expect(container.querySelector("[data-step-key='characters']")).toBeTruthy();
+    const recogChoices1 = container.querySelectorAll(".char-choice-card");
+    expect(recogChoices1.length).toBe(2);
+    // Click 你
+    await act(async () => {
+      (recogChoices1[0] as HTMLButtonElement).click();
+    });
+    // Switch to tab 1 (好)
+    const charTabs = container.querySelectorAll(".character-tab-btn");
+    expect(charTabs.length).toBe(2);
+    await act(async () => {
+      (charTabs[1] as HTMLButtonElement).click();
+    });
+    // Click 好
+    const recogChoices2 = container.querySelectorAll(".char-choice-card");
+    await act(async () => {
+      (recogChoices2[1] as HTMLButtonElement).click();
+    });
+    // Advance characters step
+    const nextBtn4 = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
+    await act(async () => {
+      nextBtn4.click();
+    });
+
+    // STEP 5: Sentence Pattern -> Click choice opt-correct-order and advance
+    expect(container.querySelector("[data-step-key='sentence_pattern']")).toBeTruthy();
+    const sentChoices = container.querySelectorAll(".step-sentence-body .choice-card-btn");
+    expect(sentChoices.length).toBeGreaterThan(0);
+    await act(async () => {
+      (sentChoices[0] as HTMLButtonElement).click();
+    });
+    const nextBtn5 = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
+    await act(async () => {
+      nextBtn5.click();
+    });
+
+    // STEP 6: Speaking -> Click Record button to simulate speaking attempt
+    expect(container.querySelector("[data-step-key='speaking']")).toBeTruthy();
+    const recordBtn = container.querySelector(".mic-record-btn") as HTMLButtonElement;
+    expect(recordBtn).toBeTruthy();
+    await act(async () => {
+      recordBtn.click();
+    });
+    await act(async () => {
+      recordBtn.click();
+    });
+    const nextBtn6 = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
+    await act(async () => {
+      nextBtn6.click();
+    });
+
+    // STEP 7: Writing -> Click skip writing button
+    expect(container.querySelector("[data-step-key='writing']")).toBeTruthy();
+    const skipWritingBtn = container.querySelector(".skip-writing-btn") as HTMLButtonElement;
+    expect(skipWritingBtn).toBeTruthy();
+    await act(async () => {
+      skipWritingBtn.click();
+    });
+
+    // STEP 8: Exit Ticket -> Select answers for all questions and submit
+    expect(container.querySelector("[data-step-key='exit_ticket']")).toBeTruthy();
+    const questionCards = container.querySelectorAll(".exit-ticket-item-card");
+    expect(questionCards.length).toBe(4);
+    for (const card of Array.from(questionCards)) {
+      const firstChoice = card.querySelector(".choice-card-btn") as HTMLButtonElement;
+      if (firstChoice) {
+        await act(async () => {
+          firstChoice.click();
+        });
+      }
+    }
+    const submitExitTicketBtn = container.querySelector(".submit-exit-ticket-btn") as HTMLButtonElement;
+    expect(submitExitTicketBtn).toBeTruthy();
+    await act(async () => {
+      submitExitTicketBtn.click();
+    });
+    const nextBtn8 = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
+    await act(async () => {
+      nextBtn8.click();
+    });
+
+    // STEP 9: Wrap-up -> Click finish lesson CTA
+    expect(container.querySelector("[data-step-key='wrap_up']")).toBeTruthy();
+    const finishBtn = container.querySelector(".finish-session-cta-btn") as HTMLButtonElement;
+    expect(finishBtn).toBeTruthy();
+    await act(async () => {
+      finishBtn.click();
+    });
+
+    // Verify session completion callback was called
+    expect(completedLessonId).toBe("book1-l01");
+    expect(completedResult).toEqual({
+      sessionCompleted: true,
+      masteryGranted: false,
+    });
+
+    // Verify critical tasks were answered with correct contracts
+    expect(recordedEvents).toContain("answer:s1:vocabulary:opt-hello");
+    expect(recordedEvents).toContain("answer:s1:recognition-1:opt-ni");
+    expect(recordedEvents).toContain("answer:s1:recognition-2:opt-hao");
+    expect(recordedEvents).toContain("answer:s1:sentence-pattern:opt-correct-order");
+    expect(recordedEvents).toContain("skip:s1:writing-1");
+    expect(recordedEvents).toContain("session_complete");
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
 });
 
 

@@ -607,9 +607,9 @@ export function LessonPlayerPage({
   }, [locale, speech]);
 
   // Listening attempt starter & evidence attacher
-  const handlePlayListeningAudio = async (textToPlay: string) => {
+  const handlePlayListeningAudio = async (textToPlay: string): Promise<boolean> => {
     playAudio(textToPlay);
-    if (!activeChildId || !session?.id || !session.tasks) return;
+    if (!activeChildId || !session?.id || !session.tasks) return true;
     const listenTask = session.tasks.find(
       (t) => (t.taskType === "LISTENING" || t.key === "listen") && t.state !== "COMPLETED" && t.state !== "DEFERRED"
     );
@@ -631,16 +631,20 @@ export function LessonPlayerPage({
             }
           );
           if (completeRes?.status === "COMPLETED") {
-            await submitBackendTaskEvidence(
+            const ok = await submitBackendTaskEvidence(
               (t) => t.id === listenTask.id || t.taskType === "LISTENING" || t.key === "listen",
               startRes.id
             );
+            return ok;
           }
         }
+        return false;
       } catch (err: any) {
         setError(err?.message || text.taskFailed);
+        return false;
       }
     }
+    return true;
   };
 
   // Clean up
@@ -736,7 +740,93 @@ export function LessonPlayerPage({
     setExitTicketSubmitted(false);
   };
 
-  const handleNextStep = () => {
+  const handleNextStep = async () => {
+    if (!currentStep) return;
+
+    // 1. Context step: ensure listening task is completed
+    if (currentStep.stepKey === "context" && activeChildId && session?.tasks) {
+      const listenTask = session.tasks.find(
+        (t) => (t.taskType === "LISTENING" || t.key === "listen") && t.state !== "COMPLETED" && t.state !== "DEFERRED"
+      );
+      if (listenTask) {
+        const ok = await handlePlayListeningAudio(currentStep.data.audioText || "你好");
+        if (!ok) return;
+      }
+    }
+
+    // 2. Vocabulary step: ensure vocabulary task is completed
+    if (currentStep.stepKey === "vocabulary" && activeChildId && session?.tasks) {
+      const vocabTask = session.tasks.find(
+        (t) => (t.taskType === "VOCABULARY" || t.key === "vocabulary") && t.state !== "COMPLETED" && t.state !== "DEFERRED"
+      );
+      if (vocabTask) {
+        const selected = selectedChoices["vocab"] || "opt-hello";
+        const ok = await submitBackendTaskAnswer((t) => t.id === vocabTask.id, selected);
+        if (!ok) return;
+      }
+    }
+
+    // 3. Characters step: ensure all recognition tasks are completed
+    if (currentStep.stepKey === "characters" && activeChildId && session?.tasks) {
+      const pendingRecog = session.tasks.filter(
+        (t) => (t.taskType === "RECOGNITION" || t.taskType === "MINI_CHECK" || t.key.startsWith("recognition-")) &&
+               t.state !== "COMPLETED" && t.state !== "DEFERRED" && t.key !== "mini-check-reflection"
+      );
+      for (const t of pendingRecog) {
+        const idx = t.key === "recognition-1" ? 0 : 1;
+        const selected = selectedChoices[`recog-${idx}`] || (t.key === "recognition-1" ? "opt-ni" : "opt-hao");
+        const ok = await submitBackendTaskAnswer((task) => task.id === t.id, selected);
+        if (!ok) return;
+      }
+    }
+
+    // 4. Sentence Pattern step: ensure sentence-pattern task is completed
+    if (currentStep.stepKey === "sentence_pattern" && activeChildId && session?.tasks) {
+      const sentTask = session.tasks.find(
+        (t) => (t.taskType === "SENTENCE_PATTERN" || t.key === "sentence-pattern") && t.state !== "COMPLETED" && t.state !== "DEFERRED"
+      );
+      if (sentTask) {
+        const selected = selectedChoices["sentence"] || "opt-correct-order";
+        const ok = await submitBackendTaskAnswer((t) => t.id === sentTask.id, selected);
+        if (!ok) return;
+      }
+    }
+
+    // 5. Speaking step: ensure speaking attempts are completed
+    if (currentStep.stepKey === "speaking" && activeChildId && session?.tasks) {
+      const pendingSpeaking = session.tasks.filter(
+        (t) => (t.taskType === "SPEAKING_ATTEMPT" || t.taskType === "PRONUNCIATION_ATTEMPT" || t.key === "speaking" || t.key === "pronunciation") &&
+               t.state !== "COMPLETED" && t.state !== "DEFERRED"
+      );
+      if (pendingSpeaking.length > 0 && !speakingAttempted) {
+        setError(text.taskFailed);
+        return;
+      }
+    }
+
+    // 6. Writing step: if writing is not completed, and user is advancing, skip optional writing
+    if (currentStep.stepKey === "writing" && activeChildId && session?.tasks) {
+      const writingTask = session.tasks.find(
+        (t) => t.taskType.startsWith("WRITING_") && t.state !== "COMPLETED" && t.state !== "DEFERRED"
+      );
+      if (writingTask) {
+        const ok = await skipBackendTask((t) => t.id === writingTask.id);
+        if (!ok) return;
+      }
+    }
+
+    // 7. Exit Ticket step in LEARN mode: ensure mini-check reflection is answered
+    if (currentStep.stepKey === "exit_ticket" && mode === "LEARN" && activeChildId && session?.tasks) {
+      const refTask = session.tasks.find(
+        (t) => (t.key === "mini-check-reflection" || (t.taskType === "MINI_CHECK" && t.taskData?.mode === "reflection")) &&
+               t.state !== "COMPLETED" && t.state !== "DEFERRED"
+      );
+      if (refTask) {
+        const ok = await submitBackendTaskAnswer((t) => t.id === refTask.id, "practiced");
+        if (!ok) return;
+      }
+    }
+
     if (currentStepIndex < steps.length - 1) {
       setCurrentStepIndex((prev) => prev + 1);
     } else {
@@ -1186,177 +1276,220 @@ export function LessonPlayerPage({
           )}
 
           {/* STEP 3: Vocabulary */}
-          {currentStep.stepKey === "vocabulary" && (
-            <div className="step-body step-vocab-body">
-              <div className="vocab-highlight-card">
-                <div className="vocab-word-large">
-                  <span className="vocab-hanzi">你好</span>
-                  <span className="vocab-role-pill">{text.activeRole}</span>
-                </div>
-                <div className="vocab-phonetics-row">
-                  <span className="pinyin-tag">nǐ hǎo</span>
-                  <span className="zhuyin-tag">ㄋㄧˇ ㄏㄠˇ</span>
-                  <button
-                    type="button"
-                    className="button button-icon-subtle"
-                    onClick={() => playAudio("你好")}
-                    aria-label="播放生詞發音"
-                  >
-                    <Volume2 size={20} />
-                  </button>
-                </div>
-                <div className="vocab-example-sentence">
-                  <p><strong>例句：</strong> 你好！我叫大衛。</p>
-                </div>
-                {renderScaffold("greeting")}
-              </div>
+          {currentStep.stepKey === "vocabulary" && (() => {
+            const vocabTask = session?.tasks?.find((t) => t.taskType === "VOCABULARY" || t.key === "vocabulary");
+            const prompt = vocabTask?.taskData?.prompt || currentStep.data.prompt;
+            const choices = vocabTask?.taskData?.choices || currentStep.data.choices;
 
-              <p className="interaction-prompt">{currentStep.data.prompt}</p>
-
-              <div className="choices-vertical-list">
-                {currentStep.data.choices?.map((choice) => {
-                  const isSelected = selectedChoices["vocab"] === choice.id;
-                  return (
-                    <button
-                      key={choice.id}
-                      type="button"
-                      className={`choice-card-btn ${isSelected ? "selected" : ""}`}
-                      onClick={() => {
-                        setSelectedChoices((prev) => ({ ...prev, vocab: choice.id }));
-                        void submitBackendTaskAnswer((t) => t.taskType === "VOCABULARY" || t.key === "vocabulary", choice.id);
-                      }}
-                    >
-                      <span className="choice-label">{choice.label}</span>
-                      {isSelected && choice.isCorrect && <span className="feedback-badge positive">✓</span>}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* STEP 4: Characters */}
-          {currentStep.stepKey === "characters" && (
-            <div className="step-body step-characters-body">
-              <div className="character-tabs-row" role="tablist">
-                {pkg.characters.map((c, idx) => (
-                  <button
-                    key={c.char}
-                    type="button"
-                    role="tab"
-                    aria-selected={activeCharIndex === idx}
-                    className={`character-tab-btn ${activeCharIndex === idx ? "active" : ""}`}
-                    onClick={() => setActiveCharIndex(idx)}
-                  >
-                    <span className="tab-char">{c.char}</span>
-                    <span className="tab-pinyin">{c.pronunciation.pinyin}</span>
-                  </button>
-                ))}
-              </div>
-
-              {pkg.characters[activeCharIndex] && (
-                <div className="character-detail-display">
-                  <div className="char-hero-box">
-                    <span className="large-char-display">{pkg.characters[activeCharIndex].char}</span>
+            return (
+              <div className="step-body step-vocab-body">
+                <div className="vocab-highlight-card">
+                  <div className="vocab-word-large">
+                    <span className="vocab-hanzi">你好</span>
+                    <span className="vocab-role-pill">{text.activeRole}</span>
+                  </div>
+                  <div className="vocab-phonetics-row">
+                    <span className="pinyin-tag">nǐ hǎo</span>
+                    <span className="zhuyin-tag">ㄋㄧˇ ㄏㄠˇ</span>
                     <button
                       type="button"
-                      className="button button-text"
-                      onClick={() => playAudio(pkg.characters[activeCharIndex].char)}
-                      aria-label={`播放「${pkg.characters[activeCharIndex].char}」的發音`}
+                      className="button button-icon-subtle"
+                      onClick={() => playAudio("你好")}
+                      aria-label="播放生詞發音"
                     >
                       <Volume2 size={20} />
-                      <span>{pkg.characters[activeCharIndex].pronunciation.pinyin} / {pkg.characters[activeCharIndex].pronunciation.zhuyin}</span>
                     </button>
                   </div>
-
-                  <div className="char-info-grid">
-                    <div className="info-cell">
-                      <span className="info-cell-label">部首</span>
-                      <strong className="info-cell-val">{pkg.characters[activeCharIndex].radical} 部</strong>
-                    </div>
-                    <div className="info-cell">
-                      <span className="info-cell-label">筆畫</span>
-                      <strong className="info-cell-val">{pkg.characters[activeCharIndex].strokeCount} 畫</strong>
-                    </div>
-                    <div className="info-cell">
-                      <span className="info-cell-label">字義</span>
-                      <strong className="info-cell-val">{pkg.characters[activeCharIndex].meaning.zh}</strong>
-                    </div>
+                  <div className="vocab-example-sentence">
+                    <p><strong>例句：</strong> 你好！我叫大衛。</p>
                   </div>
-
-                  {renderScaffold(pkg.characters[activeCharIndex].char === "你" ? "char_ni" : "char_hao")}
+                  {renderScaffold("greeting")}
                 </div>
-              )}
 
-              {/* Recognition check */}
-              {currentStep.data.recognitionCheck && (
+                <p className="interaction-prompt">{prompt}</p>
+
+                <div className="choices-vertical-list">
+                  {choices?.map((choice: { id: string; label: string; isCorrect?: boolean }) => {
+                    const isSelected = selectedChoices["vocab"] === choice.id;
+                    const isCorrect = choice.id === "opt-hello" || choice.id === "greeting" || choice.isCorrect;
+                    return (
+                      <button
+                        key={choice.id}
+                        type="button"
+                        className={`choice-card-btn ${isSelected ? "selected" : ""}`}
+                        onClick={async () => {
+                          setSelectedChoices((prev) => ({ ...prev, vocab: choice.id }));
+                          await submitBackendTaskAnswer((t) => t.taskType === "VOCABULARY" || t.key === "vocabulary", choice.id);
+                        }}
+                      >
+                        <span className="choice-label">{choice.label}</span>
+                        {isSelected && isCorrect && <span className="feedback-badge positive">✓</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* STEP 4: Characters */}
+          {currentStep.stepKey === "characters" && (() => {
+            const charObj = pkg.characters[activeCharIndex];
+            const charTask = session?.tasks?.find(
+              (t) => (t.taskType === "RECOGNITION" || t.taskType === "MINI_CHECK" || t.key.startsWith("recognition-")) &&
+                     (t.key === `recognition-${activeCharIndex + 1}` || t.itemId === charObj?.char)
+            );
+            const prompt = charTask?.taskData?.prompt || currentStep.data.recognitionCheck?.prompt || "聽一聽發音，選出聽到的字：";
+            const audioText = charTask?.taskData?.audioText || charObj?.char || "你";
+            const choices = charTask?.taskData?.choices || (
+              activeCharIndex === 0
+                ? [{ id: "opt-ni", label: "你", isCorrect: true }, { id: "opt-hao", label: "好", isCorrect: false }]
+                : [{ id: "opt-ni", label: "你", isCorrect: false }, { id: "opt-hao", label: "好", isCorrect: true }]
+            );
+
+            return (
+              <div className="step-body step-characters-body">
+                <div className="character-tabs-row" role="tablist">
+                  {pkg.characters.map((c, idx) => {
+                    const taskForChar = session?.tasks?.find(
+                      (t) => (t.taskType === "RECOGNITION" || t.taskType === "MINI_CHECK" || t.key.startsWith("recognition-")) &&
+                             (t.key === `recognition-${idx + 1}` || t.itemId === c.char)
+                    );
+                    const isDone = taskForChar?.state === "COMPLETED" || Boolean(selectedChoices[`recog-${idx}`]);
+                    return (
+                      <button
+                        key={c.char}
+                        type="button"
+                        role="tab"
+                        aria-selected={activeCharIndex === idx}
+                        className={`character-tab-btn ${activeCharIndex === idx ? "active" : ""} ${isDone ? "is-done" : ""}`}
+                        onClick={() => setActiveCharIndex(idx)}
+                      >
+                        <span className="tab-char">{c.char}</span>
+                        <span className="tab-pinyin">{c.pronunciation.pinyin}</span>
+                        {isDone && <span className="tab-done-indicator">✓</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {charObj && (
+                  <div className="character-detail-display">
+                    <div className="char-hero-box">
+                      <span className="large-char-display">{charObj.char}</span>
+                      <button
+                        type="button"
+                        className="button button-text"
+                        onClick={() => playAudio(charObj.char)}
+                        aria-label={`播放「${charObj.char}」的發音`}
+                      >
+                        <Volume2 size={20} />
+                        <span>{charObj.pronunciation.pinyin} / {charObj.pronunciation.zhuyin}</span>
+                      </button>
+                    </div>
+
+                    <div className="char-info-grid">
+                      <div className="info-cell">
+                        <span className="info-cell-label">部首</span>
+                        <strong className="info-cell-val">{charObj.radical} 部</strong>
+                      </div>
+                      <div className="info-cell">
+                        <span className="info-cell-label">筆畫</span>
+                        <strong className="info-cell-val">{charObj.strokeCount} 畫</strong>
+                      </div>
+                      <div className="info-cell">
+                        <span className="info-cell-label">字義</span>
+                        <strong className="info-cell-val">{charObj.meaning.zh}</strong>
+                      </div>
+                    </div>
+
+                    {renderScaffold(charObj.char === "你" ? "char_ni" : "char_hao")}
+                  </div>
+                )}
+
+                {/* Recognition check */}
                 <div className="recognition-mini-check">
-                  <p className="interaction-prompt">{currentStep.data.recognitionCheck.prompt}</p>
+                  <p className="interaction-prompt">{prompt}</p>
                   <button
                     type="button"
                     className="button button-secondary play-recog-audio-btn"
-                    onClick={() => playAudio(currentStep.data.recognitionCheck?.audioText || "你")}
+                    onClick={() => playAudio(audioText)}
                   >
                     <Volume2 size={18} />
-                    <span>播放題目音檔</span>
+                    <span>播放題目音檔「{audioText}」</span>
                   </button>
                   <div className="choices-horizontal-row">
-                    {currentStep.data.recognitionCheck.choices?.map((choice: { id: string; label: string; isCorrect?: boolean }) => {
-                      const isSelected = selectedChoices["recog"] === choice.id;
+                    {choices?.map((choice: { id: string; label: string; isCorrect?: boolean }) => {
+                      const isSelected = selectedChoices[`recog-${activeCharIndex}`] === choice.id || selectedChoices["recog"] === choice.id;
+                      const isCorrect = choice.id === (activeCharIndex === 0 ? "opt-ni" : "opt-hao") || choice.isCorrect;
                       return (
                         <button
                           key={choice.id}
                           type="button"
                           className={`char-choice-card ${isSelected ? "selected" : ""}`}
-                          onClick={() => {
-                            setSelectedChoices((prev) => ({ ...prev, recog: choice.id }));
-                            void submitBackendTaskAnswer((t) => t.taskType === "RECOGNITION" || t.taskType === "REVIEW_RECOGNITION" || t.key.startsWith("recognition"), choice.id);
+                          onClick={async () => {
+                            setSelectedChoices((prev) => ({
+                              ...prev,
+                              recog: choice.id,
+                              [`recog-${activeCharIndex}`]: choice.id,
+                            }));
+                            await submitBackendTaskAnswer(
+                              (t) => t.id === charTask?.id || t.key === `recognition-${activeCharIndex + 1}`,
+                              choice.id
+                            );
                           }}
                         >
                           <span className="char-choice-text">{choice.label}</span>
-                          {isSelected && choice.isCorrect && <span className="feedback-badge positive">✓</span>}
+                          {isSelected && isCorrect && <span className="feedback-badge positive">✓</span>}
                         </button>
                       );
                     })}
                   </div>
                 </div>
-              )}
-            </div>
-          )}
+              </div>
+            );
+          })()}
 
           {/* STEP 5: Sentence Pattern */}
-          {currentStep.stepKey === "sentence_pattern" && (
-            <div className="step-body step-sentence-body">
-              <div className="sentence-pattern-card">
-                <span className="pattern-badge">常用句型</span>
-                <h3 className="pattern-formula">你好！我叫 ___。</h3>
-                <p className="pattern-explanation">見面時打招呼並自我介紹名字的萬用句型。</p>
-                {renderScaffold("greeting_intro")}
-              </div>
+          {currentStep.stepKey === "sentence_pattern" && (() => {
+            const sentTask = session?.tasks?.find((t) => t.taskType === "SENTENCE_PATTERN" || t.key === "sentence-pattern");
+            const prompt = sentTask?.taskData?.prompt || currentStep.data.prompt;
+            const choices = sentTask?.taskData?.choices || currentStep.data.choices;
 
-              <p className="interaction-prompt">{currentStep.data.prompt}</p>
+            return (
+              <div className="step-body step-sentence-body">
+                <div className="sentence-pattern-card">
+                  <span className="pattern-badge">常用句型</span>
+                  <h3 className="pattern-formula">你好！我叫 ___。</h3>
+                  <p className="pattern-explanation">見面時打招呼並自我介紹名字的萬用句型。</p>
+                  {renderScaffold("greeting_intro")}
+                </div>
 
-              <div className="choices-vertical-list">
-                {currentStep.data.choices?.map((choice) => {
-                  const isSelected = selectedChoices["sentence"] === choice.id;
-                  return (
-                    <button
-                      key={choice.id}
-                      type="button"
-                      className={`choice-card-btn ${isSelected ? "selected" : ""}`}
-                      onClick={() => {
-                        setSelectedChoices((prev) => ({ ...prev, sentence: choice.id }));
-                        void submitBackendTaskAnswer((t) => t.taskType === "SENTENCE_PATTERN" || t.key === "sentence-pattern", choice.id);
-                      }}
-                    >
-                      <span className="choice-label">{choice.label}</span>
-                      {isSelected && choice.isCorrect && <span className="feedback-badge positive">✓</span>}
-                    </button>
-                  );
-                })}
+                <p className="interaction-prompt">{prompt}</p>
+
+                <div className="choices-vertical-list">
+                  {choices?.map((choice: { id: string; label: string; isCorrect?: boolean }) => {
+                    const isSelected = selectedChoices["sentence"] === choice.id;
+                    const isCorrect = choice.id === "opt-correct-order" || choice.id === "greeting" || choice.isCorrect;
+                    return (
+                      <button
+                        key={choice.id}
+                        type="button"
+                        className={`choice-card-btn ${isSelected ? "selected" : ""}`}
+                        onClick={async () => {
+                          setSelectedChoices((prev) => ({ ...prev, sentence: choice.id }));
+                          await submitBackendTaskAnswer((t) => t.taskType === "SENTENCE_PATTERN" || t.key === "sentence-pattern", choice.id);
+                        }}
+                      >
+                        <span className="choice-label">{choice.label}</span>
+                        {isSelected && isCorrect && <span className="feedback-badge positive">✓</span>}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* STEP 6: Speaking */}
           {currentStep.stepKey === "speaking" && (
@@ -1400,10 +1533,12 @@ export function LessonPlayerPage({
                   <button
                     type="button"
                     className="button button-text skip-writing-btn"
-                    onClick={() => {
-                      setWritingSkipped(true);
-                      void skipBackendTask((t) => t.taskType.startsWith("WRITING_") || t.key.startsWith("writing"));
-                      handleNextStep();
+                    onClick={async () => {
+                      const ok = await skipBackendTask((t) => t.taskType.startsWith("WRITING_") || t.key.startsWith("writing"));
+                      if (ok) {
+                        setWritingSkipped(true);
+                        void handleNextStep();
+                      }
                     }}
                   >
                     {text.skipWriting}

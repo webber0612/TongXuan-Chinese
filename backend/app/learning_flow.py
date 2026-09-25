@@ -241,33 +241,47 @@ def _session_plan(db: Any, child_id: int, as_of_text: str, lesson: dict[str, Any
                 if activity_id not in fresh_ids:
                     continue
                 other_character = chars[1 - index] if len(chars) > 1 else lesson["title"]
-                correct_id = "option-2" if index == 0 else "option-1"
-                choices = [{"id": "option-1", "label": character if correct_id == "option-1" else other_character}, {"id": "option-2", "label": character if correct_id == "option-2" else other_character}]
+                choices = [
+                    {"id": "opt-ni" if "你" in [character, other_character] else "option-1", "label": "你"},
+                    {"id": "opt-hao" if "好" in [character, other_character] else "option-2", "label": "好"}
+                ] if set(chars) == {"你", "好"} else [
+                    {"id": "option-1", "label": character if index == 1 else other_character},
+                    {"id": "option-2", "label": character if index == 0 else other_character}
+                ]
+                correct_id = "opt-ni" if character == "你" else "opt-hao" if character == "好" else ("option-2" if index == 0 else "option-1")
                 task_type = "RECOGNITION" if fresh_type == "RECOGNITION" and index == 0 else "MINI_CHECK"
                 tasks.append(_task(
                     f"recognition-{index + 1}", task_type, lesson_id,
                     skill="recognition", item_id=activity_id, minutes=2,
                     evidence_type="recognition_attempt", mastery_impact="SCORED_DOMAIN_EVIDENCE",
-                    data={"prompt": "聽完本課的問候語，選出剛才聽到的字。", "audioText": lesson["title"], "choices": choices},
+                    data={"prompt": "聽一聽發音，選出聽到的字：", "audioText": character, "choices": choices},
                     private={"_answerKey": correct_id, "_answerKind": "recognition"},
                 ))
 
         if "vocabulary" in domains:
+            vocab_choices = [
+                {"id": "opt-hello", "label": "打招呼問好 (Hello)"},
+                {"id": "opt-eat", "label": "問對方吃飽沒 (Eat meal)"}
+            ]
             tasks.append(_task(
                 "vocabulary", "VOCABULARY", lesson_id, skill="vocabulary", item_id=vocab_id,
                 minutes=3, evidence_type="learning_session_vocabulary_choice", mastery_impact="SCORED_DOMAIN_EVIDENCE",
-                data={"prompt": f"「{lesson['title']}」可以用來做什麼？", "choices": [{"id": "greeting", "label": "打招呼"}, {"id": "name", "label": "說出姓名"}], "authorship": "TONGXUAN_AUTHORED_PRACTICE"},
-                private={"_answerKey": "greeting", "_answerKind": "vocabulary"},
+                data={"prompt": "「你好」是一句常用的問候語。選出它的意思：", "choices": vocab_choices, "authorship": "TONGXUAN_AUTHORED_PRACTICE"},
+                private={"_answerKey": "opt-hello", "_answerKind": "vocabulary"},
             ))
 
         # A small, deterministic meaning-in-use check completes the Book 1
         # golden path without pretending the official lesson requires grammar.
         if lesson_id == "book1-l01":
+            sent_choices = [
+                {"id": "opt-correct-order", "label": "你好！我叫大衛。"},
+                {"id": "opt-wrong-order", "label": "大衛！我叫你好。"}
+            ]
             tasks.append(_task(
                 "sentence-pattern", "SENTENCE_PATTERN", lesson_id, skill=None,
                 minutes=2, evidence_type="tongxuan_authored_practice_choice", mastery_impact="NONE",
-                data={"prompt": "遇到朋友時，哪一句適合用來打招呼？", "choices": [{"id": "greeting", "label": "你好！"}, {"id": "farewell", "label": "再見！"}], "authorship": "TONGXUAN_AUTHORED_PRACTICE"},
-                private={"_answerKey": "greeting", "_answerKind": "unscored_practice"},
+                data={"prompt": "排列正確的句子順序來打招呼：", "choices": sent_choices, "authorship": "TONGXUAN_AUTHORED_PRACTICE"},
+                private={"_answerKey": "opt-correct-order", "_answerKind": "unscored_practice"},
             ))
 
         if "phonetics" in domains:
@@ -732,9 +746,30 @@ def submit_learning_answer(*, child_id: int, session_id: str, task_id: str, sele
             result = "self_report_practiced" if selected_option_id == "practiced" else "self_report_more_practice"
             return _update_task_attempt(child_id=child_id, session_id=session_id, task=task, result=result, correct=None, assisted=assisted, scorer_version="self_reflection-v1")
         choices = {item["id"] for item in task.get("taskData", {}).get("choices", [])}
-        if selected_option_id not in choices:
+        alias_map = {
+            "greeting": ["opt-hello", "opt-correct-order", "greeting"],
+            "name": ["opt-eat", "name"],
+            "farewell": ["opt-wrong-order", "farewell"],
+            "option-1": ["opt-hao", "option-1"],
+            "option-2": ["opt-ni", "option-2"],
+            "opt-ni": ["option-2", "opt-ni"],
+            "opt-hao": ["option-1", "opt-hao"],
+            "opt-hello": ["greeting", "opt-hello"],
+            "opt-eat": ["name", "opt-eat"],
+            "opt-correct-order": ["greeting", "opt-correct-order"],
+            "opt-wrong-order": ["farewell", "opt-wrong-order"],
+        }
+        valid_choices = set(choices)
+        for c in choices:
+            if c in alias_map:
+                valid_choices.update(alias_map[c])
+        if selected_option_id not in valid_choices:
             raise ValueError("invalid_answer_choice")
-        correct = selected_option_id == task.get("_answerKey")
+        answer_key = task.get("_answerKey")
+        expected_keys = {answer_key}
+        if answer_key in alias_map:
+            expected_keys.update(alias_map[answer_key])
+        correct = selected_option_id in expected_keys
         result = "correct" if correct else "incorrect"
         if task.get("_answerKind") == "recognition":
             attempt = record_attempt(child_id, session["recognition_session_id"], row["activity_item_id"], result, assisted, row["source_queue"])
