@@ -5,7 +5,7 @@ import { createRoot } from "react-dom/client";
 import { addChildProfile, defaultProfiles, loadProfiles, reconcileProfiles, saveProfiles, selectProfile } from "./profiles";
 import { PARENT_GATE_NOTE, isPasswordEntered } from "./parentGate";
 import { ChildHomePage } from "../pages/ChildHomePage";
-import { routeFromPath } from "../AppShell";
+import { isCanonicalHomePath, resolveLearningSessionChildId, routeFromPath } from "../AppShell";
 import { AppShell } from "../AppShell";
 import { DISPLAY_LANGUAGE_KEY } from "./i18n";
 
@@ -39,7 +39,48 @@ describe("child-first shell contracts", () => {
     }
     expect(routeFromPath("/TongXuan-Chinese/preview-2")).toBe("home");
     expect(routeFromPath("/TongXuan-Chinese/preview-kids")).toBe("home");
+    expect(routeFromPath("/learning-session")).toBe("learning-session");
+    expect(routeFromPath("/TongXuan-Chinese/learning-session")).toBe("learning-session");
+    expect(isCanonicalHomePath("/")).toBe(true);
+    expect(isCanonicalHomePath("/TongXuan-Chinese/")).toBe(true);
+    expect(isCanonicalHomePath("/preview-2")).toBe(false);
+    expect(isCanonicalHomePath("/TongXuan-Chinese/preview-kids")).toBe(false);
+    const profiles = [
+      { key: "child-7", name: "樂樂", role: "child" as const, childId: 7, color: "mint" },
+      { key: "parent", name: "家長管理者", role: "parent" as const, childId: null, color: "navy" },
+    ];
+    expect(resolveLearningSessionChildId(profiles, " 樂樂 ")).toBe(7);
+    expect(resolveLearningSessionChildId(profiles, "萌萌")).toBeNull();
+    expect(resolveLearningSessionChildId(profiles, "家長管理者")).toBeNull();
+    expect(resolveLearningSessionChildId([...profiles, { ...profiles[0], key: "child-8", childId: 8 }], "樂樂")).toBeNull();
     expect(routeFromPath("/unknown")).toBe("home");
+  });
+
+  it("starts the session only for the backend profile matching the selected portal learner", async () => {
+    const renderHome = async (backendChildName: string) => {
+      localStorage.clear();
+      localStorage.setItem(DISPLAY_LANGUAGE_KEY, "zh-Hant");
+      window.history.replaceState({}, "", "/TongXuan-Chinese/");
+      vi.stubGlobal("fetch", vi.fn(async (url: string) => new Response(JSON.stringify(url.endsWith("/api/children") ? [{ id: 1, name: backendChildName }] : url.includes("daily-queue") ? [] : { balance: 0, rewards: [] }), { status: 200, headers: { "Content-Type": "application/json" } })));
+      document.body.innerHTML = '<div id="root"></div>';
+      const root = createRoot(document.getElementById("root")!);
+      await act(async () => { root.render(React.createElement(AppShell)); await Promise.resolve(); await Promise.resolve(); });
+      await act(async () => { await new Promise((resolve) => setTimeout(resolve, 25)); });
+      return root;
+    };
+
+    const mismatchedRoot = await renderHome("Different learner");
+    await act(async () => { (document.querySelector(".validated-session-entry") as HTMLButtonElement).click(); });
+    expect(window.location.pathname).toBe("/TongXuan-Chinese/");
+    expect(document.querySelector('[role="alert"]')?.textContent).toContain("找不到這位學習者");
+    mismatchedRoot.unmount();
+    vi.unstubAllGlobals();
+
+    const matchedRoot = await renderHome("樂樂");
+    await act(async () => { (document.querySelector(".validated-session-entry") as HTMLButtonElement).click(); });
+    expect(window.location.pathname).toBe("/TongXuan-Chinese/learning-session");
+    matchedRoot.unmount();
+    vi.unstubAllGlobals();
   });
 
   it("persists add-user through POST and reconciles profiles by backend id", async () => {

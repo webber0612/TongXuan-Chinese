@@ -66,8 +66,14 @@ def _is_accessible(db: Any, child_id: int, lesson: dict[str, Any], lessons: list
         return True
     placement = db.execute("SELECT main_curriculum_start FROM placement_profiles WHERE child_id=?", (child_id,)).fetchone()
     placement_stage = {"STARTER": "starter", "BASIC": "basic", "BOOK_1": "book-1"}.get(placement["main_curriculum_start"] if placement else None)
-    if placement_stage == lesson.get("stageId") and lesson.get("number") == 1:
-        return True
+    if placement_stage == lesson.get("stageId"):
+        if lesson.get("number") == 1:
+            return True
+        lesson_number = lesson.get("number")
+        stage_predecessor = next((item for item in lessons if lesson_number is not None and item.get("stageId") == lesson.get("stageId") and item.get("number") == lesson_number - 1), None)
+        if stage_predecessor is not None:
+            previous_stage_state = _state_row(db, child_id, stage_predecessor["id"])
+            return bool(previous_stage_state and previous_stage_state["status"] == "MASTERED")
     index = lesson["sequence"]
     if index == 0:
         return True
@@ -261,7 +267,7 @@ def _latest_linked_attempts(db: Any, child_id: int, lesson_id: str, domain: str)
     """
     allowed_types = {
         "recognition": {"recognition_attempt"},
-        "vocabulary": {"word_attempt"},
+        "vocabulary": {"word_attempt", "learning_session_vocabulary_choice"},
         "grammar": {"grammar_attempt"},
         "phonetics": {"phonetic_notation_attempt"},
         "reading": {"reading_attempt"},
@@ -274,6 +280,11 @@ def _latest_linked_attempts(db: Any, child_id: int, lesson_id: str, domain: str)
              ON l.child_id=e.child_id AND l.skill_domain=e.skill_domain AND l.item_id=e.evidence_item_id AND l.lesson_id=e.lesson_id
            WHERE e.child_id=? AND e.lesson_id=? AND e.skill_domain=? AND e.evidence_ref IS NOT NULL
              AND e.evidence_type IN ({})
+             AND (e.evidence_type<>'learning_session_vocabulary_choice' OR EXISTS (
+                   SELECT 1 FROM learning_flow_task_attempts a WHERE a.child_id=e.child_id
+                     AND a.evidence_ref=e.evidence_ref AND a.skill_domain='vocabulary'
+                     AND a.scorer_version='session-vocabulary-choice-v1' AND a.score=e.score
+                 ))
            ORDER BY e.created_at,e.rowid""".format(",".join("?" for _ in allowed_types)),
         (child_id, lesson_id, domain, *sorted(allowed_types)),
     ).fetchall()

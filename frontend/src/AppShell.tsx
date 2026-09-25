@@ -14,8 +14,9 @@ const CurriculumPage = lazy(async () => ({ default: (await import("./pages/Curri
 const TutorPage = lazy(async () => ({ default: (await import("./pages/TutorPage")).TutorPage }));
 const CommercializationPage = lazy(async () => ({ default: (await import("./pages/CommercializationPage")).CommercializationPage }));
 const DiagnosticsPage = lazy(async () => ({ default: (await import("./pages/DiagnosticsPage")).DiagnosticsPage }));
+const LearningSessionPage = lazy(async () => ({ default: (await import("./pages/LearningSessionPage")).LearningSessionPage }));
 type Child = { id: number; name: string };
-type Route = "home" | "practice" | "parent" | "curriculum" | "course-zero" | "first-lesson" | "tutor" | "me" | "commercialization" | "diagnostics" | "archived-preview";
+type Route = "home" | "practice" | "parent" | "curriculum" | "course-zero" | "first-lesson" | "learning-session" | "tutor" | "me" | "commercialization" | "diagnostics" | "archived-preview";
 
 function appBaseAt(pathname: string): string {
   const normalized = pathname.replace(/\/+$/, "") || "/";
@@ -36,6 +37,7 @@ export function routeFromPath(pathname: string): Route {
   if (appPath === "/curriculum") return "curriculum";
   if (appPath === "/course-zero") return "course-zero";
   if (appPath === "/first-lesson") return "first-lesson";
+  if (appPath === "/learning-session") return "learning-session";
   if (appPath === "/tutor") return "tutor";
   if (appPath === "/admin/commercialization") return "commercialization";
   if (appPath === "/diagnostics") return "diagnostics";
@@ -44,7 +46,20 @@ export function routeFromPath(pathname: string): Route {
   return "home";
 }
 
-const paths: Record<Exclude<Route, "archived-preview">, string> = { home: "/", practice: "/practice", parent: "/parent-dashboard", curriculum: "/curriculum", "course-zero": "/course-zero", "first-lesson": "/first-lesson", tutor: "/tutor", me: "/me", commercialization: "/admin/commercialization", diagnostics: "/diagnostics" };
+const paths: Record<Exclude<Route, "archived-preview">, string> = { home: "/", practice: "/practice", parent: "/parent-dashboard", curriculum: "/curriculum", "course-zero": "/course-zero", "first-lesson": "/first-lesson", "learning-session": "/learning-session", tutor: "/tutor", me: "/me", commercialization: "/admin/commercialization", diagnostics: "/diagnostics" };
+
+export function isCanonicalHomePath(pathname: string): boolean {
+  const normalized = pathname.replace(/\/+$/, "") || "/";
+  const base = appBaseAt(pathname).replace(/\/+$/, "");
+  const appPath = base && (normalized === base || normalized.startsWith(`${base}/`)) ? normalized.slice(base.length) || "/" : normalized;
+  return appPath === "/";
+}
+
+export function resolveLearningSessionChildId(profiles: Profile[], learnerName: string): number | null {
+  const expectedName = learnerName.trim().toLocaleLowerCase();
+  const matchingChildren = profiles.filter((profile) => profile.role === "child" && profile.name.trim().toLocaleLowerCase() === expectedName && profile.childId !== null);
+  return matchingChildren.length === 1 ? matchingChildren[0].childId : null;
+}
 
 function pathAtAppBase(path: string): string {
   const appBase = appBaseAt(window.location.pathname);
@@ -115,7 +130,8 @@ export function AppShell() {
     { id: "me" as Route, label: t("mySpace"), icon: UserRound },
   ], [activeProfile.role, language]);
 
-  const isChildPortal = route === "home" || route === "archived-preview";
+  const isChildPortal = route === "home" || route === "archived-preview" || route === "learning-session";
+  const showSessionEntry = isCanonicalHomePath(window.location.pathname);
 
   return <div className={`app-shell ${isChildPortal ? "app-shell-child-portal" : ""}`}>
     <header className={`app-header ${isChildPortal ? "app-header-hidden" : ""}`}>
@@ -136,7 +152,15 @@ export function AppShell() {
         {childrenError && !isChildPortal && <div className="offline-strip error-strip" role="alert">{childrenError} <button className="button button-text" onClick={() => void loadChildren()}>{t("retry")}</button></div>}
         {route === "archived-preview" && <main className="app-page"><PageHeading kicker={t("library")} title={t("previewArchived")} subtitle={t("previewArchivedDescription")} icon={<BookOpen/>}/><button className="button button-primary" onClick={() => navigate("home")}><House size={18}/>{t("today")}</button></main>}
         <Suspense fallback={<AppLoading label={t("loading")} />}>
-        {route === "home" && <ChildPortalPage onOpenCurriculum={() => navigate("curriculum")} />}
+        {route === "home" && <ChildPortalPage onOpenCurriculum={() => navigate("curriculum")} onStartLearningSession={showSessionEntry ? (learnerName) => {
+          const childId = resolveLearningSessionChildId(profiles, learnerName);
+          const childProfile = profiles.find((profile) => profile.role === "child" && profile.childId === childId);
+          if (!childId || !childProfile) return false;
+          setActiveKey(childProfile.key);
+          navigate("learning-session");
+          return true;
+        } : undefined} />}
+        {route === "learning-session" && <LearningSessionPage activeChildId={activeChild?.id ?? null} onBack={() => navigate("home")} />}
         {route === "practice" && <div className="app-page practice-page" key={activeProfile.key}><PageHeading kicker={t("practice")} title={t("practiceTitle")} subtitle={t("practiceHint")} icon={<Sparkles/>}/><LearningPage activeChildId={activeChild?.id ?? null} /></div>}
         {route === "parent" && <ParentAreaPage />}
         {route === "curriculum" && <CurriculumPage onOpenCourseZero={() => navigate("course-zero")} />}

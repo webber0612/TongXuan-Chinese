@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 DEFAULT_DB_PATH = Path(__file__).resolve().parents[2] / "data" / "tongxuan.sqlite3"
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 SQLITE_BUSY_TIMEOUT_MS = 5000
 
 
@@ -451,6 +451,82 @@ def initialize_database() -> None:
                 assessed_by TEXT NOT NULL,
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
+            CREATE TABLE IF NOT EXISTS learning_flow_sessions (
+                id TEXT PRIMARY KEY,
+                child_id INTEGER NOT NULL REFERENCES children(id),
+                lesson_id TEXT NOT NULL,
+                recognition_session_id TEXT NOT NULL REFERENCES learning_sessions(id),
+                target_minutes INTEGER NOT NULL CHECK(target_minutes BETWEEN 15 AND 25),
+                status TEXT NOT NULL CHECK(status IN ('IN_PROGRESS','PAUSED','COMPLETED','ABANDONED')),
+                generated_at TEXT NOT NULL,
+                started_at TEXT NOT NULL,
+                last_resumed_at TEXT NOT NULL,
+                active_seconds INTEGER NOT NULL DEFAULT 0,
+                completed_at TEXT,
+                termination_reason TEXT,
+                reward_points INTEGER NOT NULL DEFAULT 0,
+                mastery_status TEXT,
+                plan_json TEXT NOT NULL
+            );
+            CREATE UNIQUE INDEX IF NOT EXISTS one_active_learning_flow_per_child
+                ON learning_flow_sessions(child_id) WHERE status IN ('IN_PROGRESS','PAUSED');
+            CREATE TABLE IF NOT EXISTS learning_flow_tasks (
+                id TEXT PRIMARY KEY,
+                session_id TEXT NOT NULL REFERENCES learning_flow_sessions(id),
+                child_id INTEGER NOT NULL REFERENCES children(id),
+                lesson_id TEXT NOT NULL,
+                position INTEGER NOT NULL,
+                task_type TEXT NOT NULL,
+                source_queue TEXT NOT NULL CHECK(source_queue IN ('REVIEW','CURRICULUM')),
+                skill_domain TEXT,
+                activity_item_id TEXT,
+                is_new INTEGER NOT NULL CHECK(is_new IN (0,1)),
+                required INTEGER NOT NULL CHECK(required IN (0,1)),
+                estimated_minutes INTEGER NOT NULL CHECK(estimated_minutes >= 0),
+                evidence_type TEXT,
+                mastery_impact TEXT NOT NULL,
+                reward_impact TEXT NOT NULL,
+                state TEXT NOT NULL CHECK(state IN ('PENDING','IN_PROGRESS','COMPLETED','DEFERRED')),
+                started_at TEXT,
+                completed_at TEXT,
+                elapsed_seconds INTEGER NOT NULL DEFAULT 0,
+                attempt_count INTEGER NOT NULL DEFAULT 0,
+                failure_count INTEGER NOT NULL DEFAULT 0,
+                aborted_attempt_count INTEGER NOT NULL DEFAULT 0,
+                deferred_reason TEXT,
+                evidence_ref TEXT,
+                task_json TEXT NOT NULL,
+                UNIQUE(session_id, position),
+                UNIQUE(session_id, id)
+            );
+            CREATE INDEX IF NOT EXISTS learning_flow_tasks_child_session
+                ON learning_flow_tasks(child_id,session_id,position);
+            CREATE TABLE IF NOT EXISTS learning_flow_task_attempts (
+                id TEXT PRIMARY KEY,
+                session_id TEXT NOT NULL REFERENCES learning_flow_sessions(id),
+                task_id TEXT NOT NULL REFERENCES learning_flow_tasks(id),
+                child_id INTEGER NOT NULL REFERENCES children(id),
+                skill_domain TEXT,
+                result TEXT NOT NULL,
+                score REAL CHECK(score IS NULL OR (score >= 0 AND score <= 1)),
+                assisted INTEGER NOT NULL DEFAULT 0 CHECK(assisted IN (0,1)),
+                evidence_ref TEXT,
+                scorer_version TEXT,
+                occurred_at TEXT NOT NULL,
+                UNIQUE(task_id, evidence_ref)
+            );
+            CREATE TABLE IF NOT EXISTS learning_flow_telemetry (
+                id TEXT PRIMARY KEY,
+                session_id TEXT NOT NULL REFERENCES learning_flow_sessions(id),
+                child_id INTEGER NOT NULL REFERENCES children(id),
+                event_type TEXT NOT NULL,
+                task_id TEXT,
+                skill_domain TEXT,
+                details_json TEXT NOT NULL DEFAULT '{}',
+                occurred_at TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS learning_flow_telemetry_child_date
+                ON learning_flow_telemetry(child_id,occurred_at);
             """
         )
         # Keep existing family databases forward-compatible with the Sprint B audit fields.
@@ -489,6 +565,10 @@ def initialize_database() -> None:
                 ("aborted_at", "TEXT"),
                 ("activity_domain", "TEXT NOT NULL DEFAULT 'speaking'")
             ],
+            "writing_attempts": [
+                ("phase", "TEXT NOT NULL DEFAULT 'independent'"),
+                ("script_mode", "TEXT"),
+            ],
             "weekly_tests": [
                 ("assessment_blueprint", "TEXT NOT NULL DEFAULT '{}'"),
                 ("domain_scores", "TEXT NOT NULL DEFAULT '{}'"),
@@ -511,5 +591,5 @@ def initialize_database() -> None:
         if current_version > SCHEMA_VERSION:
             raise RuntimeError("database_schema_newer_than_application")
         if current_version < SCHEMA_VERSION:
-            connection.execute("INSERT OR IGNORE INTO schema_migrations(version, description) VALUES (?, ?)", (SCHEMA_VERSION, "auditable curriculum gates, placement profiles, and additive audit migrations"))
+            connection.execute("INSERT OR IGNORE INTO schema_migrations(version, description) VALUES (?, ?)", (SCHEMA_VERSION, "resumable learning sessions, task evidence, and privacy-safe telemetry"))
             connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")

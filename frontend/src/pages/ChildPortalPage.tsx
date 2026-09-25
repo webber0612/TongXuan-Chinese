@@ -119,6 +119,8 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     myAchievements: "我的成就",
     draftContentNotice: "下方關卡是童軒自編示範內容，尚未納入官方課程。",
     openVerifiedCurriculum: "查看官方課程",
+    startValidatedSession: "開始今日學習",
+    sessionProfileMissing: "找不到這位學習者的正式課程檔案，請家長先從課程頁新增相同名稱的學習者。",
     rewardsShop: "獎勵兌換舖",
     settings: "設定",
     beginnerChipOn: "初學標音 · 開啟",
@@ -259,6 +261,8 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     myAchievements: "我的成就",
     draftContentNotice: "下方关卡是童轩自编示范内容，尚未纳入官方课程。",
     openVerifiedCurriculum: "查看官方课程",
+    startValidatedSession: "开始今日学习",
+    sessionProfileMissing: "找不到这位学习者的正式课程档案，请家长先从课程页新增相同名称的学习者。",
     rewardsShop: "奖励兑换铺",
     settings: "设置",
     beginnerChipOn: "初学标音 · 开启",
@@ -399,6 +403,8 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     myAchievements: "Achievements",
     draftContentNotice: "The levels below are TongXuan-authored samples and are not part of the verified official course.",
     openVerifiedCurriculum: "View official course",
+    startValidatedSession: "Start today's lesson",
+    sessionProfileMissing: "No official learning profile matches this learner. Ask a parent to add the same name in the curriculum area first.",
     rewardsShop: "Rewards Shop",
     settings: "Settings",
     beginnerChipOn: "Phonetics · ON",
@@ -539,6 +545,8 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     myAchievements: "実績・バッジ",
     draftContentNotice: "以下のレベルは童軒が作成したサンプルで、公式教材として検証されていません。",
     openVerifiedCurriculum: "公式コースを見る",
+    startValidatedSession: "今日の学習を始める",
+    sessionProfileMissing: "この学習者に一致する公式学習プロフィールがありません。保護者の方はコース画面で同じ名前の学習者を追加してください。",
     rewardsShop: "ご褒美ショップ",
     settings: "設定",
     beginnerChipOn: "ふりがな補助 · ON",
@@ -679,6 +687,8 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     myAchievements: "나의 업적",
     draftContentNotice: "아래 단계는 TongXuan 자체 제작 예시이며 공식 교재로 검증되지 않았습니다.",
     openVerifiedCurriculum: "공식 교육과정 보기",
+    startValidatedSession: "오늘 학습 시작",
+    sessionProfileMissing: "이 학습자와 일치하는 공식 학습 프로필이 없습니다. 보호자가 교육과정 화면에서 같은 이름의 학습자를 먼저 추가해 주세요.",
     rewardsShop: "보상 상점",
     settings: "설정",
     beginnerChipOn: "초보자 발음 표기 · 켜짐",
@@ -819,6 +829,8 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     myAchievements: "Logros",
     draftContentNotice: "Los niveles siguientes son ejemplos creados por TongXuan y no forman parte del curso oficial verificado.",
     openVerifiedCurriculum: "Ver curso oficial",
+    startValidatedSession: "Empezar la lección de hoy",
+    sessionProfileMissing: "No hay un perfil oficial que coincida con este estudiante. Pide a un adulto que lo añada con el mismo nombre en el área de cursos.",
     rewardsShop: "Tienda de Premios",
     settings: "Ajustes",
     beginnerChipOn: "Modo Principiante · ON",
@@ -1648,7 +1660,7 @@ const DEFAULT_LEARNERS: ChildLearner[] = [
   }
 ];
 
-export function ChildPortalPage({ onOpenCurriculum }: { onOpenCurriculum: () => void }) {
+export function ChildPortalPage({ onOpenCurriculum, onStartLearningSession }: { onOpenCurriculum: () => void; onStartLearningSession?: (learnerName: string) => boolean }) {
   // Learner Profiles Storage
   const [learners, setLearners] = useState<ChildLearner[]>(() => {
     const saved = localStorage.getItem("tongxuan_learners_list");
@@ -1667,6 +1679,7 @@ export function ChildPortalPage({ onOpenCurriculum }: { onOpenCurriculum: () => 
   });
 
   const activeLearner = learners.find((l) => l.id === activeLearnerId) || learners[0] || DEFAULT_LEARNERS[0];
+  const [sessionProfileError, setSessionProfileError] = useState(false);
 
   // Helper to update active learner data and persist
   const updateActiveLearner = (updater: Partial<ChildLearner> | ((prev: ChildLearner) => ChildLearner)) => {
@@ -2345,6 +2358,8 @@ export function ChildPortalPage({ onOpenCurriculum }: { onOpenCurriculum: () => 
       <div className="child-portal-source-note" role="note">
         <span>{t("draftContentNotice")}</span>
         <button type="button" onClick={onOpenCurriculum}>{t("openVerifiedCurriculum")}</button>
+          {onStartLearningSession && <button type="button" className="validated-session-entry" onClick={() => setSessionProfileError(!onStartLearningSession(activeLearner.name))}>{t("startValidatedSession")}</button>}
+          {sessionProfileError && <span className="session-profile-error" role="alert">{t("sessionProfileMissing")}</span>}
       </div>
 
       {/* 2. COMPACT SPRINT TRACK: 5日課程 + 1日測驗 + 1個寶箱 */}
