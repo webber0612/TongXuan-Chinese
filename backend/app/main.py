@@ -19,6 +19,21 @@ from .tts import prepare_tts
 from .reading_aloud import abort_attempt, complete_attempt, start_attempt
 from .listening import abort_listening_attempt, complete_listening_attempt, start_listening_attempt
 from .placement import get_placement_profile, save_placement_profile
+from .learning_flow import (
+    attach_learning_evidence,
+    complete_learning_session,
+    get_current_learning_session,
+    get_learning_daily_queue,
+    get_learning_session,
+    get_parent_learning_report,
+    preview_learning_session,
+    record_learning_abort,
+    skip_learning_task,
+    start_learning_session,
+    start_learning_task,
+    stop_learning_session,
+    submit_learning_answer,
+)
 from .ocr_import import confirm_candidate, create_candidate
 from .adaptive import build_adaptive_plan
 from .dashboard import build_dashboard
@@ -201,6 +216,33 @@ class WritingAttemptRequest(BaseModel):
     trace_result: str
     assisted: bool = False
     provider: str = "HANZI_WRITER"
+    phase: str = "independent"
+    script_mode: str | None = None
+
+
+class LearningSessionRequest(BaseModel):
+    model_config = {"extra": "forbid"}
+    as_of: str | None = None
+    target_minutes: int = Field(default=18, ge=15, le=25)
+    script_mode: str = "TRADITIONAL"
+    lesson_id: str | None = None
+
+
+class LearningTaskAnswerRequest(BaseModel):
+    model_config = {"extra": "forbid"}
+    selected_option_id: str | None = None
+    answers: dict[str, str] = Field(default_factory=dict)
+    assisted: bool = False
+
+
+class LearningTaskEvidenceRequest(BaseModel):
+    model_config = {"extra": "forbid"}
+    evidence_ref: str = Field(min_length=1, max_length=255)
+
+
+class LearningSessionStopRequest(BaseModel):
+    model_config = {"extra": "forbid"}
+    reason: str = "FATIGUE"
 
 
 class AnswerRequest(BaseModel):
@@ -646,6 +688,117 @@ def get_daily_queue(child_id: int) -> list[dict[str, object]]:
         raise HTTPException(status_code=404, detail=str(error)) from error
 
 
+def _learning_flow_error(error: ValueError) -> HTTPException:
+    detail = str(error)
+    status = 400 if detail.startswith(("invalid_", "learning_flow_", "phonetics_answers", "invalid_answer")) else 404 if detail.endswith("_not_found") else 409
+    return HTTPException(status_code=status, detail=detail)
+
+
+@app.get("/api/children/{child_id}/learning-daily-queue")
+def get_child_learning_daily_queue(child_id: int, as_of: str | None = None) -> dict[str, object]:
+    try:
+        return get_learning_daily_queue(child_id=child_id, as_of=as_of)
+    except ValueError as error:
+        raise _learning_flow_error(error) from error
+
+
+@app.post("/api/children/{child_id}/learning-sessions/plan")
+def post_learning_session_plan(child_id: int, request: LearningSessionRequest) -> dict[str, object]:
+    try:
+        return preview_learning_session(child_id=child_id, as_of=request.as_of, target_minutes=request.target_minutes, script_mode=request.script_mode, lesson_id=request.lesson_id)
+    except ValueError as error:
+        raise _learning_flow_error(error) from error
+
+
+@app.post("/api/children/{child_id}/learning-sessions")
+def post_learning_session_start(child_id: int, request: LearningSessionRequest) -> dict[str, object]:
+    try:
+        return start_learning_session(child_id=child_id, as_of=request.as_of, target_minutes=request.target_minutes, script_mode=request.script_mode, lesson_id=request.lesson_id)
+    except ValueError as error:
+        raise _learning_flow_error(error) from error
+
+
+@app.get("/api/children/{child_id}/learning-sessions/current")
+def get_learning_session_current(child_id: int) -> dict[str, object] | None:
+    try:
+        return get_current_learning_session(child_id=child_id)
+    except ValueError as error:
+        raise _learning_flow_error(error) from error
+
+
+@app.get("/api/children/{child_id}/learning-sessions/report")
+def get_learning_session_report(child_id: int, http_request: Request, from_at: str | None = None, to_at: str | None = None) -> dict[str, object]:
+    require_parent_or_admin_child_access(http_request, child_id)
+    try:
+        return get_parent_learning_report(child_id=child_id, from_at=from_at, to_at=to_at)
+    except ValueError as error:
+        raise _learning_flow_error(error) from error
+
+
+@app.get("/api/children/{child_id}/learning-sessions/{session_id}")
+def get_learning_session_detail(child_id: int, session_id: str) -> dict[str, object]:
+    try:
+        return get_learning_session(child_id=child_id, session_id=session_id)
+    except ValueError as error:
+        raise _learning_flow_error(error) from error
+
+
+@app.post("/api/children/{child_id}/learning-sessions/{session_id}/tasks/{task_id}/start")
+def post_learning_task_start(child_id: int, session_id: str, task_id: str) -> dict[str, object]:
+    try:
+        return start_learning_task(child_id=child_id, session_id=session_id, task_id=task_id)
+    except ValueError as error:
+        raise _learning_flow_error(error) from error
+
+
+@app.post("/api/children/{child_id}/learning-sessions/{session_id}/tasks/{task_id}/skip")
+def post_learning_task_skip(child_id: int, session_id: str, task_id: str) -> dict[str, object]:
+    try:
+        return skip_learning_task(child_id=child_id, session_id=session_id, task_id=task_id)
+    except ValueError as error:
+        raise _learning_flow_error(error) from error
+
+
+@app.post("/api/children/{child_id}/learning-sessions/{session_id}/tasks/{task_id}/answer")
+def post_learning_task_answer(child_id: int, session_id: str, task_id: str, request: LearningTaskAnswerRequest) -> dict[str, object]:
+    try:
+        return submit_learning_answer(child_id=child_id, session_id=session_id, task_id=task_id, selected_option_id=request.selected_option_id, answers=request.answers, assisted=request.assisted)
+    except ValueError as error:
+        raise _learning_flow_error(error) from error
+
+
+@app.post("/api/children/{child_id}/learning-sessions/{session_id}/tasks/{task_id}/evidence")
+def post_learning_task_evidence(child_id: int, session_id: str, task_id: str, request: LearningTaskEvidenceRequest) -> dict[str, object]:
+    try:
+        return attach_learning_evidence(child_id=child_id, session_id=session_id, task_id=task_id, evidence_ref=request.evidence_ref)
+    except ValueError as error:
+        raise _learning_flow_error(error) from error
+
+
+@app.post("/api/children/{child_id}/learning-sessions/{session_id}/tasks/{task_id}/abort")
+def post_learning_task_abort(child_id: int, session_id: str, task_id: str, request: LearningTaskEvidenceRequest) -> dict[str, object]:
+    try:
+        return record_learning_abort(child_id=child_id, session_id=session_id, task_id=task_id, evidence_ref=request.evidence_ref)
+    except ValueError as error:
+        raise _learning_flow_error(error) from error
+
+
+@app.post("/api/children/{child_id}/learning-sessions/{session_id}/stop")
+def post_learning_session_stop(child_id: int, session_id: str, request: LearningSessionStopRequest) -> dict[str, object]:
+    try:
+        return stop_learning_session(child_id=child_id, session_id=session_id, reason=request.reason)
+    except ValueError as error:
+        raise _learning_flow_error(error) from error
+
+
+@app.post("/api/children/{child_id}/learning-sessions/{session_id}/complete")
+def post_learning_session_complete(child_id: int, session_id: str) -> dict[str, object]:
+    try:
+        return complete_learning_session(child_id=child_id, session_id=session_id)
+    except ValueError as error:
+        raise _learning_flow_error(error) from error
+
+
 @app.post("/api/school-queue")
 def post_school_queue(child_id: int, request: SchoolQueueRequest) -> dict[str, object]:
     try:
@@ -692,7 +845,7 @@ def post_sentence_attempt(sentence_id: str, child_id: int, request: AnswerReques
 
 @app.post("/api/sprint-b/writing/attempts")
 def post_writing_attempt(child_id: int, character: str, request: WritingAttemptRequest) -> dict[str, object]:
-    try: return practice_writing(child_id, character, request.trace_result, request.assisted, request.provider)
+    try: return practice_writing(child_id, character, request.trace_result, request.assisted, request.provider, request.phase, request.script_mode)
     except ValueError as error: raise HTTPException(status_code=400, detail=str(error)) from error
 
 

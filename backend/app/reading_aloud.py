@@ -55,9 +55,9 @@ def _resolve_source(db: sqlite3.Connection, child_id: int, source_type: str, sou
     if text.strip() != source_text:
         raise ValueError("source_text_mismatch")
     expected_locale = _source_locale(source_text)
-    if expected_locale is None:
-        raise ValueError("source_script_unknown")
-    if locale != expected_locale:
+    # Script-neutral lesson content (for example 你好) can be read in either
+    # supported learning locale once its child-owned curriculum source matches.
+    if expected_locale is not None and locale != expected_locale:
         raise ValueError("source_locale_mismatch")
     provenance = _provenance(row, "SCHOOL_QUEUE_PRIVATE" if source_type == "SCHOOL_QUEUE" else source_type, source_id)
     return provenance
