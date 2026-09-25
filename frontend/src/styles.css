@@ -11311,3 +11311,229 @@ body.is-dark-eyecare-global .sponsor-feedback-btn:hover {
     gap: 12px;
   }
 }
+
+/* Official Validated Curriculum Hero & Sprint Nodes */
+.sprint-node-sublabel {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--muted, #64748b);
+  max-width: 70px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sprint-node-btn.is-current-lesson .sprint-node-bubble {
+  border-color: var(--teal, #0d9488);
+  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.25);
+}
+
+.official-source-tag {
+  background: #f1f5f9;
+  border-radius: 999px;
+  color: #475569;
+  font-size: 0.76rem;
+  font-weight: 800;
+  padding: 3px 10px;
+}
+
+.official-provenance-pill {
+  align-items: center;
+  background: rgba(13, 148, 136, 0.08);
+  border: 1px solid rgba(13, 148, 136, 0.2);
+  border-radius: 999px;
+  color: #0f766e;
+  display: inline-flex;
+  font-size: 0.78rem;
+  font-weight: 800;
+  gap: 7px;
+  margin-bottom: 8px;
+  padding: 4px 12px;
+}
+
+.provenance-dot {
+  background: #0d9488;
+  border-radius: 50%;
+  display: inline-block;
+  height: 7px;
+  width: 7px;
+}
+
+.official-lesson-summary {
+  color: #334155;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.6;
+  margin: 10px 0 16px;
+}
+
+.official-targets-section {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  margin: 14px 0 18px;
+  padding: 14px 16px;
+}
+
+.targets-header {
+  align-items: center;
+  color: #1e293b;
+  display: flex;
+  font-size: 0.88rem;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.targets-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.target-chip {
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  color: #1e293b;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 5px 10px;
+}
+
+.domains-badges-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.domains-label-tag {
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.domain-pill {
+  background: #e0f2fe;
+  border-radius: 8px;
+  color: #0369a1;
+  font-size: 0.74rem;
+  font-weight: 800;
+  padding: 3px 8px;
+}
+
+.hero-primary-cta-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.hero-primary-cta-row .validated-session-entry {
+  align-items: center;
+  background: var(--teal, #0d9488);
+  border: 0;
+  border-radius: 16px;
+  box-shadow: 0 4px 0 #0f766e;
+  color: #fff;
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 1.05rem;
+  font-weight: 900;
+  gap: 10px;
+  justify-content: center;
+  min-height: 52px;
+  padding: 0 28px;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.hero-primary-cta-row .validated-session-entry:hover {
+  background: #0f766e;
+}
+
+.hero-primary-cta-row .validated-session-entry:active {
+  box-shadow: 0 1px 0 #0f766e;
+  transform: translateY(3px);
+}
+
+/* Authored Draft Practice Section */
+.authored-draft-practice-section {
+  background: #fdfbf7;
+  border: 1px dashed #d6cfbe;
+  border-radius: 18px;
+  grid-column: 1 / -1;
+  margin-top: 14px;
+  padding: 16px 18px;
+}
+
+.authored-draft-header {
+  margin-bottom: 12px;
+}
+
+.authored-draft-title-group {
+  align-items: center;
+  color: #78623b;
+  display: flex;
+  gap: 8px;
+}
+
+.authored-draft-title-group h3 {
+  font-size: 0.95rem;
+  font-weight: 800;
+  margin: 0;
+}
+
+.authored-draft-note {
+  color: #8c7b5d;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  margin: 4px 0 0;
+}
+
+.authored-draft-levels-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr));
+}
+
+.authored-draft-level-btn {
+  align-items: flex-start;
+  background: #fff;
+  border: 1px solid #e8e2d5;
+  border-radius: 12px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 12px;
+  text-align: left;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.authored-draft-level-btn:hover {
+  background: #fbf7ee;
+  border-color: #d4a359;
+}
+
+.draft-lvl-num {
+  background: #f3eee3;
+  border-radius: 6px;
+  color: #8c6e3b;
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 2px 6px;
+}
+
+.authored-draft-level-btn strong {
+  color: #3e3323;
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.authored-draft-level-btn small {
+  color: #92836b;
+  font-size: 0.74rem;
+}
+

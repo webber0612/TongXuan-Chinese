@@ -99,6 +99,32 @@ import {
   trackDonationClick,
   trackFeedbackClick
 } from "../lib/analytics";
+import { officialCoursePath, officialCourseSourceNote, type OfficialLesson } from "../data/officialCoursePath";
+
+const API = import.meta.env.VITE_API_BASE ?? "";
+
+export type ValidatedDailyQueue = {
+  childId: number;
+  asOf: string;
+  placementStart: "STARTER" | "BASIC" | "BOOK_1";
+  review: {
+    sourceQueue: "REVIEW";
+    dueCount: number;
+    items: Array<{ id: string; character: string; lessonId: string; dueAt: string }>;
+  };
+  newLesson: {
+    sourceQueue: "CURRICULUM";
+    lessonId: string;
+    title: string;
+    domains: string[];
+    status: string;
+    availableInLearningFlowV1: boolean;
+  };
+  nextAccessibleLesson: { lessonId: string; title: string } | null;
+  activeSession: { id: string; status: string } | null;
+  schoolQueueSeparate: boolean;
+  targetMinutes: number;
+};
 
 export type ScriptMode = "zhuyin" | "pinyin" | "dual";
 export type DisplayLang = "zh-Hant" | "zh-Hans" | "en" | "ja" | "ko" | "es";
@@ -248,7 +274,22 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     disclaimerPoint3Desc: "本系統為個人開發之自主自學輔助工具，非教育部或官方認證之正式學校機構。本系統不對任何使用者的識字速度、發音標準度、考試成績或特定學習結果提供任何形式之保證。",
     disclaimerPoint4Title: "☕ 開源與贊助性質：",
     disclaimerPoint4Desc: "本專案程式碼採 MIT 授權開源發布。請作者喝咖啡（Sponsor）屬於個人自願贊助與鼓勵性質，不構成任何商業契約、付費訂閱服務或專屬客服義務。",
-    disclaimerFooter: "童軒中文恪守兒少隱私安全規範 · 感謝所有測試家長與教育工作者的理解與支持"
+    disclaimerFooter: "童軒中文恪守兒少隱私安全規範 · 感謝所有測試家長與教育工作者的理解與支持",
+    officialCurriculumBadge: "官方課綱 · 授權審查中",
+    curriculumObjectives: "本課學習目標",
+    practiceTargetsLabel: "核心練習重點",
+    domainsLabel: "涵蓋學習領域",
+    extraPracticeSectionTitle: "童軒自編示範練習區",
+    extraPracticeSectionNote: "此區為童軒早期自編原型內容，供延伸體驗與筆順演練，非僑委會官方教材。",
+    listeningDomain: "聽力",
+    speakingDomain: "口說",
+    recognitionDomain: "識字",
+    phoneticsDomain: "標音",
+    pronunciationDomain: "發音",
+    vocabularyDomain: "語彙",
+    grammarDomain: "語法",
+    writingDomain: "書寫",
+    readingDomain: "閱讀"
   },
   "zh-Hans": {
     morning: "早安",
@@ -390,7 +431,22 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     disclaimerPoint3Desc: "本系统为个人开发之自主自学辅助工具，非教育部或官方认证之正式学校机构。本系统不对任何使用者的识字速度、发音标准度、考试成绩或特定学习结果提供任何形式之保证。",
     disclaimerPoint4Title: "☕ 开源与赞助性质：",
     disclaimerPoint4Desc: "本项目代码采 MIT 授权开源发布。请作者喝咖啡（Sponsor）属于个人自愿赞助与鼓励性质，不构成任何商业契约、付费订阅服务或专属客服义务。",
-    disclaimerFooter: "童轩中文恪守儿少隐私安全规范 · 感谢所有测试家长与教育工作者的理解与支持"
+    disclaimerFooter: "童轩中文恪守儿少隐私安全规范 · 感谢所有测试家长与教育工作者的理解与支持",
+    officialCurriculumBadge: "官方课纲 · 授权审查中",
+    curriculumObjectives: "本课学习目标",
+    practiceTargetsLabel: "核心练习重点",
+    domainsLabel: "涵盖学习领域",
+    extraPracticeSectionTitle: "童轩自编示范练习区",
+    extraPracticeSectionNote: "此区为童轩早期自编原型内容，供延伸体验与笔顺演练，非侨委会官方教材。",
+    listeningDomain: "听力",
+    speakingDomain: "口语",
+    recognitionDomain: "识字",
+    phoneticsDomain: "标音",
+    pronunciationDomain: "发音",
+    vocabularyDomain: "词汇",
+    grammarDomain: "语法",
+    writingDomain: "书写",
+    readingDomain: "阅读"
   },
   "en": {
     morning: "Good Morning",
@@ -532,7 +588,22 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     disclaimerPoint3Desc: "This application is an independent self-study aid and not an accredited academic institution. We make no guarantees regarding learning speed, test scores, or specific examination results.",
     disclaimerPoint4Title: "☕ Open Source & Voluntary Sponsorship:",
     disclaimerPoint4Desc: "The source code is published under the MIT license. Buy Me a Coffee sponsorships are voluntary donations and do not constitute commercial contracts, subscriptions, or dedicated support agreements.",
-    disclaimerFooter: "TongXuan Chinese strictly adheres to youth privacy standards · Thank you for testing!"
+    disclaimerFooter: "TongXuan Chinese strictly adheres to youth privacy standards · Thank you for testing!",
+    officialCurriculumBadge: "Official OCAC Curriculum · Permission Pending",
+    curriculumObjectives: "Lesson Objectives",
+    practiceTargetsLabel: "Practice Targets",
+    domainsLabel: "Learning Domains",
+    extraPracticeSectionTitle: "TongXuan Authored Practice Prototype",
+    extraPracticeSectionNote: "This section contains prototype practice authored by TongXuan for extra exploration. It is not official OCAC material.",
+    listeningDomain: "Listening",
+    speakingDomain: "Speaking",
+    recognitionDomain: "Recognition",
+    phoneticsDomain: "Phonetics",
+    pronunciationDomain: "Pronunciation",
+    vocabularyDomain: "Vocabulary",
+    grammarDomain: "Grammar",
+    writingDomain: "Writing",
+    readingDomain: "Reading"
   },
   "ja": {
     morning: "おはよう",
@@ -674,7 +745,22 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     disclaimerPoint3Desc: "本システムは個人の自主学習補助ツールです。公式の教育機関ではなく、学習進度や試験結果を保証するものではありません。",
     disclaimerPoint4Title: "☕ オープンソースとサポート：",
     disclaimerPoint4Desc: "本コードはMITライセンスで公開されています。Buy Me a Coffeeでのご支援は自発的な寄付であり、商用契約や個別サポートを保証するものではありません。",
-    disclaimerFooter: "童軒中国語は青少年のプライバシーと安全を遵守します · ご理解とご協力に感謝いたします"
+    disclaimerFooter: "童軒中国語は青少年のプライバシーと安全を遵守します · ご理解とご協力に感謝いたします",
+    officialCurriculumBadge: "公式カリキュラム · 許諾審査中",
+    curriculumObjectives: "学習目標",
+    practiceTargetsLabel: "練習のポイント",
+    domainsLabel: "学習分野",
+    extraPracticeSectionTitle: "TongXuan 独自作成の体験練習",
+    extraPracticeSectionNote: "このセクションは拡張練習用の試作教材です。公式教材ではありません。",
+    listeningDomain: "リスニング",
+    speakingDomain: "スピーキング",
+    recognitionDomain: "漢字認識",
+    phoneticsDomain: "発音記号",
+    pronunciationDomain: "発音",
+    vocabularyDomain: "語彙",
+    grammarDomain: "文法",
+    writingDomain: "書き取り",
+    readingDomain: "読解"
   },
   "ko": {
     morning: "좋은 아침",
@@ -816,7 +902,22 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     disclaimerPoint3Desc: "본 시스템은 개인 자율 학습 보조 도구이며 공식 교육 기관이 아닙니다. 학습 속도나 특정 시험 성적을 보증하지 않습니다.",
     disclaimerPoint4Title: "☕ 오픈소스 및 자발적 후원:",
     disclaimerPoint4Desc: "소스 코드는 MIT 라이선스로 배포됩니다. Buy Me a Coffee를 통한 후원은 자발적 응원이며, 상업적 구독이나 개별 지원 의무를 발생시키지 않습니다.",
-    disclaimerFooter: "통쉬안 중국어는 아동 개인정보 보호 규정을 준수합니다 · 테스트에 참여해 주셔서 감사합니다"
+    disclaimerFooter: "통쉬안 중국어는 아동 개인정보 보호 규정을 준수합니다 · 테스트에 참여해 주셔서 감사합니다",
+    officialCurriculumBadge: "공식 교육과정 · 허가 심사 중",
+    curriculumObjectives: "학습 목표",
+    practiceTargetsLabel: "핵심 연습 과제",
+    domainsLabel: "학습 영역",
+    extraPracticeSectionTitle: "TongXuan 자체 제작 연습 예시",
+    extraPracticeSectionNote: "이 영역은 TongXuan 초기 시제품 연습이며 공식 교재가 아닙니다.",
+    listeningDomain: "듣기",
+    speakingDomain: "말하기",
+    recognitionDomain: "글자 인식",
+    phoneticsDomain: "발음 기호",
+    pronunciationDomain: "발음",
+    vocabularyDomain: "어휘",
+    grammarDomain: "문법",
+    writingDomain: "쓰기",
+    readingDomain: "읽기"
   },
   "es": {
     morning: "Buenos días",
@@ -958,7 +1059,22 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     disclaimerPoint3Desc: "Esta aplicación es una ayuda de autoaprendizaje independiente y no una institución educativa formal. No garantiza resultados de exámenes específicos.",
     disclaimerPoint4Title: "☕ Código Abierto y Patrocinio Voluntario:",
     disclaimerPoint4Desc: "El código se publica bajo licencia MIT. Los patrocinios en Buy Me a Coffee son donaciones voluntarias y no constituyen contratos comerciales.",
-    disclaimerFooter: "TongXuan Chinese protege la privacidad de los menores · ¡Gracias por su apoyo!"
+    disclaimerFooter: "TongXuan Chinese protege la privacidad de los menores · ¡Gracias por su apoyo!",
+    officialCurriculumBadge: "Currículo oficial · Permiso en trámite",
+    curriculumObjectives: "Objetivos de la lección",
+    practiceTargetsLabel: "Objetivos de práctica",
+    domainsLabel: "Áreas de aprendizaje",
+    extraPracticeSectionTitle: "Área de práctica demostrativa TongXuan",
+    extraPracticeSectionNote: "Esta sección contiene material de prueba creado por TongXuan para práctica adicional y no es material oficial de OCAC.",
+    listeningDomain: "Escucha",
+    speakingDomain: "Expresión oral",
+    recognitionDomain: "Reconocimiento",
+    phoneticsDomain: "Fonética",
+    pronunciationDomain: "Pronunciación",
+    vocabularyDomain: "Vocabulario",
+    grammarDomain: "Gramática",
+    writingDomain: "Escritura",
+    readingDomain: "Lectura"
   }
 };
 
@@ -1660,7 +1776,17 @@ const DEFAULT_LEARNERS: ChildLearner[] = [
   }
 ];
 
-export function ChildPortalPage({ onOpenCurriculum, onStartLearningSession }: { onOpenCurriculum: () => void; onStartLearningSession?: (learnerName: string) => boolean }) {
+export function ChildPortalPage({
+  activeChildId,
+  activeChildName,
+  onOpenCurriculum,
+  onStartLearningSession
+}: {
+  activeChildId?: number | null;
+  activeChildName?: string;
+  onOpenCurriculum: () => void;
+  onStartLearningSession?: (learnerName: string) => boolean;
+}) {
   // Learner Profiles Storage
   const [learners, setLearners] = useState<ChildLearner[]>(() => {
     const saved = localStorage.getItem("tongxuan_learners_list");
@@ -1678,7 +1804,7 @@ export function ChildPortalPage({ onOpenCurriculum, onStartLearningSession }: { 
     return saved || "learner-1";
   });
 
-  const activeLearner = learners.find((l) => l.id === activeLearnerId) || learners[0] || DEFAULT_LEARNERS[0];
+  const activeLearner = (activeChildName ? learners.find((l) => l.name.trim().toLowerCase() === activeChildName.trim().toLowerCase()) : null) || learners.find((l) => l.id === activeLearnerId) || learners[0] || DEFAULT_LEARNERS[0];
   const [sessionProfileError, setSessionProfileError] = useState(false);
 
   // Helper to update active learner data and persist
@@ -1812,6 +1938,67 @@ export function ChildPortalPage({ onOpenCurriculum, onStartLearningSession }: { 
       return next;
     });
   };
+
+  const [dailyQueue, setDailyQueue] = useState<ValidatedDailyQueue | null>(null);
+
+  const stageIdFromDailyQueue = (queue: ValidatedDailyQueue | null): string => {
+    if (!queue) return "starter";
+    if (queue.newLesson?.lessonId?.startsWith("book1") || queue.placementStart === "BOOK_1") return "book-1";
+    if (queue.newLesson?.lessonId?.startsWith("basic") || queue.placementStart === "BASIC") return "basic";
+    return "starter";
+  };
+
+  const [selectedStageId, setSelectedStageId] = useState<string>("starter");
+  const [selectedOfficialLessonId, setSelectedOfficialLessonId] = useState<string>("starter-l01");
+
+  useEffect(() => {
+    let cancelled = false;
+    const targetChildId = activeChildId;
+    if (!targetChildId) {
+      fetch(`${API}/api/children`)
+        .then((res) => (res.ok ? res.json() : []))
+        .then((childrenList: Array<{ id: number; name: string }>) => {
+          if (cancelled || !Array.isArray(childrenList) || childrenList.length === 0) return;
+          const matchingChild = childrenList.find(
+            (c) => c.name.trim().toLowerCase() === activeLearner.name.trim().toLowerCase()
+          ) || childrenList[0];
+          if (matchingChild) {
+            return fetch(`${API}/api/children/${matchingChild.id}/learning-daily-queue`)
+              .then((r) => (r.ok ? r.json() : null))
+              .then((queueData) => {
+                if (!cancelled && queueData && queueData.newLesson) {
+                  setDailyQueue(queueData);
+                  const sId = stageIdFromDailyQueue(queueData);
+                  setSelectedStageId(sId);
+                  setSelectedOfficialLessonId(queueData.newLesson.lessonId || (sId === "book-1" ? "book1-l01" : sId === "basic" ? "basic-l01" : "starter-l01"));
+                }
+              });
+          }
+        })
+        .catch(() => {});
+      return () => { cancelled = true; };
+    }
+
+    fetch(`${API}/api/children/${targetChildId}/learning-daily-queue`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled && data && data.newLesson) {
+          setDailyQueue(data);
+          const sId = stageIdFromDailyQueue(data);
+          setSelectedStageId(sId);
+          setSelectedOfficialLessonId(data.newLesson.lessonId || (sId === "book-1" ? "book1-l01" : sId === "basic" ? "basic-l01" : "starter-l01"));
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeChildId, activeLearner.name]);
+
+  const activeStage = officialCoursePath.stages.find((s) => s.id === selectedStageId) || officialCoursePath.stages[0];
+  const activeLesson = activeStage.lessons.find((l) => l.id === selectedOfficialLessonId) || activeStage.lessons[0];
+  const activeStageIndex = officialCoursePath.stages.findIndex((s) => s.id === activeStage.id);
 
   const selectedLevel = TONGXUAN_AUTHORED_DRAFT_LEVELS.find((l) => l.levelNumber === selectedLevelNum) || TONGXUAN_AUTHORED_DRAFT_LEVELS[0];
   const selectedLevelProgress = learnerLevelsProgress.find((p) => p.levelNumber === selectedLevelNum) || {
@@ -2362,38 +2549,34 @@ export function ChildPortalPage({ onOpenCurriculum, onStartLearningSession }: { 
           {sessionProfileError && <span className="session-profile-error" role="alert">{t("sessionProfileMissing")}</span>}
       </div>
 
-      {/* 2. COMPACT SPRINT TRACK: 5日課程 + 1日測驗 + 1個寶箱 */}
+      {/* 2. COMPACT SPRINT TRACK: Official Stages & Lessons */}
       <section className="compact-sprint-panel">
         <div className="compact-sprint-header">
           <div className="sprint-stage-switch">
             <button
               type="button"
               className="sprint-stage-arrow-btn"
-              disabled={(selectedLevel.stageNumber || 1) <= 1}
+              disabled={activeStageIndex <= 0}
               onClick={() => {
-                const prevStage = Math.max(1, (selectedLevel.stageNumber || 1) - 1);
-                setSelectedLevelNum((prevStage - 1) * 5 + 1);
+                const prevStage = officialCoursePath.stages[Math.max(0, activeStageIndex - 1)];
+                setSelectedStageId(prevStage.id);
+                setSelectedOfficialLessonId(prevStage.lessons[0].id);
               }}
               title="上一階段"
             >
               ◀
             </button>
             <span className="sprint-stage-badge">
-              {t("stageN", { n: selectedLevel.stageNumber || 1 })}
+              {activeStage.shortTitle}
             </span>
             <button
               type="button"
               className="sprint-stage-arrow-btn"
-              disabled={(selectedLevel.stageNumber || 1) >= 5}
+              disabled={activeStageIndex >= officialCoursePath.stages.length - 1}
               onClick={() => {
-                const nextStage = Math.min(5, (selectedLevel.stageNumber || 1) + 1);
-                const targetLvl = (nextStage - 1) * 5 + 1;
-                const p = learnerLevelsProgress.find((x) => x.levelNumber === targetLvl);
-                if (!p || p.status === "locked") {
-                  playSound("下一階段尚未解鎖，請先通過本階段的綜合測驗喔！");
-                  return;
-                }
-                setSelectedLevelNum(targetLvl);
+                const nextStage = officialCoursePath.stages[Math.min(officialCoursePath.stages.length - 1, activeStageIndex + 1)];
+                setSelectedStageId(nextStage.id);
+                setSelectedOfficialLessonId(nextStage.lessons[0].id);
               }}
               title="下一階段"
             >
@@ -2404,308 +2587,148 @@ export function ChildPortalPage({ onOpenCurriculum, onStartLearningSession }: { 
 
         <div className="compact-sprint-nodes-track">
           <div className="sprint-track-line" />
-
-          {/* 5-Day Lessons */}
-          {[1, 2, 3, 4, 5].map((dayIdx) => {
-            const currentStage = selectedLevel.stageNumber || 1;
-            const levelNum = (currentStage - 1) * 5 + Math.min(dayIdx, 4);
-            const isDay5Review = dayIdx === 5;
-            const lvlObj = TONGXUAN_AUTHORED_DRAFT_LEVELS.find((l) => l.levelNumber === levelNum) || TONGXUAN_AUTHORED_DRAFT_LEVELS[0];
-            const progress = learnerLevelsProgress.find((p) => p.levelNumber === levelNum);
-            const isDone = isDay5Review
-              ? progress?.status === "completed" && (learnerLevelsProgress.find((p) => p.levelNumber === (currentStage - 1) * 5 + 4)?.status === "completed")
-              : progress?.status === "completed";
-            const isSelected = selectedLevelNum === levelNum && selectedLevel.type === "lesson";
-            const isLocked = !progress || progress.status === "locked";
+          {activeStage.lessons.map((lesson) => {
+            const isCurrent = (dailyQueue?.newLesson?.lessonId === lesson.id) || (selectedOfficialLessonId === lesson.id);
+            const isSelected = selectedOfficialLessonId === lesson.id;
+            const isDone = dailyQueue?.newLesson?.lessonId === lesson.id && dailyQueue.newLesson.status === "MASTERED";
 
             return (
               <button
-                key={`sprint-day-${dayIdx}`}
+                key={lesson.id}
                 type="button"
                 className={`sprint-node-btn ${isDone ? "is-done" : ""} ${
                   isSelected ? "is-selected" : ""
-                } ${isLocked ? "is-locked" : ""}`}
+                } ${isCurrent ? "is-current-lesson" : ""}`}
                 onClick={() => {
-                  if (isLocked) {
-                    playSound("這個關卡還在鎖定中，請先完成前面的課程喔！");
-                    return;
-                  }
-                  setSelectedLevelNum(levelNum);
-                  playSound(`第 ${dayIdx} 日課程，${lvlObj.themeTitle}`);
+                  setSelectedOfficialLessonId(lesson.id);
+                  playSound(`第 ${lesson.number} 課，${lesson.official.title}`);
                 }}
               >
                 <div className="sprint-node-bubble">
                   {isDone ? (
                     <Check size={20} strokeWidth={3.5} className="sprint-check-icon" />
-                  ) : isLocked ? (
-                    <Lock size={16} />
                   ) : (
-                    <span className="sprint-node-num">{dayIdx}</span>
+                    <span className="sprint-node-num">{lesson.number}</span>
                   )}
                 </div>
-                <span className="sprint-node-label">{t("sprintDayN", { n: dayIdx })}</span>
-                <div className="sprint-mini-stars">
-                  <Star
-                    size={11}
-                    className={isDone && (progress?.starsEarned || 0) >= 1 ? "star-earned" : "star-empty"}
-                    fill={isDone && (progress?.starsEarned || 0) >= 1 ? "currentColor" : "none"}
-                  />
-                  <Star
-                    size={11}
-                    className={isDone && (progress?.starsEarned || 0) >= 2 ? "star-earned" : "star-empty"}
-                    fill={isDone && (progress?.starsEarned || 0) >= 2 ? "currentColor" : "none"}
-                  />
-                  <Star
-                    size={11}
-                    className={isDone && (progress?.starsEarned || 0) >= 3 ? "star-earned" : "star-empty"}
-                    fill={isDone && (progress?.starsEarned || 0) >= 3 ? "currentColor" : "none"}
-                  />
-                </div>
+                <span className="sprint-node-label">第 {lesson.number} 課</span>
+                <span className="sprint-node-sublabel">{lesson.official.title}</span>
               </button>
             );
           })}
-
-          {/* 1-Day Quiz */}
-          {(() => {
-            const currentStage = selectedLevel.stageNumber || 1;
-            const quizLevelNum = currentStage * 5;
-            const quizLvlObj = TONGXUAN_AUTHORED_DRAFT_LEVELS.find((l) => l.levelNumber === quizLevelNum) || TONGXUAN_AUTHORED_DRAFT_LEVELS[4];
-            const quizProgress = learnerLevelsProgress.find((p) => p.levelNumber === quizLevelNum);
-            const isQuizDone = quizProgress?.status === "completed";
-            const isQuizSelected = selectedLevelNum === quizLevelNum;
-            const isQuizLocked = !quizProgress || quizProgress.status === "locked";
-
-            return (
-              <button
-                type="button"
-                className={`sprint-node-btn sprint-quiz-node ${isQuizDone ? "is-done" : ""} ${
-                  isQuizSelected ? "is-selected" : ""
-                } ${isQuizLocked ? "is-locked" : ""}`}
-                onClick={() => {
-                  if (isQuizLocked) {
-                    playSound("請先完成前 5 日的課程，才能參加綜合測驗喔！");
-                    return;
-                  }
-                  setSelectedLevelNum(quizLevelNum);
-                  launchStageQuiz(quizLvlObj);
-                }}
-              >
-                <div className="sprint-node-bubble sprint-quiz-bubble">
-                  {isQuizDone ? (
-                    <span className="quiz-done-icon">🏆</span>
-                  ) : (
-                    <span className="quiz-pending-icon">📝</span>
-                  )}
-                </div>
-                <span className="sprint-node-label sprint-quiz-label">
-                  {currentStage === 5 ? t("milestoneReview") : t("stageQuiz")}
-                </span>
-                <span className="sprint-quiz-status-pill">
-                  {isQuizDone ? t("passedStatus") : t("evalStatus")}
-                </span>
-              </button>
-            );
-          })()}
-
-          {/* 1-Day Lucky Chest (Node 7) */}
-          {(() => {
-            const currentStage = selectedLevel.stageNumber || 1;
-            const quizLevelNum = currentStage * 5;
-            const quizProgress = learnerLevelsProgress.find((p) => p.levelNumber === quizLevelNum);
-            const isChestUnlocked = quizProgress?.status === "completed";
-
-            return (
-              <button
-                type="button"
-                className={`sprint-node-btn sprint-chest-node ${isChestUnlocked ? "is-unlocked" : "is-locked"}`}
-                onClick={() => {
-                  if (!isChestUnlocked) {
-                    playSound("通過第 6 日的綜合測驗後，就能開啟本週驚喜寶箱喔！");
-                    return;
-                  }
-                  setChestModalOpen(true);
-                }}
-                title={isChestUnlocked ? "🎁 驚喜寶箱（可點擊領取）" : "🔒 驚喜寶箱（通過綜合測驗後解鎖）"}
-              >
-                <div className="sprint-node-bubble sprint-chest-bubble">
-                  <span className="chest-node-emoji">{isChestUnlocked ? "🎁" : "🔒"}</span>
-                </div>
-              </button>
-            );
-          })()}
         </div>
       </section>
 
-      {/* 3. CENTER MAIN HERO */}
+      {/* 3. CENTER MAIN HERO: Authoritative Official Lesson */}
       <main className="weekly-main-hero">
-        {selectedLevel.type === "stage_quiz" || selectedLevel.type === "milestone_exam" ? (
-          /* STAGE QUIZ / MILESTONE EXAM HERO HERO BANNER */
-          <div className="daily-story-textbook-panel stage-quiz-hero-panel">
-            <div className="story-meta-bar">
-              <div className="story-badges-group">
-                <span className="story-day-tag stage-quiz-tag">
-                  {selectedLevel.type === "milestone_exam" ? "👑 全冊總結業驗收" : `📝 第 ${selectedLevel.stageNumber} 階段測驗券`}
-                </span>
-                <span className="story-duration-pill">
-                  ⏱️ 約 {selectedLevel.estimatedMinutes} 分鐘
-                </span>
-              </div>
-              <button
-                className="story-listen-audio-btn"
-                onClick={() =>
-                  playSound(
-                    `${selectedLevel.title}。${selectedLevel.themeSubtitle}`,
-                    "normal",
-                    true
-                  )
-                }
-                title={t("readAloud")}
-              >
-                <Volume2 size={24} />
-                <span>{t("voiceGuide")}</span>
-              </button>
+        <div className="daily-story-textbook-panel official-lesson-hero">
+          <div className="story-meta-bar">
+            <div className="story-badges-group">
+              <span className="story-day-tag">{activeStage.shortTitle} · 第 {activeLesson.number} 課</span>
+              <span className="story-duration-pill">⏱️ 約 {dailyQueue?.targetMinutes || 18} 分鐘</span>
+              <span className="official-source-tag">🏛️ {activeLesson.official.source.book}</span>
             </div>
-
-            <div className="story-title-section">
-              <h2 className="story-main-title">{R(selectedLevel.title)}</h2>
-              <p className="stage-quiz-subtitle">{selectedLevel.themeSubtitle}</p>
-            </div>
-
-            <div className="stage-quiz-scope-box">
-              <div className="quiz-scope-pill">
-                <span className="scope-icon">🎯</span>
-                <span className="scope-text">
-                  涵蓋範圍：第 {selectedLevel.quizScope?.[0]} ~ {selectedLevel.quizScope?.[selectedLevel.quizScope.length - 1]} 關全部核心生字、詞彙、筆畫與部首
-                </span>
-              </div>
-              <div className="quiz-highlights-grid">
-                <div className="quiz-highlight-item">
-                  <span className="highlight-icon">🔊</span>
-                  <div>
-                    <strong>聽音辨字</strong>
-                    <p>辨識標準字音與聲調</p>
-                  </div>
-                </div>
-                <div className="quiz-highlight-item">
-                  <span className="highlight-icon">🔤</span>
-                  <div>
-                    <strong>注音/拼音辨析</strong>
-                    <p>聲母韻母與聲調檢核</p>
-                  </div>
-                </div>
-                <div className="quiz-highlight-item">
-                  <span className="highlight-icon">🖼️</span>
-                  <div>
-                    <strong>圖文配對</strong>
-                    <p>日常高頻生詞與字義</p>
-                  </div>
-                </div>
-                <div className="quiz-highlight-item">
-                  <span className="highlight-icon">📐</span>
-                  <div>
-                    <strong>筆畫部首</strong>
-                    <p>結構筆順與部件規範</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="stage-quiz-cta-footer">
-              {selectedLevelProgress.status === "completed" ? (
-                <div className="quiz-completed-banner">
-                  <span className="completed-badge">🎉 已於 {selectedLevelProgress.completedAt} 通關！得分：{selectedLevelProgress.score ?? 100} 分</span>
-                  <button
-                    type="button"
-                    className="launch-quiz-cta-btn retry-btn"
-                    onClick={() => launchStageQuiz(selectedLevel)}
-                  >
-                    🔄 再次測驗挑戰滿分
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  className="launch-quiz-cta-btn"
-                  onClick={() => launchStageQuiz(selectedLevel)}
-                >
-                  {selectedLevel.type === "milestone_exam" ? "👑 開始 1~5 階段全冊總複習大考" : "📝 開始階段檢核測驗"}
-                </button>
-              )}
-            </div>
-          </div>
-        ) : (
-          /* STANDARD LESSON HERO */
-          <div className="daily-story-textbook-panel">
-            <div className="story-meta-bar">
-              <div className="story-badges-group">
-                <span className="story-day-tag">{t("stageN", { n: selectedLevel.stageNumber || 1 })} · {selectedLevel.title}</span>
-                <span className="story-duration-pill">
-                  ⏱️ 約 {selectedDay.estimatedMinutes} 分鐘
-                </span>
-              </div>
-              <button
-                className="story-listen-audio-btn"
-                onClick={() =>
-                  playSound(
-                    `${selectedDay.themeTitle}。` + selectedDay.lessonStory.join(" "),
-                    "normal",
-                    true
-                  )
-                }
-                title={t("readAloud")}
-              >
-                <Volume2 size={22} />
-                <span>{t("fullReadAloud")}</span>
-              </button>
-            </div>
-
-            {/* 標記資產插畫槽位：後續使用 ComfyUI / SD 繪製的水彩情境背景圖替換 */}
-            <div
-              className="story-art-backdrop-container"
-              data-asset-slot="lesson-story-illustration"
-              title="[資產插畫槽位] 預留後續 ComfyUI / SD 繪製的專屬課文情境插畫背景"
+            <button
+              className="story-listen-audio-btn"
+              onClick={() =>
+                playSound(
+                  `${activeLesson.official.title}。${activeLesson.tongxuan.handbookSummary.text}`,
+                  "normal",
+                  true
+                )
+              }
+              title={t("readAloud")}
             >
-              <div className="story-title-section">
-                <h2 className="story-main-title">{R(selectedDay.themeTitle)}</h2>
+              <Volume2 size={22} />
+              <span>{t("voiceGuide")}</span>
+            </button>
+          </div>
+
+          <div
+            className="story-art-backdrop-container"
+            data-asset-slot="lesson-story-illustration"
+            title="[資產插畫槽位] 預留專屬課文情境插畫背景"
+          >
+            <div className="story-title-section">
+              <div className="official-provenance-pill">
+                <span className="provenance-dot" />
+                <span>{activeLesson.official.source.name} · {t("officialCurriculumBadge")}</span>
               </div>
+              <h2 className="story-main-title">{R(activeLesson.official.title)}</h2>
+              <p className="official-lesson-summary">{activeLesson.tongxuan.handbookSummary.text}</p>
+            </div>
 
-              <div className="story-paragraphs-box">
-                {selectedDay.lessonStory.map((para, idx) => (
-                  <div key={idx} className="story-sentence-interactive-card">
-                    <p className="story-paragraph-text">{R(para)}</p>
-                    <div className="story-sentence-actions-bar">
-                      <button
-                        type="button"
-                        className="sentence-action-btn play-btn"
-                        onClick={() => handlePlaySingleLine(para)}
-                        title="播放這句話的標準朗讀"
-                      >
-                        <Volume2 size={16} />
-                        <span>{t("playSentence")}</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        className={`sentence-action-btn record-btn ${activeRecordingLineIdx === idx ? "is-recording" : ""}`}
-                        onClick={() => handleToggleRecordLine(idx, para)}
-                        title="開口跟讀這句話"
-                      >
-                        <Mic size={16} />
-                        <span>{activeRecordingLineIdx === idx ? t("doneRecording") : t("repeatSentence")}</span>
-                      </button>
-
-                      {linePraiseMessages[idx] && (
-                        <span className="sentence-praise-pill animate-fade">
-                          {linePraiseMessages[idx]}
-                        </span>
-                      )}
-                    </div>
-                  </div>
+            <div className="official-targets-section">
+              <div className="targets-header">
+                <Sparkles size={16} />
+                <strong>{t("practiceTargetsLabel")}</strong>
+              </div>
+              <div className="targets-list">
+                {activeLesson.tongxuan.practiceTargets.map((target, idx) => (
+                  <span key={idx} className="target-chip">✓ {target}</span>
+                ))}
+              </div>
+              <div className="domains-badges-row">
+                <span className="domains-label-tag">{t("domainsLabel")}：</span>
+                {activeLesson.tongxuan.domains.map((domain) => (
+                  <span key={domain} className="domain-pill">
+                    {t(`${domain}Domain`)}
+                  </span>
                 ))}
               </div>
             </div>
+
+            <div className="hero-primary-cta-row">
+              <button
+                type="button"
+                className="launch-quiz-cta-btn validated-session-entry"
+                onClick={() => {
+                  if (onStartLearningSession) {
+                    const started = onStartLearningSession(activeLearner.name);
+                    setSessionProfileError(!started);
+                  }
+                }}
+              >
+                <Play size={20} fill="currentColor" />
+                <span>{t("startValidatedSession")}</span>
+              </button>
+              {sessionProfileError && (
+                <span className="session-profile-error" role="alert">
+                  {t("sessionProfileMissing")}
+                </span>
+              )}
+            </div>
           </div>
-        )}
+        </div>
+
+        {/* Separated Authored Draft Prototype Section */}
+        <section className="authored-draft-practice-section">
+          <div className="authored-draft-header">
+            <div className="authored-draft-title-group">
+              <Layers size={18} />
+              <h3>{t("extraPracticeSectionTitle")}</h3>
+            </div>
+            <p className="authored-draft-note">{t("extraPracticeSectionNote")}</p>
+          </div>
+          <div className="authored-draft-levels-grid">
+            {TONGXUAN_AUTHORED_DRAFT_LEVELS.slice(0, 5).map((lvl) => (
+              <button
+                key={lvl.levelId}
+                type="button"
+                className="authored-draft-level-btn"
+                onClick={() => {
+                  setSelectedLevelNum(lvl.levelNumber);
+                  setCustomPracticePlan(courseLevelToDayPlan(lvl));
+                  setInClassroom(true);
+                }}
+              >
+                <span className="draft-lvl-num">關卡 {lvl.levelNumber}</span>
+                <strong>{lvl.title}</strong>
+                <small>{lvl.characters.map((c) => c.char).join(" ")}</small>
+              </button>
+            ))}
+          </div>
+        </section>
 
         {/* 3 Star Task Cards Grid (Show for lesson levels) */}
         {selectedLevel.type === "lesson" && (

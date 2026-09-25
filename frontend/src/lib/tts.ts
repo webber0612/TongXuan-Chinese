@@ -38,6 +38,8 @@ export class BrowserSpeechSynthesisProvider implements TTSProvider {
   }
 
   cancel(): void {
-    window.speechSynthesis.cancel();
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
   }
 }

@@ -162,4 +162,162 @@ describe("child-first shell contracts", () => {
     root.unmount();
     vi.unstubAllGlobals();
   });
+
+  it("renders 你好 on the canonical home path for Book 1 placement", async () => {
+    localStorage.clear();
+    localStorage.setItem(DISPLAY_LANGUAGE_KEY, "zh-Hant");
+    window.history.replaceState({}, "", "/TongXuan-Chinese/");
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (url.endsWith("/api/children")) {
+        return new Response(JSON.stringify([{ id: 1, name: "樂樂" }]), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/api/children/1/learning-daily-queue")) {
+        return new Response(JSON.stringify({
+          childId: 1,
+          asOf: "2026-09-25T08:00:00Z",
+          placementStart: "BOOK_1",
+          review: { sourceQueue: "REVIEW", dueCount: 0, items: [] },
+          newLesson: {
+            sourceQueue: "CURRICULUM",
+            lessonId: "book1-l01",
+            title: "你好",
+            domains: ["listening", "speaking", "recognition", "pronunciation"],
+            status: "NOT_STARTED",
+            availableInLearningFlowV1: true
+          },
+          nextAccessibleLesson: null,
+          activeSession: null,
+          schoolQueueSeparate: true,
+          targetMinutes: 18
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify({ balance: 0, rewards: [] }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    document.body.innerHTML = '<div id="root"></div>';
+    const root = createRoot(document.getElementById("root")!);
+    await act(async () => {
+      root.render(React.createElement(AppShell));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+
+    const heroTitle = document.querySelector(".official-lesson-hero .story-main-title");
+    expect(heroTitle?.textContent).toMatch(/你.*好/);
+    const stageBadge = document.querySelector(".sprint-stage-badge");
+    expect(stageBadge?.textContent).toContain("第一冊");
+
+    root.unmount();
+    vi.unstubAllGlobals();
+  });
+
+  it("ensures production home current lesson and Learning Session curriculumContext.lessonId agree for Starter, Basic, and Book 1 placements", async () => {
+    const placements = [
+      { placement: "STARTER" as const, stageId: "starter", lessonId: "starter-l01", title: "你好", stageTitle: "入門冊" },
+      { placement: "BASIC" as const, stageId: "basic", lessonId: "basic-l01", title: "你好", stageTitle: "基礎冊" },
+      { placement: "BOOK_1" as const, stageId: "book-1", lessonId: "book1-l01", title: "你好", stageTitle: "第1冊" },
+    ];
+
+    for (const testCase of placements) {
+      localStorage.clear();
+      localStorage.setItem(DISPLAY_LANGUAGE_KEY, "zh-Hant");
+      window.history.replaceState({}, "", "/TongXuan-Chinese/");
+
+      vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+        if (url.endsWith("/api/children")) {
+          return new Response(JSON.stringify([{ id: 1, name: "樂樂" }]), { status: 200, headers: { "Content-Type": "application/json" } });
+        }
+        if (url.includes("/api/children/1/learning-daily-queue")) {
+          return new Response(JSON.stringify({
+            childId: 1,
+            asOf: "2026-09-25T08:00:00Z",
+            placementStart: testCase.placement,
+            review: { sourceQueue: "REVIEW", dueCount: 0, items: [] },
+            newLesson: {
+              sourceQueue: "CURRICULUM",
+              lessonId: testCase.lessonId,
+              title: testCase.title,
+              domains: ["listening", "speaking", "phonetics"],
+              status: "NOT_STARTED",
+              availableInLearningFlowV1: true
+            },
+            nextAccessibleLesson: null,
+            activeSession: null,
+            schoolQueueSeparate: true,
+            targetMinutes: 18
+          }), { status: 200, headers: { "Content-Type": "application/json" } });
+        }
+        if (url.includes("/api/children/1/learning-sessions/current")) {
+          return new Response("null", { status: 200, headers: { "Content-Type": "application/json" } });
+        }
+        if (url.includes("/api/children/1/learning-sessions/plan")) {
+          return new Response(JSON.stringify({
+            targetMinutes: 18,
+            curriculumContext: {
+              stageId: testCase.stageId,
+              stageTitle: testCase.stageTitle,
+              lessonId: testCase.lessonId,
+              official: { title: testCase.title, objectiveSummary: "目標摘要" }
+            },
+            tasks: [],
+            composition: { review: 0, newLesson: 0, closing: 0 }
+          }), { status: 200, headers: { "Content-Type": "application/json" } });
+        }
+        if (url.includes("/api/children/1/learning-sessions")) {
+          return new Response(JSON.stringify({
+            id: "session-123",
+            status: "IN_PROGRESS",
+            targetMinutes: 18,
+            activeSeconds: 0,
+            tasks: [],
+            curriculumContext: {
+              stageId: testCase.stageId,
+              stageTitle: testCase.stageTitle,
+              lessonId: testCase.lessonId,
+              official: { title: testCase.title, objectiveSummary: "目標摘要" }
+            },
+            reward: { points: 0, earned: false }
+          }), { status: 200, headers: { "Content-Type": "application/json" } });
+        }
+        return new Response(JSON.stringify({ balance: 0, rewards: [] }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }));
+
+      document.body.innerHTML = '<div id="root"></div>';
+      const root = createRoot(document.getElementById("root")!);
+      await act(async () => {
+        root.render(React.createElement(AppShell));
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      });
+
+      // 1. Verify Home Current Lesson title & stage
+      const homeLessonTitle = document.querySelector(".official-lesson-hero .story-main-title");
+      expect(homeLessonTitle?.textContent).toMatch(/你.*好/);
+
+      // 2. Click Primary CTA to launch Learning Session
+      const ctaBtn = document.querySelector(".validated-session-entry") as HTMLButtonElement;
+      expect(ctaBtn).toBeTruthy();
+      await act(async () => {
+        ctaBtn.click();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      });
+
+      // 3. Verify route navigated and LearningSession agrees on lesson
+      expect(window.location.pathname).toBe("/TongXuan-Chinese/learning-session");
+      expect(document.body.textContent).toContain(testCase.title);
+
+      root.unmount();
+      vi.unstubAllGlobals();
+    }
+  });
 });

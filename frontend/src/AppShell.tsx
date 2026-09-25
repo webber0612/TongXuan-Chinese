@@ -152,7 +152,7 @@ export function AppShell() {
         {childrenError && !isChildPortal && <div className="offline-strip error-strip" role="alert">{childrenError} <button className="button button-text" onClick={() => void loadChildren()}>{t("retry")}</button></div>}
         {route === "archived-preview" && <main className="app-page"><PageHeading kicker={t("library")} title={t("previewArchived")} subtitle={t("previewArchivedDescription")} icon={<BookOpen/>}/><button className="button button-primary" onClick={() => navigate("home")}><House size={18}/>{t("today")}</button></main>}
         <Suspense fallback={<AppLoading label={t("loading")} />}>
-        {route === "home" && <ChildPortalPage onOpenCurriculum={() => navigate("curriculum")} onStartLearningSession={showSessionEntry ? (learnerName) => {
+        {route === "home" && <ChildPortalPage activeChildId={activeChild?.id ?? null} activeChildName={childName} onOpenCurriculum={() => navigate("curriculum")} onStartLearningSession={showSessionEntry ? (learnerName) => {
           const childId = resolveLearningSessionChildId(profiles, learnerName);
           const childProfile = profiles.find((profile) => profile.role === "child" && profile.childId === childId);
           if (!childId || !childProfile) return false;
