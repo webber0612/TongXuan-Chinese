@@ -436,6 +436,9 @@ export function LessonPlayerPage({
 
   const writerRef = useRef<HanziWriter | null>(null);
   const canvasContainerRef = useRef<HTMLDivElement | null>(null);
+  const submittedAnswersRef = useRef<Record<string, { optionId?: string | null; answersKey?: string }>>({});
+  const submittedEvidenceRef = useRef<Record<string, string>>({});
+  const submittedSkipsRef = useRef<Record<string, boolean>>({});
 
   // Canonical lesson ID resolution
   const resolvedLessonId = session?.curriculumContext?.lessonId || session?.lessonId || lessonId || "book1-l01";
@@ -514,6 +517,11 @@ export function LessonPlayerPage({
     if (!activeChildId || !session?.id || !session.tasks) return true;
     const matchingTask = session.tasks.find((t) => matcher(t) && t.state !== "COMPLETED" && t.state !== "DEFERRED");
     if (!matchingTask) return true;
+    const answersKey = JSON.stringify(answers ?? {});
+    const recorded = submittedAnswersRef.current[matchingTask.id];
+    if (recorded && recorded.optionId === (selectedOptionId || null) && recorded.answersKey === answersKey) {
+      return true; // Already submitted with this exact answer
+    }
     try {
       setError(null);
       const updated = await api<typeof session>(
@@ -528,6 +536,10 @@ export function LessonPlayerPage({
         }
       );
       if (updated) {
+        submittedAnswersRef.current[matchingTask.id] = {
+          optionId: selectedOptionId || null,
+          answersKey,
+        };
         setSession(updated);
         if (updated.masteryStatus) setMasteryStatus(updated.masteryStatus);
       }
@@ -545,6 +557,9 @@ export function LessonPlayerPage({
     if (!activeChildId || !session?.id || !session.tasks) return true;
     const matchingTask = session.tasks.find((t) => matcher(t) && t.state !== "COMPLETED" && t.state !== "DEFERRED");
     if (!matchingTask) return true;
+    if (submittedEvidenceRef.current[matchingTask.id] === evidenceRef) {
+      return true;
+    }
     try {
       setError(null);
       const updated = await api<typeof session>(
@@ -557,6 +572,7 @@ export function LessonPlayerPage({
         }
       );
       if (updated) {
+        submittedEvidenceRef.current[matchingTask.id] = evidenceRef;
         setSession(updated);
         if (updated.masteryStatus) setMasteryStatus(updated.masteryStatus);
       }
@@ -573,6 +589,9 @@ export function LessonPlayerPage({
     if (!activeChildId || !session?.id || !session.tasks) return true;
     const matchingTask = session.tasks.find((t) => matcher(t) && t.state !== "COMPLETED" && t.state !== "DEFERRED");
     if (!matchingTask) return true;
+    if (submittedSkipsRef.current[matchingTask.id]) {
+      return true;
+    }
     try {
       setError(null);
       const updated = await api<typeof session>(
@@ -582,6 +601,7 @@ export function LessonPlayerPage({
         }
       );
       if (updated) {
+        submittedSkipsRef.current[matchingTask.id] = true;
         setSession(updated);
         if (updated.masteryStatus) setMasteryStatus(updated.masteryStatus);
       }
@@ -746,6 +766,9 @@ export function LessonPlayerPage({
     setSelectedChoices({});
     setExitTicketAnswers({});
     setExitTicketSubmitted(false);
+    submittedAnswersRef.current = {};
+    submittedEvidenceRef.current = {};
+    submittedSkipsRef.current = {};
   };
 
   const handleNextStep = async () => {

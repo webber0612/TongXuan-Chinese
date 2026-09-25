@@ -1381,6 +1381,309 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     container.remove();
     vi.unstubAllGlobals();
   });
+
+  it("31. Submitting wrong answer once and then clicking Next does not issue duplicate backend attempt", async () => {
+    let vocabAnswerCalls: any[] = [];
+
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes("/learning-sessions/current")) {
+        return new Response(JSON.stringify({
+          id: "s-dedup-1",
+          status: "IN_PROGRESS",
+          curriculumContext: { lessonId: "book1-l01" },
+          tasks: [
+            { id: "t-listen", key: "listen", taskType: "LISTENING", state: "COMPLETED", itemId: "item-l01" },
+            { id: "t-vocab", key: "vocabulary", taskType: "VOCABULARY", state: "IN_PROGRESS", itemId: "vocab-nihao", taskData: { prompt: "選出「你好」的意思", choices: [{ id: "opt-hello", label: "Hello" }, { id: "opt-eat", label: "Eat" }] } },
+          ],
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/tasks/t-vocab/answer") && init?.method === "POST") {
+        const body = JSON.parse(init.body as string);
+        vocabAnswerCalls.push(body);
+        return new Response(JSON.stringify({
+          id: "s-dedup-1",
+          status: "IN_PROGRESS",
+          tasks: [
+            { id: "t-listen", key: "listen", taskType: "LISTENING", state: "COMPLETED", itemId: "item-l01" },
+            { id: "t-vocab", key: "vocabulary", taskType: "VOCABULARY", state: "IN_PROGRESS", itemId: "vocab-nihao", taskData: { prompt: "選出「你好」的意思", choices: [{ id: "opt-hello", label: "Hello" }, { id: "opt-eat", label: "Eat" }] } },
+          ],
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} initialMode="LEARN" />);
+    });
+
+    // Advance past step 1 (context) and step 2 (dialogue) to step 3 (vocabulary)
+    const nextBtn = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
+    await act(async () => { nextBtn.click(); }); // to dialogue
+    await act(async () => { nextBtn.click(); }); // to vocab
+
+    expect(container.querySelector(".step-vocab-body")).toBeTruthy();
+    expect(vocabAnswerCalls.length).toBe(0);
+
+    // Click WRONG choice 'opt-eat'
+    const choiceButtons = container.querySelectorAll(".choice-card-btn");
+    const wrongChoiceBtn = Array.from(choiceButtons).find(btn => btn.textContent?.includes("Eat")) as HTMLButtonElement;
+    expect(wrongChoiceBtn).toBeTruthy();
+
+    await act(async () => {
+      wrongChoiceBtn.click();
+    });
+
+    // Verify exactly 1 attempt was recorded
+    expect(vocabAnswerCalls.length).toBe(1);
+    expect(vocabAnswerCalls[0].selected_option_id).toBe("opt-eat");
+
+    // Click 'Next' to advance to characters step
+    await act(async () => {
+      nextBtn.click();
+    });
+
+    // Verify progression gate advanced to characters step
+    expect(container.querySelector(".step-characters-body")).toBeTruthy();
+
+    // Verify NO duplicate attempt was submitted on Next! (Still exactly 1 attempt)
+    expect(vocabAnswerCalls.length).toBe(1);
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
+
+  it("32. Clicking the same choice multiple times does not spam duplicate attempt calls", async () => {
+    let vocabAnswerCalls: any[] = [];
+
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes("/learning-sessions/current")) {
+        return new Response(JSON.stringify({
+          id: "s-dedup-2",
+          status: "IN_PROGRESS",
+          curriculumContext: { lessonId: "book1-l01" },
+          tasks: [
+            { id: "t-listen", key: "listen", taskType: "LISTENING", state: "COMPLETED", itemId: "item-l01" },
+            { id: "t-vocab", key: "vocabulary", taskType: "VOCABULARY", state: "IN_PROGRESS", itemId: "vocab-nihao", taskData: { prompt: "選出「你好」的意思", choices: [{ id: "opt-hello", label: "Hello" }, { id: "opt-eat", label: "Eat" }] } },
+          ],
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/tasks/t-vocab/answer") && init?.method === "POST") {
+        const body = JSON.parse(init.body as string);
+        vocabAnswerCalls.push(body);
+        return new Response(JSON.stringify({
+          id: "s-dedup-2",
+          status: "IN_PROGRESS",
+          tasks: [
+            { id: "t-listen", key: "listen", taskType: "LISTENING", state: "COMPLETED", itemId: "item-l01" },
+            { id: "t-vocab", key: "vocabulary", taskType: "VOCABULARY", state: "IN_PROGRESS", itemId: "vocab-nihao", taskData: { prompt: "選出「你好」的意思", choices: [{ id: "opt-hello", label: "Hello" }, { id: "opt-eat", label: "Eat" }] } },
+          ],
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} initialMode="LEARN" />);
+    });
+
+    // Advance to vocab
+    const nextBtn = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
+    await act(async () => { nextBtn.click(); });
+    await act(async () => { nextBtn.click(); });
+
+    const choiceButtons = container.querySelectorAll(".choice-card-btn");
+    const wrongChoiceBtn = Array.from(choiceButtons).find(btn => btn.textContent?.includes("Eat")) as HTMLButtonElement;
+
+    // Click same choice 3 times
+    await act(async () => { wrongChoiceBtn.click(); });
+    await act(async () => { wrongChoiceBtn.click(); });
+    await act(async () => { wrongChoiceBtn.click(); });
+
+    // Only 1 attempt call should be dispatched
+    expect(vocabAnswerCalls.length).toBe(1);
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
+
+  it("33. Changing choice from wrong to correct sends 2 distinct attempts, and Next does not add a 3rd", async () => {
+    let vocabAnswerCalls: any[] = [];
+
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes("/learning-sessions/current")) {
+        return new Response(JSON.stringify({
+          id: "s-dedup-3",
+          status: "IN_PROGRESS",
+          curriculumContext: { lessonId: "book1-l01" },
+          tasks: [
+            { id: "t-listen", key: "listen", taskType: "LISTENING", state: "COMPLETED", itemId: "item-l01" },
+            { id: "t-vocab", key: "vocabulary", taskType: "VOCABULARY", state: "IN_PROGRESS", itemId: "vocab-nihao", taskData: { prompt: "選出「你好」的意思", choices: [{ id: "opt-hello", label: "Hello" }, { id: "opt-eat", label: "Eat" }] } },
+          ],
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/tasks/t-vocab/answer") && init?.method === "POST") {
+        const body = JSON.parse(init.body as string);
+        vocabAnswerCalls.push(body);
+        const isCorrect = body.selected_option_id === "opt-hello";
+        return new Response(JSON.stringify({
+          id: "s-dedup-3",
+          status: "IN_PROGRESS",
+          tasks: [
+            { id: "t-listen", key: "listen", taskType: "LISTENING", state: "COMPLETED", itemId: "item-l01" },
+            { id: "t-vocab", key: "vocabulary", taskType: "VOCABULARY", state: isCorrect ? "COMPLETED" : "IN_PROGRESS", itemId: "vocab-nihao", taskData: { prompt: "選出「你好」的意思", choices: [{ id: "opt-hello", label: "Hello" }, { id: "opt-eat", label: "Eat" }] } },
+          ],
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} initialMode="LEARN" />);
+    });
+
+    const nextBtn = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
+    await act(async () => { nextBtn.click(); });
+    await act(async () => { nextBtn.click(); });
+
+    const choiceButtons = container.querySelectorAll(".choice-card-btn");
+    const wrongChoiceBtn = Array.from(choiceButtons).find(btn => btn.textContent?.includes("Eat")) as HTMLButtonElement;
+    const correctChoiceBtn = Array.from(choiceButtons).find(btn => btn.textContent?.includes("Hello")) as HTMLButtonElement;
+
+    // First attempt: wrong
+    await act(async () => { wrongChoiceBtn.click(); });
+    expect(vocabAnswerCalls.length).toBe(1);
+    expect(vocabAnswerCalls[0].selected_option_id).toBe("opt-eat");
+
+    // Second attempt: correct
+    await act(async () => { correctChoiceBtn.click(); });
+    expect(vocabAnswerCalls.length).toBe(2);
+    expect(vocabAnswerCalls[1].selected_option_id).toBe("opt-hello");
+
+    // Click Next
+    await act(async () => { nextBtn.click(); });
+
+    // Step advanced, attempt count remained 2 (no extra submission)
+    expect(container.querySelector(".step-characters-body")).toBeTruthy();
+    expect(vocabAnswerCalls.length).toBe(2);
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
+
+  it("34. Character recognition step progression gate and attempt-count deduplication across tabs", async () => {
+    let recogCalls: Record<string, any[]> = { "t-recog-1": [], "t-recog-2": [] };
+
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes("/learning-sessions/current")) {
+        return new Response(JSON.stringify({
+          id: "s-dedup-4",
+          status: "IN_PROGRESS",
+          curriculumContext: { lessonId: "book1-l01" },
+          tasks: [
+            { id: "t-listen", key: "listen", taskType: "LISTENING", state: "COMPLETED", itemId: "item-l01" },
+            { id: "t-vocab", key: "vocabulary", taskType: "VOCABULARY", state: "COMPLETED", itemId: "vocab-nihao" },
+            { id: "t-recog-1", key: "recognition-1", taskType: "RECOGNITION", state: "IN_PROGRESS", itemId: "你", taskData: { prompt: "聽一聽發音，選出聽到的字：", audioText: "你", choices: [{ id: "opt-ni", label: "你", isCorrect: true }, { id: "opt-hao", label: "好", isCorrect: false }] } },
+            { id: "t-recog-2", key: "recognition-2", taskType: "RECOGNITION", state: "IN_PROGRESS", itemId: "好", taskData: { prompt: "聽一聽發音，選出聽到的字：", audioText: "好", choices: [{ id: "opt-ni", label: "你", isCorrect: false }, { id: "opt-hao", label: "好", isCorrect: true }] } },
+          ],
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/tasks/t-recog-1/answer") && init?.method === "POST") {
+        const body = JSON.parse(init.body as string);
+        recogCalls["t-recog-1"].push(body);
+        return new Response(JSON.stringify({
+          id: "s-dedup-4",
+          status: "IN_PROGRESS",
+          tasks: [
+            { id: "t-listen", key: "listen", taskType: "LISTENING", state: "COMPLETED", itemId: "item-l01" },
+            { id: "t-vocab", key: "vocabulary", taskType: "VOCABULARY", state: "COMPLETED", itemId: "vocab-nihao" },
+            { id: "t-recog-1", key: "recognition-1", taskType: "RECOGNITION", state: "IN_PROGRESS", itemId: "你" },
+            { id: "t-recog-2", key: "recognition-2", taskType: "RECOGNITION", state: "IN_PROGRESS", itemId: "好" },
+          ],
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/tasks/t-recog-2/answer") && init?.method === "POST") {
+        const body = JSON.parse(init.body as string);
+        recogCalls["t-recog-2"].push(body);
+        return new Response(JSON.stringify({
+          id: "s-dedup-4",
+          status: "IN_PROGRESS",
+          tasks: [
+            { id: "t-listen", key: "listen", taskType: "LISTENING", state: "COMPLETED", itemId: "item-l01" },
+            { id: "t-vocab", key: "vocabulary", taskType: "VOCABULARY", state: "COMPLETED", itemId: "vocab-nihao" },
+            { id: "t-recog-1", key: "recognition-1", taskType: "RECOGNITION", state: "IN_PROGRESS", itemId: "你" },
+            { id: "t-recog-2", key: "recognition-2", taskType: "RECOGNITION", state: "IN_PROGRESS", itemId: "好" },
+          ],
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} initialMode="LEARN" />);
+    });
+
+    const nextBtn = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
+    await act(async () => { nextBtn.click(); }); // to dialogue
+    await act(async () => { nextBtn.click(); }); // to vocab
+
+    // Select vocab to advance to characters
+    const vocabChoices = container.querySelectorAll(".choice-card-btn");
+    await act(async () => { (vocabChoices[0] as HTMLButtonElement)?.click(); });
+    await act(async () => { nextBtn.click(); }); // to characters
+
+    expect(container.querySelector(".step-characters-body")).toBeTruthy();
+
+    // Char 0: click wrong answer 'opt-hao' for character '你'
+    const charChoices = container.querySelectorAll(".char-choice-card");
+    const wrongHaoBtn = Array.from(charChoices).find(b => b.textContent?.includes("好")) as HTMLButtonElement;
+    await act(async () => { wrongHaoBtn.click(); });
+
+    expect(recogCalls["t-recog-1"].length).toBe(1);
+    expect(recogCalls["t-recog-1"][0].selected_option_id).toBe("opt-hao");
+
+    // Click Next: should advance from Char 0 to Char 1 without duplicate attempt on t-recog-1
+    await act(async () => { nextBtn.click(); });
+
+    expect(recogCalls["t-recog-1"].length).toBe(1); // No duplicate!
+
+    // Char 1: click wrong answer 'opt-ni' for character '好'
+    const charChoices2 = container.querySelectorAll(".char-choice-card");
+    const wrongNiBtn = Array.from(charChoices2).find(b => b.textContent?.includes("你")) as HTMLButtonElement;
+    await act(async () => { wrongNiBtn.click(); });
+
+    expect(recogCalls["t-recog-2"].length).toBe(1);
+    expect(recogCalls["t-recog-2"][0].selected_option_id).toBe("opt-ni");
+
+    // Click Next: should advance from Characters to Sentence Pattern without duplicating either recog task
+    await act(async () => { nextBtn.click(); });
+
+    expect(container.querySelector(".step-sentence-body")).toBeTruthy();
+    expect(recogCalls["t-recog-1"].length).toBe(1); // Still 1!
+    expect(recogCalls["t-recog-2"].length).toBe(1); // Still 1!
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
 });
 
 

@@ -360,3 +360,107 @@ def test_incomplete_required_evidence_rejects_session_completion(tmp_path):
             assert session_row["status"] == "IN_PROGRESS"
             assert session_row["completed_at"] is None
 
+
+def test_task_answer_attempt_count_and_wrong_answer_semantics(tmp_path):
+    from app.auth import issue_session
+    from app.database import connect
+    with make_client(tmp_path) as client:
+        child_resp = client.post("/api/children", json={"name": "小智"})
+        assert child_resp.status_code == 200
+        child_id = child_resp.json()["id"]
+
+        parent_token = issue_session(subject="parent", role="parent", child_ids=[child_id])
+        parent_headers = {"Authorization": f"Bearer {parent_token}"}
+        client.put(
+            f"/api/children/{child_id}/placement-profile",
+            headers=parent_headers,
+            json={"domain_levels": {"listening": "BOOK_1", "recognition": "BOOK_1", "speaking": "BOOK_1", "writing": "STARTER"}},
+        )
+
+        # 1. Test SENTENCE_PATTERN task on book1-l01
+        start_resp = client.post(f"/api/children/{child_id}/learning-sessions", json={"target_minutes": 18, "lesson_id": "book1-l01"})
+        assert start_resp.status_code == 200
+        session_id = start_resp.json()["id"]
+        sent_task = next(t for t in start_resp.json()["tasks"] if t["taskType"] == "SENTENCE_PATTERN")
+        sent_id = sent_task["id"]
+
+        # Initial state: 0 attempts
+        assert sent_task["attemptCount"] == 0
+        assert sent_task["failureCount"] == 0
+
+        # Attempt 1: WRONG answer 'opt-wrong-order'
+        resp1 = client.post(f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{sent_id}/answer", json={"selected_option_id": "opt-wrong-order"})
+        assert resp1.status_code == 200
+        t1 = next(t for t in resp1.json()["tasks"] if t["id"] == sent_id)
+        assert t1["state"] == "IN_PROGRESS"
+        assert t1["attemptCount"] == 1
+        assert t1["failureCount"] == 1
+
+        with connect() as db:
+            attempts = db.execute("SELECT * FROM learning_flow_task_attempts WHERE task_id=? ORDER BY rowid", (sent_id,)).fetchall()
+            assert len(attempts) == 1
+            assert attempts[0]["result"] == "incorrect"
+            assert attempts[0]["score"] == 0.0
+
+        # Attempt 2: CORRECT answer 'opt-correct-order'
+        resp2 = client.post(f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{sent_id}/answer", json={"selected_option_id": "opt-correct-order"})
+        assert resp2.status_code == 200
+        t2 = next(t for t in resp2.json()["tasks"] if t["id"] == sent_id)
+        assert t2["state"] == "COMPLETED"
+        assert t2["attemptCount"] == 2
+        assert t2["failureCount"] == 1
+        assert t2["completedAt"] is not None
+
+        with connect() as db:
+            attempts = db.execute("SELECT * FROM learning_flow_task_attempts WHERE task_id=? ORDER BY rowid", (sent_id,)).fetchall()
+            assert len(attempts) == 2
+            assert attempts[0]["result"] == "incorrect"
+            assert attempts[1]["result"] == "correct"
+            assert attempts[1]["score"] == 1.0
+
+
+def test_recognition_task_wrong_answer_attempt_counts(tmp_path):
+    from app.auth import issue_session
+    from app.database import connect
+    with make_client(tmp_path) as client:
+        child_resp = client.post("/api/children", json={"name": "小晴"})
+        assert child_resp.status_code == 200
+        child_id = child_resp.json()["id"]
+
+        parent_token = issue_session(subject="parent", role="parent", child_ids=[child_id])
+        parent_headers = {"Authorization": f"Bearer {parent_token}"}
+        client.put(
+            f"/api/children/{child_id}/placement-profile",
+            headers=parent_headers,
+            json={"domain_levels": {"listening": "BOOK_1", "recognition": "BOOK_1", "speaking": "BOOK_1", "writing": "STARTER"}},
+        )
+
+        start_resp = client.post(f"/api/children/{child_id}/learning-sessions", json={"target_minutes": 18, "lesson_id": "book1-l01"})
+        assert start_resp.status_code == 200
+        session_id = start_resp.json()["id"]
+        recog_task = next(t for t in start_resp.json()["tasks"] if t["taskType"] == "RECOGNITION")
+        recog_id = recog_task["id"]
+
+        # Attempt 1: wrong choice 'opt-hao' for character '你'
+        resp1 = client.post(f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{recog_id}/answer", json={"selected_option_id": "opt-hao"})
+        assert resp1.status_code == 200
+        t1 = next(t for t in resp1.json()["tasks"] if t["id"] == recog_id)
+        assert t1["state"] == "IN_PROGRESS"
+        assert t1["attemptCount"] == 1
+        assert t1["failureCount"] == 1
+
+        # Attempt 2: correct choice 'opt-ni' for character '你'
+        resp2 = client.post(f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{recog_id}/answer", json={"selected_option_id": "opt-ni"})
+        assert resp2.status_code == 200
+        t2 = next(t for t in resp2.json()["tasks"] if t["id"] == recog_id)
+        assert t2["state"] == "COMPLETED"
+        assert t2["attemptCount"] == 2
+        assert t2["failureCount"] == 1
+
+        with connect() as db:
+            attempts = db.execute("SELECT * FROM learning_flow_task_attempts WHERE task_id=? ORDER BY rowid", (recog_id,)).fetchall()
+            assert len(attempts) == 2
+            assert attempts[0]["result"] == "incorrect"
+            assert attempts[1]["result"] == "correct"
+
+
