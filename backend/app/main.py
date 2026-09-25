@@ -1026,6 +1026,21 @@ def post_lesson_fast_track(child_id: int, lesson_id: str, request: FastTrackRequ
                     srs_phrase = record_srs_review(db, child_id=child_id, skill_domain="listening", item_id=materials["phrase"], result="correct", assisted=False)
                     latest_srs_due = srs_phrase.get("due_at") or latest_srs_due
 
+            # Clean up / complete active session to avoid stale sessions
+            active_session = db.execute(
+                "SELECT id, status FROM learning_flow_sessions WHERE child_id=? AND status IN ('IN_PROGRESS','PAUSED')",
+                (child_id,)
+            ).fetchone()
+            if active_session:
+                db.execute(
+                    "UPDATE learning_flow_sessions SET status='COMPLETED', completed_at=?, mastery_status='READY_FOR_CHECK' WHERE id=?",
+                    (now(), active_session["id"])
+                )
+                db.execute(
+                    "UPDATE learning_flow_tasks SET state='COMPLETED', completed_at=? WHERE session_id=? AND state IN ('IN_PROGRESS','PENDING')",
+                    (now(), active_session["id"])
+                )
+
             return {
                 "lessonId": lesson_id,
                 "passed": True,
@@ -1038,6 +1053,17 @@ def post_lesson_fast_track(child_id: int, lesson_id: str, request: FastTrackRequ
                 "notice": "Fast track passed. Light SRS review scheduled."
             }
         else:
+            # Sync active session on fast track failure
+            active_session = db.execute(
+                "SELECT id, status FROM learning_flow_sessions WHERE child_id=? AND status IN ('IN_PROGRESS','PAUSED')",
+                (child_id,)
+            ).fetchone()
+            if active_session:
+                db.execute(
+                    "UPDATE learning_flow_sessions SET status='PAUSED', last_resumed_at=? WHERE id=?",
+                    (now(), active_session["id"])
+                )
+
             return {
                 "lessonId": lesson_id,
                 "passed": False,

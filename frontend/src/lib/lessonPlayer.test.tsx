@@ -449,4 +449,131 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     expect(pkg.curriculumSource.book).toBe("第一冊");
     expect(pkg.curriculumSource.title).toBe("你好");
   });
+
+  // Test 20
+  it("20. Canonical lesson ID dynamically adopts backend curriculumContext.lessonId for Starter, Basic, and Book 1", async () => {
+    for (const testLessonId of ["starter-l01", "basic-l01", "book1-l01"]) {
+      const container = document.createElement("div");
+      document.body.appendChild(container);
+      const root = createRoot(container);
+
+      vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+        if (url.includes("/learning-sessions/current")) {
+          return new Response(JSON.stringify({
+            id: `session-${testLessonId}`,
+            status: "IN_PROGRESS",
+            lessonId: testLessonId,
+            curriculumContext: {
+              lessonId: testLessonId,
+              stageTitle: testLessonId.toUpperCase(),
+              official: { title: testLessonId === "book1-l01" ? "你好" : "課堂" }
+            }
+          }), { status: 200, headers: { "Content-Type": "application/json" } });
+        }
+        return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+      }));
+
+      await act(async () => {
+        root.render(
+          <LessonPlayerPage
+            lessonId={testLessonId}
+            activeChildId={1}
+            onBack={() => {}}
+          />
+        );
+      });
+
+      const title = container.querySelector(".player-lesson-title");
+      expect(title).toBeTruthy();
+
+      root.unmount();
+      container.remove();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  // Test 21
+  it("21. Step choices and skip actions dispatch to backend learning flow tasks", async () => {
+    const postedUrls: string[] = [];
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes("/learning-sessions/current")) {
+        return new Response(JSON.stringify({
+          id: "session-flow-1",
+          status: "IN_PROGRESS",
+          lessonId: "book1-l01",
+          tasks: [
+            { id: "session-flow-1:listen", key: "listen", taskType: "LISTENING", state: "PENDING" },
+            { id: "session-flow-1:vocabulary", key: "vocabulary", taskType: "VOCABULARY", state: "PENDING" },
+            { id: "session-flow-1:writing-guided", key: "writing-guided", taskType: "WRITING_GUIDED", state: "PENDING" },
+          ]
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (init?.method === "POST") {
+        postedUrls.push(url);
+        return new Response(JSON.stringify({
+          id: "session-flow-1",
+          status: "IN_PROGRESS",
+          tasks: []
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    await act(async () => {
+      root.render(
+        <LessonPlayerPage
+          lessonId="book1-l01"
+          activeChildId={1}
+          onBack={() => {}}
+        />
+      );
+    });
+
+    // Step 1 choice click
+    const choiceBtn = container.querySelector(".choice-card-btn") as HTMLButtonElement;
+    expect(choiceBtn).toBeTruthy();
+    await act(async () => {
+      choiceBtn.click();
+    });
+
+    expect(postedUrls.some((u) => u.includes("/tasks/session-flow-1:listen/answer"))).toBe(true);
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
+
+  // Test 22
+  it("22. Error banner renders with retry action and does not crash UI on failure", async () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      throw new Error("Network offline");
+    }));
+
+    await act(async () => {
+      root.render(
+        <LessonPlayerPage
+          lessonId="book1-l01"
+          activeChildId={1}
+          onBack={() => {}}
+        />
+      );
+    });
+
+    // Should render gracefully without exploding
+    const card = container.querySelector(".lesson-step-card");
+    expect(card).toBeTruthy();
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
 });
+

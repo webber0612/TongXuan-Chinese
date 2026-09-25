@@ -143,3 +143,77 @@ def test_fast_track_endpoint_pass_and_fail(tmp_path):
         assert "recognition" in data_fail["weakDomains"]
         assert data_fail["nextMode"] == "REPAIR"
         assert data_fail["nextReviewDueAt"] is None
+
+
+def test_fast_track_cleans_up_stale_active_session(tmp_path):
+    from app.auth import issue_session
+    from app.database import connect
+    with make_client(tmp_path) as client:
+        # Create child & set placement
+        child_resp = client.post("/api/children", json={"name": "小強"})
+        assert child_resp.status_code == 200
+        child_id = child_resp.json()["id"]
+
+        parent_token = issue_session(subject="parent", role="parent", child_ids=[child_id])
+        parent_headers = {"Authorization": f"Bearer {parent_token}"}
+        client.put(
+            f"/api/children/{child_id}/placement-profile",
+            headers=parent_headers,
+            json={"domain_levels": {"listening": "BOOK_1", "recognition": "BOOK_1", "speaking": "BOOK_1", "writing": "STARTER"}},
+        )
+
+        # Start an active learning flow session
+        start_resp = client.post(f"/api/children/{child_id}/learning-sessions", json={"target_minutes": 18, "lesson_id": "book1-l01"})
+        assert start_resp.status_code == 200
+        session_id = start_resp.json()["id"]
+
+        # Call Fast Track pass
+        pass_answers = {"ft-q1": "c1", "ft-q2": "c1", "ft-q3": "c1", "ft-q4": "c1"}
+        ft_resp = client.post(f"/api/children/{child_id}/lesson-packages/book1-l01/fast-track", json={"answers": pass_answers})
+        assert ft_resp.status_code == 200
+        assert ft_resp.json()["passed"] is True
+
+        # Verify active session in DB was cleaned up / completed
+        with connect() as db:
+            session_row = db.execute("SELECT status, mastery_status FROM learning_flow_sessions WHERE id=?", (session_id,)).fetchone()
+            assert session_row["status"] == "COMPLETED"
+            assert session_row["mastery_status"] == "READY_FOR_CHECK"
+
+            # Check that there are no lingering IN_PROGRESS sessions
+            lingering = db.execute("SELECT COUNT(*) FROM learning_flow_sessions WHERE child_id=? AND status='IN_PROGRESS'", (child_id,)).fetchone()[0]
+            assert lingering == 0
+
+
+def test_due_driven_review_retrieval(tmp_path):
+    from app.auth import issue_session
+    from app.database import connect
+    with make_client(tmp_path) as client:
+        child_resp = client.post("/api/children", json={"name": "小安"})
+        assert child_resp.status_code == 200
+        child_id = child_resp.json()["id"]
+
+        parent_token = issue_session(subject="parent", role="parent", child_ids=[child_id])
+        parent_headers = {"Authorization": f"Bearer {parent_token}"}
+        client.put(
+            f"/api/children/{child_id}/placement-profile",
+            headers=parent_headers,
+            json={"domain_levels": {"listening": "BOOK_1", "recognition": "BOOK_1", "speaking": "BOOK_1", "writing": "STARTER"}},
+        )
+
+        # Seed learning item, link, and due SRS review state in the past
+        with connect() as db:
+            db.execute("INSERT INTO learning_items(id,child_id,character,curriculum_source,provenance_status,created_at) VALUES('item-ni',?,'你','OFFICIAL_OCAC','VERIFIED_OFFICIAL_TITLE','2026-09-01T00:00:00Z')", (child_id,))
+            db.execute("INSERT INTO curriculum_item_links(child_id,skill_domain,item_id,lesson_id) VALUES(?,'recognition','item-ni','book1-l01')", (child_id,))
+            db.execute("INSERT INTO srs_review_states(child_id,skill_domain,item_id,stage,due_at,last_result,last_assisted,updated_at) VALUES(?,'recognition','item-ni',1,'2026-09-02T00:00:00Z','correct',0,'2026-09-01T00:00:00Z')", (child_id,))
+
+        # Start learning session as of a later date (2026-09-25)
+        start_resp = client.post(f"/api/children/{child_id}/learning-sessions", json={"target_minutes": 18, "lesson_id": "book1-l01", "as_of": "2026-09-25T12:00:00Z"})
+        assert start_resp.status_code == 200
+        tasks = start_resp.json()["tasks"]
+
+        # Verify due review tasks are included
+        review_tasks = [t for t in tasks if t["sourceQueue"] == "REVIEW"]
+        assert len(review_tasks) >= 1
+        assert review_tasks[0]["taskType"] == "REVIEW_RECOGNITION"
+        assert review_tasks[0]["skillDomain"] == "recognition"
+

@@ -1842,7 +1842,7 @@ export function ChildPortalPage({
   activeChildId?: number | null;
   activeChildName?: string;
   onOpenCurriculum: () => void;
-  onStartLearningSession?: (learnerName: string) => boolean;
+  onStartLearningSession?: (learnerName: string, targetLessonId?: string) => boolean;
 }) {
   // Learner Profiles Storage
   const [learners, setLearners] = useState<ChildLearner[]>(() => {
@@ -2625,7 +2625,7 @@ export function ChildPortalPage({
       <div className="child-portal-source-note" role="note">
         <span>{t("draftContentNotice")}</span>
         <button type="button" onClick={onOpenCurriculum}>{t("openVerifiedCurriculum")}</button>
-          {onStartLearningSession && <button type="button" className="validated-session-entry" onClick={() => setSessionProfileError(!onStartLearningSession(activeLearner.name))}>{t("startValidatedSession")}</button>}
+          {onStartLearningSession && <button type="button" className="validated-session-entry" onClick={() => setSessionProfileError(!onStartLearningSession(activeLearner.name, dailyQueue?.newLesson?.lessonId || (dailyQueue?.placementStart === "BOOK_1" ? "book1-l01" : dailyQueue?.placementStart === "BASIC" ? "basic-l01" : dailyQueue?.placementStart === "STARTER" ? "starter-l01" : undefined)))}>{t("startValidatedSession")}</button>}
           {sessionProfileError && <span className="session-profile-error" role="alert">{t("sessionProfileMissing")}</span>}
       </div>
 
@@ -2812,7 +2812,8 @@ export function ChildPortalPage({
                     className="launch-quiz-cta-btn validated-session-entry"
                     onClick={() => {
                       if (onStartLearningSession) {
-                        const started = onStartLearningSession(activeLearner.name);
+                        const targetId = dailyQueue?.newLesson?.lessonId || (dailyQueue?.placementStart === "BOOK_1" ? "book1-l01" : dailyQueue?.placementStart === "BASIC" ? "basic-l01" : dailyQueue?.placementStart === "STARTER" ? "starter-l01" : undefined);
+                        const started = onStartLearningSession(activeLearner.name, targetId);
                         setSessionProfileError(!started);
                       }
                     }}
@@ -2836,7 +2837,8 @@ export function ChildPortalPage({
                   className="launch-quiz-cta-btn validated-session-entry"
                   onClick={() => {
                     if (onStartLearningSession) {
-                      const started = onStartLearningSession(activeLearner.name);
+                      const targetId = dailyQueue?.newLesson?.lessonId || (dailyQueue?.placementStart === "BOOK_1" ? "book1-l01" : dailyQueue?.placementStart === "BASIC" ? "basic-l01" : dailyQueue?.placementStart === "STARTER" ? "starter-l01" : undefined);
+                      const started = onStartLearningSession(activeLearner.name, targetId);
                       setSessionProfileError(!started);
                     }
                   }}
