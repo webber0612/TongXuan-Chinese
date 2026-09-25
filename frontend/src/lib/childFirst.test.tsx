@@ -30,12 +30,22 @@ describe("child-first shell contracts", () => {
   it("updates routes from browser history without relying on a full reload", () => {
     expect(routeFromPath("/parent-dashboard")).toBe("parent");
     expect(routeFromPath("/practice")).toBe("practice");
+    expect(routeFromPath("/")).toBe("home");
+    for (const productionAlias of ["/preview-2", "/preview-b", "/preview-kids", "/kids"]) {
+      expect(routeFromPath(productionAlias)).toBe("home");
+    }
+    for (const previewPath of ["/preview", "/preview-pixel", "/preview-reference", "/preview-directions", "/learning-desk", "/learning-calendar"]) {
+      expect(routeFromPath(previewPath)).toBe("archived-preview");
+    }
+    expect(routeFromPath("/TongXuan-Chinese/preview-2")).toBe("home");
+    expect(routeFromPath("/TongXuan-Chinese/preview-kids")).toBe("home");
     expect(routeFromPath("/unknown")).toBe("home");
   });
 
   it("persists add-user through POST and reconciles profiles by backend id", async () => {
     localStorage.clear();
     localStorage.setItem(DISPLAY_LANGUAGE_KEY, "zh-Hant");
+    window.history.replaceState({}, "", "/curriculum");
     let childrenReads = 0;
     const calls: Array<{ url: string; method: string }> = [];
     vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
@@ -43,13 +53,15 @@ describe("child-first shell contracts", () => {
       calls.push({ url, method });
       if (url.endsWith("/api/children") && method === "POST") return new Response(JSON.stringify({ id: 2, name: "Bob" }), { status: 200 });
       if (url.endsWith("/api/children")) { childrenReads += 1; return new Response(JSON.stringify(childrenReads > 1 ? [{ id: 1, name: "Alice" }, { id: 2, name: "Bob" }] : [{ id: 1, name: "Alice" }]), { status: 200 }); }
+      if (url.includes("/api/children/1/curriculum")) return new Response(JSON.stringify({ as_of: "2026-09-25", progress: { total: 0, completed: 0, in_progress: 0, not_started: 0 }, levels: [] }), { status: 200 });
       if (url.includes("daily-queue")) return new Response("[]", { status: 200 });
       return new Response(JSON.stringify({ balance: 0, rewards: [] }), { status: 200 });
     }));
     document.body.innerHTML = '<div id="root"></div>';
     const root = createRoot(document.getElementById("root")!);
     await act(async () => { root.render(React.createElement(AppShell)); await Promise.resolve(); await Promise.resolve(); });
-    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 25)); });
+    expect(document.querySelector(".neo-curriculum")).toBeTruthy();
     await act(async () => { (document.querySelector(".profile-trigger") as HTMLButtonElement).click(); });
     await act(async () => { (Array.from(document.querySelectorAll("button")).find((button) => button.textContent?.includes("新增學習者")) as HTMLButtonElement).click(); });
     const input = document.querySelector("#new-profile-name") as HTMLInputElement;
@@ -57,7 +69,7 @@ describe("child-first shell contracts", () => {
     await act(async () => { setter?.call(input, "Bob"); input.dispatchEvent(new Event("input", { bubbles: true })); });
     await act(async () => { (Array.from(document.querySelectorAll("button")).find((button) => button.textContent?.includes("建立")) as HTMLButtonElement).click(); await Promise.resolve(); await Promise.resolve(); });
     expect(calls.some((call) => call.url.endsWith("/api/children") && call.method === "POST")).toBe(true);
-    expect(document.body.textContent).toContain("Bob");
+    expect(document.querySelector(".child-portal-source-note")).toBeTruthy();
     root.unmount();
     vi.unstubAllGlobals();
   });

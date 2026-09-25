@@ -21,6 +21,7 @@ from .ocr_import import confirm_candidate, create_candidate
 from .adaptive import build_adaptive_plan
 from .dashboard import build_dashboard
 from .curriculum import get_curriculum, record_progress, seed_catalog
+from .curriculum_policy import assess_lesson, get_phonetic_support, get_validated_curriculum, record_lesson_progress, set_soft_unlock
 from .tutor import tutor_response
 from .commercialization import audit_registry
 from .auth import authenticate, require_commercialization_admin
@@ -303,6 +304,20 @@ class CurriculumProgressRequest(BaseModel):
     event_at: str | None = None
 
 
+class ValidatedLessonProgressRequest(BaseModel):
+    status: str
+
+
+class ValidatedLessonAssessmentRequest(BaseModel):
+    scores: dict[str, float]
+    assisted_domains: list[str] = Field(default_factory=list)
+    script_mode: str | None = None
+
+
+class ValidatedLessonSoftUnlockRequest(BaseModel):
+    unlocked: bool
+
+
 class TutorRequest(BaseModel):
     mode: str
     prompt: str = Field(min_length=1, max_length=2000)
@@ -366,6 +381,45 @@ def post_curriculum_progress(child_id: int, item_id: str, request: CurriculumPro
         return record_progress(child_id=child_id, item_id=item_id, status=request.status, event_at=request.event_at)
     except ValueError as error:
         raise HTTPException(status_code=400 if str(error).startswith(("invalid_", "progress_")) else 404, detail=str(error)) from error
+
+
+@app.get("/api/children/{child_id}/validated-curriculum")
+def get_child_validated_curriculum(child_id: int) -> dict[str, object]:
+    return get_validated_curriculum(child_id)
+
+
+@app.get("/api/children/{child_id}/phonetic-support")
+def get_child_phonetic_support(child_id: int, script: str) -> dict[str, object]:
+    try:
+        return get_phonetic_support(child_id=child_id, script_mode=script)
+    except ValueError as error:
+        raise HTTPException(status_code=400 if str(error).startswith("invalid_") else 404, detail=str(error)) from error
+
+
+@app.post("/api/children/{child_id}/validated-curriculum/lessons/{lesson_id}/progress")
+def post_validated_lesson_progress(child_id: int, lesson_id: str, request: ValidatedLessonProgressRequest) -> dict[str, object]:
+    try:
+        return record_lesson_progress(child_id=child_id, lesson_id=lesson_id, status=request.status)
+    except ValueError as error:
+        detail = str(error)
+        raise HTTPException(status_code=400 if detail.startswith("invalid_") else 409 if detail == "prerequisite_not_mastered" else 404, detail=detail) from error
+
+
+@app.post("/api/children/{child_id}/validated-curriculum/lessons/{lesson_id}/assessment")
+def post_validated_lesson_assessment(child_id: int, lesson_id: str, request: ValidatedLessonAssessmentRequest) -> dict[str, object]:
+    try:
+        return assess_lesson(child_id=child_id, lesson_id=lesson_id, scores=request.scores, assisted_domains=set(request.assisted_domains), script_mode=request.script_mode)
+    except ValueError as error:
+        detail = str(error)
+        raise HTTPException(status_code=400 if detail.startswith(("invalid_", "result_")) else 409 if detail == "prerequisite_not_mastered" else 404, detail=detail) from error
+
+
+@app.post("/api/children/{child_id}/validated-curriculum/lessons/{lesson_id}/soft-unlock")
+def post_validated_lesson_soft_unlock(child_id: int, lesson_id: str, request: ValidatedLessonSoftUnlockRequest) -> dict[str, object]:
+    try:
+        return set_soft_unlock(child_id=child_id, lesson_id=lesson_id, unlocked=request.unlocked)
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
 
 
 @app.post("/api/children/{child_id}/tutor/respond")

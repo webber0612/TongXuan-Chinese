@@ -5,6 +5,7 @@ import sqlite3
 from typing import Any
 
 from .database import connect, initialize_database
+from .curriculum_policy import record_srs_review
 from .learning import ensure_child, now, uid
 from .pinyin import normalize_pinyin
 from .writing_provider import provider_for
@@ -87,7 +88,8 @@ def practice_word(child_id: int, word_id: str, result: str, assisted: bool) -> d
         db.execute("INSERT INTO word_attempts VALUES (?,?,?,?,?,?)", (uid("word_attempt"), child_id, word_id, result, int(assisted), now()))
         db.execute("""INSERT INTO word_states (child_id,word_id,correct_count,incorrect_count,assisted_count,updated_at) VALUES (?,?,?,?,?,?)
           ON CONFLICT(child_id,word_id) DO UPDATE SET correct_count=correct_count+excluded.correct_count,incorrect_count=incorrect_count+excluded.incorrect_count,assisted_count=assisted_count+excluded.assisted_count,updated_at=excluded.updated_at""", (child_id, word_id, int(result == "correct" and not assisted), int(result == "incorrect"), int(assisted), now()))
-        return dict(db.execute("SELECT * FROM word_states WHERE child_id=? AND word_id=?", (child_id, word_id)).fetchone())
+        srs = record_srs_review(db, child_id=child_id, skill_domain="word", item_id=word_id, result=result, assisted=assisted)
+        return dict(db.execute("SELECT * FROM word_states WHERE child_id=? AND word_id=?", (child_id, word_id)).fetchone()) | {"srs": srs}
 
 
 def practice_sentence(child_id: int, sentence_id: str, answer: str, assisted: bool) -> dict[str, Any]:
@@ -99,7 +101,8 @@ def practice_sentence(child_id: int, sentence_id: str, answer: str, assisted: bo
         db.execute("INSERT INTO sentence_attempts VALUES (?,?,?,?,?,?,?)", (uid("sentence_attempt"), child_id, sentence_id, answer, correct, int(assisted), now()))
         db.execute("""INSERT INTO sentence_states VALUES (?,?,?,?,?,?)
           ON CONFLICT(child_id,sentence_id) DO UPDATE SET correct_count=correct_count+excluded.correct_count,incorrect_count=incorrect_count+excluded.incorrect_count,assisted_count=assisted_count+excluded.assisted_count,updated_at=excluded.updated_at""", (child_id, sentence_id, int(correct and not assisted), int(not correct), int(assisted), now()))
-        return {"correct": bool(correct), "state": dict(db.execute("SELECT * FROM sentence_states WHERE child_id=? AND sentence_id=?", (child_id, sentence_id)).fetchone())}
+        srs = record_srs_review(db, child_id=child_id, skill_domain="sentence", item_id=sentence_id, result="correct" if correct else "incorrect", assisted=assisted)
+        return {"correct": bool(correct), "state": dict(db.execute("SELECT * FROM sentence_states WHERE child_id=? AND sentence_id=?", (child_id, sentence_id)).fetchone()), "srs": srs}
 
 
 def practice_writing(child_id: int, character: str, trace_result: str, assisted: bool, provider: str) -> dict[str, Any]:
@@ -108,7 +111,8 @@ def practice_writing(child_id: int, character: str, trace_result: str, assisted:
         ensure_child(db, child_id)
         db.execute("INSERT INTO writing_attempts VALUES (?,?,?,?,?,?,?)", (uid("writing_attempt"), child_id, character, trace_result, int(assisted), provider, now()))
         db.execute("""INSERT INTO writing_states VALUES (?,?,?,?,?) ON CONFLICT(child_id,character) DO UPDATE SET independent_success_count=independent_success_count+excluded.independent_success_count,assisted_count=assisted_count+excluded.assisted_count,updated_at=excluded.updated_at""", (child_id, character, int(trace_result == "correct" and not assisted), int(assisted), now()))
-        return dict(db.execute("SELECT * FROM writing_states WHERE child_id=? AND character=?", (child_id, character)).fetchone())
+        srs = record_srs_review(db, child_id=child_id, skill_domain="writing", item_id=character, result=trace_result, assisted=assisted)
+        return dict(db.execute("SELECT * FROM writing_states WHERE child_id=? AND character=?", (child_id, character)).fetchone()) | {"srs": srs}
 
 
 def list_readings(character: str | None = None, script: str | None = None, db: sqlite3.Connection | None = None) -> list[dict[str, Any]]:
@@ -131,7 +135,8 @@ def practice_pronunciation(child_id: int, reading_id: str, answer: str, assisted
         correct = int(normalized_answer == normalized_target)
         db.execute("INSERT INTO pronunciation_attempts (id,child_id,reading_id,answer,correct,assisted,source_type,school_queue_item_id,prompt_id,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)", (uid("pron_attempt"), child_id, reading_id, answer, correct, int(assisted), source_type, school_queue_item_id, prompt_id, now()))
         db.execute("""INSERT INTO pronunciation_states (child_id,reading_id,correct_count,incorrect_count,assisted_count,updated_at) VALUES (?,?,?,?,?,?) ON CONFLICT(child_id,reading_id) DO UPDATE SET correct_count=correct_count+excluded.correct_count,incorrect_count=incorrect_count+excluded.incorrect_count,assisted_count=assisted_count+excluded.assisted_count,updated_at=excluded.updated_at""", (child_id, reading_id, int(correct and not assisted), int(not correct), int(assisted), now()))
-        return {"correct": bool(correct), "reading_id": reading_id, "normalized_answer": normalized_answer, "source_type": source_type, "school_queue_item_id": school_queue_item_id, "prompt_id": prompt_id, "state": dict(db.execute("SELECT * FROM pronunciation_states WHERE child_id=? AND reading_id=?", (child_id, reading_id)).fetchone())}
+        srs = record_srs_review(db, child_id=child_id, skill_domain="pronunciation", item_id=reading_id, result="correct" if correct else "incorrect", assisted=assisted)
+        return {"correct": bool(correct), "reading_id": reading_id, "normalized_answer": normalized_answer, "source_type": source_type, "school_queue_item_id": school_queue_item_id, "prompt_id": prompt_id, "state": dict(db.execute("SELECT * FROM pronunciation_states WHERE child_id=? AND reading_id=?", (child_id, reading_id)).fetchone()), "srs": srs}
 
 
 def create_school_pinyin_prompt(child_id: int, school_queue_item_id: str, reading_id: str | None = None, context: str | None = None) -> dict[str, Any]:
@@ -183,7 +188,8 @@ def practice_grammar(child_id: int, exercise_id: str, answer: str, assisted: boo
         correct = int(answer.strip() == exercise["answer_rule"])
         db.execute("INSERT INTO grammar_attempts (id,child_id,exercise_id,answer,correct,assisted,created_at) VALUES (?,?,?,?,?,?,?)", (uid("grammar_attempt"), child_id, exercise_id, answer, correct, int(assisted), now()))
         db.execute("""INSERT INTO grammar_states (child_id,exercise_id,correct_count,incorrect_count,assisted_count,updated_at) VALUES (?,?,?,?,?,?) ON CONFLICT(child_id,exercise_id) DO UPDATE SET correct_count=correct_count+excluded.correct_count,incorrect_count=incorrect_count+excluded.incorrect_count,assisted_count=assisted_count+excluded.assisted_count,updated_at=excluded.updated_at""", (child_id, exercise_id, int(correct and not assisted), int(not correct), int(assisted), now()))
-        return {"correct": bool(correct), "state": dict(db.execute("SELECT * FROM grammar_states WHERE child_id=? AND exercise_id=?", (child_id, exercise_id)).fetchone())}
+        srs = record_srs_review(db, child_id=child_id, skill_domain="grammar", item_id=exercise_id, result="correct" if correct else "incorrect", assisted=assisted)
+        return {"correct": bool(correct), "state": dict(db.execute("SELECT * FROM grammar_states WHERE child_id=? AND exercise_id=?", (child_id, exercise_id)).fetchone()), "srs": srs}
 
 
 def list_idioms(db: sqlite3.Connection | None = None) -> list[dict[str, Any]]:
@@ -199,7 +205,8 @@ def practice_idiom(child_id: int, idiom_id: str, answer: str, assisted: bool) ->
         correct = int(answer.strip() == idiom["meaning"])
         db.execute("INSERT INTO idiom_attempts (id,child_id,idiom_id,answer,correct,assisted,created_at) VALUES (?,?,?,?,?,?,?)", (uid("idiom_attempt"), child_id, idiom_id, answer, correct, int(assisted), now()))
         db.execute("""INSERT INTO idiom_states (child_id,idiom_id,correct_count,incorrect_count,updated_at) VALUES (?,?,?,?,?) ON CONFLICT(child_id,idiom_id) DO UPDATE SET correct_count=correct_count+excluded.correct_count,incorrect_count=incorrect_count+excluded.incorrect_count,updated_at=excluded.updated_at""", (child_id, idiom_id, int(correct and not assisted), int(not correct), now()))
-        return {"correct": bool(correct), "state": dict(db.execute("SELECT * FROM idiom_states WHERE child_id=? AND idiom_id=?", (child_id, idiom_id)).fetchone())}
+        srs = record_srs_review(db, child_id=child_id, skill_domain="idiom", item_id=idiom_id, result="correct" if correct else "incorrect", assisted=assisted)
+        return {"correct": bool(correct), "state": dict(db.execute("SELECT * FROM idiom_states WHERE child_id=? AND idiom_id=?", (child_id, idiom_id)).fetchone()), "srs": srs}
 
 
 def list_passages(child_id: int, db: sqlite3.Connection | None = None) -> list[dict[str, Any]]:
@@ -219,4 +226,5 @@ def submit_reading(child_id: int, passage_id: str, answers: dict[str, str]) -> d
         correctness_snapshot = {key: bool(value) for key, value in correctness.items()}
         db.execute("INSERT INTO reading_attempts (id,child_id,passage_id,score,total,answers_json,correctness_json,created_at) VALUES (?,?,?,?,?,?,?,?)", (uid("reading_attempt"), child_id, passage_id, score, total, json.dumps(answers_snapshot, ensure_ascii=False, sort_keys=True), json.dumps(correctness_snapshot, sort_keys=True), now()))
         db.execute("""INSERT INTO reading_states (child_id,passage_id,correct_count,incorrect_count,updated_at) VALUES (?,?,?,?,?) ON CONFLICT(child_id,passage_id) DO UPDATE SET correct_count=correct_count+excluded.correct_count,incorrect_count=incorrect_count+excluded.incorrect_count,updated_at=excluded.updated_at""", (child_id, passage_id, score, total-score, now()))
-        return {"passage_id": passage_id, "correctness": correctness, "answers": answers_snapshot, "score": score, "total": total}
+        srs = record_srs_review(db, child_id=child_id, skill_domain="reading", item_id=passage_id, result="correct" if total and score == total else "incorrect", assisted=False)
+        return {"passage_id": passage_id, "correctness": correctness, "answers": answers_snapshot, "score": score, "total": total, "srs": srs}

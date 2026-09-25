@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from .database import connect, initialize_database
+from .curriculum_policy import record_srs_review
 
 
 def uid(prefix: str) -> str:
@@ -71,10 +72,11 @@ def next_recognition_item(child_id: int, session_id: str) -> dict[str, Any] | No
             """SELECT i.id, i.character, i.curriculum_source, COALESCE(s.correct_count,0) correct_count,
                COALESCE(s.incorrect_count,0) incorrect_count, COALESCE(s.assisted_count,0) assisted_count
                FROM learning_items i LEFT JOIN recognition_states s ON s.item_id=i.id AND s.child_id=i.child_id
+               LEFT JOIN srs_review_states sr ON sr.child_id=i.child_id AND sr.item_id=i.id AND sr.skill_domain='recognition'
                WHERE i.child_id=?
-                 AND COALESCE(s.due_at, CURRENT_TIMESTAMP) <= CURRENT_TIMESTAMP
+                 AND COALESCE(sr.due_at, s.due_at, CURRENT_TIMESTAMP) <= CURRENT_TIMESTAMP
                  AND NOT EXISTS (SELECT 1 FROM recognition_attempts a WHERE a.session_id=? AND a.item_id=i.id)
-               ORDER BY COALESCE(s.due_at, CURRENT_TIMESTAMP), i.id LIMIT 1""", (child_id, session_id)
+               ORDER BY COALESCE(sr.due_at, s.due_at, CURRENT_TIMESTAMP), i.id LIMIT 1""", (child_id, session_id)
         ).fetchone()
         return dict(row) if row else None
 
@@ -103,7 +105,8 @@ def record_attempt(child_id: int, session_id: str, item_id: str, result: str, as
           correct_count=correct_count+excluded.correct_count, incorrect_count=incorrect_count+excluded.incorrect_count,
           assisted_count=assisted_count+excluded.assisted_count,last_result=excluded.last_result,due_at=excluded.due_at,updated_at=excluded.updated_at""",
           (child_id, item_id, int(result == "correct" and not assisted), int(result == "incorrect"), int(assisted), result, (datetime.now(timezone.utc) + timedelta(days=delay)).strftime("%Y-%m-%d %H:%M:%S"), now()))
-        return dict(db.execute("SELECT * FROM recognition_attempts WHERE id=?", (attempt_id,)).fetchone())
+        srs = record_srs_review(db, child_id=child_id, skill_domain="recognition", item_id=item_id, result=result, assisted=assisted)
+        return dict(db.execute("SELECT * FROM recognition_attempts WHERE id=?", (attempt_id,)).fetchone()) | {"srs": srs}
 
 
 def finish_session(child_id: int, session_id: str) -> dict[str, Any]:
@@ -160,9 +163,27 @@ def create_weekly_test(child_id: int) -> dict[str, Any]:
                LIMIT 5""", (child_id, cutoff)
         ).fetchall()
         test_id = uid("test")
-        item_ids = [dict(row) for row in rows]
-        db.execute("INSERT INTO weekly_tests (id,child_id,item_ids,total) VALUES (?,?,?,?)", (test_id, child_id, json.dumps(item_ids, ensure_ascii=False), len(item_ids)))
-        return {"id": test_id, "child_id": child_id, "items": item_ids, "total": len(item_ids)}
+        item_ids = [{"id": row["id"], "skill": "recognition", "character": row["character"], "prompt": "認讀這個字", "expectedAnswer": row["character"]} for row in rows]
+        builders = [
+            ("word", "SELECT id,word AS prompt,word AS expected FROM words WHERE child_id=? ORDER BY id LIMIT 1", (child_id,)),
+            ("sentence", "SELECT id,sentence AS prompt,sentence AS expected FROM sentences WHERE child_id=? ORDER BY id LIMIT 1", (child_id,)),
+            ("writing", "SELECT wc.character AS id,wc.character AS prompt,wc.character AS expected FROM word_characters wc JOIN words w ON w.id=wc.word_id WHERE w.child_id=? ORDER BY wc.character LIMIT 1", (child_id,)),
+            ("pronunciation", "SELECT id,character||' · '||notation_system AS prompt,notation AS expected FROM pronunciation_readings ORDER BY id LIMIT 1", ()),
+            ("grammar", "SELECT id,prompt,answer_rule AS expected FROM grammar_exercises ORDER BY id LIMIT 1", ()),
+            ("idiom", "SELECT id,idiom AS prompt,meaning AS expected FROM idioms ORDER BY id LIMIT 1", ()),
+            ("reading", "SELECT q.id,p.passage||' · '||q.prompt AS prompt,q.answer_rule AS expected FROM reading_questions q JOIN reading_passages p ON p.id=q.passage_id WHERE p.child_id=? ORDER BY q.id LIMIT 1", (child_id,)),
+        ]
+        for skill, sql, args in builders:
+            if len(item_ids) >= 10:
+                break
+            row = db.execute(sql, args).fetchone()
+            if row:
+                item_ids.append({"id": f"{skill}:{row['id']}", "skill": skill, "prompt": str(row["prompt"]), "expectedAnswer": str(row["expected"])})
+        domain_floors = {item["skill"]: 0.75 for item in item_ids}
+        blueprint = {"id": "beginner-multidomain-v1", "independentEvidenceRequired": True, "domainFloors": domain_floors}
+        db.execute("INSERT INTO weekly_tests (id,child_id,item_ids,total,assessment_blueprint) VALUES (?,?,?,?,?)", (test_id, child_id, json.dumps(item_ids, ensure_ascii=False), len(item_ids), json.dumps(blueprint, sort_keys=True)))
+        display_items = [{key: value for key, value in item.items() if key != "expectedAnswer"} for item in item_ids]
+        return {"id": test_id, "child_id": child_id, "items": display_items, "total": len(item_ids), "assessment_blueprint": blueprint}
 
 
 def submit_weekly_test(child_id: int, test_id: str, answers: dict[str, str]) -> dict[str, Any]:
@@ -173,11 +194,17 @@ def submit_weekly_test(child_id: int, test_id: str, answers: dict[str, str]) -> 
         if row["completed_at"] is not None:
             raise ValueError("weekly_test_already_completed")
         items = json.loads(row["item_ids"])
-        correctness = {item["id"]: answers.get(item["id"]) == item["character"] for item in items}
+        correctness = {item["id"]: str(answers.get(item["id"], "")).strip() == str(item.get("expectedAnswer", item.get("character", ""))).strip() for item in items}
         score = sum(correctness.values())
-        db.execute("UPDATE weekly_tests SET submitted_answers=?,correctness=?,score=?,completed_at=? WHERE id=?", (json.dumps(answers, ensure_ascii=False), json.dumps(correctness), score, now(), test_id))
+        grouped: dict[str, list[bool]] = {}
         for item in items:
-            if not correctness[item["id"]]:
+            grouped.setdefault(item["skill"], []).append(correctness[item["id"]])
+        domain_scores = {skill: {"score": sum(results), "total": len(results), "ratio": sum(results) / len(results), "floor": 0.75, "passed": sum(results) / len(results) >= 0.75} for skill, results in grouped.items()}
+        db.execute("UPDATE weekly_tests SET submitted_answers=?,correctness=?,score=?,domain_scores=?,completed_at=? WHERE id=?", (json.dumps(answers, ensure_ascii=False), json.dumps(correctness), score, json.dumps(domain_scores, sort_keys=True), now(), test_id))
+        for item in items:
+            result = "correct" if correctness[item["id"]] else "incorrect"
+            record_srs_review(db, child_id=child_id, skill_domain=item["skill"], item_id=item["id"] if item["skill"] == "recognition" else item["id"].split(":", 1)[-1], result=result, assisted=False)
+            if not correctness[item["id"]] and item["skill"] == "recognition":
                 db.execute(
                     """INSERT OR IGNORE INTO review_queue_items
                        (id, child_id, item_id, character, source_detail, reason, priority)
@@ -185,7 +212,7 @@ def submit_weekly_test(child_id: int, test_id: str, answers: dict[str, str]) -> 
                     (uid("review"), child_id, item["id"], item["character"], "Weekly Test", "Weekly Test missed item", 10),
                 )
         award_points(db, child_id, "WEEKLY_TEST_COMPLETE", 10, test_id, f"weekly-test:{test_id}", "Completed weekly test")
-        return {"id": test_id, "score": score, "total": len(items), "correctness": correctness, "missed_items": [item["character"] for item in items if not correctness[item["id"]]]}
+        return {"id": test_id, "score": score, "total": len(items), "correctness": correctness, "domain_scores": domain_scores, "overall_score_is_mastery": False, "missed_items": [item.get("character", item["prompt"]) for item in items if not correctness[item["id"]]]}
 
 
 def award_points(db: sqlite3.Connection, child_id: int, event_type: str, delta: int, related: str, event_key: str, reason: str) -> bool:

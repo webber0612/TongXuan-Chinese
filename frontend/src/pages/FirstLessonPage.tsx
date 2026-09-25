@@ -6,7 +6,8 @@ type FirstLessonPageProps = { onBack: () => void; onOpenPractice: () => void };
 
 export function FirstLessonPage({ onBack, onOpenPractice }: FirstLessonPageProps) {
   const { t } = useLocale();
-  const lesson = officialCoursePath.stages[2];
+  const lesson = officialCoursePath.stages[2].lessons[0];
+  const objective = lesson.officialObjectiveSummary ?? lesson.practiceTargets.join("；");
   return <main className="app-page first-lesson-page">
     <button className="back-link" onClick={onBack}><ArrowLeft size={17}/>{t("backToMap")}</button>
     <header className="lesson-heading">
@@ -17,9 +18,10 @@ export function FirstLessonPage({ onBack, onOpenPractice }: FirstLessonPageProps
     <section className="official-lesson-card" aria-labelledby="first-lesson-title">
       <div className="official-lesson-number">01</div>
       <div className="official-lesson-copy">
-        <p className="eyebrow">{lesson.shortTitle}</p>
+        <p className="eyebrow">{lesson.sourceBook} · {lesson.sourceLesson}</p>
         <h2 id="first-lesson-title">{lesson.title}</h2>
-        <p>{lesson.description}</p>
+        <p>{objective}</p>
+        <p>{lesson.domains.join(" · ")}</p>
         <div className="source-lock-note"><LockKeyhole size={16}/><span>{t("lessonImportPending")}</span></div>
       </div>
     </section>

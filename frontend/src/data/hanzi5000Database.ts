@@ -1,5 +1,4 @@
-// 5000 常用漢字字庫核心資料模型與檢索索引 (MOE 國字標準字體 + TOCFL/HSK 5000 字表)
-// 提供拼音、注音、部首、筆畫、繁簡對照、英文釋義、分級 (Lv.1 - Lv.10) 與田字格練字快速對接
+// Legacy representative character sample. It is not a 5,000-character corpus or an official book-level selection.
 
 export interface HanziEntry {
   id: number;
@@ -10,16 +9,24 @@ export interface HanziEntry {
   radical: string;
   strokes: number;
   strokesHans?: number;
-  level: number; // 1 to 10 (對應 僑委會 1~10 冊 與 難度等級)
+  level: number; // Internal draft grouping only; not an OCAC book or difficulty level.
   meaning: string;
   meaningEn: string;
   frequencyRank: number;
   commonWords: string[];
+  sourceKind: "TONGXUAN_AUTHORED";
+  sourceName: "TongXuan legacy character sample";
+  sourceUrl: string;
+  sourceBook: null;
+  sourceLesson: null;
+  provenanceStatus: "INTERNAL_DRAFT";
+  licenseStatus: "INTERNAL_ONLY";
+  commercialReady: false;
 }
 
-// 核心常用高頻 5000 漢字字庫集合（分類索引與基礎代表庫）
-export const HANZI_5000_CORE: HanziEntry[] = [
-  // Level 1: 基礎啟蒙 (1-500)
+// Representative samples retained for the legacy draft lookup only.
+const LEGACY_HANZI_DRAFT_ROWS: Omit<HanziEntry, "sourceKind" | "sourceName" | "sourceUrl" | "sourceBook" | "sourceLesson" | "provenanceStatus" | "licenseStatus" | "commercialReady">[] = [
+  // Internal sample grouping 1
   { id: 1, char: "一", charHans: "一", zhuyin: "ㄧ", pinyin: "yī", radical: "一", strokes: 1, level: 1, meaning: "數字一", meaningEn: "one", frequencyRank: 1, commonWords: ["一天", "第一", "一齊"] },
   { id: 2, char: "二", charHans: "二", zhuyin: "ㄦˋ", pinyin: "èr", radical: "二", strokes: 2, level: 1, meaning: "數字二", meaningEn: "two", frequencyRank: 2, commonWords: ["二月", "第二", "二十"] },
   { id: 3, char: "三", charHans: "三", zhuyin: "ㄙㄢ", pinyin: "sān", radical: "一", strokes: 3, level: 1, meaning: "數字三", meaningEn: "three", frequencyRank: 3, commonWords: ["三天", "第三", "三十"] },
@@ -57,7 +64,7 @@ export const HANZI_5000_CORE: HanziEntry[] = [
   { id: 35, char: "牛", charHans: "牛", zhuyin: "ㄋㄧㄡˊ", pinyin: "niú", radical: "牛", strokes: 4, level: 1, meaning: "黃牛、水牛", meaningEn: "ox; cow", frequencyRank: 35, commonWords: ["老牛", "水牛", "牛肉"] },
   { id: 36, char: "蟲", charHans: "虫", zhuyin: "ㄔㄨㄥˊ", pinyin: "chóng", radical: "虫", strokes: 18, strokesHans: 6, level: 1, meaning: "昆蟲", meaningEn: "insect; bug", frequencyRank: 36, commonWords: ["昆蟲", "小蟲", "毛毛蟲"] },
 
-  // Level 2: 家庭學校 (501-1500)
+  // Internal sample grouping 2
   { id: 37, char: "大", charHans: "大", zhuyin: "ㄉㄚˋ", pinyin: "dà", radical: "大", strokes: 3, level: 2, meaning: "巨大、長大", meaningEn: "big; large", frequencyRank: 37, commonWords: ["大人", "大家", "長大"] },
   { id: 38, char: "小", charHans: "小", zhuyin: "ㄒㄧㄠˇ", pinyin: "xiǎo", radical: "小", strokes: 3, level: 2, meaning: "微小、幼小", meaningEn: "small; little", frequencyRank: 38, commonWords: ["小孩", "小手", "小心"] },
   { id: 39, char: "中", charHans: "中", zhuyin: "ㄓㄨㄥ", pinyin: "zhōng", radical: "丨", strokes: 4, level: 2, meaning: "中心、中文", meaningEn: "middle; Chinese", frequencyRank: 39, commonWords: ["中文", "中間", "心中"] },
@@ -71,7 +78,7 @@ export const HANZI_5000_CORE: HanziEntry[] = [
   { id: 47, char: "愛", charHans: "爱", zhuyin: "ㄞˋ", pinyin: "ài", radical: "心", strokes: 13, strokesHans: 10, level: 2, meaning: "愛心、喜愛", meaningEn: "love; cherish", frequencyRank: 47, commonWords: ["愛心", "喜愛", "親愛"] },
   { id: 48, char: "心", charHans: "心", zhuyin: "ㄒㄧㄣ", pinyin: "xīn", radical: "心", strokes: 4, level: 2, meaning: "心臟、心情", meaningEn: "heart; mind", frequencyRank: 48, commonWords: ["開心", "心情", "用心"] },
 
-  // Level 3-5: 生活探索與中華節慶 (1501-3000)
+  // Internal sample grouping 3-5
   { id: 49, char: "春", charHans: "春", zhuyin: "ㄔㄨㄣ", pinyin: "chūn", radical: "日", strokes: 9, level: 3, meaning: "春天、春季", meaningEn: "spring", frequencyRank: 49, commonWords: ["春節", "春天", "春風"] },
   { id: 50, char: "夏", charHans: "夏", zhuyin: "ㄒㄧㄚˋ", pinyin: "xià", radical: "夂", strokes: 10, level: 3, meaning: "夏天、夏季", meaningEn: "summer", frequencyRank: 50, commonWords: ["夏天", "夏季", "夏令營"] },
   { id: 51, char: "秋", charHans: "秋", zhuyin: "ㄑㄧㄡ", pinyin: "qiū", radical: "禾", strokes: 9, level: 3, meaning: "秋天、秋季", meaningEn: "autumn; fall", frequencyRank: 51, commonWords: ["秋天", "中秋", "秋葉"] },
@@ -81,7 +88,7 @@ export const HANZI_5000_CORE: HanziEntry[] = [
   { id: 55, char: "節", charHans: "节", zhuyin: "ㄐㄧㄝˊ", pinyin: "jié", radical: "竹", strokes: 13, strokesHans: 5, level: 3, meaning: "節日、節奏", meaningEn: "festival; rhythm", frequencyRank: 55, commonWords: ["節日", "春節", "過節"] },
   { id: 56, char: "慶", charHans: "庆", zhuyin: "ㄑㄧㄥˋ", pinyin: "qìng", radical: "心", strokes: 15, strokesHans: 6, level: 4, meaning: "慶祝、慶賀", meaningEn: "celebrate", frequencyRank: 56, commonWords: ["慶祝", "國慶", "慶賀"] },
 
-  // Level 6-10: 高階文學古詩與科學思維 (3001-5000+)
+  // Internal sample grouping 6-10
   { id: 57, char: "詩", charHans: "诗", zhuyin: "ㄕ", pinyin: "shī", radical: "言", strokes: 13, strokesHans: 8, level: 6, meaning: "詩歌、古典詩詞", meaningEn: "poetry; poem", frequencyRank: 57, commonWords: ["詩歌", "古詩", "詩人"] },
   { id: 58, char: "詞", charHans: "词", zhuyin: "ㄘˊ", pinyin: "cí", radical: "言", strokes: 12, strokesHans: 7, level: 6, meaning: "詞彙、宋詞", meaningEn: "words; lyrics", frequencyRank: 58, commonWords: ["詞彙", "宋詞", "單詞"] },
   { id: 59, char: "智", charHans: "智", zhuyin: "ㄓˋ", pinyin: "zhì", radical: "日", strokes: 12, level: 7, meaning: "智慧、明智", meaningEn: "wisdom; intelligence", frequencyRank: 59, commonWords: ["智慧", "智力", "大智若愚"] },
@@ -94,6 +101,18 @@ export const HANZI_5000_CORE: HanziEntry[] = [
   { id: 66, char: "新", charHans: "新", zhuyin: "ㄒㄧㄣ", pinyin: "xīn", radical: "斤", strokes: 13, level: 10, meaning: "新鮮、更新", meaningEn: "new; fresh", frequencyRank: 66, commonWords: ["新年", "新鮮", "創新"] }
 ];
 
+export const TONGXUAN_AUTHORED_DRAFT_HANZI: HanziEntry[] = LEGACY_HANZI_DRAFT_ROWS.map((entry) => ({
+  ...entry,
+  sourceKind: "TONGXUAN_AUTHORED",
+  sourceName: "TongXuan legacy character sample",
+  sourceUrl: "https://github.com/webber0612/TongXuan-Chinese/blob/main/frontend/src/data/hanzi5000Database.ts",
+  sourceBook: null,
+  sourceLesson: null,
+  provenanceStatus: "INTERNAL_DRAFT",
+  licenseStatus: "INTERNAL_ONLY",
+  commercialReady: false,
+}));
+
 // 檢索漢字字庫演算法
 export function searchHanziLexicon(
   query: string,
@@ -105,7 +124,7 @@ export function searchHanziLexicon(
   }
 ): HanziEntry[] {
   const cleanQ = query.trim().toLowerCase();
-  return HANZI_5000_CORE.filter((item) => {
+  return TONGXUAN_AUTHORED_DRAFT_HANZI.filter((item) => {
     // 關鍵字檢索（支援 漢字、拼音、注音、英文釋義、組詞）
     const matchesQuery =
       !cleanQ ||
@@ -119,7 +138,7 @@ export function searchHanziLexicon(
 
     if (!matchesQuery) return false;
 
-    // 冊次等級篩選
+    // Internal draft grouping filter
     if (options?.level && item.level !== options.level) {
       return false;
     }
@@ -143,7 +162,7 @@ export function searchHanziLexicon(
 
 // 根據漢字字元取得完整條目
 export function getHanziEntry(char: string): HanziEntry | undefined {
-  return HANZI_5000_CORE.find(
+  return TONGXUAN_AUTHORED_DRAFT_HANZI.find(
     (item) => item.char === char || item.charHans === char
   );
 }

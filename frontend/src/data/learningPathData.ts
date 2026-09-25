@@ -1,5 +1,4 @@
-// 童軒中文 · 25關關卡制學習路徑、階段檢核測驗券與智能動態組卷引擎
-// Stage-Based Progression, 5-Level Checkpoint Quizzes & Dynamic Exam Paper Generator
+// Legacy TongXuan-authored prototype practice data. It is not official OCAC curriculum.
 
 export type LevelType = "lesson" | "stage_quiz" | "milestone_exam";
 
@@ -71,6 +70,14 @@ export interface CourseLevel {
   lessonStory?: string[];
   idiom?: IdiomItem;
   quizQuestions?: QuizQuestionItem[];
+  sourceKind?: "TONGXUAN_AUTHORED";
+  sourceName?: string;
+  sourceUrl?: string;
+  sourceBook?: string;
+  sourceLesson?: string;
+  provenanceStatus?: "INTERNAL_DRAFT";
+  licenseStatus?: "INTERNAL_ONLY";
+  commercialReady?: false;
 }
 
 export interface LearnerLevelProgress {
@@ -79,10 +86,12 @@ export interface LearnerLevelProgress {
   completedAt: string | null;
   starsEarned: number;
   score: number | null;
+  masteryStatus: "NOT_STARTED" | "IN_PROGRESS" | "PRACTICED" | "READY_FOR_CHECK" | "MASTERED" | "NEEDS_REVIEW";
+  softUnlocked: boolean;
 }
 
 // 25 關標準課程進度表
-export const ALL_COURSE_LEVELS: CourseLevel[] = [
+const LEGACY_TONGXUAN_LEVEL_DATA: CourseLevel[] = [
   // ================= STAGE 1 (關卡 1 ~ 5) =================
   {
     levelNumber: 1,
@@ -680,45 +689,74 @@ export const ALL_COURSE_LEVELS: CourseLevel[] = [
   }
 ];
 
+function stampLegacyLevel(value: unknown, levelNumber: number): unknown {
+  if (Array.isArray(value)) return value.map((entry) => stampLegacyLevel(entry, levelNumber));
+  if (!value || typeof value !== "object") return value;
+  const children = Object.fromEntries(Object.entries(value as Record<string, unknown>).map(([key, entry]) => [key, stampLegacyLevel(entry, levelNumber)]));
+  return {
+    ...children,
+    sourceKind: "TONGXUAN_AUTHORED",
+    sourceName: "TongXuan legacy sample content",
+    sourceUrl: "https://github.com/webber0612/TongXuan-Chinese/blob/main/frontend/src/data/learningPathData.ts",
+    sourceBook: "TONGXUAN_AUTHORED_25_LEVEL_DEMO",
+    sourceLesson: `TONGXUAN_LEVEL_${levelNumber}`,
+    provenanceStatus: "INTERNAL_DRAFT",
+    licenseStatus: "INTERNAL_ONLY",
+    commercialReady: false,
+  };
+}
+
+/** Internal prototype content retained for testing; never represents OCAC lessons. */
+export const TONGXUAN_AUTHORED_DRAFT_LEVELS: CourseLevel[] =
+  LEGACY_TONGXUAN_LEVEL_DATA.map((level) => stampLegacyLevel(level, level.levelNumber) as CourseLevel);
+
 // ========================================================
 // 進度持久化管理 (Learner Level Progress Storage)
 // ========================================================
 
-export function getLearnerLevelsProgress(): LearnerLevelProgress[] {
+export function getLearnerLevelsProgress(learnerId = "default"): LearnerLevelProgress[] {
+  const storageKey = `tongxuan_levels_progress:${learnerId}`;
   try {
-    const raw = localStorage.getItem("tongxuan_levels_progress");
+    const raw = localStorage.getItem(storageKey) ?? (learnerId === "default" ? localStorage.getItem("tongxuan_levels_progress") : null);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length === 25) {
-        return parsed;
+        return parsed.map((item) => ({
+          ...item,
+          masteryStatus: item.masteryStatus ?? (item.status === "completed" ? "PRACTICED" : item.status === "current" ? "IN_PROGRESS" : "NOT_STARTED"),
+          softUnlocked: item.softUnlocked ?? item.status !== "locked",
+        }));
       }
     }
   } catch (e) {}
 
   // 初始預設：新使用者只有「第 1 關」解鎖 (current)，第 2~25 關全部鎖定 (locked)，無虛假通關日期！
-  const initial: LearnerLevelProgress[] = ALL_COURSE_LEVELS.map((lvl) => ({
+  const initial: LearnerLevelProgress[] = TONGXUAN_AUTHORED_DRAFT_LEVELS.map((lvl) => ({
     levelNumber: lvl.levelNumber,
     status: lvl.levelNumber === 1 ? "current" : "locked",
     completedAt: null,
     starsEarned: 0,
-    score: null
+    score: null,
+    masteryStatus: "NOT_STARTED",
+    softUnlocked: lvl.levelNumber === 1,
   }));
 
-  localStorage.setItem("tongxuan_levels_progress", JSON.stringify(initial));
+  localStorage.setItem(storageKey, JSON.stringify(initial));
   return initial;
 }
 
-export function saveLearnerLevelsProgress(progress: LearnerLevelProgress[]): void {
-  localStorage.setItem("tongxuan_levels_progress", JSON.stringify(progress));
+export function saveLearnerLevelsProgress(progress: LearnerLevelProgress[], learnerId = "default"): void {
+  localStorage.setItem(`tongxuan_levels_progress:${learnerId}`, JSON.stringify(progress));
 }
 
-// 通關特定關卡：記錄實際通關時間、星數、分數，並自動解鎖下一關
+// Record practice completion; offer an explicit soft unlock without asserting mastery.
 export function completeCourseLevel(
   levelNum: number,
   earnedStars: number = 3,
-  quizScore: number | null = null
+  quizScore: number | null = null,
+  learnerId = "default"
 ): { updatedProgress: LearnerLevelProgress[]; unlockedNext: boolean } {
-  const current = getLearnerLevelsProgress();
+  const current = getLearnerLevelsProgress(learnerId);
   const now = new Date();
   const dateStr = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, "0")}/${String(now.getDate()).padStart(2, "0")}`;
 
@@ -731,20 +769,23 @@ export function completeCourseLevel(
         status: "completed" as const,
         completedAt: dateStr,
         starsEarned: Math.max(item.starsEarned, earnedStars),
-        score: quizScore !== null ? quizScore : item.score
+        score: quizScore !== null ? quizScore : item.score,
+        masteryStatus: item.masteryStatus === "MASTERED" ? "MASTERED" as const : "PRACTICED" as const,
+        softUnlocked: true,
       };
     }
     if (item.levelNumber === levelNum + 1 && item.status === "locked") {
       unlockedNext = true;
       return {
         ...item,
-        status: "current" as const
+        status: "current" as const,
+        softUnlocked: true,
       };
     }
     return item;
   });
 
-  saveLearnerLevelsProgress(updated);
+  saveLearnerLevelsProgress(updated, learnerId);
   return { updatedProgress: updated, unlockedNext };
 }
 
@@ -753,7 +794,7 @@ export function completeCourseLevel(
 // ========================================================
 export function generateQuizPaper(
   targetLevel: CourseLevel,
-  allLevels: CourseLevel[] = ALL_COURSE_LEVELS
+  allLevels: CourseLevel[] = TONGXUAN_AUTHORED_DRAFT_LEVELS
 ): QuizQuestionItem[] {
   const scopeLevelNums = targetLevel.quizScope || [1, 2, 3, 4];
   const scopeLevels = allLevels.filter((l) => scopeLevelNums.includes(l.levelNumber));
