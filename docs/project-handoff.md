@@ -198,6 +198,32 @@ GitHub is the source of truth for project state.
 
 ---
 
+## ACTIVE HANDOFF SNAPSHOT — 2026-09-26
+
+Active work is PR #34, `[Learning Path v2] Build Lesson Player v1 for Book 1 Lesson 1《你好》`,
+on branch `issue-33-lesson-player`. The Architect review of head `d554c6bc88ea3b71633a4139e3d313ebc2fe00ac`
+requested changes for two P0 findings. Both are fixed and pushed in the current PR head; PR #34
+remains Draft, open, and unmerged while awaiting Architect re-review.
+
+P0 fixes:
+- LEARN mode authoritatively resumes a PAUSED session through the existing learning-session POST
+  operation, verifies that the same session returns as `IN_PROGRESS`, and keeps all task UI and Next
+  unavailable until then.
+- Optional writing skip accepts only authoritative `COMPLETED` or `DEFERRED`; missing and unexpected
+  states resolve to `UNKNOWN` and block progression. No `SKIPPED` success path or truthy result-object
+  check remains.
+
+Validation on the current changes:
+- Frontend Vitest: 121/121 tests across 13 files (79 Lesson Player cases).
+- Backend pytest: 149 passed.
+- Frontend production build: passed.
+- No learning logic outside these two reviewed blockers was changed.
+
+Stop here after the pushed Draft PR update and wait for Architect re-review. Do not merge or begin a
+separate work order until the review gate is complete.
+
+---
+
 # Roles
 
 ## Product Owner

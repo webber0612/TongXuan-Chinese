@@ -101,29 +101,65 @@ def _attempt(db: sqlite3.Connection, attempt_id: str, child_id: int) -> dict[str
     return result
 
 
-def complete_attempt(*, child_id: int, attempt_id: str, duration_ms: int | None) -> dict[str, Any]:
+def complete_attempt_in_transaction(
+    db: sqlite3.Connection,
+    *,
+    child_id: int,
+    attempt_id: str,
+    duration_ms: int | None,
+    require_skill_gate: bool = False,
+) -> dict[str, Any]:
     if duration_ms is not None and not 0 <= duration_ms <= 3_600_000:
         raise ValueError("invalid_duration")
+    row = db.execute("SELECT * FROM reading_aloud_attempts WHERE id=? AND child_id=?", (attempt_id, child_id)).fetchone()
+    if row is None:
+        raise ValueError("reading_aloud_attempt_not_found")
+    if row["status"] != "STARTED" or row["completed_at"] is not None or row["aborted_at"] is not None:
+        raise ValueError("reading_aloud_attempt_not_started")
+
+    updated = db.execute(
+        "UPDATE reading_aloud_attempts SET completed_at=?,duration_ms=?,status='COMPLETED' WHERE id=? AND child_id=? AND status='STARTED' AND completed_at IS NULL AND aborted_at IS NULL",
+        (now(), duration_ms, attempt_id, child_id),
+    )
+    if updated.rowcount != 1:
+        raise ValueError("reading_aloud_attempt_not_started")
+
+    if row["source_type"] in {"CURRICULUM", "WORD", "SENTENCE", "PASSAGE"} and row["source_id"] and not row["assisted"] and not row["manual_review"]:
+        from .curriculum_evidence import record_linked_skill_gate
+
+        gate_id = record_linked_skill_gate(
+            db,
+            child_id=child_id,
+            skill_domain=row["activity_domain"],
+            item_id=row["source_id"],
+            evidence_ref=attempt_id,
+            evidence_type="reading_aloud_completed",
+        )
+        if require_skill_gate and gate_id is None:
+            raise ValueError("reading_aloud_skill_gate_unavailable")
+    elif require_skill_gate:
+        raise ValueError("reading_aloud_skill_gate_unavailable")
+    return _attempt(db, attempt_id, child_id)
+
+
+def complete_attempt(*, child_id: int, attempt_id: str, duration_ms: int | None) -> dict[str, Any]:
     initialize_database()
     with connect() as db:
-        row = db.execute("SELECT * FROM reading_aloud_attempts WHERE id=? AND child_id=?", (attempt_id, child_id)).fetchone()
+        row = db.execute("SELECT source_type,source_id,activity_domain FROM reading_aloud_attempts WHERE id=? AND child_id=?", (attempt_id, child_id)).fetchone()
         if row is None:
             raise ValueError("reading_aloud_attempt_not_found")
-        if row["completed_at"] is not None or row["aborted_at"] is not None:
-            raise ValueError("reading_aloud_attempt_already_completed")
-        db.execute("UPDATE reading_aloud_attempts SET completed_at=?,duration_ms=?,status='COMPLETED' WHERE id=? AND child_id=?", (now(), duration_ms, attempt_id, child_id))
-        if row["source_type"] in {"CURRICULUM", "WORD", "SENTENCE", "PASSAGE"} and row["source_id"] and not row["assisted"] and not row["manual_review"]:
-            from .curriculum_evidence import record_linked_skill_gate
-
-            record_linked_skill_gate(
-                db,
-                child_id=child_id,
-                skill_domain=row["activity_domain"],
-                item_id=row["source_id"],
-                evidence_ref=attempt_id,
-                evidence_type="reading_aloud_completed",
-            )
-        return _attempt(db, attempt_id, child_id)
+        if row["source_type"] == "CURRICULUM" and row["source_id"] and row["activity_domain"] in {"speaking", "pronunciation"}:
+            task_type = "SPEAKING_ATTEMPT" if row["activity_domain"] == "speaking" else "PRONUNCIATION_ATTEMPT"
+            flow_task = db.execute(
+                """SELECT 1 FROM learning_flow_tasks t
+                   JOIN learning_flow_sessions s ON s.id=t.session_id
+                   WHERE t.child_id=? AND t.activity_item_id=? AND t.task_type=?
+                     AND t.state<>'COMPLETED' AND s.status IN ('IN_PROGRESS','PAUSED') LIMIT 1""",
+                (child_id, row["source_id"], task_type),
+            ).fetchone()
+            if flow_task:
+                raise ValueError("learning_flow_evidence_required")
+        return complete_attempt_in_transaction(db, child_id=child_id, attempt_id=attempt_id, duration_ms=duration_ms)
 
 
 def abort_attempt(*, child_id: int, attempt_id: str) -> dict[str, Any]:

@@ -1,0 +1,811 @@
+{
+  "schemaVersion": "v2.0",
+  "lessonId": "book1-l01",
+  "stageId": "book-1",
+  "lessonNumber": 1,
+  "curriculumSource": {
+    "kind": "OFFICIAL_OCAC",
+    "series": "學華語向前走",
+    "book": "第一冊",
+    "lesson": "第1課",
+    "title": "你好",
+    "url": "https://www.huayuworld.org/learning-materials-detail.php?id=384",
+    "provenanceStatus": "VERIFIED_OFFICIAL_TITLE",
+    "licenseStatus": "PERMISSION_REQUIRED",
+    "commercialReady": false
+  },
+  "objectives": [
+    "能聽懂並理解中文日常打招呼問候語「你好」",
+    "能認讀生字「你」與「好」",
+    "能理解並認讀核心生詞「你好」",
+    "能使用句型「你好！我叫 ___。」進行簡單自我介紹",
+    "能開口獨立說出「你好」進行問候",
+    "能認識「你」「好」筆順並嘗試書寫"
+  ],
+  "textBlocks": [
+    {
+      "id": "tb-1",
+      "speaker": "大衛",
+      "text": "你好！",
+      "pinyin": "nǐ hǎo!",
+      "zhuyin": "ㄋㄧˇ ㄏㄠˇ！",
+      "audioKey": "book1-l01-text-1",
+      "scaffoldKey": "greeting"
+    },
+    {
+      "id": "tb-2",
+      "speaker": "心美",
+      "text": "你好！我叫心美。",
+      "pinyin": "nǐ hǎo! wǒ jiào xīn měi.",
+      "zhuyin": "ㄋㄧˇ ㄏㄠˇ！ ㄨㄛˇ ㄐㄧㄠˋ ㄒㄧㄣ ㄇㄟˇ。",
+      "audioKey": "book1-l01-text-2",
+      "scaffoldKey": "greeting_intro"
+    }
+  ],
+  "vocabulary": [
+    {
+      "id": "vocab-nihao",
+      "written": "你好",
+      "pronunciation": {
+        "pinyin": "nǐ hǎo",
+        "zhuyin": "ㄋㄧˇ ㄏㄠˇ",
+        "audioKey": "vocab-nihao"
+      },
+      "meaning": {
+        "zh": "問候語，見面時打招呼",
+        "en": "Hello / Hi",
+        "naturalMeaning": "Hello! (Used when greeting someone)",
+        "notes": "Standard Chinese greeting used when meeting someone."
+      },
+      "usage": [
+        "你好！我叫大衛。",
+        "老師，你好！"
+      ],
+      "learningRole": "ACTIVE",
+      "reviewStatus": "APPROVED"
+    }
+  ],
+  "characters": [
+    {
+      "char": "你",
+      "pronunciation": {
+        "pinyin": "nǐ",
+        "zhuyin": "ㄋㄧˇ"
+      },
+      "meaning": {
+        "zh": "第二人稱代名詞",
+        "en": "you"
+      },
+      "writingRequired": true,
+      "learningRole": "WRITE",
+      "strokeCount": 7,
+      "radical": "亻",
+      "strokeOrderSteps": [
+        "撇", "豎", "撇", "橫撇", "點", "豎", "點"
+      ]
+    },
+    {
+      "char": "好",
+      "pronunciation": {
+        "pinyin": "hǎo",
+        "zhuyin": "ㄏㄠˇ"
+      },
+      "meaning": {
+        "zh": "好的、友善的、安好",
+        "en": "good / well"
+      },
+      "writingRequired": true,
+      "learningRole": "WRITE",
+      "strokeCount": 6,
+      "radical": "女",
+      "strokeOrderSteps": [
+        "撇點", "撇", "提", "橫撇", "彎鉤", "橫"
+      ]
+    }
+  ],
+  "sentencePatterns": [
+    {
+      "id": "sp-greeting",
+      "pattern": "你好！",
+      "explanation": {
+        "zh": "最常用的中文打招呼句型",
+        "en": "The most common way to greet someone in Chinese."
+      },
+      "examples": [
+        {
+          "zh": "你好！",
+          "pinyin": "nǐ hǎo!",
+          "zhuyin": "ㄋㄧˇ ㄏㄠˇ！",
+          "en": "Hello!"
+        }
+      ],
+      "reviewStatus": "APPROVED"
+    },
+    {
+      "id": "sp-intro",
+      "pattern": "我叫 ___。",
+      "explanation": {
+        "zh": "用來介紹自己的名字",
+        "en": "Used to introduce your name (I am called ...)."
+      },
+      "examples": [
+        {
+          "zh": "你好！我叫大衛。",
+          "pinyin": "nǐ hǎo! wǒ jiào dà wèi.",
+          "zhuyin": "ㄋㄧˇ ㄏㄠˇ！ ㄨㄛˇ ㄐㄧㄠˋ ㄉㄚˋ ㄨㄟˋ。",
+          "en": "Hello! My name is David."
+        }
+      ],
+      "reviewStatus": "APPROVED"
+    }
+  ],
+  "nativeLanguageSupport": {
+    "defaultLanguage": "en",
+    "mode": "FULL",
+    "entries": {
+      "greeting": {
+        "literal": "You good",
+        "naturalMeaning": "Hello / Hi",
+        "paraphrase": "見面時的問候語",
+        "notes": "Used when greeting someone in any everyday situation.",
+        "reviewStatus": "APPROVED"
+      },
+      "greeting_intro": {
+        "literal": "You good! I am called Xin-mei.",
+        "naturalMeaning": "Hello! My name is Xinmei.",
+        "paraphrase": "打招呼並自我介紹名字",
+        "notes": "Natural phrase for introducing oneself after greeting.",
+        "reviewStatus": "APPROVED"
+      },
+      "char_ni": {
+        "naturalMeaning": "you (singular)",
+        "paraphrase": "指對方",
+        "notes": "Consists of person radical (亻) on the left.",
+        "reviewStatus": "APPROVED"
+      },
+      "char_hao": {
+        "naturalMeaning": "good / well",
+        "paraphrase": "表示好或友善",
+        "notes": "Formed by woman (女) and child (子) radicals.",
+        "reviewStatus": "APPROVED"
+      }
+    }
+  },
+  "culturalNotes": [
+    {
+      "id": "cn-greeting",
+      "title": "打招呼禮貌",
+      "content": "在中文文化中，看見朋友或長輩時說「你好」表示友善與尊重。",
+      "contentEn": "In Chinese-speaking cultures, saying 'nǐ hǎo' when seeing a friend or elder conveys warmth and respect.",
+      "reviewStatus": "APPROVED"
+    }
+  ],
+  "taskBlueprint": {
+    "learnSteps": [
+      {
+        "stepNumber": 1,
+        "stepKey": "context",
+        "domain": "listening",
+        "title": "情境理解",
+        "subtitle": "聽一聽，在什麼時候我們會說「你好」？",
+        "primaryAction": "選擇情境",
+        "estimatedMinutes": 2,
+        "required": true,
+        "data": {
+          "prompt": "聽一聽錄音，選出最適合說這句話的情境：",
+          "audioText": "你好",
+          "sceneDescription": "早晨在校門口遇見同學",
+          "choices": [
+            {
+              "id": "opt-greeting",
+              "label": "遇見新朋友打招呼",
+              "subLabel": "Greeting a new friend",
+              "isCorrect": true
+            },
+            {
+              "id": "opt-bedtime",
+              "label": "準備上床睡覺",
+              "subLabel": "Going to bed",
+              "isCorrect": false
+            },
+            {
+              "id": "opt-bye",
+              "label": "跟朋友說再見",
+              "subLabel": "Saying goodbye",
+              "isCorrect": false
+            }
+          ],
+          "correctChoiceId": "opt-greeting"
+        }
+      },
+      {
+        "stepNumber": 2,
+        "stepKey": "dialogue",
+        "domain": "listening",
+        "title": "課文與對話",
+        "subtitle": "聽聽大衛和心美是怎麼打招呼的。",
+        "primaryAction": "聽完整對話",
+        "estimatedMinutes": 2,
+        "required": true,
+        "data": {
+          "prompt": "點擊播放按鈕，聽聽課文對話：",
+          "dialogueRows": [
+            {
+              "id": "d-1",
+              "speaker": "大衛",
+              "text": "你好！",
+              "pinyin": "nǐ hǎo!",
+              "zhuyin": "ㄋㄧˇ ㄏㄠˇ！",
+              "scaffoldKey": "greeting"
+            },
+            {
+              "id": "d-2",
+              "speaker": "心美",
+              "text": "你好！我叫心美。",
+              "pinyin": "nǐ hǎo! wǒ jiào xīn měi.",
+              "zhuyin": "ㄋㄧˇ ㄏㄠˇ！ ㄨㄛˇ ㄐㄧㄠˋ ㄒㄧㄣ ㄇㄟˇ。",
+              "scaffoldKey": "greeting_intro"
+            }
+          ]
+        }
+      },
+      {
+        "stepNumber": 3,
+        "stepKey": "vocabulary",
+        "domain": "vocabulary",
+        "title": "核心生詞",
+        "subtitle": "學會整詞「你好」的意思與用法。",
+        "primaryAction": "認識生詞",
+        "estimatedMinutes": 3,
+        "required": true,
+        "data": {
+          "prompt": "「你好」是一句常用的問候語。選出它的意思：",
+          "audioText": "你好",
+          "vocabItems": [
+            {
+              "id": "vocab-nihao",
+              "written": "你好",
+              "pronunciation": {
+                "pinyin": "nǐ hǎo",
+                "zhuyin": "ㄋㄧˇ ㄏㄠˇ"
+              },
+              "meaning": {
+                "zh": "問候語",
+                "en": "Hello / Hi",
+                "naturalMeaning": "Hello / Hi (greeting)"
+              },
+              "usage": ["你好！我叫大衛。"],
+              "learningRole": "ACTIVE",
+              "reviewStatus": "APPROVED"
+            }
+          ],
+          "choices": [
+            {
+              "id": "opt-hello",
+              "label": "打招呼問好 (Hello)",
+              "isCorrect": true
+            },
+            {
+              "id": "opt-eat",
+              "label": "問對方吃飽沒 (Eat meal)",
+              "isCorrect": false
+            }
+          ],
+          "correctChoiceId": "opt-hello"
+        }
+      },
+      {
+        "stepNumber": 4,
+        "stepKey": "characters",
+        "domain": "recognition",
+        "title": "認識生字",
+        "subtitle": "認識本課生字「你」與「好」。",
+        "primaryAction": "認讀生字",
+        "estimatedMinutes": 3,
+        "required": true,
+        "data": {
+          "prompt": "點擊生字卡片，聽聽發音並認識字形：",
+          "characterItems": [
+            {
+              "char": "你",
+              "pronunciation": {
+                "pinyin": "nǐ",
+                "zhuyin": "ㄋㄧˇ"
+              },
+              "meaning": {
+                "zh": "你 (第二人稱)",
+                "en": "you"
+              },
+              "writingRequired": true,
+              "learningRole": "WRITE",
+              "strokeCount": 7,
+              "radical": "亻"
+            },
+            {
+              "char": "好",
+              "pronunciation": {
+                "pinyin": "hǎo",
+                "zhuyin": "ㄏㄠˇ"
+              },
+              "meaning": {
+                "zh": "好 (友善、良好)",
+                "en": "good / well"
+              },
+              "writingRequired": true,
+              "learningRole": "WRITE",
+              "strokeCount": 6,
+              "radical": "女"
+            }
+          ],
+          "recognitionCheck": {
+            "prompt": "聽一聽發音，選出聽到的字：",
+            "audioText": "你",
+            "choices": [
+              {
+                "id": "opt-ni",
+                "label": "你",
+                "isCorrect": true
+              },
+              {
+                "id": "opt-hao",
+                "label": "好",
+                "isCorrect": false
+              }
+            ],
+            "correctChoiceId": "opt-ni"
+          }
+        }
+      },
+      {
+        "stepNumber": 5,
+        "stepKey": "sentence_pattern",
+        "domain": "grammar",
+        "title": "實用句型",
+        "subtitle": "用「你好！我叫 ___。」向大家打招呼吧！",
+        "primaryAction": "完成句子",
+        "estimatedMinutes": 3,
+        "required": true,
+        "data": {
+          "prompt": "排列正確的句子順序來打招呼：",
+          "patternItems": [
+            {
+              "id": "sp-intro",
+              "pattern": "你好！我叫 ___。",
+              "explanation": {
+                "zh": "打招呼並介紹自己的名字",
+                "en": "Greeting and introducing your name"
+              },
+              "examples": [
+                {
+                  "zh": "你好！我叫大衛。",
+                  "pinyin": "nǐ hǎo! wǒ jiào dà wèi.",
+                  "zhuyin": "ㄋㄧˇ ㄏㄠˇ！ ㄨㄛˇ ㄐㄧㄠˋ ㄉㄚˋ ㄨㄟˋ。",
+                  "en": "Hello! My name is David."
+                }
+              ],
+              "reviewStatus": "APPROVED"
+            }
+          ],
+          "choices": [
+            {
+              "id": "opt-correct-order",
+              "label": "你好！我叫大衛。",
+              "isCorrect": true
+            },
+            {
+              "id": "opt-wrong-order",
+              "label": "大衛！我叫你好。",
+              "isCorrect": false
+            }
+          ],
+          "correctChoiceId": "opt-correct-order"
+        }
+      },
+      {
+        "stepNumber": 6,
+        "stepKey": "speaking",
+        "domain": "speaking",
+        "title": "開口使用",
+        "subtitle": "大聲跟新朋友打招呼說：「你好！」",
+        "primaryAction": "按住錄音開口說",
+        "estimatedMinutes": 2,
+        "required": true,
+        "data": {
+          "speakingPrompt": {
+            "instruction": "請對著麥克風說一次：「你好！」",
+            "expectedText": "你好",
+            "audioPolicy": "LOCAL_ONLY"
+          }
+        }
+      },
+      {
+        "stepNumber": 7,
+        "stepKey": "writing",
+        "domain": "writing",
+        "title": "筆順書寫",
+        "subtitle": "跟著筆順練習寫「你」和「好」。",
+        "primaryAction": "練習筆順",
+        "estimatedMinutes": 3,
+        "required": false,
+        "skippableIfMastered": true,
+        "data": {
+          "writingTarget": {
+            "character": "你",
+            "strokeCount": 7,
+            "radical": "亻",
+            "hintPolicy": "guided"
+          }
+        }
+      },
+      {
+        "stepNumber": 8,
+        "stepKey": "exit_ticket",
+        "domain": null,
+        "title": "小挑戰 Exit Ticket",
+        "subtitle": "3～4題快速驗收今天的學習成果！",
+        "primaryAction": "開始小挑戰",
+        "estimatedMinutes": 3,
+        "required": true,
+        "data": {
+          "questions": [
+            {
+              "id": "et-q1-listen",
+              "domain": "listening",
+              "prompt": "聽錄音，選出這句話的意思：",
+              "audioText": "你好",
+              "choices": [
+                {
+                  "id": "c1",
+                  "label": "打招呼問好 (Hello)",
+                  "isCorrect": true
+                },
+                {
+                  "id": "c2",
+                  "label": "說再見 (Goodbye)",
+                  "isCorrect": false
+                }
+              ],
+              "correctChoiceId": "c1",
+              "explanation": "「你好」是見面打招呼的用語。"
+            },
+            {
+              "id": "et-q2-recog",
+              "domain": "recognition",
+              "prompt": "聽一聽發音「hǎo」，選出正確的字：",
+              "audioText": "好",
+              "choices": [
+                {
+                  "id": "c1",
+                  "label": "好",
+                  "isCorrect": true
+                },
+                {
+                  "id": "c2",
+                  "label": "你",
+                  "isCorrect": false
+                }
+              ],
+              "correctChoiceId": "c1",
+              "explanation": "「好」的發音是 hǎo / ㄏㄠˇ。"
+            },
+            {
+              "id": "et-q3-vocab",
+              "domain": "vocabulary",
+              "prompt": "在學校遇見同學時，最合適的問候是？",
+              "choices": [
+                {
+                  "id": "c1",
+                  "label": "你好！",
+                  "isCorrect": true
+                },
+                {
+                  "id": "c2",
+                  "label": "睡覺！",
+                  "isCorrect": false
+                }
+              ],
+              "correctChoiceId": "c1",
+              "explanation": "遇見同學要說「你好！」。"
+            },
+            {
+              "id": "et-q4-sentence",
+              "domain": "grammar",
+              "prompt": "完成句子：你好！我 ___ 大衛。",
+              "choices": [
+                {
+                  "id": "c1",
+                  "label": "叫",
+                  "isCorrect": true
+                },
+                {
+                  "id": "c2",
+                  "label": "好",
+                  "isCorrect": false
+                }
+              ],
+              "correctChoiceId": "c1",
+              "explanation": "自我介紹用「我叫...」。"
+            }
+          ]
+        }
+      },
+      {
+        "stepNumber": 9,
+        "stepKey": "wrap_up",
+        "domain": null,
+        "title": "學習收尾與結算",
+        "subtitle": "太棒了！今天的一小步已經完成囉！",
+        "primaryAction": "完成今日學習",
+        "estimatedMinutes": 1,
+        "required": true,
+        "data": {
+          "wrapUpSummary": {
+            "completionText": "今天的練習完成！獲得 10 顆星星",
+            "masteryNotice": "本課是否精熟將依照各領域實際作答證據獨立判定，不會直接因完成課堂而判定精熟。"
+          }
+        }
+      }
+    ],
+    "fastTrackSteps": [
+      {
+        "stepNumber": 1,
+        "stepKey": "exit_ticket",
+        "domain": null,
+        "title": "「這一課我會了」快速挑戰",
+        "subtitle": "完成4題快速檢測，通過即可直接排入輕量複習！",
+        "primaryAction": "送出答案",
+        "estimatedMinutes": 3,
+        "required": true,
+        "data": {
+          "questions": [
+            {
+              "id": "ft-q1",
+              "domain": "listening",
+              "prompt": "聽錄音，選出這句話的意思：",
+              "audioText": "你好",
+              "choices": [
+                {
+                  "id": "c1",
+                  "label": "打招呼問好 (Hello)",
+                  "isCorrect": true
+                },
+                {
+                  "id": "c2",
+                  "label": "感謝對方 (Thank you)",
+                  "isCorrect": false
+                }
+              ],
+              "correctChoiceId": "c1"
+            },
+            {
+              "id": "ft-q2",
+              "domain": "recognition",
+              "prompt": "聽發音「nǐ」，選出正確的字：",
+              "audioText": "你",
+              "choices": [
+                {
+                  "id": "c1",
+                  "label": "你",
+                  "isCorrect": true
+                },
+                {
+                  "id": "c2",
+                  "label": "好",
+                  "isCorrect": false
+                }
+              ],
+              "correctChoiceId": "c1"
+            },
+            {
+              "id": "ft-q3",
+              "domain": "vocabulary",
+              "prompt": "「你好」主要用來做什麼？",
+              "choices": [
+                {
+                  "id": "c1",
+                  "label": "向人打招呼",
+                  "isCorrect": true
+                },
+                {
+                  "id": "c2",
+                  "label": "道別",
+                  "isCorrect": false
+                }
+              ],
+              "correctChoiceId": "c1"
+            },
+            {
+              "id": "ft-q4",
+              "domain": "grammar",
+              "prompt": "選出正確的自我介紹句子：",
+              "choices": [
+                {
+                  "id": "c1",
+                  "label": "你好！我叫心美。",
+                  "isCorrect": true
+                },
+                {
+                  "id": "c2",
+                  "label": "心美！叫我你好。",
+                  "isCorrect": false
+                }
+              ],
+              "correctChoiceId": "c1"
+            }
+          ]
+        }
+      },
+      {
+        "stepNumber": 2,
+        "stepKey": "wrap_up",
+        "domain": null,
+        "title": "快速挑戰完成",
+        "subtitle": "已驗證掌握度，為您排定下次複習時間。",
+        "primaryAction": "完成挑戰",
+        "estimatedMinutes": 1,
+        "required": true,
+        "data": {
+          "wrapUpSummary": {
+            "completionText": "快速挑戰通過！已略過基礎教學步驟。",
+            "masteryNotice": "已為您記錄有效證據並安排 SRS 間隔複習確認。"
+          }
+        }
+      }
+    ],
+    "reviewSteps": [
+      {
+        "stepNumber": 1,
+        "stepKey": "exit_ticket",
+        "domain": null,
+        "title": "到期複習檢索",
+        "subtitle": "快速提取記憶中的生字與詞彙。",
+        "primaryAction": "完成複習",
+        "estimatedMinutes": 2,
+        "required": true,
+        "data": {
+          "questions": [
+            {
+              "id": "rev-q1",
+              "domain": "recognition",
+              "prompt": "聽一聽發音，選出對應的字：",
+              "audioText": "好",
+              "choices": [
+                {
+                  "id": "c1",
+                  "label": "好",
+                  "isCorrect": true
+                },
+                {
+                  "id": "c2",
+                  "label": "你",
+                  "isCorrect": false
+                }
+              ],
+              "correctChoiceId": "c1"
+            },
+            {
+              "id": "rev-q2",
+              "domain": "vocabulary",
+              "prompt": "「你好」的意思是？",
+              "choices": [
+                {
+                  "id": "c1",
+                  "label": "打招呼 (Hello)",
+                  "isCorrect": true
+                },
+                {
+                  "id": "c2",
+                  "label": "再見 (Goodbye)",
+                  "isCorrect": false
+                }
+              ],
+              "correctChoiceId": "c1"
+            }
+          ]
+        }
+      },
+      {
+        "stepNumber": 2,
+        "stepKey": "wrap_up",
+        "domain": null,
+        "title": "複習完成",
+        "subtitle": "記憶力鞏固成功！",
+        "primaryAction": "完成複習",
+        "estimatedMinutes": 1,
+        "required": true,
+        "data": {
+          "wrapUpSummary": {
+            "completionText": "今日到期複習完成！",
+            "masteryNotice": "複習結果已更新至間隔重複系統 (SRS)。"
+          }
+        }
+      }
+    ],
+    "repairStepsByDomain": {
+      "recognition": [
+        {
+          "stepNumber": 1,
+          "stepKey": "characters",
+          "domain": "recognition",
+          "title": "生字認讀補強",
+          "subtitle": "針對「你」與「好」進行字形字音再加強。",
+          "primaryAction": "認讀練習",
+          "estimatedMinutes": 3,
+          "required": true,
+          "data": {
+            "prompt": "再次聽發音並確認字形：",
+            "characterItems": [
+              {
+                "char": "你",
+                "pronunciation": { "pinyin": "nǐ", "zhuyin": "ㄋㄧˇ" },
+                "meaning": { "zh": "你", "en": "you" },
+                "writingRequired": true,
+                "learningRole": "WRITE",
+                "strokeCount": 7,
+                "radical": "亻"
+              }
+            ],
+            "recognitionCheck": {
+              "prompt": "聽一聽發音，選出「你」：",
+              "audioText": "你",
+              "choices": [
+                { "id": "opt-ni", "label": "你", "isCorrect": true },
+                { "id": "opt-hao", "label": "好", "isCorrect": false }
+              ],
+              "correctChoiceId": "opt-ni"
+            }
+          }
+        }
+      ],
+      "writing": [
+        {
+          "stepNumber": 1,
+          "stepKey": "writing",
+          "domain": "writing",
+          "title": "書寫筆順補強",
+          "subtitle": "加強「你」的筆順記憶與書寫練習。",
+          "primaryAction": "書寫補強",
+          "estimatedMinutes": 3,
+          "required": true,
+          "data": {
+            "writingTarget": {
+              "character": "你",
+              "strokeCount": 7,
+              "radical": "亻",
+              "hintPolicy": "guided"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "masteryPolicy": {
+    "domainRequirements": {
+      "listening": { "gateType": "NON_SCORE_GATE" },
+      "speaking": { "gateType": "NON_SCORE_GATE" },
+      "recognition": { "gateType": "SCORED", "passScore": 0.75 },
+      "writing": { "gateType": "NON_SCORE_GATE" },
+      "reading": { "gateType": "SCORED", "passScore": 0.75 },
+      "phonetics": { "gateType": "SCORED", "passScore": 0.75 },
+      "pronunciation": { "gateType": "NON_SCORE_GATE" },
+      "vocabulary": { "gateType": "SCORED", "passScore": 0.75 },
+      "grammar": { "gateType": "SCORED", "passScore": 0.75 }
+    },
+    "fastTrackPassThreshold": 1.0,
+    "srsIntervalsMinutes": [10, 1440, 4320, 10080, 20160, 43200, 86400, 172800]
+  },
+  "difficultyProfile": {
+    "pacing": "STANDARD",
+    "targetMinutes": {
+      "learn": 18,
+      "fastTrack": 4,
+      "review": 3,
+      "repair": 5
+    }
+  },
+  "provenance": {
+    "authorship": "TONGXUAN_PEDAGOGY_WRAPPER",
+    "curriculumSourceProvenance": "VERIFIED_OFFICIAL_TITLE",
+    "licenseNote": "Official OCAC curriculum metadata verified. TongXuan pedagogical wrappers provide child-first learning flow."
+  }
+}

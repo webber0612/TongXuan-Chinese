@@ -20,6 +20,7 @@ from .reading_aloud import abort_attempt, complete_attempt, start_attempt
 from .listening import abort_listening_attempt, complete_listening_attempt, start_listening_attempt
 from .placement import get_placement_profile, save_placement_profile
 from .learning_flow import (
+    _log,
     attach_learning_evidence,
     complete_learning_session,
     get_current_learning_session,
@@ -27,6 +28,7 @@ from .learning_flow import (
     get_learning_session,
     get_parent_learning_report,
     preview_learning_session,
+    reconcile_learning_session_reviews,
     record_learning_abort,
     skip_learning_task,
     start_learning_session,
@@ -238,6 +240,7 @@ class LearningTaskAnswerRequest(BaseModel):
 class LearningTaskEvidenceRequest(BaseModel):
     model_config = {"extra": "forbid"}
     evidence_ref: str = Field(min_length=1, max_length=255)
+    duration_ms: int | None = Field(default=None, ge=0, le=3_600_000)
 
 
 class LearningSessionStopRequest(BaseModel):
@@ -248,6 +251,18 @@ class LearningSessionStopRequest(BaseModel):
 class AnswerRequest(BaseModel):
     answer: str
     assisted: bool = False
+
+
+class FastTrackRequest(BaseModel):
+    model_config = {"extra": "forbid"}
+    answers: dict[str, str] = Field(default_factory=dict)
+    as_of: str | None = None
+
+
+class ReconcileReviewsRequest(BaseModel):
+    model_config = {"extra": "forbid"}
+    as_of: str | None = None
+
 
 
 class SchoolPinyinPromptRequest(BaseModel):
@@ -743,6 +758,20 @@ def get_learning_session_detail(child_id: int, session_id: str) -> dict[str, obj
         raise _learning_flow_error(error) from error
 
 
+@app.post("/api/children/{child_id}/learning-sessions/{session_id}/reconcile-reviews")
+def post_learning_session_reconcile_reviews(
+    child_id: int,
+    session_id: str,
+    request: ReconcileReviewsRequest | None = None,
+    as_of: str | None = None,
+) -> dict[str, object]:
+    effective_as_of = request.as_of if request and request.as_of else as_of
+    try:
+        return reconcile_learning_session_reviews(child_id=child_id, session_id=session_id, as_of=effective_as_of)
+    except ValueError as error:
+        raise _learning_flow_error(error) from error
+
+
 @app.post("/api/children/{child_id}/learning-sessions/{session_id}/tasks/{task_id}/start")
 def post_learning_task_start(child_id: int, session_id: str, task_id: str) -> dict[str, object]:
     try:
@@ -770,7 +799,7 @@ def post_learning_task_answer(child_id: int, session_id: str, task_id: str, requ
 @app.post("/api/children/{child_id}/learning-sessions/{session_id}/tasks/{task_id}/evidence")
 def post_learning_task_evidence(child_id: int, session_id: str, task_id: str, request: LearningTaskEvidenceRequest) -> dict[str, object]:
     try:
-        return attach_learning_evidence(child_id=child_id, session_id=session_id, task_id=task_id, evidence_ref=request.evidence_ref)
+        return attach_learning_evidence(child_id=child_id, session_id=session_id, task_id=task_id, evidence_ref=request.evidence_ref, duration_ms=request.duration_ms)
     except ValueError as error:
         raise _learning_flow_error(error) from error
 
@@ -940,3 +969,136 @@ def post_redeem(reward_id: str, child_id: int, request: RewardRedemptionRequest,
         return redeem_reward(child_id, reward_id)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@app.get("/api/curriculum/lesson-packages/{lesson_id}")
+def get_lesson_package_by_id(lesson_id: str) -> dict[str, object]:
+    from .lesson_packages import get_lesson_package
+    pkg = get_lesson_package(lesson_id)
+    if pkg is None:
+        raise HTTPException(status_code=404, detail="lesson_package_not_found")
+    return pkg
+
+
+@app.get("/api/curriculum/lesson-packages")
+def get_all_lesson_packages() -> list[dict[str, object]]:
+    from .lesson_packages import list_lesson_packages
+    return list_lesson_packages()
+
+
+@app.post("/api/children/{child_id}/lesson-packages/{lesson_id}/fast-track")
+def post_lesson_fast_track(child_id: int, lesson_id: str, request: FastTrackRequest) -> dict[str, object]:
+    from .lesson_packages import get_lesson_package
+    from .database import connect, initialize_database
+    from .learning import ensure_child, now
+    from .curriculum_policy import lesson_is_accessible, record_lesson_progress
+    
+    pkg = get_lesson_package(lesson_id)
+    if pkg is None:
+        raise HTTPException(status_code=404, detail="lesson_package_not_found")
+    
+    initialize_database()
+    with connect() as db:
+        ensure_child(db, child_id)
+        if not lesson_is_accessible(db, child_id, lesson_id):
+            raise HTTPException(status_code=409, detail="prerequisite_not_mastered")
+        
+        # Evaluate questions in fast-track steps
+        questions = []
+        for step in pkg.get("taskBlueprint", {}).get("fastTrackSteps", []):
+            if step.get("stepKey") == "exit_ticket":
+                questions.extend(step.get("data", {}).get("questions", []))
+        
+        if not questions:
+            for step in pkg.get("taskBlueprint", {}).get("learnSteps", []):
+                if step.get("stepKey") == "exit_ticket":
+                    questions.extend(step.get("data", {}).get("questions", []))
+        
+        domain_results: dict[str, list[bool]] = {}
+        for q in questions:
+            domain = q.get("domain", "general")
+            selected = request.answers.get(q.get("id"))
+            correct_id = q.get("correctChoiceId")
+            is_correct = bool(selected and selected == correct_id)
+            domain_results.setdefault(domain, []).append(is_correct)
+        
+        weak_domains: list[str] = []
+        scores: dict[str, float] = {}
+        for domain, results in domain_results.items():
+            score = sum(1 for r in results if r) / len(results) if results else 0.0
+            scores[domain] = score
+            if score < 1.0:
+                weak_domains.append(domain)
+        
+        passed = len(weak_domains) == 0 and len(domain_results) > 0
+        
+        if passed:
+            record_lesson_progress(child_id=child_id, lesson_id=lesson_id, status="READY_FOR_CHECK")
+            from .learning_flow import _ensure_lesson_materials, _lesson_map
+            from .curriculum_policy import record_srs_review
+
+            lesson = _lesson_map().get(lesson_id)
+            latest_srs_due = None
+            if lesson:
+                materials = _ensure_lesson_materials(db, child_id, lesson)
+                for char_id in materials.get("characters", []):
+                    srs = record_srs_review(db, child_id=child_id, skill_domain="recognition", item_id=char_id, result="correct", assisted=False)
+                    latest_srs_due = srs.get("due_at")
+                if materials.get("phrase"):
+                    srs_phrase = record_srs_review(db, child_id=child_id, skill_domain="listening", item_id=materials["phrase"], result="correct", assisted=False)
+                    latest_srs_due = srs_phrase.get("due_at") or latest_srs_due
+
+            # Clean up / bypass active session with accurate audit semantics
+            active_session = db.execute(
+                "SELECT id, status FROM learning_flow_sessions WHERE child_id=? AND status IN ('IN_PROGRESS','PAUSED')",
+                (child_id,)
+            ).fetchone()
+            if active_session:
+                stamp = now()
+                db.execute(
+                    "UPDATE learning_flow_sessions SET status='COMPLETED', completed_at=?, termination_reason='FAST_TRACK_BYPASS', mastery_status='READY_FOR_CHECK' WHERE id=?",
+                    (stamp, active_session["id"])
+                )
+                db.execute(
+                    "UPDATE learning_flow_tasks SET state='DEFERRED', deferred_reason='FAST_TRACK_BYPASS' WHERE session_id=? AND state IN ('IN_PROGRESS','PENDING')",
+                    (active_session["id"],)
+                )
+                _log(db, active_session["id"], child_id, "session_fast_track_bypassed", None, None, {"lessonId": lesson_id}, stamp)
+
+            return {
+                "lessonId": lesson_id,
+                "passed": True,
+                "scores": scores,
+                "weakDomains": [],
+                "nextMode": "REVIEW",
+                "masteryStatus": "READY_FOR_CHECK",
+                "nextReviewDue": latest_srs_due,
+                "nextReviewDueAt": latest_srs_due,
+                "notice": "Fast track passed. Light SRS review scheduled."
+            }
+        else:
+            # Sync active session on fast track failure
+            active_session = db.execute(
+                "SELECT id, status FROM learning_flow_sessions WHERE child_id=? AND status IN ('IN_PROGRESS','PAUSED')",
+                (child_id,)
+            ).fetchone()
+            if active_session:
+                stamp = now()
+                db.execute(
+                    "UPDATE learning_flow_sessions SET status='PAUSED', last_resumed_at=?, termination_reason='FAST_TRACK_FAILED' WHERE id=?",
+                    (stamp, active_session["id"])
+                )
+                _log(db, active_session["id"], child_id, "session_fast_track_failed", None, None, {"lessonId": lesson_id, "weakDomains": weak_domains}, stamp)
+
+            return {
+                "lessonId": lesson_id,
+                "passed": False,
+                "scores": scores,
+                "weakDomains": weak_domains,
+                "nextMode": "REPAIR",
+                "masteryStatus": "IN_PROGRESS",
+                "nextReviewDue": None,
+                "nextReviewDueAt": None,
+                "notice": "Some domains need targeted repair."
+            }
+

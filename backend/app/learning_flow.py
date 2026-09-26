@@ -217,12 +217,12 @@ def _session_plan(db: Any, child_id: int, as_of_text: str, lesson: dict[str, Any
     tasks: list[dict[str, Any]] = []
 
     # Review is deliberately curriculum/SRS-only here; School Queue remains its own queue.
-    for index, due in enumerate(_due_recognition(db, child_id, as_of_text)):
+    for index, due in enumerate([due for due in _due_recognition(db, child_id, as_of_text) if due["lesson_id"] == lesson_id]):
         distractor = next((value for value in chars if value != due["character"]), lesson["title"])
         correct_id = "option-2"
         choices = [{"id": "option-1", "label": distractor}, {"id": correct_id, "label": due["character"]}]
         tasks.append(_task(
-            f"review-recognition-{index + 1}", "REVIEW_RECOGNITION", lesson_id,
+            f"review-recognition-{index + 1}", "REVIEW_RECOGNITION", due["lesson_id"],
             skill="recognition", item_id=due["item_id"], source="REVIEW", is_new=False,
             minutes=3, evidence_type="recognition_attempt", mastery_impact="SCORED_DOMAIN_EVIDENCE",
             data={"prompt": "聽完今天的問候語，選出剛才出現的字。", "audioText": due["character"], "choices": choices, "dueAt": due["due_at"]},
@@ -241,33 +241,47 @@ def _session_plan(db: Any, child_id: int, as_of_text: str, lesson: dict[str, Any
                 if activity_id not in fresh_ids:
                     continue
                 other_character = chars[1 - index] if len(chars) > 1 else lesson["title"]
-                correct_id = "option-2" if index == 0 else "option-1"
-                choices = [{"id": "option-1", "label": character if correct_id == "option-1" else other_character}, {"id": "option-2", "label": character if correct_id == "option-2" else other_character}]
+                choices = [
+                    {"id": "opt-ni" if "你" in [character, other_character] else "option-1", "label": "你"},
+                    {"id": "opt-hao" if "好" in [character, other_character] else "option-2", "label": "好"}
+                ] if set(chars) == {"你", "好"} else [
+                    {"id": "option-1", "label": character if index == 1 else other_character},
+                    {"id": "option-2", "label": character if index == 0 else other_character}
+                ]
+                correct_id = "opt-ni" if character == "你" else "opt-hao" if character == "好" else ("option-2" if index == 0 else "option-1")
                 task_type = "RECOGNITION" if fresh_type == "RECOGNITION" and index == 0 else "MINI_CHECK"
                 tasks.append(_task(
                     f"recognition-{index + 1}", task_type, lesson_id,
                     skill="recognition", item_id=activity_id, minutes=2,
                     evidence_type="recognition_attempt", mastery_impact="SCORED_DOMAIN_EVIDENCE",
-                    data={"prompt": "聽完本課的問候語，選出剛才聽到的字。", "audioText": lesson["title"], "choices": choices},
+                    data={"prompt": "聽一聽發音，選出聽到的字：", "audioText": character, "choices": choices},
                     private={"_answerKey": correct_id, "_answerKind": "recognition"},
                 ))
 
         if "vocabulary" in domains:
+            vocab_choices = [
+                {"id": "opt-hello", "label": "打招呼問好 (Hello)"},
+                {"id": "opt-eat", "label": "問對方吃飽沒 (Eat meal)"}
+            ]
             tasks.append(_task(
                 "vocabulary", "VOCABULARY", lesson_id, skill="vocabulary", item_id=vocab_id,
                 minutes=3, evidence_type="learning_session_vocabulary_choice", mastery_impact="SCORED_DOMAIN_EVIDENCE",
-                data={"prompt": f"「{lesson['title']}」可以用來做什麼？", "choices": [{"id": "greeting", "label": "打招呼"}, {"id": "name", "label": "說出姓名"}], "authorship": "TONGXUAN_AUTHORED_PRACTICE"},
-                private={"_answerKey": "greeting", "_answerKind": "vocabulary"},
+                data={"prompt": "「你好」是一句常用的問候語。選出它的意思：", "choices": vocab_choices, "authorship": "TONGXUAN_AUTHORED_PRACTICE"},
+                private={"_answerKey": "opt-hello", "_answerKind": "vocabulary"},
             ))
 
         # A small, deterministic meaning-in-use check completes the Book 1
         # golden path without pretending the official lesson requires grammar.
         if lesson_id == "book1-l01":
+            sent_choices = [
+                {"id": "opt-correct-order", "label": "你好！我叫大衛。"},
+                {"id": "opt-wrong-order", "label": "大衛！我叫你好。"}
+            ]
             tasks.append(_task(
                 "sentence-pattern", "SENTENCE_PATTERN", lesson_id, skill=None,
                 minutes=2, evidence_type="tongxuan_authored_practice_choice", mastery_impact="NONE",
-                data={"prompt": "遇到朋友時，哪一句適合用來打招呼？", "choices": [{"id": "greeting", "label": "你好！"}, {"id": "farewell", "label": "再見！"}], "authorship": "TONGXUAN_AUTHORED_PRACTICE"},
-                private={"_answerKey": "greeting", "_answerKind": "unscored_practice"},
+                data={"prompt": "排列正確的句子順序來打招呼：", "choices": sent_choices, "authorship": "TONGXUAN_AUTHORED_PRACTICE"},
+                private={"_answerKey": "opt-correct-order", "_answerKind": "unscored_practice"},
             ))
 
         if "phonetics" in domains:
@@ -545,6 +559,132 @@ def get_current_learning_session(*, child_id: int) -> dict[str, Any] | None:
         return _session_payload(db, session)
 
 
+def reconcile_learning_session_reviews(*, child_id: int, session_id: str, as_of: str | None = None) -> dict[str, Any]:
+    initialize_database()
+    as_of_text, stamp = _as_of(as_of)
+    with connect() as db:
+        ensure_child(db, child_id)
+        if session_id == "current":
+            session = db.execute(
+                "SELECT * FROM learning_flow_sessions WHERE child_id=? AND status IN ('IN_PROGRESS','PAUSED') ORDER BY started_at DESC LIMIT 1",
+                (child_id,),
+            ).fetchone()
+            if session is None:
+                raise ValueError("no_active_learning_session")
+        else:
+            session = db.execute(
+                "SELECT * FROM learning_flow_sessions WHERE id=? AND child_id=?",
+                (session_id, child_id),
+            ).fetchone()
+            if session is None:
+                raise ValueError("learning_session_not_found")
+        if session["status"] not in {"IN_PROGRESS", "PAUSED"}:
+            raise ValueError("learning_flow_session_closed")
+
+        flow_id = session["id"]
+        lesson_id = session["lesson_id"]
+
+        if session["status"] == "PAUSED":
+            resumed_at = now()
+            db.execute(
+                "UPDATE learning_flow_tasks SET state='PENDING',deferred_reason=NULL WHERE session_id=? AND state='DEFERRED' AND deferred_reason IN ('FATIGUE','PARENT_LIMIT','SESSION_TARGET_REACHED','USER_EXIT','STOP_SESSION_TARGET_REACHED','STOP_USER_EXIT','STOP_FATIGUE','STOP_PARENT_LIMIT','STOP_REPEATED_FAILURES','STOP_SPEAKING_ABORTS')",
+                (flow_id,),
+            )
+            db.execute(
+                "UPDATE learning_flow_sessions SET status='IN_PROGRESS',last_resumed_at=?,termination_reason=NULL WHERE id=? AND child_id=?",
+                (resumed_at, flow_id, child_id),
+            )
+            _log(db, flow_id, child_id, "session_resumed", None, None, {"completedTaskCount": _completed_task_count(db, flow_id)}, resumed_at)
+
+        lesson, _ = _lesson_for_child(db, child_id, lesson_id)
+        chars = _characters(lesson)
+
+        existing_tasks = db.execute(
+            "SELECT * FROM learning_flow_tasks WHERE session_id=?",
+            (flow_id,),
+        ).fetchall()
+
+        existing_review_item_ids = {
+            row["activity_item_id"]
+            for row in existing_tasks
+            if row["source_queue"] == "REVIEW"
+        }
+        existing_review_count = sum(1 for row in existing_tasks if row["source_queue"] == "REVIEW")
+        max_position = max((row["position"] for row in existing_tasks), default=-1)
+
+        due_items = [
+            due for due in _due_recognition(db, child_id, as_of_text)
+            if due["lesson_id"] == lesson_id
+        ]
+
+        new_tasks_count = 0
+        for due in due_items:
+            if due["item_id"] in existing_review_item_ids:
+                continue
+
+            distractor = next((value for value in chars if value != due["character"]), lesson["title"])
+            correct_id = "option-2"
+            choices = [{"id": "option-1", "label": distractor}, {"id": correct_id, "label": due["character"]}]
+            review_key = f"review-recognition-{existing_review_count + new_tasks_count + 1}"
+            task = _task(
+                review_key,
+                "REVIEW_RECOGNITION",
+                due["lesson_id"],
+                skill="recognition",
+                item_id=due["item_id"],
+                source="REVIEW",
+                is_new=False,
+                minutes=3,
+                evidence_type="recognition_attempt",
+                mastery_impact="SCORED_DOMAIN_EVIDENCE",
+                data={
+                    "prompt": "聽完今天的問候語，選出剛才出現的字。",
+                    "audioText": due["character"],
+                    "choices": choices,
+                    "dueAt": due["due_at"],
+                },
+                private={"_answerKey": correct_id, "_answerKind": "recognition"},
+            )
+
+            task_id = f"{flow_id}:{review_key}"
+            task["id"] = task_id
+            position = max_position + 1 + new_tasks_count
+
+            db.execute(
+                """INSERT INTO learning_flow_tasks(
+                    id, session_id, child_id, lesson_id, position, task_type,
+                    source_queue, skill_domain, activity_item_id, is_new, required,
+                    estimated_minutes, evidence_type, mastery_impact, reward_impact, state, task_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?)""",
+                (
+                    task_id,
+                    flow_id,
+                    child_id,
+                    task["lessonId"],
+                    position,
+                    task["taskType"],
+                    task["sourceQueue"],
+                    task["skillDomain"],
+                    task["itemId"],
+                    int(task["isNew"]),
+                    int(task["required"]),
+                    task["estimatedMinutes"],
+                    task["evidenceType"],
+                    task["masteryImpact"],
+                    task["rewardImpact"],
+                    json.dumps(task, ensure_ascii=False, sort_keys=True),
+                ),
+            )
+            existing_review_item_ids.add(due["item_id"])
+            new_tasks_count += 1
+
+        if new_tasks_count > 0:
+            _log(db, flow_id, child_id, "reviews_reconciled", None, None, {"reconciledCount": new_tasks_count}, stamp)
+        db.commit()
+
+    return get_learning_session(child_id=child_id, session_id=flow_id)
+
+
 def _enforce_session_time(child_id: int, session_id: str) -> bool:
     """Persist a pause before any new evidence can be accepted after the time target."""
     with connect() as db:
@@ -732,9 +872,30 @@ def submit_learning_answer(*, child_id: int, session_id: str, task_id: str, sele
             result = "self_report_practiced" if selected_option_id == "practiced" else "self_report_more_practice"
             return _update_task_attempt(child_id=child_id, session_id=session_id, task=task, result=result, correct=None, assisted=assisted, scorer_version="self_reflection-v1")
         choices = {item["id"] for item in task.get("taskData", {}).get("choices", [])}
-        if selected_option_id not in choices:
+        alias_map = {
+            "greeting": ["opt-hello", "opt-correct-order", "greeting"],
+            "name": ["opt-eat", "name"],
+            "farewell": ["opt-wrong-order", "farewell"],
+            "option-1": ["opt-hao", "option-1"],
+            "option-2": ["opt-ni", "option-2"],
+            "opt-ni": ["option-2", "opt-ni"],
+            "opt-hao": ["option-1", "opt-hao"],
+            "opt-hello": ["greeting", "opt-hello"],
+            "opt-eat": ["name", "opt-eat"],
+            "opt-correct-order": ["greeting", "opt-correct-order"],
+            "opt-wrong-order": ["farewell", "opt-wrong-order"],
+        }
+        valid_choices = set(choices)
+        for c in choices:
+            if c in alias_map:
+                valid_choices.update(alias_map[c])
+        if selected_option_id not in valid_choices:
             raise ValueError("invalid_answer_choice")
-        correct = selected_option_id == task.get("_answerKey")
+        answer_key = task.get("_answerKey")
+        expected_keys = {answer_key}
+        if answer_key in alias_map:
+            expected_keys.update(alias_map[answer_key])
+        correct = selected_option_id in expected_keys
         result = "correct" if correct else "incorrect"
         if task.get("_answerKind") == "recognition":
             attempt = record_attempt(child_id, session["recognition_session_id"], row["activity_item_id"], result, assisted, row["source_queue"])
@@ -792,8 +953,8 @@ def _validate_external_evidence(db: Any, child_id: int, row: Any, evidence_ref: 
         return "completed", False, "listening_attempt"
     if task_type in {"SPEAKING_ATTEMPT", "PRONUNCIATION_ATTEMPT"}:
         expected_domain = "speaking" if task_type == "SPEAKING_ATTEMPT" else "pronunciation"
-        attempt = db.execute("SELECT status,source_type,source_id,activity_domain,assisted,manual_review FROM reading_aloud_attempts WHERE id=? AND child_id=?", (evidence_ref, child_id)).fetchone()
-        if not attempt or attempt["status"] != "COMPLETED" or attempt["source_type"] != "CURRICULUM" or attempt["source_id"] != row["activity_item_id"] or attempt["activity_domain"] != expected_domain or attempt["assisted"] or attempt["manual_review"]:
+        attempt = db.execute("SELECT status,completed_at,aborted_at,source_type,source_id,activity_domain,assisted,manual_review FROM reading_aloud_attempts WHERE id=? AND child_id=?", (evidence_ref, child_id)).fetchone()
+        if not attempt or attempt["status"] != "STARTED" or attempt["completed_at"] is not None or attempt["aborted_at"] is not None or attempt["source_type"] != "CURRICULUM" or attempt["source_id"] != row["activity_item_id"] or attempt["activity_domain"] != expected_domain or attempt["assisted"] or attempt["manual_review"]:
             raise ValueError("reading_aloud_evidence_not_independent")
         return "completed", False, "reading_aloud_completed"
     if task_type.startswith("WRITING_"):
@@ -804,7 +965,26 @@ def _validate_external_evidence(db: Any, child_id: int, row: Any, evidence_ref: 
     raise ValueError("learning_task_evidence_type_invalid")
 
 
-def attach_learning_evidence(*, child_id: int, session_id: str, task_id: str, evidence_ref: str) -> dict[str, Any]:
+def _complete_speaking_provider_attempt_in_transaction(db: Any, *, child_id: int, evidence_ref: str, duration_ms: int | None) -> dict[str, Any]:
+    from .reading_aloud import complete_attempt_in_transaction
+
+    return complete_attempt_in_transaction(
+        db,
+        child_id=child_id,
+        attempt_id=evidence_ref,
+        duration_ms=duration_ms,
+        require_skill_gate=True,
+    )
+
+
+def _insert_learning_flow_task_attempt(db: Any, *, session_id: str, task_id: str, child_id: int, skill_domain: str | None, result: str, assisted: bool, evidence_ref: str, evidence_type: str, occurred_at: str) -> None:
+    db.execute(
+        "INSERT OR IGNORE INTO learning_flow_task_attempts(id,session_id,task_id,child_id,skill_domain,result,score,assisted,evidence_ref,scorer_version,occurred_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+        (uid("flow-attempt"), session_id, task_id, child_id, skill_domain, result, None, int(assisted), evidence_ref, evidence_type, occurred_at),
+    )
+
+
+def attach_learning_evidence(*, child_id: int, session_id: str, task_id: str, evidence_ref: str, duration_ms: int | None = None) -> dict[str, Any]:
     initialize_database()
     _enforce_session_time(child_id, session_id)
     with connect() as db:
@@ -817,6 +997,10 @@ def attach_learning_evidence(*, child_id: int, session_id: str, task_id: str, ev
         if row["state"] == "COMPLETED":
             return _session_payload(db, session)
         result, assisted, evidence_type = _validate_external_evidence(db, child_id, row, evidence_ref)
+        if row["task_type"] in {"SPEAKING_ATTEMPT", "PRONUNCIATION_ATTEMPT"}:
+            # Provider completion, the linked curriculum gate, and flow evidence share this transaction.
+            # Any downstream failure rolls back all three authoritative writes.
+            _complete_speaking_provider_attempt_in_transaction(db, child_id=child_id, evidence_ref=evidence_ref, duration_ms=duration_ms)
         data = json.loads(row["task_json"])
         required_repeat = int(data.get("taskData", {}).get("repeatCount", 1)) if row["task_type"].startswith("WRITING_") else 1
         if result == "incorrect":
@@ -836,7 +1020,7 @@ def attach_learning_evidence(*, child_id: int, session_id: str, task_id: str, ev
         start = _parse_stamp(row["started_at"]) or _parse_stamp(stamp)
         stamp_dt = _parse_stamp(stamp) or _utcnow_naive()
         duration = max(0, int((stamp_dt - start).total_seconds())) if start else 0
-        db.execute("INSERT OR IGNORE INTO learning_flow_task_attempts(id,session_id,task_id,child_id,skill_domain,result,score,assisted,evidence_ref,scorer_version,occurred_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)", (uid("flow-attempt"), session_id, task_id, child_id, row["skill_domain"], result, None, int(assisted), evidence_ref, evidence_type, stamp))
+        _insert_learning_flow_task_attempt(db, session_id=session_id, task_id=task_id, child_id=child_id, skill_domain=row["skill_domain"], result=result, assisted=assisted, evidence_ref=evidence_ref, evidence_type=evidence_type, occurred_at=stamp)
         db.execute("UPDATE learning_flow_tasks SET state=?,failure_count=?,attempt_count=attempt_count+1,completed_at=?,elapsed_seconds=elapsed_seconds+?,deferred_reason=?,evidence_ref=COALESCE(?,evidence_ref) WHERE id=? AND session_id=?", (state, failure_count, completed_at, duration, deferred_reason, evidence_ref, task_id, session_id))
         _log(db, session_id, child_id, "task_evidence_attached" if result != "incorrect" else "task_attempted", task_id, row["skill_domain"], {"taskType": row["task_type"], "result": result, "assisted": assisted, "durationSeconds": duration}, stamp)
         if row["task_type"] in {"SPEAKING_ATTEMPT", "PRONUNCIATION_ATTEMPT"} and result == "completed":

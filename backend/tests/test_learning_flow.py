@@ -74,17 +74,15 @@ def complete_session(api: TestClient, child_id: int, current: dict, assisted_sco
             attempt = api.post("/api/reading-aloud/attempts/start?child_id=" + str(child_id), json={"text": task["taskData"]["text"], "text_kind": "character", "locale": "zh-TW", "source_type": "CURRICULUM", "source_id": task["itemId"], "activity_domain": domain})
             assert attempt.status_code == 200, attempt.text
             attempt_id = attempt.json()["id"]
-            completed = api.post(f"/api/reading-aloud/attempts/{attempt_id}/complete?child_id={child_id}", json={"duration_ms": 500})
-            assert completed.status_code == 200, completed.text
-            response = api.post(f"/api/children/{child_id}/learning-sessions/{current['id']}/tasks/{task['id']}/evidence", json={"evidence_ref": attempt_id})
+            response = api.post(f"/api/children/{child_id}/learning-sessions/{current['id']}/tasks/{task['id']}/evidence", json={"evidence_ref": attempt_id, "duration_ms": 500})
             assert response.status_code == 200, response.text
         elif task["taskType"] in {"RECOGNITION", "REVIEW_RECOGNITION", "MINI_CHECK", "VOCABULARY", "SENTENCE_PATTERN"}:
             if task["taskData"].get("mode") == "reflection":
                 selected = "practiced"
             elif task["taskType"] == "VOCABULARY":
-                selected = next(option["id"] for option in task["taskData"]["choices"] if option["label"] == "打招呼")
+                selected = next(option["id"] for option in task["taskData"]["choices"] if option["id"] in {"greeting", "opt-hello"} or "打招呼" in option["label"])
             elif task["taskType"] == "SENTENCE_PATTERN":
-                selected = next(option["id"] for option in task["taskData"]["choices"] if option["id"] == "greeting")
+                selected = next(option["id"] for option in task["taskData"]["choices"] if option["id"] in {"greeting", "opt-correct-order"} or option.get("isCorrect"))
             else:
                 if task["taskType"] == "REVIEW_RECOGNITION":
                     expected = task["taskData"]["audioText"]
@@ -246,6 +244,116 @@ def test_speaking_and_pronunciation_are_non_score_gates(tmp_path):
             gate_rows = db.execute("SELECT skill_domain FROM curriculum_skill_gates WHERE child_id=? AND lesson_id='book1-l01'", (child_id,)).fetchall()
         assert score_rows == 0
         assert {row["skill_domain"] for row in gate_rows} >= {"speaking", "pronunciation", "listening"}
+
+
+def test_speaking_evidence_operation_atomically_completes_provider_and_flow_task(tmp_path):
+    from app.database import connect
+
+    with client(tmp_path) as api:
+        child_id = child(api)
+        place(child_id, "BOOK_1")
+        current = session(api, child_id)
+        task = next(t for t in current["tasks"] if t["taskType"] == "SPEAKING_ATTEMPT")
+        current = start_task(api, child_id, current, task)
+        attempt_response = api.post("/api/reading-aloud/attempts/start", params={"child_id": child_id}, json={
+            "text": task["taskData"]["text"], "text_kind": "character", "locale": "zh-TW",
+            "source_type": "CURRICULUM", "source_id": task["itemId"], "activity_domain": "speaking",
+        })
+        assert attempt_response.status_code == 200, attempt_response.text
+        attempt_id = attempt_response.json()["id"]
+        assert attempt_response.json()["status"] == "STARTED"
+
+        # Flow-owned curriculum attempts cannot be finalized outside the atomic evidence boundary.
+        premature_complete = api.post(f"/api/reading-aloud/attempts/{attempt_id}/complete", params={"child_id": child_id}, json={"duration_ms": 500})
+        assert premature_complete.status_code == 400
+        assert premature_complete.json()["detail"] == "learning_flow_evidence_required"
+        with connect() as db:
+            assert db.execute("SELECT status FROM reading_aloud_attempts WHERE id=?", (attempt_id,)).fetchone()["status"] == "STARTED"
+            assert db.execute("SELECT COUNT(*) FROM curriculum_skill_gates WHERE child_id=? AND evidence_ref=?", (child_id, attempt_id)).fetchone()[0] == 0
+
+        final_response = api.post(
+            f"/api/children/{child_id}/learning-sessions/{current['id']}/tasks/{task['id']}/evidence",
+            json={"evidence_ref": attempt_id, "duration_ms": 500},
+        )
+        assert final_response.status_code == 200, final_response.text
+        final_task = next(t for t in final_response.json()["tasks"] if t["id"] == task["id"])
+        assert final_task["state"] == "COMPLETED"
+
+        with connect() as db:
+            provider = db.execute("SELECT status FROM reading_aloud_attempts WHERE id=?", (attempt_id,)).fetchone()
+            gates = db.execute("SELECT skill_domain FROM curriculum_skill_gates WHERE child_id=? AND evidence_ref=?", (child_id, attempt_id)).fetchall()
+            flow_attempts = db.execute("SELECT COUNT(*) FROM learning_flow_task_attempts WHERE task_id=? AND evidence_ref=?", (task["id"], attempt_id)).fetchone()[0]
+        assert provider["status"] == "COMPLETED"
+        assert [row["skill_domain"] for row in gates] == ["speaking"]
+        assert flow_attempts == 1
+
+
+def test_speaking_evidence_failure_rolls_back_all_writes_and_retry_commits_once(tmp_path, monkeypatch):
+    from app import learning_flow
+    from app.database import connect
+
+    with client(tmp_path) as api:
+        child_id = child(api)
+        place(child_id, "BOOK_1")
+        current = session(api, child_id)
+        task = next(t for t in current["tasks"] if t["taskType"] == "SPEAKING_ATTEMPT")
+        current = start_task(api, child_id, current, task)
+        attempt_response = api.post("/api/reading-aloud/attempts/start", params={"child_id": child_id}, json={
+            "text": task["taskData"]["text"], "text_kind": "character", "locale": "zh-TW",
+            "source_type": "CURRICULUM", "source_id": task["itemId"], "activity_domain": "speaking",
+        })
+        assert attempt_response.status_code == 200, attempt_response.text
+        attempt_id = attempt_response.json()["id"]
+        assert attempt_response.json()["status"] == "STARTED"
+
+        original_insert = learning_flow._insert_learning_flow_task_attempt
+
+        def fail_after_flow_evidence_insert(db, **kwargs):
+            original_insert(db, **kwargs)
+            raise RuntimeError("injected_learning_flow_evidence_persistence_failure")
+
+        with monkeypatch.context() as patcher:
+            patcher.setattr(learning_flow, "_insert_learning_flow_task_attempt", fail_after_flow_evidence_insert)
+            failed_response = api.post(
+                f"/api/children/{child_id}/learning-sessions/{current['id']}/tasks/{task['id']}/evidence",
+                json={"evidence_ref": attempt_id, "duration_ms": 500},
+            )
+            assert failed_response.status_code == 500
+
+        with connect() as db:
+            provider = db.execute("SELECT status FROM reading_aloud_attempts WHERE id=?", (attempt_id,)).fetchone()
+            gate_count = db.execute("SELECT COUNT(*) FROM curriculum_skill_gates WHERE child_id=? AND evidence_ref=?", (child_id, attempt_id)).fetchone()[0]
+            task_row = db.execute("SELECT state FROM learning_flow_tasks WHERE id=?", (task["id"],)).fetchone()
+            evidence_count = db.execute("SELECT COUNT(*) FROM learning_flow_task_attempts WHERE task_id=? AND evidence_ref=?", (task["id"], attempt_id)).fetchone()[0]
+        assert provider["status"] == "STARTED"
+        assert gate_count == 0
+        assert task_row["state"] != "COMPLETED"
+        assert task_row["state"] == "IN_PROGRESS"
+        assert evidence_count == 0
+
+        retry_response = api.post(
+            f"/api/children/{child_id}/learning-sessions/{current['id']}/tasks/{task['id']}/evidence",
+            json={"evidence_ref": attempt_id, "duration_ms": 500},
+        )
+        assert retry_response.status_code == 200, retry_response.text
+        retry_task = next(t for t in retry_response.json()["tasks"] if t["id"] == task["id"])
+        assert retry_task["state"] == "COMPLETED"
+
+        # Replaying the successful request is idempotent and produces a single final record.
+        replay_response = api.post(
+            f"/api/children/{child_id}/learning-sessions/{current['id']}/tasks/{task['id']}/evidence",
+            json={"evidence_ref": attempt_id, "duration_ms": 500},
+        )
+        assert replay_response.status_code == 200, replay_response.text
+        with connect() as db:
+            provider = db.execute("SELECT status FROM reading_aloud_attempts WHERE id=?", (attempt_id,)).fetchone()
+            gate_count = db.execute("SELECT COUNT(*) FROM curriculum_skill_gates WHERE child_id=? AND evidence_ref=?", (child_id, attempt_id)).fetchone()[0]
+            final_task = db.execute("SELECT state FROM learning_flow_tasks WHERE id=?", (task["id"],)).fetchone()
+            evidence_count = db.execute("SELECT COUNT(*) FROM learning_flow_task_attempts WHERE task_id=? AND evidence_ref=?", (task["id"], attempt_id)).fetchone()[0]
+        assert provider["status"] == "COMPLETED"
+        assert gate_count == 1
+        assert final_task["state"] == "COMPLETED"
+        assert evidence_count == 1
 
 
 def test_day_one_correct_review_schedules_short_interval(tmp_path):
