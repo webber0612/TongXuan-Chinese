@@ -114,6 +114,7 @@ function isValidReviewTask(task: any, pkg: LessonPackage, expectedLessonId?: str
     task.taskType !== "REVIEW_RECOGNITION" || task.sourceQueue !== "REVIEW" ||
     task.skillDomain !== "recognition" || task.required !== true ||
     typeof task.lessonId !== "string" || !task.lessonId.trim() ||
+    task.lessonId !== pkg.lessonId ||
     (expectedLessonId !== undefined && task.lessonId !== expectedLessonId) ||
     typeof task.itemId !== "string" || !task.itemId.trim() ||
     (task.state !== "PENDING" && task.state !== "IN_PROGRESS" && task.state !== "COMPLETED")
@@ -155,6 +156,34 @@ export function getAuthoritativeReviewTasks(
   const itemIds = candidates.map((task: any) => task.itemId);
   if (new Set(ids).size !== ids.length || new Set(keys).size !== keys.length || new Set(itemIds).size !== itemIds.length) return null;
   return candidates as LearningFlowTaskContract[];
+}
+
+export function selectReviewTasksForDueItems(
+  tasks: unknown,
+  dueItems: unknown,
+  pkg: LessonPackage,
+  expectedLessonId: string,
+): LearningFlowTaskContract[] | null {
+  if (!Array.isArray(dueItems)) return null;
+  const authoritativeTasks = getAuthoritativeReviewTasks(tasks, pkg, expectedLessonId);
+  if (!authoritativeTasks) return null;
+
+  const dueIds = new Set<string>();
+  const selected: LearningFlowTaskContract[] = [];
+  for (const item of dueItems) {
+    if (
+      !item || typeof item !== "object" ||
+      typeof item.id !== "string" || !item.id.trim() || dueIds.has(item.id) ||
+      typeof item.character !== "string" || !pkg.characters.some((character) => character.char === item.character) ||
+      typeof item.lessonId !== "string" || item.lessonId !== expectedLessonId ||
+      typeof item.dueAt !== "string" || !Number.isFinite(Date.parse(item.dueAt))
+    ) return null;
+    dueIds.add(item.id);
+    const exactTask = authoritativeTasks.find((task) => task.itemId === item.id);
+    if (!exactTask || exactTask.lessonId !== item.lessonId || exactTask.taskData?.audioText !== item.character) return null;
+    selected.push(exactTask);
+  }
+  return selected;
 }
 
 export interface AuthoritativeLearnStepPlan {

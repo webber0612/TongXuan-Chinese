@@ -9,6 +9,7 @@ import {
   getLessonPackage,
   getAllLessonPackages,
   getStepsForMode,
+  selectReviewTasksForDueItems,
   getScaffoldText,
   validateReviewStatusIntegrity,
   type LessonPackage,
@@ -471,6 +472,10 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     expect(getStepsForMode(pkg, "REVIEW", [], [{ ...dueItem, taskData: { ...dueItem.taskData, choices: [{ id: "same", label: "你" }, { id: "same", label: "好" }] } }])).toEqual([]);
     const retryableSteps = getStepsForMode(pkg, "REVIEW", [], [{ ...dueItem, state: "IN_PROGRESS" }]);
     expect(retryableSteps[0].data?.taskId).toBe(dueItem.id);
+    const queueDueItem = { id: "item-ni", character: "你", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" };
+    expect(selectReviewTasksForDueItems([dueItem], [queueDueItem], pkg, "book1-l01")).toEqual([dueItem]);
+    expect(selectReviewTasksForDueItems([dueItem], [queueDueItem, queueDueItem], pkg, "book1-l01")).toBeNull();
+    expect(selectReviewTasksForDueItems([dueItem], [{ ...queueDueItem, lessonId: "basic-l01" }], pkg, "book1-l01")).toBeNull();
   });
 
   // Test 12
@@ -2760,6 +2765,9 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
           ],
         }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
+      if (url.includes("/learning-daily-queue")) {
+        return new Response(JSON.stringify({ review: { sourceQueue: "REVIEW", dueCount: 1, items: [{ id: "item-ni", character: "你", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" }] } }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
       return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
     }));
 
@@ -2815,6 +2823,9 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
             },
           ],
         }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/learning-daily-queue")) {
+        return new Response(JSON.stringify({ review: { sourceQueue: "REVIEW", dueCount: 1, items: [{ id: "item-hao", character: "好", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" }] } }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
       return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
     }));
@@ -2932,6 +2943,9 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
             },
           ],
         }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/learning-daily-queue")) {
+        return new Response(JSON.stringify({ review: { sourceQueue: "REVIEW", dueCount: 1, items: [{ id: "item-ni", character: "你", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" }] } }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
       return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
     }));
@@ -3205,6 +3219,12 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
         wholeSessionCompleteCalled = true;
         return new Response(JSON.stringify({ id: "s-reg-e", status: "COMPLETED" }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
+      if (url.includes("/learning-daily-queue")) {
+        return new Response(JSON.stringify({ review: { sourceQueue: "REVIEW", dueCount: 2, items: [
+          { id: "item-ni", character: "你", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" },
+          { id: "item-hao", character: "好", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" },
+        ] } }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
       return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
     }));
 
@@ -3291,6 +3311,12 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
             reviewTask("task-A", "review-recognition-1", "item-ni", "你", "COMPLETED"),
           ],
         }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/learning-daily-queue")) {
+        return new Response(JSON.stringify({ review: { sourceQueue: "REVIEW", dueCount: 2, items: [
+          { id: "item-ni", character: "你", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" },
+          { id: "item-hao", character: "好", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" },
+        ] } }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
       return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
     }));

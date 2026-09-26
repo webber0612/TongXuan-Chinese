@@ -24,10 +24,10 @@ import { BrowserSpeechSynthesisProvider } from "../lib/tts";
 import { BrowserMediaRecorderAdapter } from "../lib/readingAloud";
 import {
   buildAuthoritativeLearnSteps,
-  getAuthoritativeReviewTasks,
   getLessonPackage,
   getStepsForMode,
   getScaffoldText,
+  selectReviewTasksForDueItems,
   type LessonPackage,
   type LessonStepDefinition,
   type PedagogyMode,
@@ -576,16 +576,16 @@ export function LessonPlayerPage({
 
   // Authoritative due review items extraction: strictly from executable session review tasks
   const authoritativeReviewTasks = useMemo(() => {
-    if (mode !== "REVIEW" || !pkg) return null;
-    const currentTasks = getAuthoritativeReviewTasks(session?.tasks, pkg, resolvedLessonId);
+    if (mode !== "REVIEW" || !pkg || dailyQueueStatus !== "SUCCESS") return null;
+    const currentTasks = selectReviewTasksForDueItems(session?.tasks, dailyQueueDueItems, pkg, resolvedLessonId);
     if (!currentTasks) return null;
     if (reviewSessionTasks.length === 0) return currentTasks;
 
     const expectedIds = reviewSessionTasks.map((task) => task.id);
     if (expectedIds.some((id) => typeof id !== "string" || !id) || new Set(expectedIds).size !== expectedIds.length) return null;
-    if (!expectedIds.every((id) => currentTasks.some((task) => task.id === id))) return null;
-    return currentTasks.filter((task) => expectedIds.includes(task.id));
-  }, [mode, reviewSessionTasks, session?.tasks, pkg, resolvedLessonId]);
+    if (expectedIds.length !== currentTasks.length || !expectedIds.every((id) => currentTasks.some((task) => task.id === id))) return null;
+    return currentTasks;
+  }, [mode, reviewSessionTasks, session?.tasks, dailyQueueDueItems, dailyQueueStatus, pkg, resolvedLessonId]);
   const authoritativeDueItems = authoritativeReviewTasks ?? [];
 
   const steps: LessonStepDefinition[] = useMemo(() => {
@@ -605,10 +605,10 @@ export function LessonPlayerPage({
   }, [mode, activeChildId, session?.status, learnPlanValid, text.taskFailed]);
 
   useEffect(() => {
-    if (mode === "REVIEW" && session && pkg && authoritativeReviewTasks === null) {
+    if (mode === "REVIEW" && !busy && dailyQueueStatus === "SUCCESS" && session && pkg && authoritativeReviewTasks === null) {
       setError(text.taskFailed);
     }
-  }, [mode, session, pkg, authoritativeReviewTasks, text.taskFailed]);
+  }, [mode, busy, dailyQueueStatus, session, pkg, authoritativeReviewTasks, text.taskFailed]);
 
   const handleCompleteReview = () => {
     if (!activeChildId) {
@@ -635,6 +635,12 @@ export function LessonPlayerPage({
     if (!activeChildId) return;
     setError(null);
     setBusy(true);
+    if (mode === "REVIEW" || initialMode === "REVIEW") {
+      setDailyQueueStatus("IDLE");
+      setDailyQueueZeroDue(false);
+      setDailyQueueDueItems([]);
+      setReviewSessionTasks([]);
+    }
     try {
       const current = await api<{
         id: string;
@@ -705,15 +711,11 @@ export function LessonPlayerPage({
       }
 
       if (mode === "REVIEW" || initialMode === "REVIEW") {
-        const validatedReviewTasks = (s: typeof session) => {
+        const tasksForDueItems = (s: typeof session, dueItems: unknown) => {
           if (!s) return null;
           const sessionLessonId = s.curriculumContext?.lessonId || s.lessonId || lessonId || "book1-l01";
           const reviewPkg = getLessonPackage(sessionLessonId);
-          return reviewPkg ? getAuthoritativeReviewTasks(s.tasks, reviewPkg, sessionLessonId) : null;
-        };
-        const hasExecutableReviewTasks = (s: typeof session) => {
-          const tasks = validatedReviewTasks(s);
-          return Boolean(tasks && tasks.length > 0);
+          return reviewPkg ? selectReviewTasksForDueItems(s.tasks, dueItems, reviewPkg, sessionLessonId) : null;
         };
 
         try {
@@ -729,26 +731,39 @@ export function LessonPlayerPage({
             !dq ||
             typeof dq !== "object" ||
             !dq.review ||
+            dq.review.sourceQueue !== "REVIEW" ||
             typeof dq.review.dueCount !== "number" ||
-            !Array.isArray(dq.review.items)
+            !Array.isArray(dq.review.items) ||
+            dq.review.dueCount !== dq.review.items.length
           ) {
-            if (!hasExecutableReviewTasks(sessionRef.current)) {
-              setDailyQueueStatus("ERROR");
-              setDailyQueueZeroDue(false);
-              setError(text.taskFailed);
-              return;
-            }
+            setDailyQueueStatus("ERROR");
+            setDailyQueueZeroDue(false);
+            setError(text.taskFailed);
+            return;
           } else {
             setDailyQueueStatus("SUCCESS");
             setDailyQueueDueItems(dq.review.items);
 
             if (dq.review.dueCount === 0 && dq.review.items.length === 0) {
               setDailyQueueZeroDue(true);
+              setReviewSessionTasks([]);
             } else {
               setDailyQueueZeroDue(false);
+              if (dq.review.items.length === 0) {
+                setError(text.taskFailed);
+                return;
+              }
               let effectiveSession = sessionRef.current;
-              if (!hasExecutableReviewTasks(effectiveSession)) {
+              let exactTasks = tasksForDueItems(effectiveSession, dq.review.items);
+              if (!exactTasks) {
                 try {
+                  const sessionLessonId = effectiveSession?.curriculumContext?.lessonId || effectiveSession?.lessonId || lessonId || "book1-l01";
+                  // The reconciliation endpoint is scoped to the active session's lesson.
+                  // Out-of-scope due rows therefore remain unmatched and fail closed below.
+                  if (dq.review.items.some((item) => item?.lessonId !== sessionLessonId)) {
+                    setError(text.taskFailed);
+                    return;
+                  }
                   const targetSessionId = effectiveSession?.id || "current";
                   const reconciled = await api<typeof session>(
                     `/api/children/${activeChildId}/learning-sessions/${targetSessionId}/reconcile-reviews`,
@@ -757,38 +772,35 @@ export function LessonPlayerPage({
                       body: "{}",
                     }
                   );
-                  if (reconciled && reconciled.id) {
+                  if (reconciled && reconciled.id && reconciled.id === effectiveSession?.id) {
                     effectiveSession = reconciled;
                     sessionRef.current = reconciled;
                     setSession(reconciled);
                     if (reconciled.masteryStatus) setMasteryStatus(reconciled.masteryStatus);
+                  } else {
+                    setError(text.taskFailed);
+                    return;
                   }
                 } catch {
-                  // Reconcile failed
+                  setError(text.taskFailed);
+                  return;
                 }
+                exactTasks = tasksForDueItems(effectiveSession, dq.review.items);
               }
 
-              if (!hasExecutableReviewTasks(effectiveSession)) {
+              if (!exactTasks || exactTasks.length !== dq.review.dueCount) {
                 setError(text.taskFailed);
                 return;
               }
+              setReviewSessionTasks(exactTasks);
             }
           }
         } catch (err: any) {
-          if (!hasExecutableReviewTasks(sessionRef.current)) {
-            setDailyQueueStatus("ERROR");
-            setDailyQueueZeroDue(false);
-            setError(err?.message || text.taskFailed);
-            return;
-          }
-        }
-
-        const effectiveRevTasks = validatedReviewTasks(sessionRef.current);
-        if (!effectiveRevTasks) {
-          setError(text.taskFailed);
+          setDailyQueueStatus("ERROR");
+          setDailyQueueZeroDue(false);
+          setError(err?.message || text.taskFailed);
           return;
         }
-        setReviewSessionTasks(effectiveRevTasks);
       }
     } catch (err: any) {
       sessionRef.current = null;
