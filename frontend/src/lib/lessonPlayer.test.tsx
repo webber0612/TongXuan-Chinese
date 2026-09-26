@@ -3059,6 +3059,8 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     const answeredTaskIds: string[] = [];
     let wholeSessionCompleteCalled = false;
     let backCalled = false;
+    let finalSessionResponse: { id: string; status: string; tasks: Array<{ id: string; state: string }> } = { id: "", status: "", tasks: [] };
+    const curriculumPendingTask = { id: "learn-required-curriculum", key: "curriculum-required-1", taskType: "LISTENING", sourceQueue: "CURRICULUM", lessonId: "book1-l01", state: "PENDING", required: true };
 
     vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
       if (url.includes("/learning-sessions/current")) {
@@ -3084,6 +3086,7 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
               state: taskStateB,
               taskData: { prompt: "題目二：選出聽到的字", audioText: "好", choices: [{ id: "opt-hao", label: "好", isCorrect: true }, { id: "opt-ni", label: "你", isCorrect: false }] },
             },
+            curriculumPendingTask,
           ],
         }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
@@ -3096,20 +3099,24 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
           tasks: [
             { id: "task-A", key: "review-recog-1", taskType: "REVIEW_RECOGNITION", sourceQueue: "REVIEW", itemId: "你", state: "COMPLETED" },
             { id: "task-B", key: "review-recog-2", taskType: "REVIEW_RECOGNITION", sourceQueue: "REVIEW", itemId: "好", state: taskStateB },
+            curriculumPendingTask,
           ],
         }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
       if (url.includes("/tasks/task-B/answer") && init?.method === "POST") {
         answeredTaskIds.push("task-B");
         taskStateB = "COMPLETED";
-        return new Response(JSON.stringify({
+        const completedSession = {
           id: "s-reg-e",
           status: "IN_PROGRESS",
           tasks: [
             { id: "task-A", key: "review-recog-1", taskType: "REVIEW_RECOGNITION", sourceQueue: "REVIEW", itemId: "你", state: "COMPLETED" },
             { id: "task-B", key: "review-recog-2", taskType: "REVIEW_RECOGNITION", sourceQueue: "REVIEW", itemId: "好", state: "COMPLETED" },
+            curriculumPendingTask,
           ],
-        }), { status: 200, headers: { "Content-Type": "application/json" } });
+        };
+        finalSessionResponse = completedSession;
+        return new Response(JSON.stringify(completedSession), { status: 200, headers: { "Content-Type": "application/json" } });
       }
       if (url.includes("/learning-sessions/s-reg-e/complete") && init?.method === "POST") {
         wholeSessionCompleteCalled = true;
@@ -3155,6 +3162,8 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     await act(async () => { finishReviewBtn.click(); });
     expect(backCalled).toBe(true);
     expect(wholeSessionCompleteCalled).toBe(false);
+    expect(finalSessionResponse.status).toBe("IN_PROGRESS");
+    expect(finalSessionResponse.tasks.find((task) => task.id === "learn-required-curriculum")?.state).toBe("PENDING");
 
     root.unmount();
     container.remove();

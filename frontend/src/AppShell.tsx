@@ -78,6 +78,7 @@ export function AppShell() {
   const [profiles, setProfiles] = useState<Profile[]>(() => loadProfiles());
   const [activeKey, setActiveKey] = useState(() => localStorage.getItem(ACTIVE_PROFILE_STORAGE_KEY) ?? "child-a");
   const [learningSessionLessonId, setLearningSessionLessonId] = useState<string | undefined>(undefined);
+  const [learningSessionMode, setLearningSessionMode] = useState<"LEARN" | "REVIEW">("LEARN");
   const [children, setChildren] = useState<Child[]>([]);
   const [childrenLoading, setChildrenLoading] = useState(true);
   const [childrenError, setChildrenError] = useState("");
@@ -99,9 +100,12 @@ export function AppShell() {
       if (redirectPath) {
         window.history.replaceState({}, "", redirectPath);
         setRoute(routeFromPath(redirectPath));
+        setLearningSessionMode("LEARN");
         return;
       }
-      setRoute(routeFromPath(window.location.pathname));
+      const nextRoute = routeFromPath(window.location.pathname);
+      setRoute(nextRoute);
+      if (nextRoute !== "learning-session") setLearningSessionMode("LEARN");
     };
     syncRoute();
     window.addEventListener("popstate", syncRoute);
@@ -125,6 +129,7 @@ export function AppShell() {
 
   function navigate(next: Route) {
     if (next === "legacy-tombstone" || next === "redirect-home") return;
+    if (next !== "learning-session") setLearningSessionMode("LEARN");
     setRoute(next);
     window.history.pushState({}, "", pathAtAppBase(paths[next]));
   }
@@ -176,16 +181,17 @@ export function AppShell() {
         {childrenError && !isChildPortal && <div className="offline-strip error-strip" role="alert">{childrenError} <button className="button button-text" onClick={() => void loadChildren()}>{t("retry")}</button></div>}
         {route === "legacy-tombstone" && <main className="app-page"><PageHeading kicker={t("today")} title={t("legacyRouteTitle")} subtitle={t("legacyRouteDescription")} icon={<BookOpen/>}/><button className="button button-primary" onClick={() => navigate("home")}><House size={18}/>{t("today")}</button></main>}
         <Suspense fallback={<AppLoading label={t("loading")} />}>
-        {route === "home" && <ChildPortalPage activeChildId={activeChild?.id ?? null} activeChildName={childName} onOpenCurriculum={() => navigate("curriculum")} onStartLearningSession={showSessionEntry ? (learnerName, targetLessonId) => {
+        {route === "home" && <ChildPortalPage activeChildId={activeChild?.id ?? null} activeChildName={childName} onOpenCurriculum={() => navigate("curriculum")} onStartLearningSession={showSessionEntry ? (learnerName, targetLessonId, mode) => {
           const childId = resolveLearningSessionChildId(profiles, learnerName);
           const childProfile = profiles.find((profile) => profile.role === "child" && profile.childId === childId);
           if (!childId || !childProfile) return false;
           setActiveKey(childProfile.key);
           setLearningSessionLessonId(targetLessonId);
+          setLearningSessionMode(mode);
           navigate("learning-session");
           return true;
         } : undefined} />}
-        {route === "learning-session" && <LessonPlayerPage lessonId={learningSessionLessonId} activeChildId={activeChild?.id ?? null} onBack={() => navigate("home")} />}
+        {route === "learning-session" && <LessonPlayerPage lessonId={learningSessionLessonId} activeChildId={activeChild?.id ?? null} initialMode={learningSessionMode} onBack={() => { setLearningSessionMode("LEARN"); navigate("home"); }} />}
         {route === "practice" && <div className="app-page practice-page" key={activeProfile.key}><PageHeading kicker={t("practice")} title={t("practiceTitle")} subtitle={t("practiceHint")} icon={<Sparkles/>}/><LearningPage activeChildId={activeChild?.id ?? null} /></div>}
         {route === "parent" && <ParentAreaPage />}
         {route === "curriculum" && <CurriculumPage onOpenCourseZero={() => navigate("course-zero")} />}
