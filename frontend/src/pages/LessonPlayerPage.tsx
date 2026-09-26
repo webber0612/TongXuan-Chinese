@@ -1209,27 +1209,33 @@ export function LessonPlayerPage({
       }
     }
 
-    // 7. Exit Ticket step in LEARN mode: ensure mini-check reflection is answered
-    if (currentStep.stepKey === "exit_ticket" && mode === "LEARN" && activeChildId) {
-      const sessAfterTicket = sessionRef.current;
-      if (!sessAfterTicket || !sessAfterTicket.id || !sessAfterTicket.tasks) {
-        setError(text.taskFailed);
+    // 7. Exit Ticket step: ensure submitted before advancing
+    if (currentStep.stepKey === "exit_ticket") {
+      if (!exitTicketSubmitted) {
+        setError(text.pleaseAnswerQuestion);
         return;
       }
-      const refTask = sessAfterTicket.tasks.find(
-        (t) => (t.key === "mini-check-reflection" || (t.taskType === "MINI_CHECK" && t.taskData?.mode === "reflection")) &&
-               t.state !== "COMPLETED" && t.state !== "DEFERRED"
-      );
-      if (refTask) {
-        const res = await submitBackendTaskAnswer((t) => t.id === refTask.id, "practiced");
-        if (res.taskState !== "COMPLETED" && res.taskState !== "DEFERRED") {
+      if (mode === "LEARN" && activeChildId) {
+        const sessAfterTicket = sessionRef.current;
+        if (!sessAfterTicket || !sessAfterTicket.id || !sessAfterTicket.tasks) {
           setError(text.taskFailed);
           return;
         }
-        const postRefTask = sessionRef.current?.tasks?.find((t) => t.id === refTask.id);
-        if (!postRefTask || (postRefTask.state !== "COMPLETED" && postRefTask.state !== "DEFERRED")) {
-          setError(text.taskFailed);
-          return;
+        const refTask = sessAfterTicket.tasks.find(
+          (t) => (t.key === "mini-check-reflection" || (t.taskType === "MINI_CHECK" && t.taskData?.mode === "reflection")) &&
+                 t.state !== "COMPLETED" && t.state !== "DEFERRED"
+        );
+        if (refTask) {
+          const res = await submitBackendTaskAnswer((t) => t.id === refTask.id, "practiced");
+          if (res.taskState !== "COMPLETED" && res.taskState !== "DEFERRED") {
+            setError(text.taskFailed);
+            return;
+          }
+          const postRefTask = sessionRef.current?.tasks?.find((t) => t.id === refTask.id);
+          if (!postRefTask || (postRefTask.state !== "COMPLETED" && postRefTask.state !== "DEFERRED")) {
+            setError(text.taskFailed);
+            return;
+          }
         }
       }
     }
@@ -1340,7 +1346,7 @@ export function LessonPlayerPage({
 
   const handleExitTicketSubmit = async () => {
     if (!currentStep?.data.questions) return;
-    setExitTicketSubmitted(true);
+    setError(null);
 
     const questions = currentStep.data.questions;
     const failedDomains: string[] = [];
@@ -1364,31 +1370,42 @@ export function LessonPlayerPage({
         try {
           const res = await api<{
             passed: boolean;
-            weakDomains: string[];
-            nextMode: PedagogyMode;
-            masteryStatus: string;
+            weakDomains?: string[];
+            nextMode?: PedagogyMode;
+            masteryStatus?: string;
             nextReviewDueAt?: string | null;
           }>(`/api/children/${activeChildId}/lesson-packages/${resolvedLessonId}/fast-track`, {
             method: "POST",
             body: JSON.stringify({ answers: exitTicketAnswers }),
           });
+
+          if (!res || typeof res.passed !== "boolean") {
+            setError(text.taskFailed);
+            return;
+          }
+
+          setExitTicketSubmitted(true);
           if (res.passed) {
             setWeakDomains([]);
             setNextReviewDueAt(res.nextReviewDueAt ?? null);
-            setMasteryStatus(res.masteryStatus);
+            if (res.masteryStatus) setMasteryStatus(res.masteryStatus);
           } else {
-            setWeakDomains(res.weakDomains.length > 0 ? res.weakDomains : failedDomains);
+            setWeakDomains(res.weakDomains && res.weakDomains.length > 0 ? res.weakDomains : failedDomains);
             setMode("REPAIR");
             setCurrentStepIndex(0); // Immediately transition into REPAIR mode tasks!
             setNextReviewDueAt(null);
-            setMasteryStatus("IN_PROGRESS");
+            setMasteryStatus(res.masteryStatus || "IN_PROGRESS");
           }
           return;
-        } catch {
-          // Fallback to local evaluation
+        } catch (err: any) {
+          // FAIL CLOSED! No local fallback!
+          setError(err?.message || text.taskFailed);
+          return;
         }
       }
 
+      // Unauthenticated preview mode only (!activeChildId)
+      setExitTicketSubmitted(true);
       if (allCorrect) {
         setWeakDomains([]);
         setMasteryStatus("READY_FOR_CHECK");
@@ -1398,16 +1415,50 @@ export function LessonPlayerPage({
         setCurrentStepIndex(0);
         setMasteryStatus("IN_PROGRESS");
       }
-    } else {
-      // In LEARN mode: advance reflection task if available
-      void submitBackendTaskAnswer((t) => t.key === "mini-check-reflection" || (t.taskType === "MINI_CHECK" && t.taskData?.mode === "reflection"), "practiced");
-      if (allCorrect) {
-        setWeakDomains([]);
-        setMasteryStatus("READY_FOR_CHECK");
-      } else {
-        setWeakDomains(failedDomains);
-        setMasteryStatus("IN_PROGRESS");
+      return;
+    }
+
+    // In LEARN mode:
+    if (activeChildId) {
+      const currentSess = sessionRef.current;
+      if (!currentSess || !currentSess.id || !currentSess.tasks) {
+        setError(text.taskFailed);
+        return;
       }
+
+      const refTask = currentSess.tasks.find(
+        (t) => (t.key === "mini-check-reflection" || (t.taskType === "MINI_CHECK" && t.taskData?.mode === "reflection"))
+      );
+
+      if (refTask) {
+        if (refTask.state !== "COMPLETED" && refTask.state !== "DEFERRED") {
+          const writeRes = await submitBackendTaskAnswer((t) => t.id === refTask.id, "practiced");
+          if (writeRes.taskState !== "COMPLETED" && writeRes.taskState !== "DEFERRED") {
+            setError(text.taskFailed);
+            return;
+          }
+        }
+        const postRefTask = sessionRef.current?.tasks?.find((t) => t.id === refTask.id);
+        if (!postRefTask || (postRefTask.state !== "COMPLETED" && postRefTask.state !== "DEFERRED")) {
+          setError(text.taskFailed);
+          return;
+        }
+      }
+
+      setExitTicketSubmitted(true);
+      setWeakDomains(failedDomains);
+      // NOTE: Only backend authoritative write sets masteryStatus.
+      // Frontend NEVER sets READY_FOR_CHECK or IN_PROGRESS directly!
+      return;
+    }
+
+    // Unauthenticated preview mode only (!activeChildId)
+    setExitTicketSubmitted(true);
+    setWeakDomains(failedDomains);
+    if (allCorrect) {
+      setMasteryStatus("READY_FOR_CHECK");
+    } else {
+      setMasteryStatus("IN_PROGRESS");
     }
   };
 
