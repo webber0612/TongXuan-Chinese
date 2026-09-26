@@ -499,7 +499,8 @@ def start_learning_session(*, child_id: int, as_of: str | None, target_minutes: 
 
 def _public_task(task: dict[str, Any], row: Any) -> dict[str, Any]:
     return {
-        "id": row["id"], "key": task["key"], "taskType": row["task_type"], "sourceQueue": row["source_queue"],
+        "id": row["id"], "sessionId": row["session_id"], "childId": row["child_id"],
+        "key": task["key"], "taskType": row["task_type"], "sourceQueue": row["source_queue"],
         "lessonId": row["lesson_id"], "skillDomain": row["skill_domain"], "itemId": row["activity_item_id"],
         "isNew": bool(row["is_new"]), "required": bool(row["required"]), "estimatedMinutes": row["estimated_minutes"],
         "evidenceType": row["evidence_type"], "masteryImpact": row["mastery_impact"], "rewardImpact": row["reward_impact"],
@@ -564,6 +565,24 @@ def get_current_learning_session(*, child_id: int) -> dict[str, Any] | None:
         return _session_payload(db, session)
 
 
+def _review_context_for_due_item(due: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
+    lesson_id = due.get("lesson_id")
+    if not isinstance(lesson_id, str) or lesson_id not in FLOW_LESSONS:
+        raise ValueError("learning_flow_review_lesson_not_supported")
+    lesson = _lesson_rows().get(lesson_id)
+    if lesson is None:
+        raise ValueError("learning_flow_review_lesson_not_supported")
+    chars = _characters(lesson)
+    if (
+        not isinstance(due.get("item_id"), str) or not due["item_id"] or
+        not isinstance(due.get("character"), str) or due["character"] not in chars or
+        not isinstance(due.get("due_at"), str) or _parse_stamp(due["due_at"]) is None or
+        len({character for character in chars if character != due["character"]}) == 0
+    ):
+        raise ValueError("learning_flow_review_due_item_malformed")
+    return lesson, chars
+
+
 def reconcile_learning_session_reviews(*, child_id: int, session_id: str, as_of: str | None = None) -> dict[str, Any]:
     initialize_database()
     as_of_text, stamp = _as_of(as_of)
@@ -589,6 +608,16 @@ def reconcile_learning_session_reviews(*, child_id: int, session_id: str, as_of:
         flow_id = session["id"]
         lesson_id = session["lesson_id"]
 
+        due_items = _due_recognition(db, child_id, as_of_text)
+        due_contexts: list[tuple[dict[str, Any], dict[str, Any], list[str]]] = []
+        due_item_ids: set[str] = set()
+        for due in due_items:
+            if due["item_id"] in due_item_ids:
+                raise ValueError("learning_flow_review_due_item_duplicate")
+            due_item_ids.add(due["item_id"])
+            lesson, chars = _review_context_for_due_item(due)
+            due_contexts.append((due, lesson, chars))
+
         if session["status"] == "PAUSED":
             resumed_at = now()
             db.execute(
@@ -601,36 +630,57 @@ def reconcile_learning_session_reviews(*, child_id: int, session_id: str, as_of:
             )
             _log(db, flow_id, child_id, "session_resumed", None, None, {"completedTaskCount": _completed_task_count(db, flow_id)}, resumed_at)
 
-        lesson, _ = _lesson_for_child(db, child_id, lesson_id)
-        chars = _characters(lesson)
-
         existing_tasks = db.execute(
             "SELECT * FROM learning_flow_tasks WHERE session_id=?",
             (flow_id,),
         ).fetchall()
 
-        existing_review_item_ids = {
-            row["activity_item_id"]
-            for row in existing_tasks
-            if row["source_queue"] == "REVIEW"
-        }
-        existing_review_count = sum(1 for row in existing_tasks if row["source_queue"] == "REVIEW")
+        existing_review_by_item: dict[str, Any] = {}
+        existing_review_keys: set[str] = set()
+        next_review_number = 0
+        for row in existing_tasks:
+            if row["source_queue"] != "REVIEW":
+                continue
+            item_id = row["activity_item_id"]
+            if not isinstance(item_id, str) or not item_id or item_id in existing_review_by_item:
+                raise ValueError("learning_flow_review_task_identity_duplicate")
+            task_data = json.loads(row["task_json"])
+            task_key = task_data.get("key")
+            if isinstance(task_key, str):
+                existing_review_keys.add(task_key)
+                match = re.fullmatch(r"review-recognition-(\d+)", task_key)
+                if match:
+                    next_review_number = max(next_review_number, int(match.group(1)))
+            existing_review_by_item[item_id] = (row, task_data)
         max_position = max((row["position"] for row in existing_tasks), default=-1)
 
-        due_items = [
-            due for due in _due_recognition(db, child_id, as_of_text)
-            if due["lesson_id"] == lesson_id
-        ]
-
         new_tasks_count = 0
-        for due in due_items:
-            if due["item_id"] in existing_review_item_ids:
+        for due, review_lesson, chars in due_contexts:
+            existing = existing_review_by_item.get(due["item_id"])
+            if existing:
+                row, existing_task = existing
+                existing_payload = existing_task.get("taskData") or {}
+                if (
+                    row["child_id"] != child_id or row["session_id"] != flow_id or
+                    row["lesson_id"] != due["lesson_id"] or row["task_type"] != "REVIEW_RECOGNITION" or
+                    row["skill_domain"] != "recognition" or existing_task.get("id") != row["id"] or
+                    existing_task.get("lessonId") != due["lesson_id"] or existing_task.get("itemId") != due["item_id"] or
+                    existing_task.get("sourceQueue") != "REVIEW" or existing_task.get("taskType") != "REVIEW_RECOGNITION" or
+                    existing_payload.get("audioText") != due["character"] or existing_payload.get("dueAt") != due["due_at"]
+                ):
+                    raise ValueError("learning_flow_review_task_identity_mismatch")
                 continue
 
-            distractor = next((value for value in chars if value != due["character"]), lesson["title"])
+            distractor = next((value for value in chars if value != due["character"]), None)
+            if distractor is None:
+                raise ValueError("learning_flow_review_distractor_not_supported")
             correct_id = "option-2"
             choices = [{"id": "option-1", "label": distractor}, {"id": correct_id, "label": due["character"]}]
-            review_key = f"review-recognition-{existing_review_count + new_tasks_count + 1}"
+            next_review_number += 1
+            review_key = f"review-recognition-{next_review_number}"
+            while review_key in existing_review_keys:
+                next_review_number += 1
+                review_key = f"review-recognition-{next_review_number}"
             task = _task(
                 review_key,
                 "REVIEW_RECOGNITION",
@@ -680,7 +730,8 @@ def reconcile_learning_session_reviews(*, child_id: int, session_id: str, as_of:
                     json.dumps(task, ensure_ascii=False, sort_keys=True),
                 ),
             )
-            existing_review_item_ids.add(due["item_id"])
+            existing_review_by_item[due["item_id"]] = (None, task)
+            existing_review_keys.add(review_key)
             new_tasks_count += 1
 
         if new_tasks_count > 0:

@@ -27,7 +27,8 @@ import {
   getLessonPackage,
   getStepsForMode,
   getScaffoldText,
-  selectReviewTasksForDueItems,
+  selectReviewTasksAcrossPackages,
+  validateReviewDueItems,
   type LessonPackage,
   type LessonStepDefinition,
   type PedagogyMode,
@@ -584,8 +585,11 @@ export function LessonPlayerPage({
 
   // Authoritative due review items extraction: strictly from executable session review tasks
   const authoritativeReviewTasks = useMemo(() => {
-    if (mode !== "REVIEW" || !pkg || dailyQueueStatus !== "SUCCESS") return null;
-    const currentTasks = selectReviewTasksForDueItems(session?.tasks, dailyQueueDueItems, pkg, resolvedLessonId);
+    if (
+      mode !== "REVIEW" || !pkg || dailyQueueStatus !== "SUCCESS" || !session?.id ||
+      session.childId !== activeChildId || session.sessionId !== session.id
+    ) return null;
+    const currentTasks = selectReviewTasksAcrossPackages(session.tasks, dailyQueueDueItems, activeChildId, session.id);
     if (!currentTasks) return null;
     if (reviewSessionTasks.length === 0) return currentTasks;
 
@@ -739,6 +743,8 @@ export function LessonPlayerPage({
     try {
       const current = await api<{
         id: string;
+        sessionId?: string;
+        childId?: number;
         status: string;
         lessonId?: string;
         masteryStatus?: string | null;
@@ -777,6 +783,8 @@ export function LessonPlayerPage({
       } else {
         const started = await api<{
           id: string;
+          sessionId?: string;
+          childId?: number;
           status: string;
           lessonId?: string;
           masteryStatus?: string | null;
@@ -807,14 +815,13 @@ export function LessonPlayerPage({
 
       if (mode === "REVIEW" || initialMode === "REVIEW") {
         const tasksForDueItems = (s: typeof session, dueItems: unknown) => {
-          if (!s) return null;
-          const sessionLessonId = s.curriculumContext?.lessonId || s.lessonId || lessonId || "book1-l01";
-          const reviewPkg = getLessonPackage(sessionLessonId);
-          return reviewPkg ? selectReviewTasksForDueItems(s.tasks, dueItems, reviewPkg, sessionLessonId) : null;
+          if (!s || !s.id || s.childId !== activeChildId || s.sessionId !== s.id) return null;
+          return selectReviewTasksAcrossPackages(s.tasks, dueItems, activeChildId, s.id);
         };
 
         try {
           const dq = await api<{
+            childId?: number;
             review?: {
               sourceQueue?: string;
               dueCount?: number;
@@ -825,6 +832,7 @@ export function LessonPlayerPage({
           if (
             !dq ||
             typeof dq !== "object" ||
+            dq.childId !== activeChildId ||
             !dq.review ||
             dq.review.sourceQueue !== "REVIEW" ||
             typeof dq.review.dueCount !== "number" ||
@@ -848,17 +856,14 @@ export function LessonPlayerPage({
                 setError(text.taskFailed);
                 return;
               }
+              if (!validateReviewDueItems(dq.review.items)) {
+                setError(text.taskFailed);
+                return;
+              }
               let effectiveSession = sessionRef.current;
               let exactTasks = tasksForDueItems(effectiveSession, dq.review.items);
               if (!exactTasks) {
                 try {
-                  const sessionLessonId = effectiveSession?.curriculumContext?.lessonId || effectiveSession?.lessonId || lessonId || "book1-l01";
-                  // The reconciliation endpoint is scoped to the active session's lesson.
-                  // Out-of-scope due rows therefore remain unmatched and fail closed below.
-                  if (dq.review.items.some((item) => item?.lessonId !== sessionLessonId)) {
-                    setError(text.taskFailed);
-                    return;
-                  }
                   const targetSessionId = effectiveSession?.id || "current";
                   const reconciled = await api<typeof session>(
                     `/api/children/${activeChildId}/learning-sessions/${targetSessionId}/reconcile-reviews`,
@@ -867,7 +872,11 @@ export function LessonPlayerPage({
                       body: "{}",
                     }
                   );
-                  if (reconciled && reconciled.id && reconciled.id === effectiveSession?.id) {
+                  if (
+                    reconciled && reconciled.id && reconciled.id === effectiveSession?.id &&
+                    reconciled.sessionId === reconciled.id && reconciled.childId === activeChildId &&
+                    reconciled.status === "IN_PROGRESS"
+                  ) {
                     effectiveSession = reconciled;
                     sessionRef.current = reconciled;
                     setSession(reconciled);

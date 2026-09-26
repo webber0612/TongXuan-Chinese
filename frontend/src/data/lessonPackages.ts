@@ -27,26 +27,55 @@ export function getAllLessonPackages(): LessonPackage[] {
   return Object.values(LESSON_PACKAGES);
 }
 
+function plannerCharacterSet(lessonId: string): Set<string> {
+  const lesson = officialCoursePath.stages.flatMap((stage) => stage.lessons).find((item) => item.id === lessonId);
+  return new Set(lesson?.official.title.match(/[\u3400-\u9fff]/g) ?? []);
+}
+
+/** Validate Daily Queue rows against the currently executable lesson slice. */
+export function validateReviewDueItems(dueItems: unknown): dueItems is Array<{ id: string; character: string; lessonId: string; dueAt: string }> {
+  if (!Array.isArray(dueItems)) return false;
+  const ids = new Set<string>();
+  return dueItems.every((item: any) => {
+    if (
+      !item || typeof item !== "object" ||
+      typeof item.id !== "string" || !item.id.trim() || ids.has(item.id) ||
+      typeof item.lessonId !== "string" || !getLessonPackage(item.lessonId) ||
+      typeof item.character !== "string" || !plannerCharacterSet(item.lessonId).has(item.character) ||
+      typeof item.dueAt !== "string" || !Number.isFinite(Date.parse(item.dueAt))
+    ) return false;
+    ids.add(item.id);
+    return true;
+  });
+}
+
 export function buildReviewStepsFromDueItems(
-  pkg: LessonPackage,
+  _parentPkg: LessonPackage,
   dueItems: any[]
 ): LessonStepDefinition[] {
-  const validatedTasks = getAuthoritativeReviewTasks(dueItems, pkg);
+  const validatedTasks = getAuthoritativeReviewTasksAcrossPackages(dueItems);
   if (!validatedTasks) return [];
   const steps: LessonStepDefinition[] = [];
   let stepNum = 1;
 
   for (const due of validatedTasks) {
     const char = due.taskData!.audioText;
-    const charObj = pkg.characters.find((c) => c.char === char)!;
+    const reviewPkg = getLessonPackage(due.lessonId!);
+    if (!reviewPkg) return [];
+    const charObj = reviewPkg.characters.find((item) => item.char === char) ??
+      getAllLessonPackages().flatMap((lessonPackage) => lessonPackage.characters).find((item) => item.char === char);
+    if (!charObj?.pronunciation?.pinyin || !charObj.pronunciation.zhuyin) return [];
+    const packageRecognitionStep = reviewPkg.taskBlueprint.learnSteps.find(
+      (step) => step.stepKey === "characters" && step.domain === "recognition",
+    );
 
     steps.push({
       stepNumber: stepNum++,
       stepKey: "characters",
       domain: "recognition",
-      title: "到期生字複習",
+      title: packageRecognitionStep?.title ?? "到期生字複習",
       subtitle: `複習生字「${char}」`,
-      primaryAction: "確認答案",
+      primaryAction: packageRecognitionStep?.primaryAction ?? "確認答案",
       estimatedMinutes: 2,
       required: true,
       data: {
@@ -87,6 +116,8 @@ export function buildReviewStepsFromDueItems(
 
 export interface LearningFlowTaskContract {
   id?: string;
+  sessionId?: string;
+  childId?: number;
   key?: string;
   taskType?: string;
   sourceQueue?: string;
@@ -125,7 +156,7 @@ function isValidReviewTask(task: any, pkg: LessonPackage, expectedLessonId?: str
     !data || typeof data !== "object" ||
     typeof data.prompt !== "string" || !data.prompt.trim() ||
     typeof data.audioText !== "string" || !data.audioText.trim() ||
-    !pkg.characters.some((character) => character.char === data.audioText) ||
+    !plannerCharacterSet(pkg.lessonId).has(data.audioText) ||
     typeof data.dueAt !== "string" || !Number.isFinite(Date.parse(data.dueAt)) ||
     !Array.isArray(data.choices) || data.choices.length !== 2
   ) return false;
@@ -158,6 +189,25 @@ export function getAuthoritativeReviewTasks(
   return candidates as LearningFlowTaskContract[];
 }
 
+/** Validate mixed-lesson REVIEW rows independently using each row's executable package. */
+export function getAuthoritativeReviewTasksAcrossPackages(
+  tasks: unknown,
+  expectedSessionId?: string,
+): LearningFlowTaskContract[] | null {
+  if (!Array.isArray(tasks)) return null;
+  const candidates = tasks.filter(isReviewTaskCandidate);
+  if (!candidates.every((task: any) => {
+    const pkg = typeof task?.lessonId === "string" ? getLessonPackage(task.lessonId) : null;
+    return Boolean(pkg && isValidReviewTask(task, pkg, task.lessonId) &&
+      (!expectedSessionId || task.id === `${expectedSessionId}:${task.key}`));
+  })) return null;
+  const ids = candidates.map((task: any) => task.id);
+  const keys = candidates.map((task: any) => task.key);
+  const itemIds = candidates.map((task: any) => task.itemId);
+  if (new Set(ids).size !== ids.length || new Set(keys).size !== keys.length || new Set(itemIds).size !== itemIds.length) return null;
+  return candidates as LearningFlowTaskContract[];
+}
+
 export function selectReviewTasksForDueItems(
   tasks: unknown,
   dueItems: unknown,
@@ -174,13 +224,43 @@ export function selectReviewTasksForDueItems(
     if (
       !item || typeof item !== "object" ||
       typeof item.id !== "string" || !item.id.trim() || dueIds.has(item.id) ||
-      typeof item.character !== "string" || !pkg.characters.some((character) => character.char === item.character) ||
+      typeof item.character !== "string" || !plannerCharacterSet(expectedLessonId).has(item.character) ||
       typeof item.lessonId !== "string" || item.lessonId !== expectedLessonId ||
       typeof item.dueAt !== "string" || !Number.isFinite(Date.parse(item.dueAt))
     ) return null;
     dueIds.add(item.id);
     const exactTask = authoritativeTasks.find((task) => task.itemId === item.id);
     if (!exactTask || exactTask.lessonId !== item.lessonId || exactTask.taskData?.audioText !== item.character) return null;
+    selected.push(exactTask);
+  }
+  return selected;
+}
+
+/** Require exact set equality between the Daily Queue and backend task rows. */
+export function selectReviewTasksAcrossPackages(
+  tasks: unknown,
+  dueItems: unknown,
+  expectedChildId: number,
+  expectedSessionId: string,
+): LearningFlowTaskContract[] | null {
+  if (!validateReviewDueItems(dueItems)) return null;
+  const authoritativeTasks = getAuthoritativeReviewTasksAcrossPackages(tasks, expectedSessionId);
+  if (!authoritativeTasks) return null;
+  if (authoritativeTasks.some((task) => task.childId !== expectedChildId || task.sessionId !== expectedSessionId)) return null;
+  const byItemId = new Map(authoritativeTasks.map((task) => [task.itemId!, task]));
+  if (byItemId.size !== authoritativeTasks.length) return null;
+  const dueIds = new Set(dueItems.map((item) => item.id));
+  // A completed row can remain in a mixed session after its SRS item advances.
+  // It is historical evidence, not part of today's exact actionable due set.
+  if (authoritativeTasks.some((task) => !dueIds.has(task.itemId!) && task.state !== "COMPLETED")) return null;
+  const selected: LearningFlowTaskContract[] = [];
+  for (const item of dueItems) {
+    const exactTask = byItemId.get(item.id);
+    if (
+      !exactTask || exactTask.lessonId !== item.lessonId ||
+      exactTask.taskData?.audioText !== item.character ||
+      exactTask.taskData?.dueAt !== item.dueAt
+    ) return null;
     selected.push(exactTask);
   }
   return selected;
@@ -202,6 +282,14 @@ export function buildAuthoritativeLearnSteps(
   lessonMasteredBeforeSession = false,
 ): AuthoritativeLearnStepPlan {
   if (!Array.isArray(tasks) || tasks.length === 0) return { valid: false, steps: [] };
+  if (tasks.some((task) => task?.sourceQueue !== "CURRICULUM" && task?.sourceQueue !== "REVIEW")) {
+    return { valid: false, steps: [] };
+  }
+  // Cross-lesson review rows belong to the separate REVIEW cycle, not the
+  // parent LEARN curriculum plan. Keep their presence from invalidating or
+  // extending this lesson's exact planner task set.
+  const curriculumTasks = tasks.filter((task) => task?.sourceQueue === "CURRICULUM");
+  if (curriculumTasks.length === 0) return { valid: false, steps: [] };
 
   const ids = new Set<string>();
   const keys = new Set<string>();
@@ -242,13 +330,13 @@ export function buildAuthoritativeLearnSteps(
     return true;
   };
 
-  for (const task of tasks) {
+  for (const task of curriculumTasks) {
     if (
       typeof task.id !== "string" || task.id.length === 0 ||
       typeof task.key !== "string" || task.key.length === 0 ||
       typeof task.taskType !== "string" ||
       task.lessonId !== pkg.lessonId ||
-      !["CURRICULUM", "REVIEW"].includes(task.sourceQueue || "") ||
+      task.sourceQueue !== "CURRICULUM" ||
       !["PENDING", "IN_PROGRESS", "COMPLETED", "DEFERRED"].includes(task.state || "") ||
       typeof task.required !== "boolean" ||
       (task.required === false && !task.taskType.startsWith("WRITING_")) ||
@@ -285,42 +373,34 @@ export function buildAuthoritativeLearnSteps(
       if (!append(task, "sentence_pattern", null, { taskId: task.id, prompt: data.prompt, choices: data.choices })) return { valid: false, steps: [] };
       continue;
     }
-    if (task.taskType === "RECOGNITION" || task.taskType === "REVIEW_RECOGNITION" || task.taskType === "MINI_CHECK") {
+    if (task.taskType === "RECOGNITION" || task.taskType === "MINI_CHECK") {
       if (task.taskType === "MINI_CHECK" && data.mode === "reflection" && task.key === "mini-check-reflection" && task.skillDomain === null) {
         if (!Array.isArray(data.choices) || data.choices.length < 2 || typeof data.prompt !== "string") return { valid: false, steps: [] };
         if (!append(task, "mini_check", null, { taskId: task.id, prompt: data.prompt, choices: data.choices })) return { valid: false, steps: [] };
         continue;
       }
-      const review = task.taskType === "REVIEW_RECOGNITION";
       const recognitionKey = task.key.match(/^recognition-(\d+)$/);
       if (
         task.skillDomain !== "recognition" ||
-        (review && (task.sourceQueue !== "REVIEW" || !task.key.startsWith("review-"))) ||
-        (!review && (!recognitionKey || task.sourceQueue !== "CURRICULUM")) ||
+        !recognitionKey || task.sourceQueue !== "CURRICULUM" ||
         !Array.isArray(data.choices) || data.choices.length < 2 ||
         typeof data.audioText !== "string"
       ) return { valid: false, steps: [] };
-      if (review) {
-        if (!/^review-recognition-\d+$/.test(task.key) || typeof task.itemId !== "string" || task.itemId.length === 0) {
-          return { valid: false, steps: [] };
-        }
-      } else {
-        const characterIndex = Number(recognitionKey?.[1]);
-        const itemSuffix = `_${pkg.lessonId}_char_${characterIndex}`;
-        const itemPrefix = typeof task.itemId === "string" && task.itemId.endsWith(itemSuffix)
-          ? task.itemId.slice(0, -itemSuffix.length)
-          : "";
-        if (
-          !Number.isInteger(characterIndex) ||
-          characterIndex < 1 || characterIndex > plannerCharacters.length ||
-          data.audioText !== plannerCharacters[characterIndex - 1] ||
-          !data.choices.some((choice: any) => choice?.label === data.audioText) ||
-          !/^lf_\d+$/.test(itemPrefix) ||
-          !task.itemId ||
-          recognitionItemIds.has(task.itemId)
-        ) return { valid: false, steps: [] };
-        recognitionItemIds.add(task.itemId);
-      }
+      const characterIndex = Number(recognitionKey[1]);
+      const itemSuffix = `_${pkg.lessonId}_char_${characterIndex}`;
+      const itemPrefix = typeof task.itemId === "string" && task.itemId.endsWith(itemSuffix)
+        ? task.itemId.slice(0, -itemSuffix.length)
+        : "";
+      if (
+        !Number.isInteger(characterIndex) ||
+        characterIndex < 1 || characterIndex > plannerCharacters.length ||
+        data.audioText !== plannerCharacters[characterIndex - 1] ||
+        !data.choices.some((choice: any) => choice?.label === data.audioText) ||
+        !/^lf_\d+$/.test(itemPrefix) ||
+        !task.itemId ||
+        recognitionItemIds.has(task.itemId)
+      ) return { valid: false, steps: [] };
+      recognitionItemIds.add(task.itemId);
       const character = data.audioText;
       const canonicalCharacter = getAllLessonPackages()
         .flatMap((lessonPackage) => lessonPackage.characters)
@@ -334,7 +414,7 @@ export function buildAuthoritativeLearnSteps(
         strokeCount: 0,
         radical: "",
       };
-      if (!review && (!charObj.pronunciation?.pinyin || !charObj.pronunciation?.zhuyin)) return { valid: false, steps: [] };
+      if (!charObj.pronunciation?.pinyin || !charObj.pronunciation?.zhuyin) return { valid: false, steps: [] };
       if (!append(task, "characters", "recognition", { taskId: task.id, dueCharacter: character, charObj })) return { valid: false, steps: [] };
       continue;
     }
@@ -369,7 +449,7 @@ export function buildAuthoritativeLearnSteps(
   }
 
   const lessonDomains = plannerLesson;
-  const count = (taskType: string) => tasks.filter((task) => task.taskType === taskType).length;
+  const count = (taskType: string) => curriculumTasks.filter((task) => task.taskType === taskType).length;
   const exactlyOneForDomain: Record<string, string> = {
     listening: "LISTENING",
     vocabulary: "VOCABULARY",
@@ -381,7 +461,7 @@ export function buildAuthoritativeLearnSteps(
     if (lessonDomains.tongxuan.domains.includes(domain as any) && !lessonMasteredBeforeSession && count(taskType) !== 1) return { valid: false, steps: [] };
     if ((!lessonDomains.tongxuan.domains.includes(domain as any) || lessonMasteredBeforeSession) && count(taskType) !== 0) return { valid: false, steps: [] };
   }
-  const recognitionTasks = tasks.filter((task) =>
+  const recognitionTasks = curriculumTasks.filter((task) =>
     task.skillDomain === "recognition" && (task.taskType === "RECOGNITION" || task.taskType === "MINI_CHECK")
   );
   const recognitionExpected = lessonDomains.tongxuan.domains.includes("recognition") && !lessonMasteredBeforeSession;
@@ -414,9 +494,9 @@ export function buildAuthoritativeLearnSteps(
     })();
     if (!fullCharacterSet && !plannerPartialCharacterSet) return { valid: false, steps: [] };
   }
-  if (tasks.filter((task) => task.taskType === "MINI_CHECK" && task.taskData?.mode === "reflection").length !== 1) return { valid: false, steps: [] };
+  if (curriculumTasks.filter((task) => task.taskType === "MINI_CHECK" && task.taskData?.mode === "reflection").length !== 1) return { valid: false, steps: [] };
   if (!lessonMasteredBeforeSession && pkg.lessonId === "book1-l01" ? count("SENTENCE_PATTERN") !== 1 : count("SENTENCE_PATTERN") !== 0) return { valid: false, steps: [] };
-  if (wrapCount !== 1 || mappedIds.size !== tasks.length || steps.at(-1)?.stepKey !== "wrap_up") {
+  if (wrapCount !== 1 || mappedIds.size !== curriculumTasks.length || steps.at(-1)?.stepKey !== "wrap_up") {
     return { valid: false, steps: [] };
   }
   return { valid: true, steps };

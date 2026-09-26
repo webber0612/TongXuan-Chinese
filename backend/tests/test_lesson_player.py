@@ -879,7 +879,7 @@ def test_review_paused_session_reconciliation_and_answer(tmp_path):
             assert srs_row["stage"] == 2
 
 
-def test_review_cross_lesson_items_filtered(tmp_path):
+def test_review_cross_lesson_items_reconcile_complete_exact_set(tmp_path):
     from app.auth import issue_session
     from app.database import connect
     with make_client(tmp_path) as client:
@@ -903,27 +903,33 @@ def test_review_cross_lesson_items_filtered(tmp_path):
         )
         assert start_resp.status_code == 200
         session_id = start_resp.json()["id"]
+        pending_curriculum = next(
+            task for task in start_resp.json()["tasks"]
+            if task["sourceQueue"] == "CURRICULUM" and task["required"] and task["state"] == "PENDING"
+        )
 
-        # 2. 插入兩個 due items：
-        #    due item A: lesson_id = book1-l01 (item-a, '你')
-        #    due item B: lesson_id = starter-l01 (item-b, '字')
+        # 2. 讓前一冊的 basic-l01 對本 child 可用，並插入兩個不同 lesson 的 due rows。
         with connect() as db:
             db.execute(
                 "INSERT INTO learning_items(id,child_id,character,curriculum_source,provenance_status,created_at) "
-                "VALUES('item-a',?,'你','OFFICIAL_OCAC','VERIFIED_OFFICIAL_TITLE','2026-09-01T00:00:00Z'),"
-                "('item-b',?,'字','OFFICIAL_OCAC','VERIFIED_OFFICIAL_TITLE','2026-09-01T00:00:00Z')",
+                "VALUES('item-book1-ni',?,'你','OFFICIAL_OCAC','VERIFIED_OFFICIAL_TITLE','2026-09-01T00:00:00Z'),"
+                "('item-basic-hao',?,'好','OFFICIAL_OCAC','VERIFIED_OFFICIAL_TITLE','2026-09-01T00:00:00Z')",
                 (child_id, child_id),
             )
             db.execute(
                 "INSERT INTO curriculum_item_links(child_id,skill_domain,item_id,lesson_id) "
-                "VALUES(?,'recognition','item-a','book1-l01'),(?,'recognition','item-b','starter-l01')",
+                "VALUES(?,'recognition','item-book1-ni','book1-l01'),(?,'recognition','item-basic-hao','basic-l01')",
                 (child_id, child_id),
             )
             db.execute(
                 "INSERT INTO srs_review_states(child_id,skill_domain,item_id,stage,due_at,last_result,last_assisted,updated_at) "
-                "VALUES(?,'recognition','item-a',1,'2026-09-02T00:00:00Z','correct',0,'2026-09-01T00:00:00Z'),"
-                "(?,'recognition','item-b',1,'2026-09-02T00:00:00Z','correct',0,'2026-09-01T00:00:00Z')",
+                "VALUES(?,'recognition','item-book1-ni',1,'2026-09-02T00:00:00Z','correct',0,'2026-09-01T00:00:00Z'),"
+                "(?,'recognition','item-basic-hao',1,'2026-09-02T00:00:00Z','correct',0,'2026-09-01T00:00:00Z')",
                 (child_id, child_id),
+            )
+            db.execute(
+                "INSERT INTO curriculum_lesson_states(child_id,lesson_id,soft_unlocked) VALUES(?, 'basic-l01', 1)",
+                (child_id,),
             )
 
         as_of_eval = "2026-09-05T00:00:00Z"
@@ -931,31 +937,162 @@ def test_review_cross_lesson_items_filtered(tmp_path):
         # 3. Daily Queue 必須確認兩者皆 due
         dq_resp = client.get(f"/api/children/{child_id}/learning-daily-queue?as_of={as_of_eval}")
         assert dq_resp.status_code == 200
-        dq_items = dq_resp.json()["review"]["items"]
-        assert len(dq_items) == 2
-        assert any(it["id"] == "item-a" and it["lessonId"] == "book1-l01" for it in dq_items)
-        assert any(it["id"] == "item-b" and it["lessonId"] == "starter-l01" for it in dq_items)
+        dq_review = dq_resp.json()["review"]
+        dq_items = dq_review["items"]
+        assert dq_review["dueCount"] == 2
+        assert {(it["id"], it["lessonId"]) for it in dq_items} == {
+            ("item-book1-ni", "book1-l01"),
+            ("item-basic-hao", "basic-l01"),
+        }
 
-        # 4. 執行 reconcile on active session (book1-l01)
+        # 4. 對 parent book1-l01 session reconcile the exact cross-lesson due set.
         reconcile_resp = client.post(
             f"/api/children/{child_id}/learning-sessions/{session_id}/reconcile-reviews?as_of={as_of_eval}"
         )
         assert reconcile_resp.status_code == 200
         reconciled = reconcile_resp.json()
 
-        # 5. 驗證：
-        #    - 只新增 A (item-a)
-        #    - B 不得新增
-        #    - B 不得被 relabel 成 book1-l01
         review_tasks = [t for t in reconciled["tasks"] if t["sourceQueue"] == "REVIEW"]
-        assert len(review_tasks) == 1
-        assert review_tasks[0]["itemId"] == "item-a"
-        assert review_tasks[0]["lessonId"] == "book1-l01"
+        assert len(review_tasks) == dq_review["dueCount"]
+        by_item = {task["itemId"]: task for task in review_tasks}
+        assert set(by_item) == {"item-book1-ni", "item-basic-hao"}
+        assert (by_item["item-book1-ni"]["lessonId"], by_item["item-book1-ni"]["id"]) == (
+            "book1-l01", f"{session_id}:review-recognition-2"
+        )
+        assert (by_item["item-basic-hao"]["lessonId"], by_item["item-basic-hao"]["id"]) == (
+            "basic-l01", f"{session_id}:review-recognition-1"
+        )
+        assert by_item["item-book1-ni"]["taskData"]["audioText"] == "你"
+        assert by_item["item-basic-hao"]["taskData"]["audioText"] == "好"
+        assert all(task["childId"] == child_id and task["sessionId"] == session_id for task in review_tasks)
+        assert by_item["item-book1-ni"]["taskData"]["choices"] == [
+            {"id": "option-1", "label": "好"}, {"id": "option-2", "label": "你"}
+        ]
+        assert by_item["item-basic-hao"]["taskData"]["choices"] == [
+            {"id": "option-1", "label": "你"}, {"id": "option-2", "label": "好"}
+        ]
+        assert reconciled["status"] == "IN_PROGRESS"
+        assert next(t for t in reconciled["tasks"] if t["id"] == pending_curriculum["id"])["state"] == "PENDING"
 
-        # 確認 session 中沒有任何 task 的 itemId 是 item-b
-        assert not any(t["itemId"] == "item-b" for t in reconciled["tasks"])
+        # Retry before answering must return the same authoritative rows without duplicates.
+        retry_resp = client.post(
+            f"/api/children/{child_id}/learning-sessions/{session_id}/reconcile-reviews?as_of={as_of_eval}"
+        )
+        assert retry_resp.status_code == 200
+        retry_tasks = [t for t in retry_resp.json()["tasks"] if t["sourceQueue"] == "REVIEW"]
+        assert {task["itemId"]: task["id"] for task in retry_tasks} == {
+            "item-book1-ni": by_item["item-book1-ni"]["id"],
+            "item-basic-hao": by_item["item-basic-hao"]["id"],
+        }
 
-        # 6. Daily Queue 仍保留 B
-        dq_after = client.get(f"/api/children/{child_id}/learning-daily-queue?as_of={as_of_eval}").json()
-        assert any(it["id"] == "item-b" and it["lessonId"] == "starter-l01" for it in dq_after["review"]["items"])
+        # Complete both exact task identities and verify per-item evidence/SRS settlement.
+        for item_id in ("item-book1-ni", "item-basic-hao"):
+            task_id = by_item[item_id]["id"]
+            answer_resp = client.post(
+                f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{task_id}/answer",
+                json={"selected_option_id": "option-2"},
+            )
+            assert answer_resp.status_code == 200
+            answer_data = answer_resp.json()
+            assert next(task for task in answer_data["tasks"] if task["id"] == task_id)["state"] == "COMPLETED"
+            assert answer_data["status"] == "IN_PROGRESS"
+            assert next(task for task in answer_data["tasks"] if task["id"] == pending_curriculum["id"])["state"] == "PENDING"
+
+        with connect() as db:
+            rows = db.execute(
+                "SELECT child_id,session_id,lesson_id,activity_item_id,state FROM learning_flow_tasks "
+                "WHERE session_id=? AND source_queue='REVIEW' ORDER BY position",
+                (session_id,),
+            ).fetchall()
+            assert {(row["child_id"], row["session_id"], row["lesson_id"], row["activity_item_id"], row["state"]) for row in rows} == {
+                (child_id, session_id, "book1-l01", "item-book1-ni", "COMPLETED"),
+                (child_id, session_id, "basic-l01", "item-basic-hao", "COMPLETED"),
+            }
+            assert len(rows) == 2
+            for item_id in ("item-book1-ni", "item-basic-hao"):
+                srs_row = db.execute(
+                    "SELECT stage,due_at,last_result FROM srs_review_states WHERE child_id=? AND skill_domain='recognition' AND item_id=?",
+                    (child_id, item_id),
+                ).fetchone()
+                assert srs_row["stage"] == 2
+                assert srs_row["last_result"] == "correct"
+                assert srs_row["due_at"] > as_of_eval
+                assert db.execute(
+                    "SELECT COUNT(*) AS count FROM srs_review_events WHERE child_id=? AND skill_domain='recognition' AND item_id=?",
+                    (child_id, item_id),
+                ).fetchone()["count"] == 1
+                assert db.execute(
+                    "SELECT COUNT(*) AS count FROM learning_flow_task_attempts WHERE task_id=?",
+                    (by_item[item_id]["id"],),
+                ).fetchone()["count"] == 1
+            session_state = db.execute("SELECT status FROM learning_flow_sessions WHERE id=?", (session_id,)).fetchone()
+            curriculum_state = db.execute("SELECT state FROM learning_flow_tasks WHERE id=?", (pending_curriculum["id"],)).fetchone()
+            assert session_state["status"] == "IN_PROGRESS"
+            assert curriculum_state["state"] == "PENDING"
+
+        # A post-completion retry cannot create tasks/evidence or advance either SRS row twice.
+        final_retry = client.post(
+            f"/api/children/{child_id}/learning-sessions/{session_id}/reconcile-reviews?as_of={as_of_eval}"
+        )
+        assert final_retry.status_code == 200
+        final_tasks = [t for t in final_retry.json()["tasks"] if t["sourceQueue"] == "REVIEW"]
+        assert {task["itemId"]: task["id"] for task in final_tasks} == {
+            "item-book1-ni": by_item["item-book1-ni"]["id"],
+            "item-basic-hao": by_item["item-basic-hao"]["id"],
+        }
+        with connect() as db:
+            assert db.execute("SELECT COUNT(*) AS count FROM srs_review_events WHERE child_id=? AND skill_domain='recognition'", (child_id,)).fetchone()["count"] == 2
+            assert db.execute("SELECT COUNT(*) AS count FROM learning_flow_task_attempts WHERE session_id=?", (session_id,)).fetchone()["count"] == 2
+
+
+def test_review_unsupported_due_item_fails_before_partial_reconciliation(tmp_path):
+    from app.auth import issue_session
+    from app.database import connect
+    with make_client(tmp_path) as client:
+        child_resp = client.post("/api/children", json={"name": "小安"})
+        child_id = child_resp.json()["id"]
+        parent_token = issue_session(subject="parent", role="parent", child_ids=[child_id])
+        parent_headers = {"Authorization": f"Bearer {parent_token}"}
+        client.put(
+            f"/api/children/{child_id}/placement-profile",
+            headers=parent_headers,
+            json={"domain_levels": {"listening": "BOOK_1", "recognition": "BOOK_1", "speaking": "BOOK_1", "writing": "STARTER"}},
+        )
+        start_resp = client.post(
+            f"/api/children/{child_id}/learning-sessions",
+            json={"target_minutes": 18, "lesson_id": "book1-l01", "as_of": "2026-09-01T00:00:00Z"},
+        )
+        assert start_resp.status_code == 200
+        session_id = start_resp.json()["id"]
+        pending_curriculum = next(task for task in start_resp.json()["tasks"] if task["sourceQueue"] == "CURRICULUM" and task["required"] and task["state"] == "PENDING")
+
+        with connect() as db:
+            db.execute(
+                "INSERT INTO learning_items(id,child_id,character,curriculum_source,provenance_status,created_at) VALUES "
+                "('item-a-supported',?,'你','OFFICIAL_OCAC','VERIFIED_OFFICIAL_TITLE','2026-09-01T00:00:00Z'),"
+                "('item-b-unsupported',?,'家','OFFICIAL_OCAC','VERIFIED_OFFICIAL_TITLE','2026-09-01T00:00:00Z')",
+                (child_id, child_id),
+            )
+            db.execute(
+                "INSERT INTO curriculum_item_links(child_id,skill_domain,item_id,lesson_id) VALUES "
+                "(?,'recognition','item-a-supported','book1-l01'),(?,'recognition','item-b-unsupported','book1-l02')",
+                (child_id, child_id),
+            )
+            db.execute(
+                "INSERT INTO srs_review_states(child_id,skill_domain,item_id,stage,due_at,last_result,last_assisted,updated_at) VALUES "
+                "(?,'recognition','item-a-supported',1,'2026-09-02T00:00:00Z','correct',0,'2026-09-01T00:00:00Z'),"
+                "(?,'recognition','item-b-unsupported',1,'2026-09-02T00:00:00Z','correct',0,'2026-09-01T00:00:00Z')",
+                (child_id, child_id),
+            )
+            db.execute("INSERT INTO curriculum_lesson_states(child_id,lesson_id,soft_unlocked) VALUES(?, 'book1-l02', 1)", (child_id,))
+
+        response = client.post(
+            f"/api/children/{child_id}/learning-sessions/{session_id}/reconcile-reviews?as_of=2026-09-05T00:00:00Z"
+        )
+        assert response.status_code == 400
+        assert response.json()["detail"] == "learning_flow_review_lesson_not_supported"
+        with connect() as db:
+            assert db.execute("SELECT COUNT(*) AS count FROM learning_flow_tasks WHERE session_id=? AND source_queue='REVIEW'", (session_id,)).fetchone()["count"] == 0
+            assert db.execute("SELECT status FROM learning_flow_sessions WHERE id=?", (session_id,)).fetchone()["status"] == "IN_PROGRESS"
+            assert db.execute("SELECT state FROM learning_flow_tasks WHERE id=?", (pending_curriculum["id"],)).fetchone()["state"] == "PENDING"
 
