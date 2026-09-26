@@ -516,14 +516,22 @@ export function LessonPlayerPage({
   const [exitTicketAnswers, setExitTicketAnswers] = useState<Record<string, string>>({});
   const [exitTicketSubmitted, setExitTicketSubmitted] = useState(false);
   const [weakDomains, setWeakDomains] = useState<string[]>([]);
+  const [repairTaskIds, setRepairTaskIds] = useState<string[]>([]);
   const [sessionCompleted, setSessionCompleted] = useState(false);
   const [activeCharIndex, setActiveCharIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [pendingRepairResume, setPendingRepairResume] = useState<{
+    sessionId: string;
+    lessonId: string;
+    weakDomains: string[];
+  } | null>(null);
 
   // Authoritative backend session state
   const [session, setSession] = useState<{
     id: string;
+    sessionId?: string;
+    childId?: number;
     status: string;
     lessonId?: string;
     masteryStatus?: string | null;
@@ -591,18 +599,28 @@ export function LessonPlayerPage({
   const steps: LessonStepDefinition[] = useMemo(() => {
     if (!pkg) return [];
     if (mode === "LEARN" && activeChildId) return authoritativeLearnPlan?.steps ?? [];
-    return getStepsForMode(pkg, mode, weakDomains, authoritativeDueItems);
-  }, [pkg, mode, activeChildId, authoritativeLearnPlan, weakDomains, authoritativeDueItems]);
+    return getStepsForMode(pkg, mode, weakDomains, authoritativeDueItems, mode === "REPAIR" ? session?.tasks : undefined, mode === "REPAIR" ? repairTaskIds : undefined);
+  }, [pkg, mode, activeChildId, authoritativeLearnPlan, weakDomains, authoritativeDueItems, session?.tasks, repairTaskIds]);
 
   const currentStep = steps[currentStepIndex] ?? null;
   const learnPlanValid = !activeChildId || mode !== "LEARN" || authoritativeLearnPlan?.valid === true;
   const learnSessionReady = mode !== "LEARN" || !activeChildId || (session?.status === "IN_PROGRESS" && learnPlanValid);
+  const repairSessionReady = mode !== "REPAIR" || !activeChildId || (
+    session?.status === "IN_PROGRESS" && repairTaskIds.length > 0 && new Set(repairTaskIds).size === repairTaskIds.length
+  );
+  const playerSessionReady = learnSessionReady && repairSessionReady && pendingRepairResume === null;
 
   useEffect(() => {
     if (mode === "LEARN" && activeChildId && session?.status === "IN_PROGRESS" && !learnPlanValid) {
       setError(text.taskFailed);
     }
   }, [mode, activeChildId, session?.status, learnPlanValid, text.taskFailed]);
+
+  useEffect(() => {
+    if (mode === "REPAIR" && activeChildId && !busy && session?.status === "IN_PROGRESS" && steps.length === 0) {
+      setError(text.taskFailed);
+    }
+  }, [mode, activeChildId, busy, session?.status, steps.length, text.taskFailed]);
 
   useEffect(() => {
     if (mode === "REVIEW" && !busy && dailyQueueStatus === "SUCCESS" && session && pkg && authoritativeReviewTasks === null) {
@@ -629,6 +647,83 @@ export function LessonPlayerPage({
     }
     onBack();
   };
+
+  const handleCompleteRepair = () => {
+    if (!activeChildId) {
+      onBack();
+      return;
+    }
+    const currentSess = sessionRef.current;
+    const ids = repairTaskIds;
+    const exactTasks = currentSess?.tasks?.filter((task) => ids.includes(task.id)) ?? [];
+    if (
+      !currentSess?.id || currentSess.status !== "IN_PROGRESS" || ids.length === 0 ||
+      new Set(ids).size !== ids.length || exactTasks.length !== ids.length ||
+      exactTasks.some((task) => task.sourceQueue !== "CURRICULUM" || task.lessonId !== resolvedLessonId ||
+        !task.skillDomain || !weakDomains.includes(task.skillDomain) ||
+        (task.state !== "COMPLETED" && !(task.state === "DEFERRED" && task.taskType.startsWith("WRITING_"))))
+    ) {
+      setError(text.taskFailed);
+      return;
+    }
+    // REPAIR reconciles exact existing curriculum tasks only. It must not settle
+    // the parent LEARN session or trigger whole-session rewards/mastery.
+    onBack();
+  };
+
+  const resumeFastTrackRepair = useCallback(async (target: { sessionId: string; lessonId: string; weakDomains: string[] }) => {
+    if (!activeChildId) {
+      setError(text.taskFailed);
+      return false;
+    }
+    setBusy(true);
+    setError(null);
+    setPendingRepairResume(target);
+    try {
+      const resumed = await api<NonNullable<typeof session>>(
+        `/api/children/${activeChildId}/learning-sessions`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            lesson_id: target.lessonId,
+            expected_session_id: target.sessionId,
+            target_minutes: 18,
+            script_mode: locale === "zh-CN" ? "SIMPLIFIED" : "TRADITIONAL",
+          }),
+        },
+      );
+      const returnedId = resumed?.sessionId || resumed?.id;
+      const returnedLessonId = resumed?.curriculumContext?.lessonId || resumed?.lessonId;
+      if (
+        !resumed || returnedId !== target.sessionId || resumed.id !== target.sessionId ||
+        resumed.childId !== activeChildId ||
+        returnedLessonId !== target.lessonId || resumed.status !== "IN_PROGRESS" ||
+        !Array.isArray(resumed.tasks)
+      ) throw new Error(text.taskFailed);
+
+      sessionRef.current = resumed;
+      setSession(resumed);
+      setWeakDomains(target.weakDomains);
+      const repairPkg = getLessonPackage(target.lessonId);
+      const initialRepairSteps = repairPkg
+        ? getStepsForMode(repairPkg, "REPAIR", target.weakDomains, [], resumed.tasks)
+        : [];
+      setRepairTaskIds(initialRepairSteps
+        .filter((step) => step.stepKey !== "wrap_up")
+        .flatMap((step) => step.data.taskId ? [step.data.taskId as string] : Array.isArray(step.data.taskIds) ? step.data.taskIds as string[] : []));
+      setCurrentStepIndex(0);
+      setNextReviewDueAt(null);
+      setMasteryStatus(resumed.masteryStatus || "IN_PROGRESS");
+      setPendingRepairResume(null);
+      setMode("REPAIR");
+      return true;
+    } catch (err: any) {
+      setError(err?.message || text.taskFailed);
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  }, [activeChildId, locale, text.taskFailed]);
 
   // Authoritative session initialization
   const initSession = useCallback(async () => {
@@ -1249,6 +1344,7 @@ export function LessonPlayerPage({
 
   const handleStartFastTrack = () => {
     setMode("FAST_TRACK");
+    setRepairTaskIds([]);
     setCurrentStepIndex(0);
     setSelectedChoices({});
     setExitTicketAnswers({});
@@ -1260,6 +1356,32 @@ export function LessonPlayerPage({
 
   const handleNextStep = async () => {
     if (!currentStep || !pkg) return;
+
+    if (mode === "REPAIR") {
+      if (pendingRepairResume || !repairSessionReady) {
+        setError(text.taskFailed);
+        return;
+      }
+      const currentSess = sessionRef.current;
+      if (!currentSess?.id || currentSess.status !== "IN_PROGRESS") {
+        setError(text.taskFailed);
+        return;
+      }
+      const ids = currentStep.data.taskId
+        ? [currentStep.data.taskId as string]
+        : Array.isArray(currentStep.data.taskIds) ? currentStep.data.taskIds as string[] : [];
+      if (currentStep.stepKey !== "wrap_up") {
+        const exactTasks = currentSess.tasks?.filter((task) => ids.includes(task.id)) ?? [];
+        if (!ids.length || exactTasks.length !== ids.length || exactTasks.some((task) =>
+          task.sourceQueue !== "CURRICULUM" || task.lessonId !== resolvedLessonId ||
+          !task.skillDomain || !weakDomains.includes(task.skillDomain) ||
+          (task.state !== "PENDING" && task.state !== "IN_PROGRESS" && task.state !== "COMPLETED" && task.state !== "DEFERRED")
+        )) {
+          setError(text.taskFailed);
+          return;
+        }
+      }
+    }
 
     if (activeChildId) {
       const currentSess = sessionRef.current;
@@ -1547,10 +1669,24 @@ export function LessonPlayerPage({
       }
     }
 
+    if (mode === "REPAIR" && activeChildId && currentStep.stepKey !== "wrap_up") {
+      const ids = currentStep.data.taskId
+        ? [currentStep.data.taskId as string]
+        : Array.isArray(currentStep.data.taskIds) ? currentStep.data.taskIds as string[] : [];
+      const exactTasks = sessionRef.current?.tasks?.filter((task) => ids.includes(task.id)) ?? [];
+      if (!ids.length || exactTasks.length !== ids.length || exactTasks.some((task) =>
+        task.state !== "COMPLETED" && !(task.state === "DEFERRED" && task.taskType.startsWith("WRITING_"))
+      )) {
+        setError(text.taskFailed);
+        return;
+      }
+    }
+
     if (currentStepIndex < steps.length - 1) {
       setCurrentStepIndex((prev) => prev + 1);
     } else {
       if (mode === "REVIEW") handleCompleteReview();
+      else if (mode === "REPAIR") handleCompleteRepair();
       else void handleCompleteSession();
     }
   };
@@ -1772,12 +1908,19 @@ export function LessonPlayerPage({
 
     if (mode === "FAST_TRACK") {
       if (activeChildId) {
+        const currentSess = sessionRef.current;
+        const currentLessonId = currentSess?.curriculumContext?.lessonId || currentSess?.lessonId || resolvedLessonId;
+        if (!currentSess?.id || currentSess.status !== "IN_PROGRESS" || currentLessonId !== resolvedLessonId || pendingRepairResume) {
+          setError(text.taskFailed);
+          return;
+        }
+        setBusy(true);
         try {
           const res = await api<any>(
             `/api/children/${activeChildId}/lesson-packages/${resolvedLessonId}/fast-track`,
             {
               method: "POST",
-              body: JSON.stringify({ answers: exitTicketAnswers }),
+              body: JSON.stringify({ session_id: currentSess.id, answers: exitTicketAnswers }),
             }
           );
 
@@ -1785,6 +1928,8 @@ export function LessonPlayerPage({
             setError(text.taskFailed);
             return;
           }
+
+          const exactIdentity = res.childId === activeChildId && res.sessionId === currentSess.id && res.lessonId === resolvedLessonId;
 
           if (res.passed === true) {
             const validWeakDomains = Array.isArray(res.weakDomains) &&
@@ -1816,17 +1961,16 @@ export function LessonPlayerPage({
             const validNextMode = res.nextMode === "REPAIR";
             const validNextReviewDueAt = res.nextReviewDueAt === null;
 
-            if (!validWeakDomains || !validMastery || !validNextMode || !validNextReviewDueAt) {
+            if (!exactIdentity || res.sessionStatus !== "PAUSED" || res.terminationReason !== "FAST_TRACK_FAILED" || !validWeakDomains || !validMastery || !validNextMode || !validNextReviewDueAt) {
               setError(text.taskFailed);
               return;
             }
 
             setExitTicketSubmitted(true);
-            setWeakDomains(res.weakDomains);
-            setMode("REPAIR");
-            setCurrentStepIndex(0); // Immediately transition into REPAIR mode tasks!
+            setPendingRepairResume({ sessionId: currentSess.id, lessonId: resolvedLessonId, weakDomains: res.weakDomains });
             setNextReviewDueAt(null);
             setMasteryStatus("IN_PROGRESS");
+            await resumeFastTrackRepair({ sessionId: currentSess.id, lessonId: resolvedLessonId, weakDomains: res.weakDomains });
             return;
           }
 
@@ -1836,6 +1980,8 @@ export function LessonPlayerPage({
           // FAIL CLOSED! No local fallback!
           setError(err?.message || text.taskFailed);
           return;
+        } finally {
+          setBusy(false);
         }
       }
 
@@ -1901,6 +2047,10 @@ export function LessonPlayerPage({
   };
 
   const handleCompleteSession = async () => {
+    if (mode === "REPAIR") {
+      setError(text.taskFailed);
+      return;
+    }
     if (!activeChildId) {
       setSessionCompleted(true);
       if (onCompleteLesson) {
@@ -2012,7 +2162,9 @@ export function LessonPlayerPage({
       {error && (
         <div className="error-strip" role="alert" style={{ margin: "0.5rem 1rem" }}>
           <span>{error}</span>
-          <button type="button" className="button button-text" onClick={() => void initSession()}>
+          <button type="button" className="button button-text" onClick={() => pendingRepairResume
+            ? void resumeFastTrackRepair(pendingRepairResume)
+            : void initSession()}>
             {text.retry}
           </button>
         </div>
@@ -2120,7 +2272,7 @@ export function LessonPlayerPage({
       )}
 
       {/* Primary Single Column Content View */}
-      {currentStep && learnSessionReady && (
+      {currentStep && playerSessionReady && (
         <article className="lesson-step-card" data-step-key={currentStep.stepKey}>
           <header className="step-card-header">
             <div className="step-badge-pill">
@@ -2576,7 +2728,8 @@ export function LessonPlayerPage({
                               key={c.id}
                               type="button"
                               className={`choice-card-btn ${isPicked ? "selected" : ""}`}
-                              onClick={() => setExitTicketAnswers((prev) => ({ ...prev, [q.id]: c.id }))}
+                        onClick={() => setExitTicketAnswers((prev) => ({ ...prev, [q.id]: c.id }))}
+                        disabled={busy || pendingRepairResume !== null}
                             >
                               <span className="choice-label">{c.label}</span>
                               {exitTicketSubmitted && c.isCorrect && <span className="feedback-badge positive">✓ 正確</span>}
@@ -2595,7 +2748,7 @@ export function LessonPlayerPage({
                   type="button"
                   className="button button-primary submit-exit-ticket-btn"
                   onClick={handleExitTicketSubmit}
-                  disabled={
+                  disabled={busy || pendingRepairResume !== null ||
                     Object.keys(exitTicketAnswers).length !== (currentStep.data.questions?.length ?? 0)
                   }
                 >
@@ -2663,7 +2816,17 @@ export function LessonPlayerPage({
             </div>
           )}
 
-          {currentStep.stepKey === "wrap_up" && mode !== "REVIEW" && (
+          {currentStep.stepKey === "wrap_up" && mode === "REPAIR" && (
+            <div className="step-body step-wrap-up-body">
+              <div className="session-settlement-card">
+                <div className="settlement-trophy-icon"><CheckCircle2 size={44} /></div>
+                <h3 className="settlement-title">補強練習完成</h3>
+                <p>本輪指定補強已記錄；原課程進度會保留在今日學習中。</p>
+              </div>
+            </div>
+          )}
+
+          {currentStep.stepKey === "wrap_up" && mode !== "REVIEW" && mode !== "REPAIR" && (
             <div className="step-body step-wrap-up-body">
               <div className="session-settlement-card">
                 <div className="settlement-trophy-icon">
@@ -2723,7 +2886,7 @@ export function LessonPlayerPage({
                   className="button button-primary next-step-cta-btn"
                   onClick={handleNextStep}
                   disabled={
-                    !learnSessionReady ||
+                    !playerSessionReady ||
                     (currentStep.stepKey === "exit_ticket" && !exitTicketSubmitted) ||
                     (currentStep.stepKey === "mini_check" && !selectedChoices[currentStep.data.taskId])
                   }
@@ -2735,7 +2898,7 @@ export function LessonPlayerPage({
                 <button
                   type="button"
                   className="button button-primary finish-session-cta-btn"
-                  onClick={mode === "REVIEW" ? handleCompleteReview : handleCompleteSession}
+                  onClick={mode === "REVIEW" ? handleCompleteReview : mode === "REPAIR" ? handleCompleteRepair : handleCompleteSession}
                 >
                   <CheckCircle2 size={18} />
                   <span>{mode === "REVIEW" ? text.backToToday : text.finishLesson}</span>

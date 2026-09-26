@@ -431,6 +431,7 @@ export function getStepsForMode(
   weakDomains: string[] = [],
   dueItems: any[] = [],
   learningFlowTasks?: LearningFlowTaskContract[],
+  lockedRepairTaskIds?: string[],
 ): LessonStepDefinition[] {
   switch (mode) {
     case "FAST_TRACK":
@@ -445,26 +446,41 @@ export function getStepsForMode(
       return buildReviewStepsFromDueItems(pkg, dueItems);
     }
     case "REPAIR": {
+      // A repair is an interaction with existing authoritative curriculum tasks,
+      // never a locally-authored package task or the FAST_TRACK exit ticket.
+      if (!learningFlowTasks) return [];
+      const plan = buildAuthoritativeLearnSteps(pkg, learningFlowTasks);
+      if (!plan.valid) return [];
+      const weak = new Set(weakDomains);
+      const lockedIds = lockedRepairTaskIds === undefined ? null : new Set(lockedRepairTaskIds);
+      const taskById = new Map(learningFlowTasks.map((task) => [task.id, task]));
       const repairSteps: LessonStepDefinition[] = [];
-      let stepNum = 1;
-      for (const domain of weakDomains) {
-        const domainSteps = pkg.taskBlueprint.repairStepsByDomain[domain];
-        if (domainSteps) {
-          for (const s of domainSteps) {
-            repairSteps.push({
-              ...s,
-              stepNumber: stepNum++,
-            });
+      for (const step of plan.steps) {
+        if (step.stepKey === "wrap_up") continue;
+        const exactIds = step.data.taskId
+          ? [step.data.taskId as string]
+          : Array.isArray(step.data.taskIds) ? step.data.taskIds as string[] : [];
+        const eligibleIds = exactIds.filter((id) => {
+          const task = taskById.get(id);
+          return Boolean(task && task.sourceQueue === "CURRICULUM" && task.lessonId === pkg.lessonId &&
+            task.skillDomain && weak.has(task.skillDomain) &&
+            (lockedIds ? lockedIds.has(id) && ["PENDING", "IN_PROGRESS", "COMPLETED", "DEFERRED"].includes(task.state ?? "") :
+              (task.state === "PENDING" || task.state === "IN_PROGRESS")));
+        });
+        if (eligibleIds.length === 0) continue;
+        const data = { ...step.data };
+        if (step.data.taskId && !eligibleIds.includes(step.data.taskId as string)) continue;
+        if (Array.isArray(step.data.taskIds)) {
+          data.taskIds = eligibleIds;
+          if (Array.isArray(step.data.speakingTasks)) {
+            data.speakingTasks = step.data.speakingTasks.filter((task: { id: string }) => eligibleIds.includes(task.id));
           }
         }
+        repairSteps.push({ ...step, stepNumber: repairSteps.length + 1, data });
       }
-      // If no domain-specific steps found, fallback to exit ticket check
-      if (repairSteps.length === 0) {
-        return pkg.taskBlueprint.fastTrackSteps;
-      }
-      // Add wrap-up step
+      if (repairSteps.length === 0) return [];
       repairSteps.push({
-        stepNumber: stepNum,
+        stepNumber: repairSteps.length + 1,
         stepKey: "wrap_up",
         domain: null,
         title: "補強練習完成",
@@ -475,7 +491,7 @@ export function getStepsForMode(
         data: {
           wrapUpSummary: {
             completionText: "弱項補強練習完成！",
-            masteryNotice: "已更新該領域的學習紀錄。",
+            masteryNotice: "本輪補強已記錄；原課程進度會保留在今日學習中。",
           },
         },
       });

@@ -112,9 +112,28 @@ def test_fast_track_endpoint_pass_and_fail(tmp_path):
             "ft-q3": "c1",
             "ft-q4": "c1",
         }
-        res_pass = client.post(f"/api/children/{child_id}/lesson-packages/book1-l01/fast-track", json={"answers": pass_answers})
+        pass_session = client.post(f"/api/children/{child_id}/learning-sessions", json={"target_minutes": 18, "lesson_id": "book1-l01"})
+        assert pass_session.status_code == 200
+        pass_session_id = pass_session.json()["id"]
+
+        # Fast Track may only act on the exact active session and lesson.
+        wrong_session = client.post(
+            f"/api/children/{child_id}/lesson-packages/book1-l01/fast-track",
+            json={"session_id": "another-session", "answers": pass_answers},
+        )
+        assert wrong_session.status_code == 409
+        wrong_lesson = client.post(
+            f"/api/children/{child_id}/lesson-packages/starter-l01/fast-track",
+            json={"session_id": pass_session_id, "answers": pass_answers},
+        )
+        assert wrong_lesson.status_code == 409
+        res_pass = client.post(f"/api/children/{child_id}/lesson-packages/book1-l01/fast-track", json={"session_id": pass_session_id, "answers": pass_answers})
         assert res_pass.status_code == 200
         data_pass = res_pass.json()
+        assert data_pass["childId"] == child_id
+        assert data_pass["sessionId"] == pass_session_id
+        assert data_pass["lessonId"] == "book1-l01"
+        assert data_pass["sessionStatus"] == "COMPLETED"
         assert data_pass["passed"] is True
         assert data_pass["weakDomains"] == []
         assert data_pass["nextMode"] == "REVIEW"
@@ -136,9 +155,17 @@ def test_fast_track_endpoint_pass_and_fail(tmp_path):
             "ft-q3": "c1",
             "ft-q4": "c1",
         }
-        res_fail = client.post(f"/api/children/{child_id}/lesson-packages/book1-l01/fast-track", json={"answers": fail_answers})
+        fail_session = client.post(f"/api/children/{child_id}/learning-sessions", json={"target_minutes": 18, "lesson_id": "book1-l01"})
+        assert fail_session.status_code == 200
+        fail_session_id = fail_session.json()["id"]
+        res_fail = client.post(f"/api/children/{child_id}/lesson-packages/book1-l01/fast-track", json={"session_id": fail_session_id, "answers": fail_answers})
         assert res_fail.status_code == 200
         data_fail = res_fail.json()
+        assert data_fail["childId"] == child_id
+        assert data_fail["sessionId"] == fail_session_id
+        assert data_fail["lessonId"] == "book1-l01"
+        assert data_fail["sessionStatus"] == "PAUSED"
+        assert data_fail["terminationReason"] == "FAST_TRACK_FAILED"
         assert data_fail["passed"] is False
         assert "recognition" in data_fail["weakDomains"]
         assert data_fail["nextMode"] == "REPAIR"
@@ -169,7 +196,7 @@ def test_fast_track_cleans_up_stale_active_session(tmp_path):
 
         # Call Fast Track pass
         pass_answers = {"ft-q1": "c1", "ft-q2": "c1", "ft-q3": "c1", "ft-q4": "c1"}
-        ft_resp = client.post(f"/api/children/{child_id}/lesson-packages/book1-l01/fast-track", json={"answers": pass_answers})
+        ft_resp = client.post(f"/api/children/{child_id}/lesson-packages/book1-l01/fast-track", json={"session_id": session_id, "answers": pass_answers})
         assert ft_resp.status_code == 200
         assert ft_resp.json()["passed"] is True
 
@@ -192,6 +219,105 @@ def test_fast_track_cleans_up_stale_active_session(tmp_path):
             # Check that there are no lingering IN_PROGRESS sessions
             lingering = db.execute("SELECT COUNT(*) FROM learning_flow_sessions WHERE child_id=? AND status='IN_PROGRESS'", (child_id,)).fetchone()[0]
             assert lingering == 0
+
+
+def test_fast_track_failure_resumes_same_session_and_uses_exact_curriculum_task(tmp_path):
+    from app.auth import issue_session
+    from app.database import connect
+
+    with make_client(tmp_path) as client:
+        child_resp = client.post("/api/children", json={"name": "小禾"})
+        assert child_resp.status_code == 200
+        child_id = child_resp.json()["id"]
+        parent_token = issue_session(subject="parent", role="parent", child_ids=[child_id])
+        parent_headers = {"Authorization": f"Bearer {parent_token}"}
+        placement = client.put(
+            f"/api/children/{child_id}/placement-profile",
+            headers=parent_headers,
+            json={"domain_levels": {"listening": "BOOK_1", "recognition": "BOOK_1", "speaking": "BOOK_1", "writing": "STARTER"}},
+        )
+        assert placement.status_code == 200
+
+        started = client.post(f"/api/children/{child_id}/learning-sessions", json={"target_minutes": 18, "lesson_id": "book1-l01"})
+        assert started.status_code == 200
+        initial = started.json()
+        session_id = initial["id"]
+        recognition_task = next(task for task in initial["tasks"] if task["sourceQueue"] == "CURRICULUM" and task["skillDomain"] == "recognition")
+        pending_curriculum_ids = {
+            task["id"] for task in initial["tasks"]
+            if task["sourceQueue"] == "CURRICULUM" and task["required"] and task["state"] == "PENDING"
+        }
+        assert recognition_task["id"] in pending_curriculum_ids
+        assert len(pending_curriculum_ids) > 1
+
+        failed = client.post(
+            f"/api/children/{child_id}/lesson-packages/book1-l01/fast-track",
+            json={
+                "session_id": session_id,
+                "answers": {"ft-q1": "c1", "ft-q2": "c2", "ft-q3": "c1", "ft-q4": "c1"},
+            },
+        )
+        assert failed.status_code == 200
+        failure = failed.json()
+        assert failure["passed"] is False
+        assert failure["childId"] == child_id
+        assert failure["lessonId"] == "book1-l01"
+        assert failure["sessionId"] == session_id
+        assert failure["sessionStatus"] == "PAUSED"
+        assert failure["terminationReason"] == "FAST_TRACK_FAILED"
+        assert "recognition" in failure["weakDomains"]
+
+        with connect() as db:
+            paused = db.execute("SELECT status, lesson_id, termination_reason FROM learning_flow_sessions WHERE id=? AND child_id=?", (session_id, child_id)).fetchone()
+            after_failure = db.execute("SELECT id, state FROM learning_flow_tasks WHERE session_id=? AND source_queue='CURRICULUM'", (session_id,)).fetchall()
+        assert dict(paused) == {"status": "PAUSED", "lesson_id": "book1-l01", "termination_reason": "FAST_TRACK_FAILED"}
+        assert {row["id"] for row in after_failure if row["state"] == "PENDING"} >= pending_curriculum_ids
+
+        rejected_resume = client.post(
+            f"/api/children/{child_id}/learning-sessions",
+            json={"target_minutes": 18, "lesson_id": "book1-l01", "expected_session_id": "another-session"},
+        )
+        assert rejected_resume.status_code == 409
+        current_after_rejected_resume = client.get(f"/api/children/{child_id}/learning-sessions/current").json()
+        assert current_after_rejected_resume["id"] == session_id
+        assert current_after_rejected_resume["status"] == "PAUSED"
+
+        resumed = client.post(
+            f"/api/children/{child_id}/learning-sessions",
+            json={"target_minutes": 18, "lesson_id": "book1-l01", "expected_session_id": session_id},
+        )
+        assert resumed.status_code == 200
+        resumed_data = resumed.json()
+        assert resumed_data["id"] == session_id
+        assert resumed_data["sessionId"] == session_id
+        assert resumed_data["childId"] == child_id
+        assert resumed_data["curriculumContext"]["lessonId"] == "book1-l01"
+        assert resumed_data["status"] == "IN_PROGRESS"
+
+        correct_choice = "opt-ni" if recognition_task["taskData"]["audioText"] == "你" else "opt-hao"
+        answered = client.post(
+            f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{recognition_task['id']}/answer",
+            json={"selected_option_id": correct_choice},
+        )
+        assert answered.status_code == 200
+        final_session = answered.json()
+        exact_task = next(task for task in final_session["tasks"] if task["id"] == recognition_task["id"])
+        assert exact_task["state"] == "COMPLETED"
+        assert exact_task["sourceQueue"] == "CURRICULUM"
+        assert exact_task["skillDomain"] == "recognition"
+        assert final_session["id"] == session_id
+        assert final_session["status"] == "IN_PROGRESS"
+        assert any(
+            task["id"] in pending_curriculum_ids - {recognition_task["id"]} and task["state"] == "PENDING"
+            for task in final_session["tasks"]
+        )
+        with connect() as db:
+            attempt = db.execute("SELECT result, skill_domain FROM learning_flow_task_attempts WHERE session_id=? AND task_id=?", (session_id, recognition_task["id"])).fetchone()
+            session_row = db.execute("SELECT status FROM learning_flow_sessions WHERE id=?", (session_id,)).fetchone()
+        assert attempt is not None
+        assert attempt["result"] == "correct"
+        assert attempt["skill_domain"] == "recognition"
+        assert session_row["status"] == "IN_PROGRESS"
 
 
 def test_due_driven_review_retrieval(tmp_path):

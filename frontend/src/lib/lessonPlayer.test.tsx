@@ -16,134 +16,9 @@ import {
 } from "../data/lessonPackages";
 import { officialCoursePath } from "../data/officialCoursePath";
 import partialRecognitionContract from "../../../shared/test-fixtures/partial-recognition-contract.json";
+import { authoritativeSessionFixture, plannerTasksForLesson } from "./testFixtures/learningFlow";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
-
-function learningFlowTask(
-  lessonId: string,
-  idSuffix: string,
-  key: string,
-  taskType: string,
-  skillDomain: string | null,
-  taskData: Record<string, any> = {},
-) {
-  return {
-    id: `lf-test-${lessonId}-${idSuffix}`,
-    key,
-    taskType,
-    sourceQueue: "CURRICULUM",
-    lessonId,
-    skillDomain,
-    state: "PENDING",
-    required: true,
-    itemId: `item-${idSuffix}`,
-    taskData,
-  };
-}
-
-// Planner-faithful LEARN task sets from backend/app/learning_flow.py::_session_plan.
-// The partial-recognition contract is shared with the backend API regression fixture.
-function plannerTasksForLesson(
-  lessonId: "starter-l01" | "basic-l01" | "book1-l01",
-  includeOptionalWriting = false,
-  partialRecognition = false,
-) {
-  const tasks: ReturnType<typeof learningFlowTask>[] = [];
-  tasks.push(learningFlowTask(lessonId, "listen", "listen", "LISTENING", "listening", { text: "你好", locale: "zh-TW", textKind: "character" }));
-
-  if (lessonId === "starter-l01") {
-    const questions = ["你", "好"].flatMap((character, index) => ["TRADITIONAL", "SIMPLIFIED"].map((script) => ({
-      id: `${script.toLowerCase()}-${index + 1}`,
-      character,
-      script,
-      choices: [{ id: "choice-a", label: "ㄋㄧˇ" }, { id: "choice-b", label: "nǐ" }],
-    })));
-    tasks.push(learningFlowTask(lessonId, "phonetics", "phonetics", "PHONETICS", "phonetics", { prompt: "把兩種注音／拼音對應到目標字。", questions }));
-  }
-
-  if (lessonId !== "starter-l01") {
-    const chars = ["你", "好"];
-    const indexes = partialRecognition
-      ? [partialRecognitionContract.expectedFreshCharacterIndex - 1]
-      : chars.map((_, index) => index);
-    indexes.forEach((index) => {
-      const recognitionIndex = index + 1;
-      const key = partialRecognition ? partialRecognitionContract.task.key : `recognition-${recognitionIndex}`;
-      const taskType = partialRecognition
-        ? partialRecognitionContract.task.taskType
-        : index === 0 ? "RECOGNITION" : "MINI_CHECK";
-      const itemId = partialRecognitionContract.task.itemIdTemplate
-        .replace("{child_id}", "1")
-        .replace("{lesson_id}", lessonId)
-        .replace("{index}", String(recognitionIndex));
-      const task = learningFlowTask(
-        lessonId,
-        key,
-        key,
-        taskType,
-        partialRecognitionContract.task.skillDomain,
-        { prompt: "聽一聽發音，選出聽到的字：", audioText: chars[index], choices: [{ id: "option-1", label: chars[1 - index] }, { id: "option-2", label: chars[index] }] },
-      );
-      tasks.push({ ...task, itemId });
-    });
-  }
-
-  if (lessonId === "basic-l01") {
-    tasks.push(learningFlowTask(lessonId, "vocabulary", "vocabulary", "VOCABULARY", "vocabulary", {
-      prompt: "選出數字詞的意思：", choices: [{ id: "opt-hello", label: "打招呼問好 (Hello)" }, { id: "opt-eat", label: "問對方吃飽沒 (Eat meal)" }],
-    }));
-  }
-  if (lessonId === "book1-l01") {
-    tasks.push(learningFlowTask(lessonId, "sentence", "sentence-pattern", "SENTENCE_PATTERN", null, {
-      prompt: "排列正確的句子順序來打招呼：", choices: [{ id: "opt-correct-order", label: "你好！我叫大衛。" }, { id: "opt-wrong-order", label: "大衛！我叫你好。" }],
-    }));
-  }
-  tasks.push(learningFlowTask(lessonId, "speaking", "speaking", "SPEAKING_ATTEMPT", "speaking", { text: "你好", locale: "zh-TW", textKind: "character" }));
-  if (lessonId === "book1-l01") {
-    tasks.push(learningFlowTask(lessonId, "pronunciation", "pronunciation", "PRONUNCIATION_ATTEMPT", "pronunciation", { text: "你好", locale: "zh-TW", textKind: "character" }));
-  }
-  if (includeOptionalWriting) {
-    tasks.push({
-      ...learningFlowTask(lessonId, "writing-guided", "writing-guided", "WRITING_GUIDED", "writing", { character: "你", phase: "guided", scriptMode: "TRADITIONAL" }),
-      required: false,
-    });
-  }
-  tasks.push(learningFlowTask(lessonId, "reflection", "mini-check-reflection", "MINI_CHECK", null, {
-    mode: "reflection", prompt: "你覺得今天的練習怎麼樣？", choices: [{ id: "practiced", label: "我練習過了" }, { id: "more", label: "下次再練一次" }],
-  }));
-  tasks.push(learningFlowTask(lessonId, "wrap-up", "wrap-up", "LESSON_WRAP_UP", null, { label: "完成今天練習", masteryNotice: "精熟度會依各領域證據另外判定。" }));
-  return tasks;
-}
-
-function authoritativeSessionFixture(
-  lessonId: "starter-l01" | "basic-l01" | "book1-l01",
-  sessionId: string,
-  states: Record<string, string> = {},
-  taskOverrides: Record<string, Record<string, unknown>> = {},
-  includeOptionalWriting = false,
-  partialRecognition = false,
-) {
-  const tasks = plannerTasksForLesson(lessonId, includeOptionalWriting, partialRecognition).map((task) => ({
-    ...task,
-    id: `${sessionId}:${task.key}`,
-    state: states[task.key] ?? task.state,
-    ...taskOverrides[task.key],
-    taskData: { ...task.taskData, ...(taskOverrides[task.key]?.taskData as Record<string, unknown> | undefined) },
-  }));
-  return {
-    id: sessionId,
-    status: "IN_PROGRESS",
-    lessonId,
-    masteryStatus: "IN_PROGRESS",
-    curriculumContext: {
-      lessonId,
-      lessonMasteredBeforeSession: false,
-      stageTitle: lessonId === "starter-l01" ? "入門冊" : lessonId === "basic-l01" ? "基礎冊" : "第一冊",
-      official: { title: lessonId === "basic-l01" ? "數字一到十" : "你好" },
-    },
-    tasks,
-  };
-}
 
 function installPlannerSessionMock(
   session: ReturnType<typeof authoritativeSessionFixture>,
@@ -335,21 +210,32 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
   });
 
   // Test 6
-  it("6. Failing one domain creates targeted REPAIR tasks only", () => {
+  it("6. REPAIR maps only exact eligible backend curriculum tasks and never falls back to Fast Track", () => {
     const pkg = getLessonPackage("book1-l01");
     expect(pkg).not.toBeNull();
     if (!pkg) return;
+    const session = authoritativeSessionFixture("book1-l01", "repair-session");
 
     // When only recognition fails
-    const repairRecog = getStepsForMode(pkg, "REPAIR", ["recognition"]);
+    const repairRecog = getStepsForMode(pkg, "REPAIR", ["recognition"], [], session.tasks);
     expect(repairRecog.some((s) => s.domain === "recognition")).toBe(true);
     expect(repairRecog.some((s) => s.domain === "listening")).toBe(false);
     expect(repairRecog.some((s) => s.domain === "speaking")).toBe(false);
+    const recognitionTask = session.tasks.find((task) => task.skillDomain === "recognition")!;
+    expect(repairRecog[0].data.taskId).toBe(recognitionTask.id);
 
     // When only writing fails
-    const repairWriting = getStepsForMode(pkg, "REPAIR", ["writing"]);
+    const withWriting = authoritativeSessionFixture("book1-l01", "repair-writing-session", {}, {}, true);
+    const repairWriting = getStepsForMode(pkg, "REPAIR", ["writing"], [], withWriting.tasks);
     expect(repairWriting.some((s) => s.domain === "writing")).toBe(true);
     expect(repairWriting.some((s) => s.domain === "listening")).toBe(false);
+
+    // No existing task for the requested domain means no question, including no exit-ticket fallback.
+    expect(getStepsForMode(pkg, "REPAIR", ["grammar"], [], session.tasks)).toEqual([]);
+    expect(getStepsForMode(pkg, "REPAIR", ["recognition"])).toEqual([]);
+    expect(getStepsForMode(pkg, "REPAIR", ["recognition"], [], session.tasks.map((task) =>
+      task.skillDomain === "recognition" ? { ...task, state: "COMPLETED" } : task
+    ))).toEqual([]);
   });
 
   // Test 7
@@ -748,16 +634,21 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
   });
 
   // Test 17
-  it("17. Fast Track failure transitions directly to REPAIR mode with weak domains", async () => {
+  it("17. Fast Track failure resumes the exact paused session before showing task-backed REPAIR", async () => {
     const container = document.createElement("div");
     document.body.appendChild(container);
     const root = createRoot(container);
+    const session = authoritativeSessionFixture("book1-l01", "session-17");
 
-    // Mock fast track endpoint returning failure with weak domains
-    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
-      if (url.includes("/fast-track")) {
+    installPlannerSessionMock(session, (url, init) => {
+      if (url.includes("/fast-track") && init?.method === "POST") {
+        session.status = "PAUSED";
         return new Response(JSON.stringify({
+          childId: 1,
+          sessionId: session.id,
           lessonId: "book1-l01",
+          sessionStatus: "PAUSED",
+          terminationReason: "FAST_TRACK_FAILED",
           passed: false,
           weakDomains: ["recognition"],
           nextMode: "REPAIR",
@@ -765,8 +656,13 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
           nextReviewDueAt: null,
         }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
-      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
-    }));
+      if (url.endsWith("/learning-sessions") && init?.method === "POST") {
+        expect(JSON.parse(String(init.body)).expected_session_id).toBe(session.id);
+        session.status = "IN_PROGRESS";
+        return new Response(JSON.stringify(session), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return undefined;
+    });
 
     await act(async () => {
       root.render(
@@ -800,9 +696,11 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
       await Promise.resolve();
     });
 
-    // Verify mode transitioned to repair mode
+    // Verify the verified resume exposed only planner-backed task IDs.
     const modeBadge = container.querySelector(".mode-badge");
     expect(modeBadge?.className).toContain("mode-repair");
+    expect(container.querySelector("[data-step-key='characters']")).toBeTruthy();
+    expect(container.querySelector("[data-step-key='exit_ticket']")).toBeNull();
 
     root.unmount();
     container.remove();
