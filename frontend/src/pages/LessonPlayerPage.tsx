@@ -45,6 +45,16 @@ export interface LessonPlayerProps {
   initialScaffoldMode?: ScaffoldVisibilityMode;
 }
 
+export interface TaskWriteResult {
+  persisted: boolean;
+  deduped: boolean;
+  taskId?: string;
+  taskState?: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "DEFERRED";
+  attemptCount?: number;
+  failureCount?: number;
+  completedAt?: string | null;
+}
+
 const copy = {
   "zh-Hant": {
     back: "返回",
@@ -428,7 +438,19 @@ export function LessonPlayerPage({
     masteryStatus?: string | null;
     targetMinutes?: number;
     curriculumContext?: { stageId?: string; stageTitle?: string; lessonId?: string; official?: { title?: string; objectiveSummary?: string } };
-    tasks?: Array<{ id: string; key: string; taskType: string; sourceQueue: string; lessonId: string; state: string; itemId?: string; taskData?: any }>;
+    tasks?: Array<{
+      id: string;
+      key: string;
+      taskType: string;
+      sourceQueue: string;
+      lessonId: string;
+      state: string;
+      itemId?: string;
+      taskData?: any;
+      attemptCount?: number;
+      failureCount?: number;
+      completedAt?: string | null;
+    }>;
   } | null>(null);
   const [masteryStatus, setMasteryStatus] = useState<string | null>(null);
   const [nextReviewDueAt, setNextReviewDueAt] = useState<string | null>(null);
@@ -514,24 +536,44 @@ export function LessonPlayerPage({
 
   // Backend task progression helpers with strict error surfacing and authoritative task state return
   const submitBackendTaskAnswer = async (
-    matcher: (t: { id: string; key: string; taskType: string; state: string; itemId?: string; taskData?: any }) => boolean,
+    matcher: (t: { id: string; key: string; taskType: string; state: string; itemId?: string; taskData?: any; attemptCount?: number; failureCount?: number; completedAt?: string | null }) => boolean,
     selectedOptionId?: string,
     answers?: Record<string, string>,
     assisted = false
-  ): Promise<string | null> => {
+  ): Promise<TaskWriteResult> => {
     const currentSess = sessionRef.current;
-    if (!activeChildId || !currentSess?.id || !currentSess.tasks) return "COMPLETED";
+    if (!activeChildId || !currentSess?.id || !currentSess.tasks) {
+      return { persisted: false, deduped: false, taskState: "COMPLETED" };
+    }
     const matchingTask = currentSess.tasks.find((t) => matcher(t));
-    if (!matchingTask) return "COMPLETED";
+    if (!matchingTask) {
+      return { persisted: false, deduped: false, taskState: "COMPLETED" };
+    }
     if (matchingTask.state === "COMPLETED" || matchingTask.state === "DEFERRED") {
-      return matchingTask.state;
+      return {
+        persisted: true,
+        deduped: true,
+        taskId: matchingTask.id,
+        taskState: matchingTask.state as any,
+        attemptCount: matchingTask.attemptCount,
+        failureCount: matchingTask.failureCount,
+        completedAt: matchingTask.completedAt ?? null,
+      };
     }
     const answersKey = JSON.stringify(answers ?? {});
     const recorded = submittedAnswersRef.current[matchingTask.id];
     if (recorded && recorded.optionId === (selectedOptionId || null) && recorded.answersKey === answersKey) {
       // Re-query latest authoritative state from sessionRef.current
-      const latestTask = sessionRef.current?.tasks?.find((t) => t.id === matchingTask.id);
-      return latestTask?.state ?? matchingTask.state;
+      const latestTask = sessionRef.current?.tasks?.find((t) => t.id === matchingTask.id) ?? matchingTask;
+      return {
+        persisted: true,
+        deduped: true,
+        taskId: latestTask.id,
+        taskState: latestTask.state as any,
+        attemptCount: latestTask.attemptCount,
+        failureCount: latestTask.failureCount,
+        completedAt: latestTask.completedAt ?? null,
+      };
     }
     try {
       setError(null);
@@ -555,29 +597,67 @@ export function LessonPlayerPage({
         setSession(updated);
         if (updated.masteryStatus) setMasteryStatus(updated.masteryStatus);
         const postTask = updated.tasks?.find((t) => t.id === matchingTask.id);
-        return postTask?.state ?? null;
+        return {
+          persisted: true,
+          deduped: false,
+          taskId: postTask?.id ?? matchingTask.id,
+          taskState: (postTask?.state ?? "IN_PROGRESS") as any,
+          attemptCount: postTask?.attemptCount,
+          failureCount: postTask?.failureCount,
+          completedAt: postTask?.completedAt ?? null,
+        };
       }
-      return null;
+      return {
+        persisted: false,
+        deduped: false,
+        taskId: matchingTask.id,
+        taskState: "IN_PROGRESS",
+      };
     } catch (err: any) {
       setError(err?.message || text.taskFailed);
-      return null;
+      return {
+        persisted: false,
+        deduped: false,
+        taskId: matchingTask.id,
+        taskState: "IN_PROGRESS",
+      };
     }
   };
 
   const submitBackendTaskEvidence = async (
-    matcher: (t: { id: string; key: string; taskType: string; state: string; itemId?: string; taskData?: any }) => boolean,
+    matcher: (t: { id: string; key: string; taskType: string; state: string; itemId?: string; taskData?: any; attemptCount?: number; failureCount?: number; completedAt?: string | null }) => boolean,
     evidenceRef: string
-  ): Promise<string | null> => {
+  ): Promise<TaskWriteResult> => {
     const currentSess = sessionRef.current;
-    if (!activeChildId || !currentSess?.id || !currentSess.tasks) return "COMPLETED";
+    if (!activeChildId || !currentSess?.id || !currentSess.tasks) {
+      return { persisted: false, deduped: false, taskState: "COMPLETED" };
+    }
     const matchingTask = currentSess.tasks.find((t) => matcher(t));
-    if (!matchingTask) return "COMPLETED";
+    if (!matchingTask) {
+      return { persisted: false, deduped: false, taskState: "COMPLETED" };
+    }
     if (matchingTask.state === "COMPLETED" || matchingTask.state === "DEFERRED") {
-      return matchingTask.state;
+      return {
+        persisted: true,
+        deduped: true,
+        taskId: matchingTask.id,
+        taskState: matchingTask.state as any,
+        attemptCount: matchingTask.attemptCount,
+        failureCount: matchingTask.failureCount,
+        completedAt: matchingTask.completedAt ?? null,
+      };
     }
     if (submittedEvidenceRef.current[matchingTask.id] === evidenceRef) {
-      const latestTask = sessionRef.current?.tasks?.find((t) => t.id === matchingTask.id);
-      return latestTask?.state ?? matchingTask.state;
+      const latestTask = sessionRef.current?.tasks?.find((t) => t.id === matchingTask.id) ?? matchingTask;
+      return {
+        persisted: true,
+        deduped: true,
+        taskId: latestTask.id,
+        taskState: latestTask.state as any,
+        attemptCount: latestTask.attemptCount,
+        failureCount: latestTask.failureCount,
+        completedAt: latestTask.completedAt ?? null,
+      };
     }
     try {
       setError(null);
@@ -596,28 +676,66 @@ export function LessonPlayerPage({
         setSession(updated);
         if (updated.masteryStatus) setMasteryStatus(updated.masteryStatus);
         const postTask = updated.tasks?.find((t) => t.id === matchingTask.id);
-        return postTask?.state ?? null;
+        return {
+          persisted: true,
+          deduped: false,
+          taskId: postTask?.id ?? matchingTask.id,
+          taskState: (postTask?.state ?? "IN_PROGRESS") as any,
+          attemptCount: postTask?.attemptCount,
+          failureCount: postTask?.failureCount,
+          completedAt: postTask?.completedAt ?? null,
+        };
       }
-      return null;
+      return {
+        persisted: false,
+        deduped: false,
+        taskId: matchingTask.id,
+        taskState: "IN_PROGRESS",
+      };
     } catch (err: any) {
       setError(err?.message || text.taskFailed);
-      return null;
+      return {
+        persisted: false,
+        deduped: false,
+        taskId: matchingTask.id,
+        taskState: "IN_PROGRESS",
+      };
     }
   };
 
   const skipBackendTask = async (
-    matcher: (t: { id: string; key: string; taskType: string; state: string; itemId?: string; taskData?: any }) => boolean
-  ): Promise<string | null> => {
+    matcher: (t: { id: string; key: string; taskType: string; state: string; itemId?: string; taskData?: any; attemptCount?: number; failureCount?: number; completedAt?: string | null }) => boolean
+  ): Promise<TaskWriteResult> => {
     const currentSess = sessionRef.current;
-    if (!activeChildId || !currentSess?.id || !currentSess.tasks) return "COMPLETED";
+    if (!activeChildId || !currentSess?.id || !currentSess.tasks) {
+      return { persisted: false, deduped: false, taskState: "COMPLETED" };
+    }
     const matchingTask = currentSess.tasks.find((t) => matcher(t));
-    if (!matchingTask) return "COMPLETED";
+    if (!matchingTask) {
+      return { persisted: false, deduped: false, taskState: "COMPLETED" };
+    }
     if (matchingTask.state === "COMPLETED" || matchingTask.state === "DEFERRED") {
-      return matchingTask.state;
+      return {
+        persisted: true,
+        deduped: true,
+        taskId: matchingTask.id,
+        taskState: matchingTask.state as any,
+        attemptCount: matchingTask.attemptCount,
+        failureCount: matchingTask.failureCount,
+        completedAt: matchingTask.completedAt ?? null,
+      };
     }
     if (submittedSkipsRef.current[matchingTask.id]) {
-      const latestTask = sessionRef.current?.tasks?.find((t) => t.id === matchingTask.id);
-      return latestTask?.state ?? matchingTask.state;
+      const latestTask = sessionRef.current?.tasks?.find((t) => t.id === matchingTask.id) ?? matchingTask;
+      return {
+        persisted: true,
+        deduped: true,
+        taskId: latestTask.id,
+        taskState: latestTask.state as any,
+        attemptCount: latestTask.attemptCount,
+        failureCount: latestTask.failureCount,
+        completedAt: latestTask.completedAt ?? null,
+      };
     }
     try {
       setError(null);
@@ -633,12 +751,30 @@ export function LessonPlayerPage({
         setSession(updated);
         if (updated.masteryStatus) setMasteryStatus(updated.masteryStatus);
         const postTask = updated.tasks?.find((t) => t.id === matchingTask.id);
-        return postTask?.state ?? null;
+        return {
+          persisted: true,
+          deduped: false,
+          taskId: postTask?.id ?? matchingTask.id,
+          taskState: (postTask?.state ?? "DEFERRED") as any,
+          attemptCount: postTask?.attemptCount,
+          failureCount: postTask?.failureCount,
+          completedAt: postTask?.completedAt ?? null,
+        };
       }
-      return null;
+      return {
+        persisted: false,
+        deduped: false,
+        taskId: matchingTask.id,
+        taskState: "IN_PROGRESS",
+      };
     } catch (err: any) {
       setError(err?.message || text.taskFailed);
-      return null;
+      return {
+        persisted: false,
+        deduped: false,
+        taskId: matchingTask.id,
+        taskState: "IN_PROGRESS",
+      };
     }
   };
 
@@ -690,11 +826,11 @@ export function LessonPlayerPage({
             }
           );
           if (completeRes?.status === "COMPLETED") {
-            const state = await submitBackendTaskEvidence(
+            const writeResult = await submitBackendTaskEvidence(
               (t) => t.id === listenTask.id || t.taskType === "LISTENING" || t.key === "listen",
               startRes.id
             );
-            return state === "COMPLETED" || state === "DEFERRED";
+            return writeResult.taskState === "COMPLETED" || writeResult.taskState === "DEFERRED";
           }
         }
         return false;
