@@ -2808,6 +2808,301 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     container.remove();
     vi.unstubAllGlobals();
   });
+
+  it("46. FAST_TRACK response contract validation: { passed: false } only fails closed, does not transition to REPAIR, keeps mode/mastery intact, displays error", async () => {
+    let fastTrackCalls = 0;
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes("/learning-sessions/current")) {
+        return new Response(JSON.stringify({
+          id: "s-ft-46",
+          status: "IN_PROGRESS",
+          masteryStatus: "IN_PROGRESS",
+          tasks: [],
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/fast-track") && init?.method === "POST") {
+        fastTrackCalls++;
+        // Missing weakDomains, nextMode, masteryStatus:
+        return new Response(JSON.stringify({ passed: false }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        <LessonPlayerPage
+          lessonId="book1-l01"
+          activeChildId={1}
+          onBack={() => {}}
+          initialMode="FAST_TRACK"
+        />
+      );
+    });
+
+    const modeBadge = container.querySelector(".mode-badge");
+    expect(modeBadge?.className).toContain("mode-fast_track");
+    expect(modeBadge?.className).not.toContain("mode-repair");
+
+    const questionCards = container.querySelectorAll(".exit-ticket-item-card");
+    for (const card of Array.from(questionCards)) {
+      const choiceBtn = card.querySelector(".choice-card-btn") as HTMLButtonElement;
+      await act(async () => { choiceBtn?.click(); });
+    }
+
+    const submitBtn = container.querySelector(".submit-exit-ticket-btn") as HTMLButtonElement;
+    await act(async () => { submitBtn.click(); });
+    expect(fastTrackCalls).toBe(1);
+
+    // Fail closed invariants:
+    // 1. Error banner is visible
+    expect(container.textContent).toMatch(/Task operation failed|任務操作失敗/);
+    // 2. Mode remains FAST_TRACK, did NOT jump into REPAIR
+    expect(container.querySelector(".mode-badge")?.className).toContain("mode-fast_track");
+    expect(container.querySelector(".mode-badge")?.className).not.toContain("mode-repair");
+    // 3. UI remains on exit_ticket step
+    expect(container.querySelector("[data-step-key='exit_ticket']")).toBeTruthy();
+    // 4. Next button remains disabled
+    const nextBtn = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
+    expect(nextBtn.disabled).toBe(true);
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
+
+  it("47. FAST_TRACK response contract validation: passed=true but missing masteryStatus fails closed, displays error, and does not advance", async () => {
+    let fastTrackCalls = 0;
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes("/learning-sessions/current")) {
+        return new Response(JSON.stringify({
+          id: "s-ft-47",
+          status: "IN_PROGRESS",
+          masteryStatus: "IN_PROGRESS",
+          tasks: [],
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/fast-track") && init?.method === "POST") {
+        fastTrackCalls++;
+        // passed=true but missing masteryStatus:
+        return new Response(JSON.stringify({
+          passed: true,
+          weakDomains: [],
+          nextMode: "REVIEW",
+          nextReviewDueAt: "2026-09-27T00:00:00Z",
+        }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        <LessonPlayerPage
+          lessonId="book1-l01"
+          activeChildId={1}
+          onBack={() => {}}
+          initialMode="FAST_TRACK"
+        />
+      );
+    });
+
+    const questionCards = container.querySelectorAll(".exit-ticket-item-card");
+    for (const card of Array.from(questionCards)) {
+      const choiceBtn = card.querySelector(".choice-card-btn") as HTMLButtonElement;
+      await act(async () => { choiceBtn?.click(); });
+    }
+
+    const submitBtn = container.querySelector(".submit-exit-ticket-btn") as HTMLButtonElement;
+    await act(async () => { submitBtn.click(); });
+    expect(fastTrackCalls).toBe(1);
+
+    // Fail closed invariants:
+    expect(container.textContent).toMatch(/Task operation failed|任務操作失敗/);
+    expect(container.querySelector("[data-step-key='exit_ticket']")).toBeTruthy();
+    const nextBtn = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
+    expect(nextBtn.disabled).toBe(true);
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
+
+  it("48. FAST_TRACK response contract validation: weakDomains malformed (string or non-string items) fails closed", async () => {
+    let fastTrackCalls = 0;
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes("/learning-sessions/current")) {
+        return new Response(JSON.stringify({
+          id: "s-ft-48",
+          status: "IN_PROGRESS",
+          masteryStatus: "IN_PROGRESS",
+          tasks: [],
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/fast-track") && init?.method === "POST") {
+        fastTrackCalls++;
+        // weakDomains is a string instead of array of strings:
+        return new Response(JSON.stringify({
+          passed: false,
+          weakDomains: "recognition",
+          nextMode: "REPAIR",
+          masteryStatus: "IN_PROGRESS",
+        }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        <LessonPlayerPage
+          lessonId="book1-l01"
+          activeChildId={1}
+          onBack={() => {}}
+          initialMode="FAST_TRACK"
+        />
+      );
+    });
+
+    const questionCards = container.querySelectorAll(".exit-ticket-item-card");
+    for (const card of Array.from(questionCards)) {
+      const choiceBtn = card.querySelector(".choice-card-btn") as HTMLButtonElement;
+      await act(async () => { choiceBtn?.click(); });
+    }
+
+    const submitBtn = container.querySelector(".submit-exit-ticket-btn") as HTMLButtonElement;
+    await act(async () => { submitBtn.click(); });
+    expect(fastTrackCalls).toBe(1);
+
+    // Fail closed invariants:
+    expect(container.textContent).toMatch(/Task operation failed|任務操作失敗/);
+    expect(container.querySelector(".mode-badge")?.className).toContain("mode-fast_track");
+    expect(container.querySelector(".mode-badge")?.className).not.toContain("mode-repair");
+    const nextBtn = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
+    expect(nextBtn.disabled).toBe(true);
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
+
+  it("49. LEARN Exit Ticket fail-closed negative regression: reflection task missing from session tasks blocks submission, disables progression, displays error, and prevents completion", async () => {
+    let completedLessonCalled = false;
+
+    // Session has tasks for steps 1-7, but mini-check-reflection task is missing
+    const tasksState: any[] = [
+      { id: "t-listen", key: "listen", taskType: "LISTENING", state: "COMPLETED", itemId: "item-l01" },
+      { id: "t-vocab", key: "vocabulary", taskType: "VOCABULARY", state: "COMPLETED", itemId: "vocab-nihao", taskData: { prompt: "選出「你好」的意思", choices: [{ id: "opt-hello", label: "Hello" }, { id: "opt-eat", label: "Eat" }] } },
+      { id: "t-recog-1", key: "recognition-1", taskType: "RECOGNITION", state: "COMPLETED", itemId: "你", taskData: { prompt: "選出聽到的字：", audioText: "你", choices: [{ id: "opt-ni", label: "你" }, { id: "opt-hao", label: "好" }] } },
+      { id: "t-recog-2", key: "recognition-2", taskType: "RECOGNITION", state: "COMPLETED", itemId: "好", taskData: { prompt: "選出聽到的字：", audioText: "好", choices: [{ id: "opt-ni", label: "你" }, { id: "opt-hao", label: "好" }] } },
+      { id: "t-sent", key: "sentence-pattern", taskType: "SENTENCE_PATTERN", state: "COMPLETED", itemId: "sent-greeting", taskData: { choices: [{ id: "opt-correct-order", label: "你好！我叫小明。" }, { id: "opt-wrong-order", label: "我叫你好小明！" }] } },
+      { id: "t-speak", key: "speaking", taskType: "SPEAKING_ATTEMPT", state: "COMPLETED", itemId: "phrase-hello" },
+      { id: "t-write", key: "writing-1", taskType: "WRITING_PRACTICE", state: "DEFERRED", itemId: "char-ni" },
+    ];
+
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (url.includes("/learning-sessions/current")) {
+        return new Response(JSON.stringify({
+          id: "s-learn-neg-49",
+          status: "IN_PROGRESS",
+          masteryStatus: "IN_PROGRESS",
+          curriculumContext: { lessonId: "book1-l01" },
+          tasks: tasksState,
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        <LessonPlayerPage
+          lessonId="book1-l01"
+          activeChildId={1}
+          onBack={() => {}}
+          initialMode="LEARN"
+          onCompleteLesson={() => {
+            completedLessonCalled = true;
+          }}
+        />
+      );
+    });
+
+    const nextBtn = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
+    // Advance through steps 1-7
+    await act(async () => { nextBtn.click(); }); // Step 1 Context -> Dialogue
+    await act(async () => { nextBtn.click(); }); // Step 2 Dialogue -> Vocabulary
+    const vocabChoices = container.querySelectorAll(".step-vocab-body .choice-card-btn");
+    await act(async () => { (vocabChoices[0] as HTMLButtonElement)?.click(); });
+    await act(async () => { nextBtn.click(); }); // Step 3 Vocabulary -> Characters tab 0
+    const recog1 = container.querySelectorAll(".char-choice-card");
+    await act(async () => { (recog1[0] as HTMLButtonElement)?.click(); });
+    await act(async () => { nextBtn.click(); }); // Step 4 Characters tab 0 -> tab 1
+    const recog2 = container.querySelectorAll(".char-choice-card");
+    await act(async () => { (recog2[1] as HTMLButtonElement)?.click(); });
+    await act(async () => { nextBtn.click(); }); // Step 4 Characters tab 1 -> Sentence Pattern
+    const sentChoices = container.querySelectorAll(".step-sentence-body .choice-card-btn");
+    await act(async () => { (sentChoices[0] as HTMLButtonElement)?.click(); });
+    await act(async () => { nextBtn.click(); }); // Step 5 Sentence Pattern -> Speaking
+    await act(async () => { nextBtn.click(); }); // Step 6 Speaking -> Writing
+    await act(async () => { nextBtn.click(); }); // Step 7 Writing -> Exit Ticket
+
+    expect(container.querySelector("[data-step-key='exit_ticket']")).toBeTruthy();
+
+    // Answer all 4 exit ticket questions
+    const questionCards = container.querySelectorAll(".exit-ticket-item-card");
+    for (const card of Array.from(questionCards)) {
+      const choiceButtons = card.querySelectorAll(".choice-card-btn");
+      await act(async () => { (choiceButtons[0] as HTMLButtonElement)?.click(); });
+    }
+
+    const submitBtn = container.querySelector(".submit-exit-ticket-btn") as HTMLButtonElement;
+    expect(submitBtn).toBeTruthy();
+
+    // Submit Exit Ticket -> reflection task is missing from session tasks -> fail closed!
+    await act(async () => { submitBtn.click(); });
+
+    // Assert fail-closed invariants:
+    // 1. Error banner is shown
+    expect(container.textContent).toMatch(/Task operation failed|任務操作失敗/);
+    // 2. Next button remains disabled
+    expect(nextBtn.disabled).toBe(true);
+    // 3. UI remains on Exit Ticket
+    expect(container.querySelector("[data-step-key='exit_ticket']")).toBeTruthy();
+    expect(container.querySelector("[data-step-key='wrap_up']")).toBeNull();
+    // 4. Session completion callback was NOT called
+    expect(completedLessonCalled).toBe(false);
+
+    // 5. Attempting to click Next does NOT bypass gate
+    await act(async () => { nextBtn.click(); });
+    expect(container.querySelector("[data-step-key='wrap_up']")).toBeNull();
+    expect(completedLessonCalled).toBe(false);
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
 });
 
 

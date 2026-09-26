@@ -1222,20 +1222,23 @@ export function LessonPlayerPage({
           return;
         }
         const refTask = sessAfterTicket.tasks.find(
-          (t) => (t.key === "mini-check-reflection" || (t.taskType === "MINI_CHECK" && t.taskData?.mode === "reflection")) &&
-                 t.state !== "COMPLETED" && t.state !== "DEFERRED"
+          (t) => (t.key === "mini-check-reflection" || (t.taskType === "MINI_CHECK" && t.taskData?.mode === "reflection"))
         );
-        if (refTask) {
+        if (!refTask) {
+          setError(text.taskFailed);
+          return;
+        }
+        if (refTask.state !== "COMPLETED" && refTask.state !== "DEFERRED") {
           const res = await submitBackendTaskAnswer((t) => t.id === refTask.id, "practiced");
           if (res.taskState !== "COMPLETED" && res.taskState !== "DEFERRED") {
             setError(text.taskFailed);
             return;
           }
-          const postRefTask = sessionRef.current?.tasks?.find((t) => t.id === refTask.id);
-          if (!postRefTask || (postRefTask.state !== "COMPLETED" && postRefTask.state !== "DEFERRED")) {
-            setError(text.taskFailed);
-            return;
-          }
+        }
+        const postRefTask = sessionRef.current?.tasks?.find((t) => t.id === refTask.id);
+        if (!postRefTask || (postRefTask.state !== "COMPLETED" && postRefTask.state !== "DEFERRED")) {
+          setError(text.taskFailed);
+          return;
         }
       }
     }
@@ -1368,34 +1371,59 @@ export function LessonPlayerPage({
     if (mode === "FAST_TRACK") {
       if (activeChildId) {
         try {
-          const res = await api<{
-            passed: boolean;
-            weakDomains?: string[];
-            nextMode?: PedagogyMode;
-            masteryStatus?: string;
-            nextReviewDueAt?: string | null;
-          }>(`/api/children/${activeChildId}/lesson-packages/${resolvedLessonId}/fast-track`, {
-            method: "POST",
-            body: JSON.stringify({ answers: exitTicketAnswers }),
-          });
+          const res = await api<any>(
+            `/api/children/${activeChildId}/lesson-packages/${resolvedLessonId}/fast-track`,
+            {
+              method: "POST",
+              body: JSON.stringify({ answers: exitTicketAnswers }),
+            }
+          );
 
-          if (!res || typeof res.passed !== "boolean") {
+          if (!res || typeof res !== "object" || typeof res.passed !== "boolean") {
             setError(text.taskFailed);
             return;
           }
 
-          setExitTicketSubmitted(true);
-          if (res.passed) {
-            setWeakDomains([]);
-            setNextReviewDueAt(res.nextReviewDueAt ?? null);
-            if (res.masteryStatus) setMasteryStatus(res.masteryStatus);
-          } else {
-            setWeakDomains(res.weakDomains && res.weakDomains.length > 0 ? res.weakDomains : failedDomains);
-            setMode("REPAIR");
+          if (res.passed === true) {
+            const validMastery = typeof res.masteryStatus === "string" && res.masteryStatus.trim().length > 0;
+            const validWeakDomains = Array.isArray(res.weakDomains);
+            const validNextReviewDueAt = res.nextReviewDueAt === null || typeof res.nextReviewDueAt === "string";
+            const validNextMode = typeof res.nextMode === "string" && res.nextMode.trim().length > 0;
+
+            if (!validMastery || !validWeakDomains || !validNextReviewDueAt || !validNextMode) {
+              setError(text.taskFailed);
+              return;
+            }
+
+            setExitTicketSubmitted(true);
+            setWeakDomains(res.weakDomains);
+            setNextReviewDueAt(res.nextReviewDueAt);
+            setMasteryStatus(res.masteryStatus);
+            return;
+          }
+
+          if (res.passed === false) {
+            const validWeakDomains = Array.isArray(res.weakDomains) &&
+              res.weakDomains.length > 0 &&
+              res.weakDomains.every((d: any) => typeof d === "string");
+            const validMastery = typeof res.masteryStatus === "string" && res.masteryStatus.trim().length > 0;
+            const validNextMode = typeof res.nextMode === "string" && res.nextMode.trim().length > 0;
+
+            if (!validWeakDomains || !validMastery || !validNextMode) {
+              setError(text.taskFailed);
+              return;
+            }
+
+            setExitTicketSubmitted(true);
+            setWeakDomains(res.weakDomains);
+            setMode(res.nextMode as PedagogyMode);
             setCurrentStepIndex(0); // Immediately transition into REPAIR mode tasks!
             setNextReviewDueAt(null);
-            setMasteryStatus(res.masteryStatus || "IN_PROGRESS");
+            setMasteryStatus(res.masteryStatus);
+            return;
           }
+
+          setError(text.taskFailed);
           return;
         } catch (err: any) {
           // FAIL CLOSED! No local fallback!
@@ -1430,19 +1458,22 @@ export function LessonPlayerPage({
         (t) => (t.key === "mini-check-reflection" || (t.taskType === "MINI_CHECK" && t.taskData?.mode === "reflection"))
       );
 
-      if (refTask) {
-        if (refTask.state !== "COMPLETED" && refTask.state !== "DEFERRED") {
-          const writeRes = await submitBackendTaskAnswer((t) => t.id === refTask.id, "practiced");
-          if (writeRes.taskState !== "COMPLETED" && writeRes.taskState !== "DEFERRED") {
-            setError(text.taskFailed);
-            return;
-          }
-        }
-        const postRefTask = sessionRef.current?.tasks?.find((t) => t.id === refTask.id);
-        if (!postRefTask || (postRefTask.state !== "COMPLETED" && postRefTask.state !== "DEFERRED")) {
+      if (!refTask) {
+        setError(text.taskFailed);
+        return;
+      }
+
+      if (refTask.state !== "COMPLETED" && refTask.state !== "DEFERRED") {
+        const writeRes = await submitBackendTaskAnswer((t) => t.id === refTask.id, "practiced");
+        if (writeRes.taskState !== "COMPLETED" && writeRes.taskState !== "DEFERRED") {
           setError(text.taskFailed);
           return;
         }
+      }
+      const postRefTask = sessionRef.current?.tasks?.find((t) => t.id === refTask.id);
+      if (!postRefTask || (postRefTask.state !== "COMPLETED" && postRefTask.state !== "DEFERRED")) {
+        setError(text.taskFailed);
+        return;
       }
 
       setExitTicketSubmitted(true);
