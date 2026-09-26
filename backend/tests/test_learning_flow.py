@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 
@@ -52,7 +53,7 @@ def answer_task(api: TestClient, child_id: int, current: dict, task: dict, optio
     return response.json()
 
 
-def complete_session(api: TestClient, child_id: int, current: dict, assisted_scores: bool = False, skip_writing: bool = False) -> dict:
+def complete_session(api: TestClient, child_id: int, current: dict, assisted_scores: bool = False, skip_writing: bool = False, finalize: bool = True) -> dict:
     from app.database import connect
 
     for task in current["tasks"]:
@@ -103,6 +104,8 @@ def complete_session(api: TestClient, child_id: int, current: dict, assisted_sco
         else:
             raise AssertionError(f"Unhandled task type: {task['taskType']}")
         current = api.get(f"/api/children/{child_id}/learning-sessions/{current['id']}").json()
+    if not finalize:
+        return current
     completed = api.post(f"/api/children/{child_id}/learning-sessions/{current['id']}/complete", json={})
     assert completed.status_code == 200, completed.text
     return completed.json()
@@ -334,6 +337,123 @@ def test_session_practice_and_mastery_are_persisted_separately(tmp_path):
             state = db.execute("SELECT status FROM curriculum_lesson_states WHERE child_id=? AND lesson_id='book1-l01'", (child_id,)).fetchone()
         assert state["status"] == "NEEDS_REVIEW"
         assert completed["reward"]["earned"] is True
+
+
+@pytest.mark.parametrize("failure_point", ["assessment_event", "late_settlement_telemetry"])
+def test_session_settlement_failure_rolls_back_and_retry_replay_is_idempotent(tmp_path, failure_point):
+    from app.database import connect
+
+    with client(tmp_path) as api:
+        child_id = child(api)
+        place(child_id, "BOOK_1")
+        current = complete_session(api, child_id, session(api, child_id), finalize=False)
+        session_id = current["id"]
+        lesson_id = current["curriculumContext"]["lessonId"]
+        completion_url = f"/api/children/{child_id}/learning-sessions/{session_id}/complete"
+
+        def settlement_snapshot():
+            with connect() as db:
+                lesson_state = db.execute(
+                    "SELECT status FROM curriculum_lesson_states WHERE child_id=? AND lesson_id=?",
+                    (child_id, lesson_id),
+                ).fetchone()
+                lesson_events = {
+                    row["event_type"]: row["count"]
+                    for row in db.execute(
+                        "SELECT event_type,COUNT(*) count FROM curriculum_lesson_events WHERE child_id=? AND lesson_id=? AND event_type IN ('PROGRESS','ASSESSMENT') GROUP BY event_type",
+                        (child_id, lesson_id),
+                    )
+                }
+                reward = db.execute(
+                    "SELECT COUNT(*) count,COALESCE(SUM(points_delta),0) points FROM points_ledger WHERE child_id=? AND event_key=?",
+                    (child_id, f"learning-session:{session_id}"),
+                ).fetchone()
+                session_row = db.execute(
+                    "SELECT status,completed_at,reward_points,mastery_status FROM learning_flow_sessions WHERE id=? AND child_id=?",
+                    (session_id, child_id),
+                ).fetchone()
+                wrap_up = db.execute(
+                    "SELECT state FROM learning_flow_tasks WHERE session_id=? AND task_type='LESSON_WRAP_UP'",
+                    (session_id,),
+                ).fetchone()
+                settlement_telemetry = {
+                    row["event_type"]: row["count"]
+                    for row in db.execute(
+                        "SELECT event_type,COUNT(*) count FROM learning_flow_telemetry WHERE session_id=? AND event_type IN ('session_completed','mastery_transition','next_lesson_unlocked') GROUP BY event_type",
+                        (session_id,),
+                    )
+                }
+            return {
+                "lesson_state": lesson_state["status"] if lesson_state else None,
+                "lesson_events": lesson_events,
+                "reward": (reward["count"], reward["points"]),
+                "session": tuple(session_row[key] for key in ("status", "completed_at", "reward_points", "mastery_status")),
+                "wrap_up": wrap_up["state"],
+                "telemetry": settlement_telemetry,
+            }
+
+        before_failure = settlement_snapshot()
+        assert before_failure["lesson_state"] is None
+        assert before_failure["lesson_events"] == {}
+        assert before_failure["reward"] == (0, 0)
+        assert before_failure["session"][0] == "IN_PROGRESS"
+        assert before_failure["wrap_up"] == "PENDING"
+        assert before_failure["telemetry"] == {}
+        before_curriculum = api.get(f"/api/children/{child_id}/validated-curriculum").json()
+        next_lesson = next(lesson for stage in before_curriculum["stages"] for lesson in stage["lessons"] if lesson["id"] == "book1-l02")
+        assert next_lesson["accessible"] is False
+
+        trigger = "fail_assessment_event" if failure_point == "assessment_event" else "fail_late_settlement_telemetry"
+        with connect() as db:
+            if failure_point == "assessment_event":
+                db.execute(
+                    """CREATE TRIGGER fail_assessment_event BEFORE INSERT ON curriculum_lesson_events
+                       WHEN NEW.event_type='ASSESSMENT'
+                       BEGIN SELECT RAISE(ABORT, 'injected_assessment_event_failure'); END"""
+                )
+            else:
+                db.execute(
+                    """CREATE TRIGGER fail_late_settlement_telemetry BEFORE INSERT ON learning_flow_telemetry
+                       WHEN NEW.event_type='session_completed'
+                       BEGIN SELECT RAISE(ABORT, 'injected_late_settlement_failure'); END"""
+                )
+
+        failed_response = api.post(completion_url, json={})
+        assert failed_response.status_code == 500, failed_response.text
+        assert settlement_snapshot() == before_failure
+        after_failure_curriculum = api.get(f"/api/children/{child_id}/validated-curriculum").json()
+        next_lesson = next(lesson for stage in after_failure_curriculum["stages"] for lesson in stage["lessons"] if lesson["id"] == "book1-l02")
+        assert next_lesson["accessible"] is False
+
+        with connect() as db:
+            db.execute(f"DROP TRIGGER {trigger}")
+
+        retry_response = api.post(completion_url, json={})
+        assert retry_response.status_code == 200, retry_response.text
+        completed = retry_response.json()
+        assert completed["status"] == "COMPLETED"
+        assert completed["masteryStatus"] == "MASTERED"
+        assert completed["assessment"]["status"] == "MASTERED"
+        after_retry = settlement_snapshot()
+        assert after_retry["lesson_state"] == "MASTERED"
+        assert after_retry["lesson_events"] == {"PROGRESS": 1, "ASSESSMENT": 1}
+        assert after_retry["reward"] == (1, 5)
+        assert after_retry["session"][0] == "COMPLETED"
+        assert after_retry["session"][2:] == (5, "MASTERED")
+        assert after_retry["wrap_up"] == "COMPLETED"
+        assert after_retry["telemetry"] == {
+            "session_completed": 1,
+            "mastery_transition": 1,
+            "next_lesson_unlocked": 1,
+        }
+        after_retry_curriculum = api.get(f"/api/children/{child_id}/validated-curriculum").json()
+        next_lesson = next(lesson for stage in after_retry_curriculum["stages"] for lesson in stage["lessons"] if lesson["id"] == "book1-l02")
+        assert next_lesson["accessible"] is True
+
+        replay_response = api.post(completion_url, json={})
+        assert replay_response.status_code == 200, replay_response.text
+        assert replay_response.json()["status"] == "COMPLETED"
+        assert settlement_snapshot() == after_retry
 
 
 def test_speaking_and_pronunciation_are_non_score_gates(tmp_path):

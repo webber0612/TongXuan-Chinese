@@ -16,10 +16,10 @@ from .curriculum_evidence import record_linked_score_evidence
 from .curriculum_policy import (
     _lesson_map,
     _ordered_lessons,
+    _assess_lesson_in_transaction,
+    _record_lesson_progress_in_transaction,
     _source_fields,
-    assess_lesson,
     lesson_is_accessible,
-    record_lesson_progress,
     record_srs_review,
     validated_slice,
 )
@@ -1145,27 +1145,24 @@ def complete_learning_session(*, child_id: int, session_id: str) -> dict[str, An
         old_state = db.execute("SELECT status FROM curriculum_lesson_states WHERE child_id=? AND lesson_id=?", (child_id, session["lesson_id"])).fetchone()
         previous_mastery = old_state["status"] if old_state else "NOT_STARTED"
         lesson_id = session["lesson_id"]
-    if previous_mastery != "MASTERED":
-        record_lesson_progress(child_id=child_id, lesson_id=lesson_id, status="PRACTICED")
-    assessment = assess_lesson(child_id=child_id, lesson_id=lesson_id)
-    stamp = now()
-    with connect() as db:
-        session = db.execute("SELECT * FROM learning_flow_sessions WHERE id=? AND child_id=?", (session_id, child_id)).fetchone()
-        if session["status"] != "COMPLETED":
-            last_resume = _parse_stamp(session["last_resumed_at"])
-            elapsed = max(0, int((_utcnow_naive() - last_resume).total_seconds())) if last_resume else 0
-            award_points(db, child_id, "LEARNING_SESSION_COMPLETE", 5, session_id, f"learning-session:{session_id}", "Completed learning session")
-            db.execute("UPDATE learning_flow_tasks SET state='COMPLETED',completed_at=COALESCE(completed_at,?) WHERE session_id=? AND task_type='LESSON_WRAP_UP'", (stamp, session_id))
-            db.execute("UPDATE learning_flow_sessions SET status='COMPLETED',completed_at=?,active_seconds=active_seconds+?,reward_points=5,mastery_status=?,termination_reason=NULL WHERE id=? AND child_id=? AND status='IN_PROGRESS'", (stamp, elapsed, assessment["status"], session_id, child_id))
-            _log(db, session_id, child_id, "session_completed", None, None, {"masteryStatus": assessment["status"], "rewardPoints": 5, "durationSeconds": session["active_seconds"] + elapsed}, stamp)
-            if assessment["status"] != previous_mastery:
-                _log(db, session_id, child_id, "mastery_transition", None, None, {"from": previous_mastery, "to": assessment["status"]}, stamp)
-            if assessment["status"] == "MASTERED":
-                ordered = _ordered_lessons()
-                current_index = next((index for index, lesson in enumerate(ordered) if lesson["id"] == lesson_id), -1)
-                next_lesson = next((lesson for lesson in ordered[current_index + 1:] if lesson_is_accessible(db, child_id, lesson["id"])), None)
-                if next_lesson:
-                    _log(db, session_id, child_id, "next_lesson_unlocked", None, None, {"lessonId": next_lesson["id"]}, stamp)
+        if previous_mastery != "MASTERED":
+            _record_lesson_progress_in_transaction(db, child_id=child_id, lesson_id=lesson_id, status="PRACTICED")
+        assessment = _assess_lesson_in_transaction(db, child_id=child_id, lesson_id=lesson_id)
+        stamp = now()
+        last_resume = _parse_stamp(session["last_resumed_at"])
+        elapsed = max(0, int((_utcnow_naive() - last_resume).total_seconds())) if last_resume else 0
+        award_points(db, child_id, "LEARNING_SESSION_COMPLETE", 5, session_id, f"learning-session:{session_id}", "Completed learning session")
+        db.execute("UPDATE learning_flow_tasks SET state='COMPLETED',completed_at=COALESCE(completed_at,?) WHERE session_id=? AND task_type='LESSON_WRAP_UP'", (stamp, session_id))
+        db.execute("UPDATE learning_flow_sessions SET status='COMPLETED',completed_at=?,active_seconds=active_seconds+?,reward_points=5,mastery_status=?,termination_reason=NULL WHERE id=? AND child_id=? AND status='IN_PROGRESS'", (stamp, elapsed, assessment["status"], session_id, child_id))
+        _log(db, session_id, child_id, "session_completed", None, None, {"masteryStatus": assessment["status"], "rewardPoints": 5, "durationSeconds": session["active_seconds"] + elapsed}, stamp)
+        if assessment["status"] != previous_mastery:
+            _log(db, session_id, child_id, "mastery_transition", None, None, {"from": previous_mastery, "to": assessment["status"]}, stamp)
+        if assessment["status"] == "MASTERED":
+            ordered = _ordered_lessons()
+            current_index = next((index for index, lesson in enumerate(ordered) if lesson["id"] == lesson_id), -1)
+            next_lesson = next((lesson for lesson in ordered[current_index + 1:] if lesson_is_accessible(db, child_id, lesson["id"])), None)
+            if next_lesson:
+                _log(db, session_id, child_id, "next_lesson_unlocked", None, None, {"lessonId": next_lesson["id"]}, stamp)
         finished = db.execute("SELECT * FROM learning_flow_sessions WHERE id=?", (session_id,)).fetchone()
         result = _session_payload(db, finished)
     result["assessment"] = assessment
