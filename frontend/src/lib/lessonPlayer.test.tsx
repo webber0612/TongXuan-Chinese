@@ -229,14 +229,21 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
   });
 
   // Test 11
-  it("11. Review mode contains due retrieval tasks without replaying the entire lesson", () => {
+  it("11. Review mode builds retrieval steps strictly from authoritative due items and returns empty when no due items exist", () => {
     const pkg = getLessonPackage("book1-l01");
     expect(pkg).not.toBeNull();
     if (!pkg) return;
 
-    const revSteps = getStepsForMode(pkg, "REVIEW");
-    expect(revSteps.length).toBe(2); // retrieval exit ticket + wrap up
-    expect(revSteps[0].stepKey).toBe("exit_ticket");
+    // A. Without authoritative due items, REVIEW mode returns [] (never static reviewSteps)
+    const emptySteps = getStepsForMode(pkg, "REVIEW");
+    expect(emptySteps.length).toBe(0);
+
+    // B. With authoritative due item, builds exact retrieval step without full lesson replay
+    const dueItem = { id: "item-ni", character: "你", skillDomain: "recognition" };
+    const revSteps = getStepsForMode(pkg, "REVIEW", [], [dueItem]);
+    expect(revSteps.length).toBe(2); // exact due retrieval step + wrap up
+    expect(revSteps[0].stepKey).toBe("characters");
+    expect(revSteps[0].data?.dueCharacter).toBe("你");
     expect(revSteps[1].stepKey).toBe("wrap_up");
   });
 
@@ -3599,6 +3606,305 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     container.remove();
     vi.unstubAllGlobals();
   });
+
+  it("61. Regression A: no due SRS item -> REVIEW does not display static reviewSteps or fake retrieval task, renders empty review state with return button", async () => {
+    let onBackCalled = false;
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (url.includes("/learning-sessions/current")) {
+        return new Response(JSON.stringify({ id: "s-rev-none", status: "IN_PROGRESS", tasks: [] }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/learning-daily-queue")) {
+        return new Response(JSON.stringify({ review: { sourceQueue: "REVIEW", dueCount: 0, items: [] } }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => { onBackCalled = true; }} initialMode="REVIEW" />);
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    // Verify static review steps / exit ticket are NOT rendered
+    expect(container.querySelector(".exit-ticket-item-card")).toBeNull();
+    expect(container.querySelector("[data-step-key='exit_ticket']")).toBeNull();
+    // Verify empty review card is rendered
+    expect(container.querySelector(".empty-review-card")).toBeTruthy();
+    expect(container.textContent).toMatch(/目前沒有到期的複習項目|No due reviews right now/);
+
+    // Verify back-to-today button triggers onBack
+    const backBtn = container.querySelector(".back-to-today-btn") as HTMLButtonElement;
+    expect(backBtn).toBeTruthy();
+    await act(async () => { backBtn.click(); });
+    expect(onBackCalled).toBe(true);
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
+
+  it("62. Regression B: due recognition item = 你 -> REVIEW displays ONLY '你', does not display non-due items or other character tabs", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (url.includes("/learning-sessions/current")) {
+        return new Response(JSON.stringify({
+          id: "s-rev-ni",
+          status: "IN_PROGRESS",
+          tasks: [
+            {
+              id: "t-rev-ni",
+              key: "review-recognition-1",
+              taskType: "REVIEW_RECOGNITION",
+              skillDomain: "recognition",
+              sourceQueue: "REVIEW",
+              itemId: "item-ni",
+              state: "PENDING",
+              taskData: {
+                prompt: "聽完今天的問候語，選出剛才出現的字。",
+                audioText: "你",
+                choices: [
+                  { id: "opt-hao", label: "好", isCorrect: false },
+                  { id: "opt-ni", label: "你", isCorrect: true },
+                ],
+                dueAt: "2026-09-02T00:00:00Z",
+              },
+            },
+          ],
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} initialMode="REVIEW" />);
+    });
+
+    // Character tabs row should NOT display the non-due character '好' tab
+    expect(container.querySelector(".character-tabs-row")).toBeNull();
+    // Only the exact due character '你' is displayed in hero display
+    expect(container.querySelector(".large-char-display")?.textContent).toBe("你");
+    // Prompt shows exact due item prompt
+    expect(container.querySelector(".interaction-prompt")?.textContent).toContain("聽完今天的問候語，選出剛才出現的字。");
+    // Does not display static exit ticket or dialogue
+    expect(container.querySelector(".exit-ticket-item-card")).toBeNull();
+    expect(container.querySelector("[data-step-key='dialogue']")).toBeNull();
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
+
+  it("63. Regression C: due recognition item = 好 -> REVIEW display content switches to '好'", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (url.includes("/learning-sessions/current")) {
+        return new Response(JSON.stringify({
+          id: "s-rev-hao",
+          status: "IN_PROGRESS",
+          tasks: [
+            {
+              id: "t-rev-hao",
+              key: "review-recognition-1",
+              taskType: "REVIEW_RECOGNITION",
+              skillDomain: "recognition",
+              sourceQueue: "REVIEW",
+              itemId: "item-hao",
+              state: "PENDING",
+              taskData: {
+                prompt: "聽完今天的問候語，選出剛才出現的字。",
+                audioText: "好",
+                choices: [
+                  { id: "opt-ni", label: "你", isCorrect: false },
+                  { id: "opt-hao", label: "好", isCorrect: true },
+                ],
+                dueAt: "2026-09-02T00:00:00Z",
+              },
+            },
+          ],
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} initialMode="REVIEW" />);
+    });
+
+    // Content switches to '好'
+    expect(container.querySelector(".large-char-display")?.textContent).toBe("好");
+    expect(container.querySelector(".step-card-subtitle")?.textContent).toContain("好");
+    expect(container.querySelector(".play-recog-audio-btn")?.textContent).toContain("好");
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
+
+  it("64. Regression D: future-due item -> does not appear in REVIEW mode ahead of time", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (url.includes("/learning-sessions/current")) {
+        // Backend filtered out future-due items (due_at > as_of), so tasks array contains no review tasks
+        return new Response(JSON.stringify({
+          id: "s-rev-future",
+          status: "IN_PROGRESS",
+          tasks: [],
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/learning-daily-queue")) {
+        return new Response(JSON.stringify({ review: { sourceQueue: "REVIEW", dueCount: 0, items: [] } }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} initialMode="REVIEW" />);
+    });
+
+    // Future-due item must NOT be displayed ahead of time
+    expect(container.querySelector(".large-char-display")).toBeNull();
+    expect(container.querySelector(".empty-review-card")).toBeTruthy();
+    expect(container.textContent).toMatch(/目前沒有到期的複習項目|No due reviews right now/);
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
+
+  it("65. Regression E: completing due review -> exact due item is persisted and advances to wrap-up", async () => {
+    let answerCalls: any[] = [];
+    let taskState = "PENDING";
+
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes("/learning-sessions/current")) {
+        return new Response(JSON.stringify({
+          id: "s-rev-e",
+          status: "IN_PROGRESS",
+          tasks: [
+            {
+              id: "t-rev-e1",
+              key: "review-recognition-1",
+              taskType: "REVIEW_RECOGNITION",
+              skillDomain: "recognition",
+              sourceQueue: "REVIEW",
+              itemId: "item-ni",
+              state: taskState,
+              taskData: {
+                prompt: "選出聽到的字：",
+                audioText: "你",
+                choices: [
+                  { id: "opt-hao", label: "好", isCorrect: false },
+                  { id: "opt-ni", label: "你", isCorrect: true },
+                ],
+                dueAt: "2026-09-02T00:00:00Z",
+              },
+            },
+          ],
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/tasks/t-rev-e1/answer") && init?.method === "POST") {
+        const body = JSON.parse(init.body as string);
+        answerCalls.push(body);
+        taskState = "COMPLETED";
+        return new Response(JSON.stringify({
+          id: "s-rev-e",
+          status: "IN_PROGRESS",
+          tasks: [
+            {
+              id: "t-rev-e1",
+              key: "review-recognition-1",
+              taskType: "REVIEW_RECOGNITION",
+              skillDomain: "recognition",
+              sourceQueue: "REVIEW",
+              itemId: "item-ni",
+              state: "COMPLETED",
+              completedAt: "2026-09-26T14:00:00Z",
+            },
+          ],
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} initialMode="REVIEW" />);
+    });
+
+    // 1. Select option '你' (opt-ni)
+    const choiceButtons = container.querySelectorAll(".char-choice-card");
+    const niChoice = Array.from(choiceButtons).find((b) => b.textContent?.includes("你")) as HTMLButtonElement;
+    expect(niChoice).toBeTruthy();
+    await act(async () => { niChoice.click(); });
+
+    // 2. Click next to advance
+    const nextBtn = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
+    expect(nextBtn).toBeTruthy();
+    await act(async () => { nextBtn.click(); });
+
+    // 3. Verify exact due item was answered in backend
+    expect(answerCalls.length).toBe(1);
+    expect(answerCalls[0].selected_option_id).toBe("opt-ni");
+
+    // 4. Verify advanced to wrap-up
+    expect(container.querySelector("[data-step-key='wrap_up']")).toBeTruthy();
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
+
+  it("66. Regression F: LessonPackage static reviewSteps exists in json, but without backend due item it is NEVER executed as REVIEW", async () => {
+    const pkg = getLessonPackage("book1-l01");
+    expect(pkg).not.toBeNull();
+    // Static reviewSteps exists in JSON blueprint
+    expect(pkg?.taskBlueprint.reviewSteps.length).toBeGreaterThanOrEqual(1);
+
+    // Calling getStepsForMode with no backend due items returns []
+    const steps = getStepsForMode(pkg!, "REVIEW", [], []);
+    expect(steps.length).toBe(0);
+
+    // Mounting LessonPlayerPage with no backend due items never executes static reviewSteps
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (url.includes("/learning-sessions/current")) {
+        return new Response(JSON.stringify({ id: "s-rev-f", status: "IN_PROGRESS", tasks: [] }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} initialMode="REVIEW" />);
+    });
+
+    expect(container.querySelector("[data-step-key='exit_ticket']")).toBeNull();
+    expect(container.querySelector(".empty-review-card")).toBeTruthy();
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
 });
+
 
 

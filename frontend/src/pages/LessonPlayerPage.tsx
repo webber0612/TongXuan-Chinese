@@ -148,6 +148,10 @@ const copy = {
     retry: "重試",
     taskFailed: "任務操作失敗，請點擊重試",
     pleaseAnswerQuestion: "請先完成目前題目再繼續",
+    noDueReviews: "目前沒有到期的複習項目",
+    noDueReviewsDesc: "太棒了！所有進度都已掌握，暫時沒有需要檢索複習的生字或詞彙。",
+    noDueReviewsNotice: "系統依據 SRS 遺忘曲線管理複習進度。當有生字到期時，會自動出現在今日複習中。",
+    backToToday: "返回今日學習",
   },
   "zh-Hans": {
     back: "返回",
@@ -204,6 +208,10 @@ const copy = {
     retry: "重试",
     taskFailed: "任务操作失败，请点击重试",
     pleaseAnswerQuestion: "请先完成当前题目再继续",
+    noDueReviews: "目前没有到期的复习项目",
+    noDueReviewsDesc: "太棒了！所有进度都已掌握，暂时没有需要检索复习的生字或词汇。",
+    noDueReviewsNotice: "系统依据 SRS 遗忘曲线管理复习进度。当有生字到期时，会自动出现在今日复习中。",
+    backToToday: "返回今日学习",
   },
   en: {
     back: "Back",
@@ -260,6 +268,10 @@ const copy = {
     retry: "Retry",
     taskFailed: "Task operation failed. Please retry.",
     pleaseAnswerQuestion: "Please answer the current question to continue",
+    noDueReviews: "No due reviews right now",
+    noDueReviewsDesc: "Great job! All items are up to date. There are no due SRS retrieval items.",
+    noDueReviewsNotice: "The system schedules retrieval practice according to the SRS memory curve. Due items will automatically appear here.",
+    backToToday: "Back to Today's Learning",
   },
   ja: {
     back: "戻る",
@@ -316,6 +328,10 @@ const copy = {
     retry: "再試行",
     taskFailed: "操作に失敗しました。再試行してください。",
     pleaseAnswerQuestion: "現在の問題に答えてから進んでください",
+    noDueReviews: "現在、復習期日の項目はありません",
+    noDueReviewsDesc: "素晴らしい！現在復習が必要な項目はありません。",
+    noDueReviewsNotice: "SRS間隔に基づいて復習がスケジュールされます。",
+    backToToday: "今日の学習に戻る",
   },
   ko: {
     back: "뒤로",
@@ -372,6 +388,10 @@ const copy = {
     retry: "다시 시도",
     taskFailed: "작업에 실패했습니다. 다시 시도해 주세요.",
     pleaseAnswerQuestion: "현재 문제를 먼저 완료하고 계속 진행하세요",
+    noDueReviews: "현재 복습할 항목이 없습니다",
+    noDueReviewsDesc: "훌륭합니다! 모든 항목이 최신 상태입니다.",
+    noDueReviewsNotice: "SRS 주기에 따라 복습 항목이 자동으로 표시됩니다.",
+    backToToday: "오늘의 학습으로 돌아가기",
   },
   es: {
     back: "Volver",
@@ -428,6 +448,10 @@ const copy = {
     retry: "Reintentar",
     taskFailed: "Error en la operación. Intente nuevamente.",
     pleaseAnswerQuestion: "Por favor complete la pregunta actual para continuar",
+    noDueReviews: "No hay repasos pendientes en este momento",
+    noDueReviewsDesc: "¡Excelente! Todo está al día.",
+    noDueReviewsNotice: "El sistema programa repasos espaciados (SRS) automáticamente.",
+    backToToday: "Volver al aprendizaje de hoy",
   },
 } as const;
 
@@ -502,14 +526,28 @@ export function LessonPlayerPage({
   const submittedEvidenceRef = useRef<Record<string, string>>({});
   const submittedSkipsRef = useRef<Record<string, boolean>>({});
 
+  const [dailyQueueDueItems, setDailyQueueDueItems] = useState<any[]>([]);
+
   // Canonical lesson ID resolution
   const resolvedLessonId = session?.curriculumContext?.lessonId || session?.lessonId || lessonId || "book1-l01";
   const pkg: LessonPackage | null = useMemo(() => getLessonPackage(resolvedLessonId), [resolvedLessonId]);
 
+  // Authoritative due review items extraction
+  const authoritativeDueItems = useMemo(() => {
+    if (mode !== "REVIEW") return [];
+    const sessionTasks = session?.tasks || [];
+    const reviewTasks = sessionTasks.filter(
+      (t) => t.sourceQueue === "REVIEW" || t.taskType === "REVIEW_RECOGNITION" || t.key.startsWith("review-")
+    );
+    if (reviewTasks.length > 0) return reviewTasks;
+    if (dailyQueueDueItems.length > 0) return dailyQueueDueItems;
+    return [];
+  }, [mode, session?.tasks, dailyQueueDueItems]);
+
   const steps: LessonStepDefinition[] = useMemo(() => {
     if (!pkg) return [];
-    return getStepsForMode(pkg, mode, weakDomains);
-  }, [pkg, mode, weakDomains]);
+    return getStepsForMode(pkg, mode, weakDomains, authoritativeDueItems);
+  }, [pkg, mode, weakDomains, authoritativeDueItems]);
 
   const currentStep = steps[currentStepIndex] ?? null;
 
@@ -564,6 +602,23 @@ export function LessonPlayerPage({
           setError(text.taskFailed);
         }
       }
+
+      if (mode === "REVIEW" || initialMode === "REVIEW") {
+        try {
+          const dq = await api<{
+            review?: {
+              sourceQueue?: string;
+              dueCount?: number;
+              items?: Array<{ id: string; character: string; lessonId: string; dueAt: string }>;
+            };
+          }>(`/api/children/${activeChildId}/learning-daily-queue`);
+          if (dq?.review?.items) {
+            setDailyQueueDueItems(dq.review.items);
+          }
+        } catch {
+          // ignore unmocked endpoint in test environments
+        }
+      }
     } catch (err: any) {
       sessionRef.current = null;
       setSession(null);
@@ -571,7 +626,7 @@ export function LessonPlayerPage({
     } finally {
       setBusy(false);
     }
-  }, [activeChildId, lessonId, locale, text.taskFailed]);
+  }, [activeChildId, lessonId, locale, mode, initialMode, text.taskFailed]);
 
   useEffect(() => {
     void initSession();
@@ -579,7 +634,7 @@ export function LessonPlayerPage({
 
   // Backend task progression helpers with strict error surfacing and authoritative task state return
   const submitBackendTaskAnswer = async (
-    matcher: (t: { id: string; key: string; taskType: string; state: string; itemId?: string; taskData?: any; attemptCount?: number; failureCount?: number; completedAt?: string | null }) => boolean,
+    matcher: (t: { id: string; key: string; taskType: string; state: string; sourceQueue?: string; itemId?: string; taskData?: any; attemptCount?: number; failureCount?: number; completedAt?: string | null }) => boolean,
     selectedOptionId?: string,
     answers?: Record<string, string>,
     assisted = false
@@ -1107,7 +1162,16 @@ export function LessonPlayerPage({
 
     // 3. Characters step: ensure recognition tasks are completed authoritatively
     if (currentStep.stepKey === "characters") {
-      const currentAnswer = selectedChoices[`recog-${activeCharIndex}`];
+      const isReviewMode = mode === "REVIEW";
+      const dueChar = currentStep.data?.dueCharacter;
+      const charObj = isReviewMode
+        ? (currentStep.data?.charObj || pkg.characters.find((c) => c.char === dueChar) || { char: dueChar || "你" })
+        : pkg.characters[activeCharIndex];
+      const reviewChoiceKey = `recog-rev-${charObj?.char}`;
+      const currentAnswer = isReviewMode
+        ? (selectedChoices[reviewChoiceKey] || selectedChoices["recog"] || selectedChoices[`recog-${activeCharIndex}`])
+        : selectedChoices[`recog-${activeCharIndex}`];
+
       if (!currentAnswer) {
         setError(text.pleaseAnswerQuestion);
         return;
@@ -1119,16 +1183,23 @@ export function LessonPlayerPage({
           setError(text.taskFailed);
           return;
         }
-        const charObj = pkg.characters[activeCharIndex];
-        const charTask = currentSessChar.tasks.find(
-          (t) => (t.taskType === "RECOGNITION" || t.taskType === "MINI_CHECK" || t.key.startsWith("recognition-")) &&
-                 (t.key === `recognition-${activeCharIndex + 1}` || (charObj && t.itemId === charObj.char)) &&
-                 t.key !== "mini-check-reflection"
-        );
+
+        const charTask = isReviewMode
+          ? currentSessChar.tasks.find(
+              (t) => (t.sourceQueue === "REVIEW" || t.taskType === "REVIEW_RECOGNITION" || t.key.startsWith("review-")) &&
+                     (t.id === currentStep.data?.dueItem?.id || t.itemId === charObj?.char || t.taskData?.audioText === charObj?.char)
+            ) || currentSessChar.tasks.find(
+              (t) => t.sourceQueue === "REVIEW" || t.taskType === "REVIEW_RECOGNITION"
+            )
+          : currentSessChar.tasks.find(
+              (t) => (t.taskType === "RECOGNITION" || t.taskType === "MINI_CHECK" || t.key.startsWith("recognition-")) &&
+                     (t.key === `recognition-${activeCharIndex + 1}` || (charObj && t.itemId === charObj.char)) &&
+                     t.key !== "mini-check-reflection"
+            );
 
         if (!charTask) {
           setError(text.taskFailed);
-          return; // Char task missing -> fail closed, block tab advance!
+          return; // Char task missing -> fail closed, block advance!
         }
 
         if (charTask.state !== "COMPLETED" && charTask.state !== "DEFERRED") {
@@ -1145,15 +1216,15 @@ export function LessonPlayerPage({
         }
       }
 
-      // If there are more characters in this step, advance tab
-      if (activeCharIndex < pkg.characters.length - 1) {
+      // In LEARN mode, if there are more characters, advance tab
+      if (!isReviewMode && activeCharIndex < pkg.characters.length - 1) {
         setActiveCharIndex((prev) => prev + 1);
         setError(null);
         return;
       }
 
-      // If on the last character tab, ensure ALL recognition tasks are COMPLETED / DEFERRED before advancing step
-      if (activeChildId) {
+      // If on the last character tab in LEARN mode, ensure ALL recognition tasks are COMPLETED / DEFERRED before advancing step
+      if (!isReviewMode && activeChildId) {
         const sessAfterRecog = sessionRef.current;
         if (!sessAfterRecog || !sessAfterRecog.id || !sessAfterRecog.tasks) {
           setError(text.taskFailed);
@@ -1700,11 +1771,11 @@ export function LessonPlayerPage({
             {mode === "REPAIR" && text.repairMode}
           </span>
           <span className="step-counter-text">
-            {text.step} {currentStepIndex + 1} {text.of} {steps.length}
+            {steps.length === 0 ? text.noDueReviews : `${text.step} ${currentStepIndex + 1} ${text.of} ${steps.length}`}
           </span>
         </div>
 
-        <div className="step-progress-track" role="progressbar" aria-valuenow={currentStepIndex + 1} aria-valuemin={1} aria-valuemax={steps.length}>
+        <div className="step-progress-track" role="progressbar" aria-valuenow={currentStepIndex + 1} aria-valuemin={1} aria-valuemax={steps.length || 1}>
           {steps.map((s, idx) => (
             <div
               key={`${s.stepKey}-${idx}`}
@@ -1714,6 +1785,28 @@ export function LessonPlayerPage({
           ))}
         </div>
       </section>
+
+      {/* Empty State when in REVIEW mode with no due SRS items */}
+      {mode === "REVIEW" && steps.length === 0 && (
+        <article className="lesson-step-card empty-review-card" data-step-key="empty_review">
+          <header className="step-card-header">
+            <h2 className="step-card-title">{text.noDueReviews}</h2>
+            <p className="step-card-subtitle">{text.noDueReviewsDesc}</p>
+          </header>
+          <div className="step-body empty-review-body" style={{ textAlign: "center", padding: "2rem 1rem" }}>
+            <p className="empty-review-notice" style={{ marginBottom: "1.5rem", color: "var(--color-text-secondary, #666)" }}>
+              {text.noDueReviewsNotice}
+            </p>
+            <button
+              type="button"
+              className="button button-primary back-to-today-btn"
+              onClick={onBack}
+            >
+              {text.backToToday}
+            </button>
+          </div>
+        </article>
+      )}
 
       {/* Primary Single Column Content View */}
       {currentStep && (
@@ -1873,44 +1966,70 @@ export function LessonPlayerPage({
 
           {/* STEP 4: Characters */}
           {currentStep.stepKey === "characters" && (() => {
-            const charObj = pkg.characters[activeCharIndex];
-            const charTask = session?.tasks?.find(
-              (t) => (t.taskType === "RECOGNITION" || t.taskType === "MINI_CHECK" || t.key.startsWith("recognition-")) &&
-                     (t.key === `recognition-${activeCharIndex + 1}` || t.itemId === charObj?.char)
-            );
+            const isReviewMode = mode === "REVIEW";
+            const dueChar = currentStep.data?.dueCharacter;
+            const charObj = isReviewMode
+              ? (currentStep.data?.charObj || pkg.characters.find((c) => c.char === dueChar) || {
+                  char: dueChar || "你",
+                  pronunciation: { pinyin: "", zhuyin: "" },
+                  components: [],
+                  meaning: { zh: "", en: "" },
+                  commonWords: [],
+                  strokeCount: 0,
+                  reviewStatus: "APPROVED" as const,
+                })
+              : pkg.characters[activeCharIndex];
+
+            const charTask = isReviewMode
+              ? session?.tasks?.find(
+                  (t) => (t.sourceQueue === "REVIEW" || t.taskType === "REVIEW_RECOGNITION" || t.key.startsWith("review-")) &&
+                         (t.id === currentStep.data?.dueItem?.id || t.itemId === charObj?.char || t.taskData?.audioText === charObj?.char)
+                ) || session?.tasks?.find((t) => t.sourceQueue === "REVIEW" || t.taskType === "REVIEW_RECOGNITION")
+              : session?.tasks?.find(
+                  (t) => (t.taskType === "RECOGNITION" || t.taskType === "MINI_CHECK" || t.key.startsWith("recognition-")) &&
+                         (t.key === `recognition-${activeCharIndex + 1}` || t.itemId === charObj?.char)
+                );
+
             const prompt = charTask?.taskData?.prompt || currentStep.data.recognitionCheck?.prompt || "聽一聽發音，選出聽到的字：";
-            const audioText = charTask?.taskData?.audioText || charObj?.char || "你";
-            const choices = charTask?.taskData?.choices || (
-              activeCharIndex === 0
-                ? [{ id: "opt-ni", label: "你", isCorrect: true }, { id: "opt-hao", label: "好", isCorrect: false }]
-                : [{ id: "opt-ni", label: "你", isCorrect: false }, { id: "opt-hao", label: "好", isCorrect: true }]
+            const audioText = charTask?.taskData?.audioText || currentStep.data?.dueCharacter || charObj?.char || "你";
+            const choices = charTask?.taskData?.choices || currentStep.data.recognitionCheck?.choices || (
+              charObj?.char === "好"
+                ? [{ id: "opt-ni", label: "你", isCorrect: false }, { id: "opt-hao", label: "好", isCorrect: true }]
+                : [{ id: "opt-ni", label: "你", isCorrect: true }, { id: "opt-hao", label: "好", isCorrect: false }]
             );
+
+            const reviewChoiceKey = `recog-rev-${charObj?.char}`;
+            const selectedChoiceVal = isReviewMode
+              ? (selectedChoices[reviewChoiceKey] || selectedChoices["recog"] || selectedChoices[`recog-${activeCharIndex}`])
+              : selectedChoices[`recog-${activeCharIndex}`];
 
             return (
               <div className="step-body step-characters-body">
-                <div className="character-tabs-row" role="tablist">
-                  {pkg.characters.map((c, idx) => {
-                    const taskForChar = session?.tasks?.find(
-                      (t) => (t.taskType === "RECOGNITION" || t.taskType === "MINI_CHECK" || t.key.startsWith("recognition-")) &&
-                             (t.key === `recognition-${idx + 1}` || t.itemId === c.char)
-                    );
-                    const isDone = taskForChar?.state === "COMPLETED" || Boolean(selectedChoices[`recog-${idx}`]);
-                    return (
-                      <button
-                        key={c.char}
-                        type="button"
-                        role="tab"
-                        aria-selected={activeCharIndex === idx}
-                        className={`character-tab-btn ${activeCharIndex === idx ? "active" : ""} ${isDone ? "is-done" : ""}`}
-                        onClick={() => setActiveCharIndex(idx)}
-                      >
-                        <span className="tab-char">{c.char}</span>
-                        <span className="tab-pinyin">{c.pronunciation.pinyin}</span>
-                        {isDone && <span className="tab-done-indicator">✓</span>}
-                      </button>
-                    );
-                  })}
-                </div>
+                {!isReviewMode && (
+                  <div className="character-tabs-row" role="tablist">
+                    {pkg.characters.map((c, idx) => {
+                      const taskForChar = session?.tasks?.find(
+                        (t) => (t.taskType === "RECOGNITION" || t.taskType === "MINI_CHECK" || t.key.startsWith("recognition-")) &&
+                               (t.key === `recognition-${idx + 1}` || t.itemId === c.char)
+                      );
+                      const isDone = taskForChar?.state === "COMPLETED" || Boolean(selectedChoices[`recog-${idx}`]);
+                      return (
+                        <button
+                          key={c.char}
+                          type="button"
+                          role="tab"
+                          aria-selected={activeCharIndex === idx}
+                          className={`character-tab-btn ${activeCharIndex === idx ? "active" : ""} ${isDone ? "is-done" : ""}`}
+                          onClick={() => setActiveCharIndex(idx)}
+                        >
+                          <span className="tab-char">{c.char}</span>
+                          <span className="tab-pinyin">{c.pronunciation.pinyin}</span>
+                          {isDone && <span className="tab-done-indicator">✓</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
 
                 {charObj && (
                   <div className="character-detail-display">
@@ -1923,26 +2042,26 @@ export function LessonPlayerPage({
                         aria-label={`播放「${charObj.char}」的發音`}
                       >
                         <Volume2 size={20} />
-                        <span>{charObj.pronunciation.pinyin} / {charObj.pronunciation.zhuyin}</span>
+                        <span>{charObj.pronunciation?.pinyin || ""} / {charObj.pronunciation?.zhuyin || ""}</span>
                       </button>
                     </div>
 
                     <div className="char-info-grid">
                       <div className="info-cell">
                         <span className="info-cell-label">部首</span>
-                        <strong className="info-cell-val">{charObj.radical} 部</strong>
+                        <strong className="info-cell-val">{charObj.radical || "一"} 部</strong>
                       </div>
                       <div className="info-cell">
                         <span className="info-cell-label">筆畫</span>
-                        <strong className="info-cell-val">{charObj.strokeCount} 畫</strong>
+                        <strong className="info-cell-val">{charObj.strokeCount || 1} 畫</strong>
                       </div>
                       <div className="info-cell">
                         <span className="info-cell-label">字義</span>
-                        <strong className="info-cell-val">{charObj.meaning.zh}</strong>
+                        <strong className="info-cell-val">{charObj.meaning?.zh || ""}</strong>
                       </div>
                     </div>
 
-                    {renderScaffold(charObj.char === "你" ? "char_ni" : "char_hao")}
+                    {charObj.char && renderScaffold(charObj.char === "你" ? "char_ni" : "char_hao")}
                   </div>
                 )}
 
@@ -1959,8 +2078,8 @@ export function LessonPlayerPage({
                   </button>
                   <div className="choices-horizontal-row">
                     {choices?.map((choice: { id: string; label: string; isCorrect?: boolean }) => {
-                      const isSelected = selectedChoices[`recog-${activeCharIndex}`] === choice.id || selectedChoices["recog"] === choice.id;
-                      const isCorrect = choice.id === (activeCharIndex === 0 ? "opt-ni" : "opt-hao") || choice.isCorrect;
+                      const isSelected = selectedChoiceVal === choice.id || selectedChoices["recog"] === choice.id;
+                      const isCorrect = choice.id === (charObj?.char === "好" ? "opt-hao" : "opt-ni") || choice.isCorrect;
                       return (
                         <button
                           key={choice.id}
@@ -1970,10 +2089,11 @@ export function LessonPlayerPage({
                             setSelectedChoices((prev) => ({
                               ...prev,
                               recog: choice.id,
+                              [reviewChoiceKey]: choice.id,
                               [`recog-${activeCharIndex}`]: choice.id,
                             }));
                             await submitBackendTaskAnswer(
-                              (t) => t.id === charTask?.id || t.key === `recognition-${activeCharIndex + 1}`,
+                              (t) => t.id === charTask?.id || (isReviewMode ? (t.sourceQueue === "REVIEW" || t.taskType === "REVIEW_RECOGNITION") : t.key === `recognition-${activeCharIndex + 1}`),
                               choice.id
                             );
                           }}

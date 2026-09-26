@@ -227,6 +227,24 @@ def test_due_driven_review_retrieval(tmp_path):
         assert review_tasks[0]["taskType"] == "REVIEW_RECOGNITION"
         assert review_tasks[0]["skillDomain"] == "recognition"
 
+        # Answering due review task persists exact attempt evidence and updates SRS state
+        session_id = start_resp.json()["id"]
+        review_task_id = review_tasks[0]["id"]
+        answer_resp = client.post(
+            f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{review_task_id}/answer",
+            json={"selected_option_id": "option-2"},
+        )
+        assert answer_resp.status_code == 200
+        with connect() as db:
+            srs_row = db.execute(
+                "SELECT stage, due_at, last_result FROM srs_review_states WHERE child_id=? AND skill_domain='recognition' AND item_id='item-ni'",
+                (child_id,),
+            ).fetchone()
+            assert srs_row["stage"] == 2
+            assert srs_row["last_result"] == "correct"
+            assert srs_row["due_at"] is not None
+            assert srs_row["due_at"] > "2026-09-02T00:00:00Z"
+
 
 def test_real_book1_l01_end_to_end_completion_flow(tmp_path):
     from app.auth import issue_session
