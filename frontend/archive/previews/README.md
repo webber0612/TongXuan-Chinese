@@ -1,7 +1,7 @@
-# Archived preview pages
+# Archived UI References — DO_NOT_IMPLEMENT
 
-These pages were moved out of `src/pages` because they were prototypes and static design experiments, not the production child portal. The app does not import or route to these files, and frontend builds exclude this directory.
+**HISTORICAL_REFERENCE_ONLY**
 
-The current GitHub Pages root and its legacy aliases (`/kids`, `/preview-kids`, `/preview-2`, `/preview-b`) use `frontend/src/pages/ChildPortalPage.tsx`. That production page retains the shipped child-portal layout. The aliases are kept as compatibility routes; separate design experiments route to the archived notice. The former `KidsPrototypesPage` source was extracted into the active `ChildPortalPage`; it is not an archived preview.
+The executable React pages previously kept in this directory have been removed from the working tree. Git history retains them for historical recovery. Do not restore, import, route to, or use them as product implementation targets.
 
-Keep this directory as read-only history. Make product changes in the active route components under `src/pages` and `src/AppShell.tsx`.
+The only production frontend is the TongXuan Web App declared in [`docs/frontend-architecture.md`](../../../docs/frontend-architecture.md): `frontend/src/main.tsx` → `frontend/src/AppShell.tsx`, with canonical child route `/`.

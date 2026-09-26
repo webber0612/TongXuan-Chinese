@@ -299,8 +299,8 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     grammarDomain: "語法",
     writingDomain: "書寫",
     readingDomain: "閱讀",
-    curriculumPreviewBadge: "課綱預覽",
-    previewLockNotice: "此課為後續課綱內容 · 請先完成今日課程",
+    upcomingLessonBadge: "後續課程",
+    upcomingLessonNotice: "此課為後續課綱內容 · 請先完成今日課程",
     backToTodayLesson: "返回今日課程",
     lessonMasteredBanner: "🎉 本課已掌握通關！",
     todayGoalCompleted: "今日學習已達成 🎉",
@@ -464,8 +464,8 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     grammarDomain: "语法",
     writingDomain: "书写",
     readingDomain: "阅读",
-    curriculumPreviewBadge: "课纲预览",
-    previewLockNotice: "此课为后续课纲内容 · 请先完成今日课程",
+    upcomingLessonBadge: "后续课程",
+    upcomingLessonNotice: "此课为后续课纲内容 · 请先完成今日课程",
     backToTodayLesson: "返回今日课程",
     lessonMasteredBanner: "🎉 本课已掌握通关！",
     todayGoalCompleted: "今日学习已达成 🎉",
@@ -629,8 +629,8 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     grammarDomain: "Grammar",
     writingDomain: "Writing",
     readingDomain: "Reading",
-    curriculumPreviewBadge: "Curriculum Preview",
-    previewLockNotice: "Upcoming curriculum lesson · Please complete today's lesson first",
+    upcomingLessonBadge: "Upcoming lesson",
+    upcomingLessonNotice: "Upcoming curriculum lesson · Please complete today's lesson first",
     backToTodayLesson: "Return to Today's Lesson",
     lessonMasteredBanner: "🎉 Lesson Mastered!",
     todayGoalCompleted: "Today's Goal Completed 🎉",
@@ -794,8 +794,8 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     grammarDomain: "文法",
     writingDomain: "書き取り",
     readingDomain: "読解",
-    curriculumPreviewBadge: "カリキュラムプレビュー",
-    previewLockNotice: "今後のカリキュラム内容です · まず今日のレッスンを完了してください",
+    upcomingLessonBadge: "次のレッスン",
+    upcomingLessonNotice: "今後のカリキュラム内容です · まず今日のレッスンを完了してください",
     backToTodayLesson: "今日のレッスンに戻る",
     lessonMasteredBanner: "🎉 このレッスンは習得完了です！",
     todayGoalCompleted: "今日の学習目標達成 🎉",
@@ -959,8 +959,8 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     grammarDomain: "문법",
     writingDomain: "쓰기",
     readingDomain: "읽기",
-    curriculumPreviewBadge: "교육과정 미리보기",
-    previewLockNotice: "다음 교육과정 내용입니다 · 오늘의 수업을 먼저 완료해주세요",
+    upcomingLessonBadge: "다음 수업",
+    upcomingLessonNotice: "다음 교육과정 내용입니다 · 오늘의 수업을 먼저 완료해주세요",
     backToTodayLesson: "오늘의 수업으로 돌아가기",
     lessonMasteredBanner: "🎉 이번 수업을 마스터했습니다!",
     todayGoalCompleted: "오늘의 학습 목표 달성 🎉",
@@ -1124,8 +1124,8 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     grammarDomain: "Gramática",
     writingDomain: "Escritura",
     readingDomain: "Lectura",
-    curriculumPreviewBadge: "Vista previa del plan de estudios",
-    previewLockNotice: "Contenido curricular posterior · Complete primero la lección de hoy",
+    upcomingLessonBadge: "Próxima lección",
+    upcomingLessonNotice: "Contenido curricular posterior · Complete primero la lección de hoy",
     backToTodayLesson: "Volver a la lección de hoy",
     lessonMasteredBanner: "🎉 ¡Lección dominada con éxito!",
     todayGoalCompleted: "Objetivo de hoy completado 🎉",
@@ -2077,8 +2077,8 @@ export function ChildPortalPage({
 
   const browsingStage = officialCoursePath.stages.find((s) => s.id === selectedStageId) || authoritativeStage;
   const browsingStageIndex = officialCoursePath.stages.findIndex((s) => s.id === browsingStage.id);
-  const previewLesson = browsingStage.lessons.find((l) => l.id === selectedOfficialLessonId) || browsingStage.lessons[0];
-  const isBrowsingDifferentLesson = previewLesson.id !== authoritativeLesson.id;
+  const upcomingLesson = browsingStage.lessons.find((l) => l.id === selectedOfficialLessonId) || browsingStage.lessons[0];
+  const isBrowsingDifferentLesson = upcomingLesson.id !== authoritativeLesson.id;
 
   const selectedLevel = TONGXUAN_AUTHORED_DRAFT_LEVELS.find((l) => l.levelNumber === selectedLevelNum) || TONGXUAN_AUTHORED_DRAFT_LEVELS[0];
   const selectedLevelProgress = learnerLevelsProgress.find((p) => p.levelNumber === selectedLevelNum) || {
@@ -2698,29 +2698,29 @@ export function ChildPortalPage({
           })}
         </div>
 
-        {/* If browsing a lesson different from today's active lesson, show explicit Course Preview card */}
+        {/* If browsing a lesson different from today's active lesson, show explicit upcoming lesson card */}
         {isBrowsingDifferentLesson && (
-          <div className="official-course-preview-card" data-testid="official-course-preview">
-            <div className="preview-card-header">
-              <div className="preview-badge-row">
-                <span className="preview-badge">📖 {t("curriculumPreviewBadge")} · {browsingStage.shortTitle} 第 {previewLesson.number} 課</span>
-                <span className="preview-status-pill">🔒 即將推出</span>
+          <div className="upcoming-course-card" data-testid="upcoming-course">
+            <div className="upcoming-course-header">
+              <div className="upcoming-course-meta">
+                <span className="upcoming-course-badge">📖 {t("upcomingLessonBadge")} · {browsingStage.shortTitle} 第 {upcomingLesson.number} 課</span>
+                <span className="upcoming-course-status">🔒 即將推出</span>
               </div>
-              <h4 className="preview-lesson-title">{R(previewLesson.official.title)}</h4>
+              <h4 className="upcoming-course-title">{R(upcomingLesson.official.title)}</h4>
             </div>
-            <p className="preview-desc">{previewLesson.tongxuan.handbookSummary.text}</p>
-            <div className="preview-targets-row">
-              {previewLesson.tongxuan.practiceTargets.map((target, idx) => (
-                <span key={idx} className="preview-target-chip">✓ {target}</span>
+            <p className="upcoming-course-description">{upcomingLesson.tongxuan.handbookSummary.text}</p>
+            <div className="upcoming-course-targets">
+              {upcomingLesson.tongxuan.practiceTargets.map((target, idx) => (
+                <span key={idx} className="upcoming-course-target">✓ {target}</span>
               ))}
             </div>
-            <div className="preview-footer-row">
-              <span className="preview-lock-notice">
-                {t("previewLockNotice")}（目前進行中：《{authoritativeLesson.official.title}》）
+            <div className="upcoming-course-footer">
+              <span className="upcoming-course-notice">
+                {t("upcomingLessonNotice")}（目前進行中：《{authoritativeLesson.official.title}》）
               </span>
               <button
                 type="button"
-                className="preview-back-to-today-btn"
+                className="upcoming-course-back"
                 onClick={() => {
                   setSelectedStageId(authoritativeStage.id);
                   setSelectedOfficialLessonId(authoritativeLesson.id);
@@ -6430,10 +6430,10 @@ function DraftCurriculumSamplesModal({
 
                 <p className="lesson-subtitle-desc">{lesson.subtitle}</p>
 
-                {/* Character preview pills */}
-                <div className="lesson-chars-preview-row">
+                {/* Character reading cues */}
+                <div className="lesson-chars-cue-row">
                   {lesson.characters.map((c) => (
-                    <span key={c.char} className="preview-char-pill">
+                    <span key={c.char} className="lesson-char-cue-pill">
                       <b>{c.char}</b>
                       <small>{c.pinyin}</small>
                     </span>

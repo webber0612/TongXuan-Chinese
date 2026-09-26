@@ -1,3 +1,7 @@
+> **HISTORICAL_REFERENCE_ONLY — DO_NOT_IMPLEMENT**
+>
+> This review predates the canonical route decision and contains obsolete claims that preview URLs are production aliases. Do not use it as a current route specification. Use [`docs/frontend-architecture.md`](../../frontend-architecture.md).
+
 # Issue #28 frontend review
 
 Date: 2026-09-25

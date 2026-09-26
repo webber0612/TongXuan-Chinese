@@ -1,3 +1,7 @@
+> **HISTORICAL_REFERENCE_ONLY — DO_NOT_IMPLEMENT**
+>
+> This archived brief records a rejected UI direction. Do not implement or polish it. Use [`docs/frontend-architecture.md`](../../frontend-architecture.md) for the canonical frontend.
+
 # `/preview-directions` revision brief
 
 ## Current direction
