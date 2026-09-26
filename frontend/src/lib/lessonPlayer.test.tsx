@@ -3419,6 +3419,186 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     container.remove();
     vi.unstubAllGlobals();
   });
+
+  it("57. FAST_TRACK nextReviewDueAt validation: passed=true with nextReviewDueAt='banana' fails closed", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes("/learning-sessions/current")) {
+        return new Response(JSON.stringify({ id: "s-ft-57", status: "IN_PROGRESS", masteryStatus: "IN_PROGRESS", tasks: [] }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/fast-track") && init?.method === "POST") {
+        return new Response(JSON.stringify({
+          passed: true,
+          nextMode: "REVIEW",
+          masteryStatus: "READY_FOR_CHECK",
+          weakDomains: [],
+          nextReviewDueAt: "banana",
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} initialMode="FAST_TRACK" />);
+    });
+
+    const questionCards = container.querySelectorAll(".exit-ticket-item-card");
+    for (const card of Array.from(questionCards)) {
+      const choiceBtn = card.querySelector(".choice-card-btn") as HTMLButtonElement;
+      await act(async () => { choiceBtn?.click(); });
+    }
+
+    const submitBtn = container.querySelector(".submit-exit-ticket-btn") as HTMLButtonElement;
+    await act(async () => { submitBtn.click(); });
+
+    expect(container.textContent).toMatch(/Task operation failed|任務操作失敗/);
+    expect(container.querySelector("[data-step-key='exit_ticket']")).toBeTruthy();
+    const nextBtn = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
+    expect(nextBtn.disabled).toBe(true);
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
+
+  it("58. FAST_TRACK nextReviewDueAt validation: passed=true with nextReviewDueAt='2026-99-99' fails closed", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes("/learning-sessions/current")) {
+        return new Response(JSON.stringify({ id: "s-ft-58", status: "IN_PROGRESS", masteryStatus: "IN_PROGRESS", tasks: [] }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/fast-track") && init?.method === "POST") {
+        return new Response(JSON.stringify({
+          passed: true,
+          nextMode: "REVIEW",
+          masteryStatus: "READY_FOR_CHECK",
+          weakDomains: [],
+          nextReviewDueAt: "2026-99-99",
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} initialMode="FAST_TRACK" />);
+    });
+
+    const questionCards = container.querySelectorAll(".exit-ticket-item-card");
+    for (const card of Array.from(questionCards)) {
+      const choiceBtn = card.querySelector(".choice-card-btn") as HTMLButtonElement;
+      await act(async () => { choiceBtn?.click(); });
+    }
+
+    const submitBtn = container.querySelector(".submit-exit-ticket-btn") as HTMLButtonElement;
+    await act(async () => { submitBtn.click(); });
+
+    expect(container.textContent).toMatch(/Task operation failed|任務操作失敗/);
+    expect(container.querySelector("[data-step-key='exit_ticket']")).toBeTruthy();
+    const nextBtn = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
+    expect(nextBtn.disabled).toBe(true);
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
+
+  it("59. FAST_TRACK nextReviewDueAt validation: passed=true with valid backend-style timestamp ('2026-09-26 08:00:00') is accepted and advances", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes("/learning-sessions/current")) {
+        return new Response(JSON.stringify({ id: "s-ft-59", status: "IN_PROGRESS", masteryStatus: "IN_PROGRESS", tasks: [] }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/fast-track") && init?.method === "POST") {
+        return new Response(JSON.stringify({
+          passed: true,
+          nextMode: "REVIEW",
+          masteryStatus: "READY_FOR_CHECK",
+          weakDomains: [],
+          nextReviewDueAt: "2026-09-26 08:00:00",
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} initialMode="FAST_TRACK" />);
+    });
+
+    const questionCards = container.querySelectorAll(".exit-ticket-item-card");
+    for (const card of Array.from(questionCards)) {
+      const choiceBtn = card.querySelector(".choice-card-btn") as HTMLButtonElement;
+      await act(async () => { choiceBtn?.click(); });
+    }
+
+    const submitBtn = container.querySelector(".submit-exit-ticket-btn") as HTMLButtonElement;
+    await act(async () => { submitBtn.click(); });
+
+    expect(container.querySelector(".error-strip")).toBeNull();
+    const nextBtn = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
+    expect(nextBtn.disabled).toBe(false);
+
+    await act(async () => { nextBtn.click(); });
+    expect(container.querySelector("[data-step-key='wrap_up']")).toBeTruthy();
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
+
+  it("60. FAST_TRACK nextReviewDueAt validation: passed=true with nextReviewDueAt=null is accepted and advances", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes("/learning-sessions/current")) {
+        return new Response(JSON.stringify({ id: "s-ft-60", status: "IN_PROGRESS", masteryStatus: "IN_PROGRESS", tasks: [] }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/fast-track") && init?.method === "POST") {
+        return new Response(JSON.stringify({
+          passed: true,
+          nextMode: "REVIEW",
+          masteryStatus: "READY_FOR_CHECK",
+          weakDomains: [],
+          nextReviewDueAt: null,
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} initialMode="FAST_TRACK" />);
+    });
+
+    const questionCards = container.querySelectorAll(".exit-ticket-item-card");
+    for (const card of Array.from(questionCards)) {
+      const choiceBtn = card.querySelector(".choice-card-btn") as HTMLButtonElement;
+      await act(async () => { choiceBtn?.click(); });
+    }
+
+    const submitBtn = container.querySelector(".submit-exit-ticket-btn") as HTMLButtonElement;
+    await act(async () => { submitBtn.click(); });
+
+    expect(container.querySelector(".error-strip")).toBeNull();
+    const nextBtn = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
+    expect(nextBtn.disabled).toBe(false);
+
+    await act(async () => { nextBtn.click(); });
+    expect(container.querySelector("[data-step-key='wrap_up']")).toBeTruthy();
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
 });
 
 

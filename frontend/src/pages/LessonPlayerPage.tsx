@@ -55,6 +55,43 @@ export interface TaskWriteResult {
   completedAt?: string | null;
 }
 
+export function isValidBackendTimestamp(val: unknown): boolean {
+  if (typeof val !== "string" || !val.trim()) return false;
+  const isoPattern = /^\d{4}-\d{2}-\d{2}([ T]\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?)?$/;
+  if (!isoPattern.test(val)) return false;
+
+  const parsed = Date.parse(val);
+  if (Number.isNaN(parsed) || !Number.isFinite(parsed)) return false;
+
+  const dateMatch = val.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!dateMatch) return false;
+  const year = parseInt(dateMatch[1], 10);
+  const month = parseInt(dateMatch[2], 10);
+  const day = parseInt(dateMatch[3], 10);
+  if (month < 1 || month > 12 || day < 1 || day > 31) return false;
+
+  const dateObj = new Date(Date.UTC(year, month - 1, day));
+  if (
+    dateObj.getUTCFullYear() !== year ||
+    dateObj.getUTCMonth() !== month - 1 ||
+    dateObj.getUTCDate() !== day
+  ) {
+    return false;
+  }
+
+  const timeMatch = val.match(/[ T](\d{2}):(\d{2})(?::(\d{2}))?/);
+  if (timeMatch) {
+    const hour = parseInt(timeMatch[1], 10);
+    const minute = parseInt(timeMatch[2], 10);
+    const second = timeMatch[3] ? parseInt(timeMatch[3], 10) : 0;
+    if (hour < 0 || hour > 23 || minute < 0 || minute > 59 || second < 0 || second > 59) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 const copy = {
   "zh-Hant": {
     back: "返回",
@@ -1391,8 +1428,7 @@ export function LessonPlayerPage({
             const validMastery = res.masteryStatus === "READY_FOR_CHECK";
             const validNextMode = res.nextMode === "REVIEW";
             const validNextReviewDueAt = res.nextReviewDueAt !== undefined && (
-              res.nextReviewDueAt === null ||
-              (typeof res.nextReviewDueAt === "string" && res.nextReviewDueAt.trim().length > 0)
+              res.nextReviewDueAt === null || isValidBackendTimestamp(res.nextReviewDueAt)
             );
 
             if (!validWeakDomains || !validMastery || !validNextMode || !validNextReviewDueAt) {
