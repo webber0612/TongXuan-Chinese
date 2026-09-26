@@ -4013,7 +4013,7 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
           }
         }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
-      if (url.includes("/learning-sessions") && init?.method === "POST") {
+      if ((url.includes("/reconcile-reviews") || url.includes("/learning-sessions")) && init?.method === "POST") {
         sessionCreationAttempted = true;
         // Backend returns session with tasks=[] (cannot produce executable review task)
         return new Response(JSON.stringify({ id: "s-reg-d", status: "IN_PROGRESS", tasks: [] }), { status: 200, headers: { "Content-Type": "application/json" } });

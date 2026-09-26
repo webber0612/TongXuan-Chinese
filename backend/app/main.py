@@ -28,6 +28,7 @@ from .learning_flow import (
     get_learning_session,
     get_parent_learning_report,
     preview_learning_session,
+    reconcile_learning_session_reviews,
     record_learning_abort,
     skip_learning_task,
     start_learning_session,
@@ -254,6 +255,11 @@ class AnswerRequest(BaseModel):
 class FastTrackRequest(BaseModel):
     model_config = {"extra": "forbid"}
     answers: dict[str, str] = Field(default_factory=dict)
+    as_of: str | None = None
+
+
+class ReconcileReviewsRequest(BaseModel):
+    model_config = {"extra": "forbid"}
     as_of: str | None = None
 
 
@@ -747,6 +753,20 @@ def get_learning_session_report(child_id: int, http_request: Request, from_at: s
 def get_learning_session_detail(child_id: int, session_id: str) -> dict[str, object]:
     try:
         return get_learning_session(child_id=child_id, session_id=session_id)
+    except ValueError as error:
+        raise _learning_flow_error(error) from error
+
+
+@app.post("/api/children/{child_id}/learning-sessions/{session_id}/reconcile-reviews")
+def post_learning_session_reconcile_reviews(
+    child_id: int,
+    session_id: str,
+    request: ReconcileReviewsRequest | None = None,
+    as_of: str | None = None,
+) -> dict[str, object]:
+    effective_as_of = request.as_of if request and request.as_of else as_of
+    try:
+        return reconcile_learning_session_reviews(child_id=child_id, session_id=session_id, as_of=effective_as_of)
     except ValueError as error:
         raise _learning_flow_error(error) from error
 

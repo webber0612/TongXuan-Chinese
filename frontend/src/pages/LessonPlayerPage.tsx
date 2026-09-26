@@ -647,15 +647,12 @@ export function LessonPlayerPage({
               let effectiveSession = sessionRef.current;
               if (!hasExecutableReviewTasks(effectiveSession)) {
                 try {
+                  const targetSessionId = effectiveSession?.id || "current";
                   const reconciled = await api<typeof session>(
-                    `/api/children/${activeChildId}/learning-sessions`,
+                    `/api/children/${activeChildId}/learning-sessions/${targetSessionId}/reconcile-reviews`,
                     {
                       method: "POST",
-                      body: JSON.stringify({
-                        lesson_id: lessonId || undefined,
-                        target_minutes: 18,
-                        script_mode: locale === "zh-CN" ? "SIMPLIFIED" : "TRADITIONAL",
-                      }),
+                      body: "{}",
                     }
                   );
                   if (reconciled && reconciled.id) {

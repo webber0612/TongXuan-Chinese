@@ -542,4 +542,116 @@ def test_vocabulary_task_wrong_retry_correct_authoritative_trace(tmp_path):
             assert attempts[1]["result"] == "correct"
 
 
+def test_review_authoritative_reconciliation_integration(tmp_path):
+    from app.auth import issue_session
+    from app.database import connect
+    with make_client(tmp_path) as client:
+        # 0. Setup child and placement
+        child_resp = client.post("/api/children", json={"name": "小安"})
+        assert child_resp.status_code == 200
+        child_id = child_resp.json()["id"]
+
+        parent_token = issue_session(subject="parent", role="parent", child_ids=[child_id])
+        parent_headers = {"Authorization": f"Bearer {parent_token}"}
+        client.put(
+            f"/api/children/{child_id}/placement-profile",
+            headers=parent_headers,
+            json={"domain_levels": {"listening": "BOOK_1", "recognition": "BOOK_1", "speaking": "BOOK_1", "writing": "STARTER"}},
+        )
+
+        # 1. 建立 active session (as of 2026-09-01, when no items are due)
+        start_resp = client.post(
+            f"/api/children/{child_id}/learning-sessions",
+            json={"target_minutes": 18, "lesson_id": "book1-l01", "as_of": "2026-09-01T00:00:00Z"},
+        )
+        assert start_resp.status_code == 200
+        active_session = start_resp.json()
+        session_id = active_session["id"]
+
+        # 2. 此時 session 沒有 REVIEW task
+        initial_review_tasks = [t for t in active_session["tasks"] if t["sourceQueue"] == "REVIEW"]
+        assert len(initial_review_tasks) == 0
+
+        # 3. 在 session 建立後，讓 recognition SRS item 變成 due (due_at = 2026-09-02, evaluated as of 2026-09-05)
+        with connect() as db:
+            db.execute(
+                "INSERT INTO learning_items(id,child_id,character,curriculum_source,provenance_status,created_at) "
+                "VALUES('item-ni',?,'你','OFFICIAL_OCAC','VERIFIED_OFFICIAL_TITLE','2026-09-01T00:00:00Z')",
+                (child_id,),
+            )
+            db.execute(
+                "INSERT INTO curriculum_item_links(child_id,skill_domain,item_id,lesson_id) "
+                "VALUES(?,'recognition','item-ni','book1-l01')",
+                (child_id,),
+            )
+            db.execute(
+                "INSERT INTO srs_review_states(child_id,skill_domain,item_id,stage,due_at,last_result,last_assisted,updated_at) "
+                "VALUES(?,'recognition','item-ni',1,'2026-09-02T00:00:00Z','correct',0,'2026-09-01T00:00:00Z')",
+                (child_id,),
+            )
+
+        as_of_eval = "2026-09-05T00:00:00Z"
+
+        # 4. Daily Queue 確認該 item due
+        dq_resp = client.get(f"/api/children/{child_id}/learning-daily-queue?as_of={as_of_eval}")
+        assert dq_resp.status_code == 200
+        dq_data = dq_resp.json()
+        assert dq_data["review"]["dueCount"] == 1
+        assert dq_data["review"]["items"][0]["character"] == "你"
+
+        # 5. 執行 frontend 真正會使用的 reconciliation backend operation
+        reconcile_resp = client.post(
+            f"/api/children/{child_id}/learning-sessions/{session_id}/reconcile-reviews?as_of={as_of_eval}"
+        )
+        assert reconcile_resp.status_code == 200
+        reconciled_session = reconcile_resp.json()
+
+        # 6. 回傳 session 必須出現 exact REVIEW task
+        reconciled_review_tasks = [t for t in reconciled_session["tasks"] if t["sourceQueue"] == "REVIEW"]
+        assert len(reconciled_review_tasks) == 1
+        review_task = reconciled_review_tasks[0]
+
+        # 7. 驗證：
+        #    - sourceQueue = REVIEW
+        #    - taskType = REVIEW_RECOGNITION
+        #    - itemId = exact due item
+        #    - task.id 為 backend-issued
+        assert review_task["sourceQueue"] == "REVIEW"
+        assert review_task["taskType"] == "REVIEW_RECOGNITION"
+        assert review_task["itemId"] == "item-ni"
+        assert review_task["id"] == f"{session_id}:review-recognition-1"
+
+        # 8. 對 exact task 作答
+        answer_resp = client.post(
+            f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{review_task['id']}/answer",
+            json={"selected_option_id": "option-2"},
+        )
+        assert answer_resp.status_code == 200
+
+        # 9. 驗證 exact SRS row：
+        #    - last_result 更新
+        #    - stage 更新
+        #    - due_at 更新
+        with connect() as db:
+            srs_row = db.execute(
+                "SELECT * FROM srs_review_states WHERE child_id=? AND skill_domain='recognition' AND item_id='item-ni'",
+                (child_id,),
+            ).fetchone()
+            assert srs_row is not None
+            assert srs_row["last_result"] == "correct"
+            assert srs_row["stage"] == 2
+            assert srs_row["due_at"] > "2026-09-05T00:00:00Z"
+
+        # 10. 再次執行 reconcile
+        #     - 不得產生 duplicate REVIEW task
+        second_reconcile_resp = client.post(
+            f"/api/children/{child_id}/learning-sessions/{session_id}/reconcile-reviews?as_of={as_of_eval}"
+        )
+        assert second_reconcile_resp.status_code == 200
+        second_session = second_reconcile_resp.json()
+        second_review_tasks = [t for t in second_session["tasks"] if t["sourceQueue"] == "REVIEW"]
+        assert len(second_review_tasks) == 1
+        assert second_review_tasks[0]["id"] == review_task["id"]
+
+
 

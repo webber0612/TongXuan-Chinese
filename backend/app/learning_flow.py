@@ -559,6 +559,116 @@ def get_current_learning_session(*, child_id: int) -> dict[str, Any] | None:
         return _session_payload(db, session)
 
 
+def reconcile_learning_session_reviews(*, child_id: int, session_id: str, as_of: str | None = None) -> dict[str, Any]:
+    initialize_database()
+    as_of_text, stamp = _as_of(as_of)
+    with connect() as db:
+        ensure_child(db, child_id)
+        if session_id == "current":
+            session = db.execute(
+                "SELECT * FROM learning_flow_sessions WHERE child_id=? AND status IN ('IN_PROGRESS','PAUSED') ORDER BY started_at DESC LIMIT 1",
+                (child_id,),
+            ).fetchone()
+            if session is None:
+                raise ValueError("no_active_learning_session")
+        else:
+            session = db.execute(
+                "SELECT * FROM learning_flow_sessions WHERE id=? AND child_id=?",
+                (session_id, child_id),
+            ).fetchone()
+            if session is None:
+                raise ValueError("learning_session_not_found")
+        if session["status"] not in {"IN_PROGRESS", "PAUSED"}:
+            raise ValueError("learning_flow_session_closed")
+
+        flow_id = session["id"]
+        lesson_id = session["lesson_id"]
+        lesson, _ = _lesson_for_child(db, child_id, lesson_id)
+        chars = _characters(lesson)
+
+        existing_tasks = db.execute(
+            "SELECT * FROM learning_flow_tasks WHERE session_id=?",
+            (flow_id,),
+        ).fetchall()
+
+        existing_review_item_ids = {
+            row["activity_item_id"]
+            for row in existing_tasks
+            if row["source_queue"] == "REVIEW"
+        }
+        existing_review_count = sum(1 for row in existing_tasks if row["source_queue"] == "REVIEW")
+        max_position = max((row["position"] for row in existing_tasks), default=-1)
+
+        due_items = _due_recognition(db, child_id, as_of_text)
+
+        new_tasks_count = 0
+        for due in due_items:
+            if due["item_id"] in existing_review_item_ids:
+                continue
+
+            distractor = next((value for value in chars if value != due["character"]), lesson["title"])
+            correct_id = "option-2"
+            choices = [{"id": "option-1", "label": distractor}, {"id": correct_id, "label": due["character"]}]
+            review_key = f"review-recognition-{existing_review_count + new_tasks_count + 1}"
+            task = _task(
+                review_key,
+                "REVIEW_RECOGNITION",
+                lesson_id,
+                skill="recognition",
+                item_id=due["item_id"],
+                source="REVIEW",
+                is_new=False,
+                minutes=3,
+                evidence_type="recognition_attempt",
+                mastery_impact="SCORED_DOMAIN_EVIDENCE",
+                data={
+                    "prompt": "聽完今天的問候語，選出剛才出現的字。",
+                    "audioText": due["character"],
+                    "choices": choices,
+                    "dueAt": due["due_at"],
+                },
+                private={"_answerKey": correct_id, "_answerKind": "recognition"},
+            )
+
+            task_id = f"{flow_id}:{review_key}"
+            task["id"] = task_id
+            position = max_position + 1 + new_tasks_count
+
+            db.execute(
+                """INSERT INTO learning_flow_tasks(
+                    id, session_id, child_id, lesson_id, position, task_type,
+                    source_queue, skill_domain, activity_item_id, is_new, required,
+                    estimated_minutes, evidence_type, mastery_impact, reward_impact, state, task_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?)""",
+                (
+                    task_id,
+                    flow_id,
+                    child_id,
+                    task["lessonId"],
+                    position,
+                    task["taskType"],
+                    task["sourceQueue"],
+                    task["skillDomain"],
+                    task["itemId"],
+                    int(task["isNew"]),
+                    int(task["required"]),
+                    task["estimatedMinutes"],
+                    task["evidenceType"],
+                    task["masteryImpact"],
+                    task["rewardImpact"],
+                    json.dumps(task, ensure_ascii=False, sort_keys=True),
+                ),
+            )
+            existing_review_item_ids.add(due["item_id"])
+            new_tasks_count += 1
+
+        if new_tasks_count > 0:
+            _log(db, flow_id, child_id, "reviews_reconciled", None, None, {"reconciledCount": new_tasks_count}, stamp)
+        db.commit()
+
+    return get_learning_session(child_id=child_id, session_id=flow_id)
+
+
 def _enforce_session_time(child_id: int, session_id: str) -> bool:
     """Persist a pause before any new evidence can be accepted after the time target."""
     with connect() as db:
