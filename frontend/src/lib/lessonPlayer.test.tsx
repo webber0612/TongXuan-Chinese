@@ -2236,6 +2236,365 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     container.remove();
     vi.unstubAllGlobals();
   });
+
+  it("40. Vocabulary fail-closed negative regressions: session missing, tasks missing, task missing, and API failure all block progression", async () => {
+    // Sub-case 1: Required vocabulary task missing from tasks
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (url.includes("/learning-sessions/current")) {
+        return new Response(JSON.stringify({
+          id: "s-neg-vocab-1",
+          status: "IN_PROGRESS",
+          curriculumContext: { lessonId: "book1-l01" },
+          tasks: [
+            { id: "t-listen", key: "listen", taskType: "LISTENING", state: "COMPLETED", itemId: "item-l01" },
+            // Notice: VOCABULARY task is completely missing!
+          ],
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    let container = document.createElement("div");
+    document.body.appendChild(container);
+    let root = createRoot(container);
+
+    await act(async () => {
+      root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} initialMode="LEARN" />);
+    });
+
+    let nextBtn = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
+    await act(async () => { nextBtn.click(); }); // Step 1 Context -> 2 Dialogue
+    await act(async () => { nextBtn.click(); }); // Step 2 Dialogue -> 3 Vocabulary
+
+    expect(container.querySelector(".step-vocab-body")).toBeTruthy();
+    let choices = container.querySelectorAll(".choice-card-btn");
+    await act(async () => { (choices[0] as HTMLButtonElement)?.click(); });
+
+    // Required task missing: Next must FAIL CLOSED and remain on Vocabulary
+    await act(async () => { nextBtn.click(); });
+    expect(container.querySelector(".step-vocab-body")).toBeTruthy();
+    expect(container.querySelector(".step-characters-body")).toBeNull();
+    expect(container.textContent).toMatch(/Task operation failed|任務操作失敗/);
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+
+    // Sub-case 2: API write failure on answer submission (HTTP 500)
+    let vocabCalls = 0;
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes("/learning-sessions/current")) {
+        return new Response(JSON.stringify({
+          id: "s-neg-vocab-2",
+          status: "IN_PROGRESS",
+          curriculumContext: { lessonId: "book1-l01" },
+          tasks: [
+            { id: "t-listen", key: "listen", taskType: "LISTENING", state: "COMPLETED", itemId: "item-l01" },
+            { id: "t-vocab", key: "vocabulary", taskType: "VOCABULARY", state: "IN_PROGRESS", itemId: "vocab-nihao", taskData: { prompt: "「你好」是什麼意思？", choices: [{ id: "opt-hello", label: "問候打招呼 (Hello)" }, { id: "opt-eat", label: "吃飯 (Eat)" }] } },
+          ],
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/tasks/t-vocab/answer") && init?.method === "POST") {
+        vocabCalls++;
+        return new Response(JSON.stringify({ detail: "Internal Server Error" }), { status: 500, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    await act(async () => {
+      root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} initialMode="LEARN" />);
+    });
+
+    nextBtn = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
+    await act(async () => { nextBtn.click(); }); // Step 1 Context -> 2 Dialogue
+    await act(async () => { nextBtn.click(); }); // Step 2 Dialogue -> 3 Vocabulary
+
+    expect(container.querySelector(".step-vocab-body")).toBeTruthy();
+    choices = container.querySelectorAll(".choice-card-btn");
+    await act(async () => { (choices[0] as HTMLButtonElement)?.click(); });
+
+    // API failure: Next must FAIL CLOSED, remain on Vocabulary, show error banner
+    await act(async () => { nextBtn.click(); });
+    expect(vocabCalls).toBe(2);
+    expect(container.querySelector(".step-vocab-body")).toBeTruthy();
+    expect(container.querySelector(".step-characters-body")).toBeNull();
+    expect(container.textContent).toMatch(/Internal Server Error|Task operation failed|任務操作失敗/);
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
+
+  it("41. Recognition fail-closed negative regressions: char task missing blocks tab advance, session/tasks missing blocks progression", async () => {
+    // Sub-case 1: char task missing blocks advancing to next character tab
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (url.includes("/learning-sessions/current")) {
+        return new Response(JSON.stringify({
+          id: "s-neg-recog-1",
+          status: "IN_PROGRESS",
+          curriculumContext: { lessonId: "book1-l01" },
+          tasks: [
+            { id: "t-listen", key: "listen", taskType: "LISTENING", state: "COMPLETED", itemId: "item-l01" },
+            { id: "t-vocab", key: "vocabulary", taskType: "VOCABULARY", state: "COMPLETED", itemId: "vocab-nihao" },
+            // Notice: recognition-1 task for 你 is MISSING from tasks!
+            { id: "t-recog-2", key: "recognition-2", taskType: "RECOGNITION", state: "IN_PROGRESS", itemId: "好" },
+          ],
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    let container = document.createElement("div");
+    document.body.appendChild(container);
+    let root = createRoot(container);
+
+    await act(async () => {
+      root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} initialMode="LEARN" />);
+    });
+
+    let nextBtn = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
+    await act(async () => { nextBtn.click(); }); // Step 1 Context -> 2 Dialogue
+    await act(async () => { nextBtn.click(); }); // Step 2 Dialogue -> 3 Vocabulary
+    let vocabChoices = container.querySelectorAll(".choice-card-btn");
+    await act(async () => { (vocabChoices[0] as HTMLButtonElement)?.click(); });
+    await act(async () => { nextBtn.click(); }); // Step 3 Vocabulary -> 4 Characters (tab 0: 你)
+
+    expect(container.querySelector(".step-characters-body")).toBeTruthy();
+    let charChoices = container.querySelectorAll(".char-choice-card");
+    await act(async () => { (charChoices[0] as HTMLButtonElement)?.click(); });
+
+    // Click Next when char task is missing: MUST NOT advance to next char tab ("好"), MUST NOT advance step!
+    await act(async () => { nextBtn.click(); });
+    expect(container.querySelector(".step-characters-body")).toBeTruthy();
+    // Character prompt for "你" must still be active (activeCharIndex remained 0)
+    expect(container.textContent).toContain("「你」");
+    expect(container.textContent).toMatch(/Task operation failed|任務操作失敗/);
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+
+    // Sub-case 2: API failure on recognition answer blocks progression
+    let recogCalls = 0;
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes("/learning-sessions/current")) {
+        return new Response(JSON.stringify({
+          id: "s-neg-recog-2",
+          status: "IN_PROGRESS",
+          curriculumContext: { lessonId: "book1-l01" },
+          tasks: [
+            { id: "t-listen", key: "listen", taskType: "LISTENING", state: "COMPLETED", itemId: "item-l01" },
+            { id: "t-vocab", key: "vocabulary", taskType: "VOCABULARY", state: "COMPLETED", itemId: "vocab-nihao" },
+            { id: "t-recog-1", key: "recognition-1", taskType: "RECOGNITION", state: "IN_PROGRESS", itemId: "你", taskData: { prompt: "選出：你", choices: [{ id: "opt-ni", label: "你", isCorrect: true }] } },
+          ],
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/tasks/t-recog-1/answer") && init?.method === "POST") {
+        recogCalls++;
+        return new Response(JSON.stringify({ detail: "Database unavailable" }), { status: 503, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    await act(async () => {
+      root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} initialMode="LEARN" />);
+    });
+
+    nextBtn = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
+    await act(async () => { nextBtn.click(); }); // Step 1 -> 2
+    await act(async () => { nextBtn.click(); }); // Step 2 -> 3
+    vocabChoices = container.querySelectorAll(".choice-card-btn");
+    await act(async () => { (vocabChoices[0] as HTMLButtonElement)?.click(); });
+    await act(async () => { nextBtn.click(); }); // Step 3 -> 4 Characters
+
+    expect(container.querySelector(".step-characters-body")).toBeTruthy();
+    charChoices = container.querySelectorAll(".char-choice-card");
+    await act(async () => { (charChoices[0] as HTMLButtonElement)?.click(); });
+
+    // API 503 error: click Next must fail closed and stay on char 0
+    await act(async () => { nextBtn.click(); });
+    expect(recogCalls).toBe(2);
+    expect(container.querySelector(".step-characters-body")).toBeTruthy();
+    expect(container.textContent).toContain("「你」");
+    expect(container.textContent).toMatch(/Database unavailable|Task operation failed|任務操作失敗/);
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
+
+  it("42. Sentence Pattern fail-closed negative regressions: task missing, session missing, and API failure block progression", async () => {
+    // Sub-case 1: Sentence pattern task missing from session tasks
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (url.includes("/learning-sessions/current")) {
+        return new Response(JSON.stringify({
+          id: "s-neg-sent-1",
+          status: "IN_PROGRESS",
+          curriculumContext: { lessonId: "book1-l01" },
+          tasks: [
+            { id: "t-listen", key: "listen", taskType: "LISTENING", state: "COMPLETED", itemId: "item-l01" },
+            { id: "t-vocab", key: "vocabulary", taskType: "VOCABULARY", state: "COMPLETED", itemId: "vocab-nihao" },
+            { id: "t-recog-1", key: "recognition-1", taskType: "RECOGNITION", state: "COMPLETED", itemId: "你" },
+            { id: "t-recog-2", key: "recognition-2", taskType: "RECOGNITION", state: "COMPLETED", itemId: "好" },
+            // SENTENCE_PATTERN task missing!
+          ],
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    let container = document.createElement("div");
+    document.body.appendChild(container);
+    let root = createRoot(container);
+
+    await act(async () => {
+      root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} initialMode="LEARN" />);
+    });
+
+    let nextBtn = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
+    await act(async () => { nextBtn.click(); }); // Step 1 -> 2
+    await act(async () => { nextBtn.click(); }); // Step 2 -> 3
+    let vocabChoices = container.querySelectorAll(".choice-card-btn");
+    await act(async () => { (vocabChoices[0] as HTMLButtonElement)?.click(); });
+    await act(async () => { nextBtn.click(); }); // Step 3 -> 4
+    let charChoices0 = container.querySelectorAll(".char-choice-card");
+    await act(async () => { (charChoices0[0] as HTMLButtonElement)?.click(); });
+    await act(async () => { nextBtn.click(); }); // tab 1
+    let charChoices1 = container.querySelectorAll(".char-choice-card");
+    await act(async () => { (charChoices1[1] as HTMLButtonElement)?.click(); });
+    await act(async () => { nextBtn.click(); }); // Step 4 -> 5 Sentence Pattern
+
+    expect(container.querySelector(".step-sentence-body")).toBeTruthy();
+    let sentChoices = container.querySelectorAll(".choice-card-btn");
+    await act(async () => { (sentChoices[0] as HTMLButtonElement)?.click(); });
+
+    // Click Next when sentence pattern task is missing: MUST NOT advance to speaking!
+    await act(async () => { nextBtn.click(); });
+    expect(container.querySelector(".step-sentence-body")).toBeTruthy();
+    expect(container.querySelector(".step-speaking-body")).toBeNull();
+    expect(container.textContent).toMatch(/Task operation failed|任務操作失敗/);
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+
+    // Sub-case 2: API write failure on sentence pattern (HTTP 500)
+    let sentCalls = 0;
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes("/learning-sessions/current")) {
+        return new Response(JSON.stringify({
+          id: "s-neg-sent-2",
+          status: "IN_PROGRESS",
+          curriculumContext: { lessonId: "book1-l01" },
+          tasks: [
+            { id: "t-listen", key: "listen", taskType: "LISTENING", state: "COMPLETED", itemId: "item-l01" },
+            { id: "t-vocab", key: "vocabulary", taskType: "VOCABULARY", state: "COMPLETED", itemId: "vocab-nihao" },
+            { id: "t-recog-1", key: "recognition-1", taskType: "RECOGNITION", state: "COMPLETED", itemId: "你" },
+            { id: "t-recog-2", key: "recognition-2", taskType: "RECOGNITION", state: "COMPLETED", itemId: "好" },
+            { id: "t-sent", key: "sentence-pattern", taskType: "SENTENCE_PATTERN", state: "IN_PROGRESS", itemId: "sent-greeting" },
+          ],
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/tasks/t-sent/answer") && init?.method === "POST") {
+        sentCalls++;
+        return new Response(JSON.stringify({ detail: "Gateway timeout" }), { status: 504, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    await act(async () => {
+      root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} initialMode="LEARN" />);
+    });
+
+    nextBtn = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
+    await act(async () => { nextBtn.click(); });
+    await act(async () => { nextBtn.click(); });
+    vocabChoices = container.querySelectorAll(".choice-card-btn");
+    await act(async () => { (vocabChoices[0] as HTMLButtonElement)?.click(); });
+    await act(async () => { nextBtn.click(); });
+    charChoices0 = container.querySelectorAll(".char-choice-card");
+    await act(async () => { (charChoices0[0] as HTMLButtonElement)?.click(); });
+    await act(async () => { nextBtn.click(); });
+    charChoices1 = container.querySelectorAll(".char-choice-card");
+    await act(async () => { (charChoices1[1] as HTMLButtonElement)?.click(); });
+    await act(async () => { nextBtn.click(); });
+
+    expect(container.querySelector(".step-sentence-body")).toBeTruthy();
+    sentChoices = container.querySelectorAll(".choice-card-btn");
+    await act(async () => { (sentChoices[0] as HTMLButtonElement)?.click(); });
+
+    // API failure: Next must fail closed, remain on sentence pattern, show error
+    await act(async () => { nextBtn.click(); });
+    expect(sentCalls).toBe(2);
+    expect(container.querySelector(".step-sentence-body")).toBeTruthy();
+    expect(container.querySelector(".step-speaking-body")).toBeNull();
+    expect(container.textContent).toMatch(/Gateway timeout|Task operation failed|任務操作失敗/);
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
+
+  it("43. Session initialization failure: Lesson Player fails closed and does not degrade into local-only executor", async () => {
+    let completeCallbackCalled = false;
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (url.includes("/learning-sessions")) {
+        // Both /current and POST /learning-sessions fail
+        return new Response(JSON.stringify({ detail: "Service Unavailable" }), { status: 503, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        <LessonPlayerPage
+          lessonId="book1-l01"
+          activeChildId={1}
+          onBack={() => {}}
+          initialMode="LEARN"
+          onCompleteLesson={() => {
+            completeCallbackCalled = true;
+          }}
+        />
+      );
+    });
+
+    // An error banner must be displayed indicating session loading/initialization failed
+    expect(container.textContent).toMatch(/Service Unavailable|Task operation failed|任務操作失敗/);
+
+    // The learner clicks Next Step on Step 1 (Context)
+    const nextBtn = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
+    expect(nextBtn).toBeTruthy();
+
+    await act(async () => {
+      nextBtn.click();
+    });
+
+    // Progression must be BLOCKED: cannot advance locally to Step 2 (Dialogue)
+    expect(container.querySelector("[data-step-key='context']")).toBeTruthy();
+    expect(container.querySelector("[data-step-key='dialogue']")).toBeNull();
+    expect(completeCallbackCalled).toBe(false);
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
 });
 
 
