@@ -9,10 +9,12 @@
 >
 > ### Current autonomous mainline state
 >
-> - Current `main`: `6b6c64e43f18a813d11c1f93c4032f557f631476`.
-> - PR #42 / Issue #41 passed independent Architect review on exact head `f87e95ad5f1ee7a5a6aa814c50ff61d5d9fc469f` and was squash-merged to `main` at `6b6c64e43f18a813d11c1f93c4032f557f631476`.
-> - Issue #43, `[P1 Mainline] Make FAST_TRACK failure → REPAIR lifecycle executable`, is implemented on `codex/issue-43-fast-track-repair`, from the current `main`, in [Draft PR #44](https://github.com/webber0612/TongXuan-Chinese/pull/44). It adds exact Fast Track session binding, authoritative same-session resume, task-backed REPAIR, and wrap-up that preserves the IN_PROGRESS parent LEARN session. Issue #43 remains open pending independent exact-head review and merge.
-> - Local validation on the Issue #43 branch: backend pytest **152 passed** (4 sqlite datetime adapter deprecation warnings); frontend Vitest **142 passed** across 13 files; production build passed (Vite reported the existing large-chunk advisory); `git diff --check 6b6c64e43f18a813d11c1f93c4032f557f631476` passed. No schema/persistence migration changed, so migration checks were not applicable.
+> - Current `main`: `8e0c690c960762d33b5bbd96308e4a0b012c4a35`.
+> - PR #44 / Issue #43 passed independent Architect review on exact head `c84c952e709023c4840ed27ca6b362f5fb0f8065` and squash-merged to `main` at `8e0c690c960762d33b5bbd96308e4a0b012c4a35`. It completes supported FAST_TRACK failure→REPAIR with exact session binding, authoritative resume, exact existing curriculum task IDs, and parent-session-preserving wrap-up.
+> - Issue #45, `[P1 Mainline] Reconcile due REVIEW items across supported lessons`, is the current work order on branch `codex/issue-45-cross-lesson-review`, based on this `main`. It covers all exact due items across the three existing executable packages, preserves current eligibility, and fails closed for unsupported packages.
+> - Issue #45 implementation now covers cross-lesson Daily Queue reconciliation and per-package REVIEW steps. Its backend API regressions verify exact task/item identities, idempotency, exact SRS advancement, unsupported-package all-or-none rejection, and a pending parent curriculum task. Canonical frontend regressions verify two-lesson REVIEW completion, Home return without `/complete`, next launch in LEARN, and malformed/unsupported fail-closed behavior. The Draft PR is being prepared for independent exact-head review; the main baseline remains unchanged until merge.
+> - Issue #45 local verification: backend pytest **153 passed** (7 sqlite datetime adapter deprecation warnings); frontend Vitest **145 passed** across 13 files; production build passed (existing large-chunk advisory); no schema change, so migration checks were not applicable. Working-tree `git diff --check` passed; exact base-to-head check will be recorded after commit. Browser visual/narrow-viewport validation was not part of this behavior-only change; canonical route behavior is verified by AppShell tests. GitHub Actions status is **NOT VERIFIED** until the Draft PR exists and runs.
+> - Independent PR #44 validation: backend pytest **152 passed** (4 sqlite datetime adapter deprecation warnings); frontend Vitest **142 passed** across 13 files; production build passed (Vite reported the existing large-chunk advisory); base-to-head `git diff --check` passed. No schema/persistence migration changed, so migration checks were not applicable. PR #44 had no GitHub Actions workflow runs; CI is **NOT VERIFIED**.
 > - Issue #38 is the governing continuous program. See [the completeness audit](mainline-completeness-audit.md) for the executable matrix, priorities, UI/manual lanes, and audit limits.
 >
 > ### Program workflow and authority
@@ -28,7 +30,6 @@
 > - Issues #37 and #30 remain in the UI/manual lane. Preserve the approved deployed UI direction; do not redesign it.
 > - Do not expand Books 2–10. Current runtime work stays within the existing validated lesson packages and backend contracts.
 > - No local or deployed learner database is configured in this worktree; deployed DB state is **NOT VERIFIED**.
-> - GitHub Actions status for the new Issue #43 PR is **NOT VERIFIED** until inspected after opening the Draft PR; local checks above are not CI evidence.
 >
 > ### Canonical frontend identity
 >

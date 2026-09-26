@@ -8,7 +8,7 @@ import { ChildHomePage } from "../pages/ChildHomePage";
 import { canonicalRedirectPath, isCanonicalHomePath, resolveLearningSessionChildId, routeFromPath } from "../AppShell";
 import { AppShell } from "../AppShell";
 import { DISPLAY_LANGUAGE_KEY } from "./i18n";
-import { authoritativeSessionFixture } from "./testFixtures/learningFlow";
+import { authoritativeSessionFixture, plannerTasksForLesson } from "./testFixtures/learningFlow";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -343,52 +343,54 @@ describe("child-first shell contracts", () => {
     localStorage.setItem(DISPLAY_LANGUAGE_KEY, "zh-Hant");
     window.history.replaceState({}, "", "/");
     const requestLog: Array<{ url: string; method: string }> = [];
-    let reviewTaskState = "PENDING";
-    const curriculumTask = {
-      id: "learn-session:curriculum-recognition-1",
-      key: "recognition-1",
-      taskType: "RECOGNITION",
-      skillDomain: "recognition",
-      sourceQueue: "CURRICULUM",
-      itemId: "curriculum-item-ni",
-      lessonId: "book1-l01",
-      state: "PENDING",
-      required: true,
-      taskData: {},
-    };
-    const reviewTask = () => ({
-      id: "learn-session:review-recognition-1",
-      key: "review-recognition-1",
+    const reviewStates = { ni: "PENDING", hao: "PENDING" };
+    const curriculumTasks = plannerTasksForLesson("book1-l01").map((task) => ({
+      ...task,
+      id: `learn-session:${task.key}`,
+      childId: 1,
+      sessionId: "learn-session",
+    }));
+    const pendingCurriculum = curriculumTasks.find((task) => task.sourceQueue === "CURRICULUM" && task.required)!;
+    const reviewTask = (which: "ni" | "hao") => ({
+      id: `learn-session:review-recognition-${which === "ni" ? 1 : 2}`,
+      sessionId: "learn-session",
+      childId: 1,
+      key: `review-recognition-${which === "ni" ? 1 : 2}`,
       taskType: "REVIEW_RECOGNITION",
       skillDomain: "recognition",
       sourceQueue: "REVIEW",
-      itemId: "item-ni",
-      lessonId: "book1-l01",
-      state: reviewTaskState,
+      itemId: which === "ni" ? "item-ni" : "item-hao",
+      lessonId: which === "ni" ? "book1-l01" : "basic-l01",
+      state: reviewStates[which],
       required: true,
       taskData: {
-        prompt: "選出聽到的字：",
-        audioText: "你",
-        choices: [
-          { id: "opt-hao", label: "好", isCorrect: false },
-          { id: "opt-ni", label: "你", isCorrect: true },
-        ],
+        prompt: which === "ni" ? "選出聽到的字：你" : "選出聽到的字：好",
+        audioText: which === "ni" ? "你" : "好",
+        choices: which === "ni"
+          ? [{ id: "option-1", label: "好" }, { id: "option-2", label: "你" }]
+          : [{ id: "option-1", label: "你" }, { id: "option-2", label: "好" }],
         dueAt: "2026-09-02T00:00:00Z",
       },
     });
-    const session = (includeReviewTask: boolean) => ({
+    const session = (includeReviewTasks: boolean) => ({
       id: "learn-session",
+      sessionId: "learn-session",
+      childId: 1,
       status: "IN_PROGRESS",
       lessonId: "book1-l01",
-      curriculumContext: { lessonId: "book1-l01", lessonMasteredBeforeSession: true },
-      tasks: [curriculumTask, ...(includeReviewTask ? [reviewTask()] : [])],
+      curriculumContext: { lessonId: "book1-l01", lessonMasteredBeforeSession: false },
+      tasks: [...curriculumTasks, ...(includeReviewTasks ? [reviewTask("ni"), reviewTask("hao")] : [])],
     });
     let latestSessionResponse: ReturnType<typeof session> = session(false);
+    let reviewTaskState = "PENDING";
     const dueQueue = {
       childId: 1,
       asOf: "2026-09-05T00:00:00Z",
       placementStart: "BOOK_1",
-      review: { sourceQueue: "REVIEW", dueCount: 1, items: [{ id: "item-ni", character: "你", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" }] },
+      review: { sourceQueue: "REVIEW", dueCount: 2, items: [
+        { id: "item-ni", character: "你", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" },
+        { id: "item-hao", character: "好", lessonId: "basic-l01", dueAt: "2026-09-02T00:00:00Z" },
+      ] },
       newLesson: null,
       completedLesson: { sourceQueue: "CURRICULUM", lessonId: "book1-l01", title: "日月星辰", domains: ["recognition"], status: "COMPLETED" },
       currentLessonComplete: true,
@@ -416,7 +418,9 @@ describe("child-first shell contracts", () => {
         return new Response(JSON.stringify(reviewTaskState === "COMPLETED" ? normalQueue : dueQueue), { status: 200, headers: { "Content-Type": "application/json" } });
       }
       if (url.includes("/learning-sessions/current")) {
-        latestSessionResponse = session(false);
+        // After REVIEW, the next LEARN launch receives the same mixed session
+        // with completed REVIEW evidence still attached to its parent rows.
+        latestSessionResponse = reviewTaskState === "COMPLETED" ? session(true) : session(false);
         return new Response(JSON.stringify(latestSessionResponse), { status: 200, headers: { "Content-Type": "application/json" } });
       }
       if (url.includes("/reconcile-reviews") && method === "POST") {
@@ -424,6 +428,12 @@ describe("child-first shell contracts", () => {
         return new Response(JSON.stringify(latestSessionResponse), { status: 200, headers: { "Content-Type": "application/json" } });
       }
       if (url.includes("/tasks/learn-session:review-recognition-1/answer") && method === "POST") {
+        reviewStates.ni = "COMPLETED";
+        latestSessionResponse = session(true);
+        return new Response(JSON.stringify(latestSessionResponse), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/tasks/learn-session:review-recognition-2/answer") && method === "POST") {
+        reviewStates.hao = "COMPLETED";
         reviewTaskState = "COMPLETED";
         latestSessionResponse = session(true);
         return new Response(JSON.stringify(latestSessionResponse), { status: 200, headers: { "Content-Type": "application/json" } });
@@ -455,6 +465,14 @@ describe("child-first shell contracts", () => {
     await act(async () => { correctChoice.click(); });
     await act(async () => { (document.querySelector(".next-step-cta-btn") as HTMLButtonElement).click(); });
     expect(requestLog.some((request) => request.url.includes("/tasks/learn-session:review-recognition-1/answer") && request.method === "POST")).toBe(true);
+    expect(document.querySelector(".large-char-display")?.textContent).toBe("好");
+    expect(document.querySelector(".interaction-prompt")?.textContent).toContain("選出聽到的字：好");
+    const correctBasicChoice = Array.from(document.querySelectorAll(".char-choice-card"))
+      .find((button) => button.textContent?.includes("好")) as HTMLButtonElement;
+    expect(correctBasicChoice).toBeTruthy();
+    await act(async () => { correctBasicChoice.click(); });
+    await act(async () => { (document.querySelector(".next-step-cta-btn") as HTMLButtonElement).click(); });
+    expect(requestLog.some((request) => request.url.includes("/tasks/learn-session:review-recognition-2/answer") && request.method === "POST")).toBe(true);
     expect(document.querySelector("[data-step-key='wrap_up']")).toBeTruthy();
 
     await act(async () => { (document.querySelector(".finish-session-cta-btn") as HTMLButtonElement).click(); });
@@ -462,15 +480,19 @@ describe("child-first shell contracts", () => {
     expect(window.location.pathname).toBe("/TongXuan-Chinese/");
     expect(document.querySelector(".hero-primary-cta-row .launch-quiz-cta-btn")?.textContent).toContain("開始今日學習");
     expect(requestLog.some((request) => /\/learning-sessions\/learn-session\/complete(?:\?|$)/.test(request.url) && request.method === "POST")).toBe(false);
-    expect(reviewTaskState).toBe("COMPLETED");
+    expect(reviewStates).toEqual({ ni: "COMPLETED", hao: "COMPLETED" });
     expect(latestSessionResponse.status).toBe("IN_PROGRESS");
-    expect(latestSessionResponse.tasks.find((task) => task.id === curriculumTask.id)?.state).toBe("PENDING");
+    expect(latestSessionResponse.tasks.find((task) => task.id === pendingCurriculum.id)?.state).toBe("PENDING");
 
     const normalCta = document.querySelector(".hero-primary-cta-row .launch-quiz-cta-btn") as HTMLButtonElement;
     await act(async () => { normalCta.click(); });
     await act(async () => { await new Promise((resolve) => setTimeout(resolve, 60)); });
     expect(window.location.pathname).toBe("/TongXuan-Chinese/learning-session");
     expect(document.querySelector(".mode-badge.mode-learn")).toBeTruthy();
+    expect(document.querySelector("[data-step-key='context']")).toBeTruthy();
+    expect(requestLog.filter((request) => request.url.includes("/reconcile-reviews") && request.method === "POST")).toHaveLength(1);
+    expect(requestLog.filter((request) => request.url.includes("/tasks/learn-session:review-recognition-1/answer") && request.method === "POST")).toHaveLength(1);
+    expect(requestLog.filter((request) => request.url.includes("/tasks/learn-session:review-recognition-2/answer") && request.method === "POST")).toHaveLength(1);
 
     await act(async () => { root.unmount(); });
     vi.unstubAllGlobals();
@@ -492,19 +514,19 @@ describe("child-first shell contracts", () => {
       itemId: "curriculum-item-ni", state: "PENDING", required: true, taskData: {},
     };
     const reviewA = {
-      id: "learn-session:review-recognition-1", key: "review-recognition-1", taskType: "REVIEW_RECOGNITION",
+      id: "learn-session:review-recognition-1", sessionId: "learn-session", childId: 1, key: "review-recognition-1", taskType: "REVIEW_RECOGNITION",
       sourceQueue: "REVIEW", skillDomain: "recognition", lessonId: "book1-l01", itemId: "item-ni",
       state: "COMPLETED", required: true,
       taskData: { prompt: "選出聽到的字：你", audioText: "你", choices: [{ id: "option-1", label: "好" }, { id: "option-2", label: "你" }], dueAt: "2026-08-01T00:00:00Z" },
     };
     const reviewB = () => ({
-      id: "learn-session:review-recognition-2", key: "review-recognition-2", taskType: "REVIEW_RECOGNITION",
+      id: "learn-session:review-recognition-2", sessionId: "learn-session", childId: 1, key: "review-recognition-2", taskType: "REVIEW_RECOGNITION",
       sourceQueue: "REVIEW", skillDomain: "recognition", lessonId: "book1-l01", itemId: "item-hao",
       state: dueBState, required: true,
       taskData: { prompt: "選出新到期的字：好", audioText: "好", choices: [{ id: "option-1", label: "你" }, { id: "option-2", label: "好" }], dueAt: "2026-09-02T00:00:00Z" },
     });
     const session = (includeDueB: boolean) => ({
-      id: "learn-session", status: "IN_PROGRESS", lessonId: "book1-l01",
+      id: "learn-session", sessionId: "learn-session", childId: 1, status: "IN_PROGRESS", lessonId: "book1-l01",
       curriculumContext: { lessonId: "book1-l01", lessonMasteredBeforeSession: true },
       tasks: [curriculumTask, reviewA, ...(includeDueB ? [reviewB()] : [])],
     });
@@ -579,6 +601,8 @@ describe("child-first shell contracts", () => {
     ["malformed due ID", "malformed-id"],
     ["duplicate due IDs", "duplicate-id"],
     ["cross-lesson due ID", "cross-lesson"],
+    ["unsupported lesson package", "unsupported-package"],
+    ["malformed authoritative task choices", "malformed-task"],
   ])("canonical REVIEW fails closed on %s instead of replaying a stale session task", async (_caseName, invalidQueue) => {
     localStorage.clear();
     localStorage.setItem(DISPLAY_LANGUAGE_KEY, "zh-Hant");
@@ -590,13 +614,13 @@ describe("child-first shell contracts", () => {
       itemId: "curriculum-item-ni", state: "PENDING", required: true, taskData: {},
     };
     const staleReviewTask = {
-      id: "learn-session:review-recognition-1", key: "review-recognition-1", taskType: "REVIEW_RECOGNITION",
+      id: "learn-session:review-recognition-1", sessionId: "learn-session", childId: 1, key: "review-recognition-1", taskType: "REVIEW_RECOGNITION",
       sourceQueue: "REVIEW", skillDomain: "recognition", lessonId: "book1-l01", itemId: "item-ni",
       state: "COMPLETED", required: true,
       taskData: { prompt: "選出聽到的字：你", audioText: "你", choices: [{ id: "option-1", label: "好" }, { id: "option-2", label: "你" }], dueAt: "2026-08-01T00:00:00Z" },
     };
     const session = {
-      id: "learn-session", status: "IN_PROGRESS", lessonId: "book1-l01",
+      id: "learn-session", sessionId: "learn-session", childId: 1, status: "IN_PROGRESS", lessonId: "book1-l01",
       curriculumContext: { lessonId: "book1-l01", lessonMasteredBeforeSession: true },
       tasks: [curriculumTask, staleReviewTask],
     };
@@ -613,8 +637,10 @@ describe("child-first shell contracts", () => {
         ? { ...dueQueue.review, items: [{ character: "好", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" }] }
       : invalidQueue === "duplicate-id"
         ? { ...dueQueue.review, dueCount: 2, items: [dueQueue.review.items[0], dueQueue.review.items[0]] }
-        : invalidQueue === "cross-lesson"
+      : invalidQueue === "cross-lesson"
           ? { ...dueQueue.review, items: [{ ...dueQueue.review.items[0], lessonId: "basic-l01" }] }
+        : invalidQueue === "unsupported-package"
+          ? { ...dueQueue.review, items: [{ id: "item-unsupported", character: "好", lessonId: "book1-l02", dueAt: "2026-09-02T00:00:00Z" }] }
         : dueQueue.review;
     const requestLog: Array<{ url: string; method: string }> = [];
     vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -633,7 +659,18 @@ describe("child-first shell contracts", () => {
       if (url.includes("/learning-sessions/current")) return new Response(JSON.stringify(session), { status: 200, headers: { "Content-Type": "application/json" } });
       if (url.includes("/reconcile-reviews") && method === "POST") {
         reconcileCalls += 1;
-        return new Response(JSON.stringify(session), { status: 200, headers: { "Content-Type": "application/json" } });
+        const reconciledSession = invalidQueue === "malformed-task"
+          ? {
+            ...session,
+            tasks: [...session.tasks, {
+              id: "learn-session:review-recognition-2", sessionId: "learn-session", childId: 1,
+              key: "review-recognition-2", taskType: "REVIEW_RECOGNITION", sourceQueue: "REVIEW",
+              skillDomain: "recognition", lessonId: "book1-l01", itemId: "item-hao", state: "PENDING", required: true,
+              taskData: { prompt: "選出聽到的字：好", audioText: "好", choices: [{ id: "same", label: "你" }, { id: "same", label: "好" }], dueAt: "2026-09-02T00:00:00Z" },
+            }],
+          }
+          : session;
+        return new Response(JSON.stringify(reconciledSession), { status: 200, headers: { "Content-Type": "application/json" } });
       }
       return new Response(JSON.stringify({}), { status: 200, headers: { "Content-Type": "application/json" } });
     }));
@@ -653,7 +690,7 @@ describe("child-first shell contracts", () => {
     expect(document.querySelector(".large-char-display")).toBeNull();
     expect(document.querySelector(".char-choice-card")).toBeNull();
     expect(document.querySelector("[data-step-key='wrap_up']")).toBeNull();
-    expect(reconcileCalls).toBe(invalidQueue === "duplicate-id" || invalidQueue === "malformed-id" ? 1 : 0);
+    expect(reconcileCalls).toBe(invalidQueue === "cross-lesson" || invalidQueue === "malformed-task" ? 1 : 0);
     expect(requestLog.some((request) => request.url.includes("/tasks/learn-session:review-recognition-1/answer"))).toBe(false);
 
     await act(async () => { root.unmount(); });

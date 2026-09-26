@@ -10,6 +10,8 @@ import {
   getAllLessonPackages,
   getStepsForMode,
   selectReviewTasksForDueItems,
+  selectReviewTasksAcrossPackages,
+  validateReviewDueItems,
   getScaffoldText,
   validateReviewStatusIntegrity,
   type LessonPackage,
@@ -413,6 +415,58 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
       expect(mappedIds).toEqual(plannedTasks.map((task) => task.id));
       expect(plan.steps.at(-1)?.data.taskId).toBe(plannedTasks.at(-1)?.id);
     }
+  });
+
+  it("14c. mixed-lesson REVIEW rows map by their own package and stay outside the parent LEARN plan", () => {
+    const book1Pkg = getLessonPackage("book1-l01")!;
+    const dueItems = [
+      { id: "item-ni", character: "你", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" },
+      { id: "item-hao", character: "好", lessonId: "basic-l01", dueAt: "2026-09-02T00:00:00Z" },
+      { id: "item-starter-hao", character: "好", lessonId: "starter-l01", dueAt: "2026-09-02T00:00:00Z" },
+    ];
+    const reviewTasks = [
+      {
+        id: "mixed-session:review-recognition-1", key: "review-recognition-1", taskType: "REVIEW_RECOGNITION",
+        childId: 1, sessionId: "mixed-session",
+        sourceQueue: "REVIEW", lessonId: "book1-l01", skillDomain: "recognition", itemId: "item-ni",
+        state: "PENDING", required: true,
+        taskData: { prompt: "選出聽到的字：你", audioText: "你", choices: [{ id: "option-1", label: "好" }, { id: "option-2", label: "你" }], dueAt: dueItems[0].dueAt },
+      },
+      {
+        id: "mixed-session:review-recognition-2", key: "review-recognition-2", taskType: "REVIEW_RECOGNITION",
+        childId: 1, sessionId: "mixed-session",
+        sourceQueue: "REVIEW", lessonId: "basic-l01", skillDomain: "recognition", itemId: "item-hao",
+        state: "PENDING", required: true,
+        taskData: { prompt: "選出聽到的字：好", audioText: "好", choices: [{ id: "option-1", label: "你" }, { id: "option-2", label: "好" }], dueAt: dueItems[1].dueAt },
+      },
+      {
+        id: "mixed-session:review-recognition-3", key: "review-recognition-3", taskType: "REVIEW_RECOGNITION",
+        childId: 1, sessionId: "mixed-session",
+        sourceQueue: "REVIEW", lessonId: "starter-l01", skillDomain: "recognition", itemId: "item-starter-hao",
+        state: "PENDING", required: true,
+        taskData: { prompt: "選出聽到的字：好", audioText: "好", choices: [{ id: "option-1", label: "你" }, { id: "option-2", label: "好" }], dueAt: dueItems[2].dueAt },
+      },
+    ];
+    const selected = selectReviewTasksAcrossPackages(reviewTasks, dueItems, 1, "mixed-session");
+    expect(selected?.map((task) => task.id)).toEqual(reviewTasks.map((task) => task.id));
+    expect(selectReviewTasksAcrossPackages(reviewTasks, dueItems, 1, "another-session")).toBeNull();
+    expect(selectReviewTasksAcrossPackages(reviewTasks.slice(0, 1), dueItems, 1, "mixed-session")).toBeNull();
+    expect(selectReviewTasksAcrossPackages(reviewTasks, [dueItems[0], { ...dueItems[1], lessonId: "book1-l01" }, dueItems[2]], 1, "mixed-session")).toBeNull();
+    expect(selectReviewTasksAcrossPackages(reviewTasks, [dueItems[0], { ...dueItems[1], dueAt: "2026-09-03T00:00:00Z" }, dueItems[2]], 1, "mixed-session")).toBeNull();
+    expect(selectReviewTasksAcrossPackages(reviewTasks, dueItems, 2, "mixed-session")).toBeNull();
+    expect(validateReviewDueItems([{ ...dueItems[1], lessonId: "book1-l02" }])).toBe(false);
+    expect(validateReviewDueItems([dueItems[0], dueItems[0]])).toBe(false);
+
+    const reviewSteps = getStepsForMode(book1Pkg, "REVIEW", [], selected ?? []);
+    expect(reviewSteps.filter((step) => step.stepKey === "characters").map((step) => step.data.taskId)).toEqual(reviewTasks.map((task) => task.id));
+    expect(reviewSteps.filter((step) => step.stepKey === "characters").map((step) => step.data.dueCharacter)).toEqual(["你", "好", "好"]);
+    expect(reviewSteps.filter((step) => step.stepKey === "characters").every((step) => step.data.charObj.pronunciation.pinyin && step.data.charObj.pronunciation.zhuyin)).toBe(true);
+
+    const curriculumTasks = plannerTasksForLesson("book1-l01");
+    const learnPlan = buildAuthoritativeLearnSteps(book1Pkg, [...curriculumTasks, reviewTasks[1]]);
+    expect(learnPlan.valid).toBe(true);
+    expect(learnPlan.steps.flatMap((step) => step.data.taskIds ?? [step.data.taskId])).toEqual(curriculumTasks.map((task) => task.id));
+    expect(learnPlan.steps.some((step) => step.data.taskId === reviewTasks[1].id)).toBe(false);
   });
 
   it("14b. The shared partial-recognition contract maps only the planner's single first-character MINI_CHECK", () => {
@@ -2544,10 +2598,10 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     let onBackCalled = false;
     vi.stubGlobal("fetch", vi.fn(async (url: string) => {
       if (url.includes("/learning-sessions/current")) {
-        return new Response(JSON.stringify({ id: "s-rev-none", status: "IN_PROGRESS", tasks: [] }), { status: 200, headers: { "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ id: "s-rev-none", sessionId: "s-rev-none", childId: 1, status: "IN_PROGRESS", tasks: [] }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
       if (url.includes("/learning-daily-queue")) {
-        return new Response(JSON.stringify({ review: { sourceQueue: "REVIEW", dueCount: 0, items: [] } }), { status: 200, headers: { "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ childId: 1, review: { sourceQueue: "REVIEW", dueCount: 0, items: [] } }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
       return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
     }));
@@ -2584,12 +2638,12 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
   it.each([
     ["ID-only REVIEW row", {
       id: "s-malformed:review-recognition-1", key: "review-recognition-1", taskType: "REVIEW_RECOGNITION",
-      sourceQueue: "REVIEW", lessonId: "book1-l01", skillDomain: "recognition", itemId: "item-ni",
+      sourceQueue: "REVIEW", lessonId: "book1-l01", skillDomain: "recognition", itemId: "item-ni", childId: 1, sessionId: "s-malformed",
       state: "PENDING", required: true,
     }],
     ["REVIEW row with invalid duplicate choice ids", {
       id: "s-malformed:review-recognition-1", key: "review-recognition-1", taskType: "REVIEW_RECOGNITION",
-      sourceQueue: "REVIEW", lessonId: "book1-l01", skillDomain: "recognition", itemId: "item-ni",
+      sourceQueue: "REVIEW", lessonId: "book1-l01", skillDomain: "recognition", itemId: "item-ni", childId: 1, sessionId: "s-malformed",
       state: "PENDING", required: true,
       taskData: {
         prompt: "選出聽到的字：", audioText: "你", dueAt: "2026-09-02T00:00:00Z",
@@ -2597,13 +2651,13 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
       },
     }],
   ])("61a. malformed %s must fail closed without an actionable REVIEW question", async (_caseName, task) => {
-    const session = { id: "s-malformed", status: "IN_PROGRESS", lessonId: "book1-l01", tasks: [task] };
+    const session = { id: "s-malformed", sessionId: "s-malformed", childId: 1, status: "IN_PROGRESS", lessonId: "book1-l01", tasks: [task] };
     vi.stubGlobal("fetch", vi.fn(async (url: string) => {
       if (url.includes("/learning-sessions/current")) {
         return new Response(JSON.stringify(session), { status: 200, headers: { "Content-Type": "application/json" } });
       }
       if (url.includes("/learning-daily-queue")) {
-        return new Response(JSON.stringify({ review: {
+        return new Response(JSON.stringify({ childId: 1, review: {
           sourceQueue: "REVIEW", dueCount: 1,
           items: [{ id: "item-ni", character: "你", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" }],
         } }), { status: 200, headers: { "Content-Type": "application/json" } });
@@ -2638,10 +2692,14 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
       if (url.includes("/learning-sessions/current")) {
         return new Response(JSON.stringify({
           id: "s-rev-ni",
+          sessionId: "s-rev-ni",
+          childId: 1,
           status: "IN_PROGRESS",
           tasks: [
             {
-              id: "t-rev-ni",
+              id: "s-rev-ni:review-recognition-1",
+              childId: 1,
+              sessionId: "s-rev-ni",
               key: "review-recognition-1",
               taskType: "REVIEW_RECOGNITION",
               skillDomain: "recognition",
@@ -2664,7 +2722,7 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
         }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
       if (url.includes("/learning-daily-queue")) {
-        return new Response(JSON.stringify({ review: { sourceQueue: "REVIEW", dueCount: 1, items: [{ id: "item-ni", character: "你", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" }] } }), { status: 200, headers: { "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ childId: 1, review: { sourceQueue: "REVIEW", dueCount: 1, items: [{ id: "item-ni", character: "你", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" }] } }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
       return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
     }));
@@ -2697,10 +2755,14 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
       if (url.includes("/learning-sessions/current")) {
         return new Response(JSON.stringify({
           id: "s-rev-hao",
+          sessionId: "s-rev-hao",
+          childId: 1,
           status: "IN_PROGRESS",
           tasks: [
             {
-              id: "t-rev-hao",
+              id: "s-rev-hao:review-recognition-1",
+              childId: 1,
+              sessionId: "s-rev-hao",
               key: "review-recognition-1",
               taskType: "REVIEW_RECOGNITION",
               skillDomain: "recognition",
@@ -2723,7 +2785,7 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
         }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
       if (url.includes("/learning-daily-queue")) {
-        return new Response(JSON.stringify({ review: { sourceQueue: "REVIEW", dueCount: 1, items: [{ id: "item-hao", character: "好", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" }] } }), { status: 200, headers: { "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ childId: 1, review: { sourceQueue: "REVIEW", dueCount: 1, items: [{ id: "item-hao", character: "好", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" }] } }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
       return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
     }));
@@ -2752,12 +2814,14 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
         // Backend filtered out future-due items (due_at > as_of), so tasks array contains no review tasks
         return new Response(JSON.stringify({
           id: "s-rev-future",
+          sessionId: "s-rev-future",
+          childId: 1,
           status: "IN_PROGRESS",
           tasks: [],
         }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
       if (url.includes("/learning-daily-queue")) {
-        return new Response(JSON.stringify({ review: { sourceQueue: "REVIEW", dueCount: 0, items: [] } }), { status: 200, headers: { "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ childId: 1, review: { sourceQueue: "REVIEW", dueCount: 0, items: [] } }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
       return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
     }));
@@ -2788,10 +2852,14 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
       if (url.includes("/learning-sessions/current")) {
         return new Response(JSON.stringify({
           id: "s-rev-e",
+          sessionId: "s-rev-e",
+          childId: 1,
           status: "IN_PROGRESS",
           tasks: [
             {
-              id: "t-rev-e1",
+              id: "s-rev-e:review-recognition-1",
+              childId: 1,
+              sessionId: "s-rev-e",
               key: "review-recognition-1",
               taskType: "REVIEW_RECOGNITION",
               skillDomain: "recognition",
@@ -2813,16 +2881,20 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
           ],
         }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
-      if (url.includes("/tasks/t-rev-e1/answer") && init?.method === "POST") {
+      if (url.includes("/tasks/s-rev-e:review-recognition-1/answer") && init?.method === "POST") {
         const body = JSON.parse(init.body as string);
         answerCalls.push(body);
         taskState = "COMPLETED";
         return new Response(JSON.stringify({
           id: "s-rev-e",
+          sessionId: "s-rev-e",
+          childId: 1,
           status: "IN_PROGRESS",
           tasks: [
             {
-              id: "t-rev-e1",
+              id: "s-rev-e:review-recognition-1",
+              childId: 1,
+              sessionId: "s-rev-e",
               key: "review-recognition-1",
               taskType: "REVIEW_RECOGNITION",
               skillDomain: "recognition",
@@ -2843,7 +2915,7 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
         }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
       if (url.includes("/learning-daily-queue")) {
-        return new Response(JSON.stringify({ review: { sourceQueue: "REVIEW", dueCount: 1, items: [{ id: "item-ni", character: "你", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" }] } }), { status: 200, headers: { "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ childId: 1, review: { sourceQueue: "REVIEW", dueCount: 1, items: [{ id: "item-ni", character: "你", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" }] } }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
       return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
     }));
@@ -2892,10 +2964,10 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     // Mounting LessonPlayerPage with no backend due items never executes static reviewSteps
     vi.stubGlobal("fetch", vi.fn(async (url: string) => {
       if (url.includes("/learning-sessions/current")) {
-        return new Response(JSON.stringify({ id: "s-rev-f", status: "IN_PROGRESS", tasks: [] }), { status: 200, headers: { "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ id: "s-rev-f", sessionId: "s-rev-f", childId: 1, status: "IN_PROGRESS", tasks: [] }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
       if (url.includes("/learning-daily-queue")) {
-        return new Response(JSON.stringify({ review: { sourceQueue: "REVIEW", dueCount: 0, items: [] } }), { status: 200, headers: { "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ childId: 1, review: { sourceQueue: "REVIEW", dueCount: 0, items: [] } }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
       return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
     }));
@@ -2919,10 +2991,11 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
   it("67. Regression A: Daily Queue 200 + dueCount=0 + items=[] -> normal zero-due empty state", async () => {
     vi.stubGlobal("fetch", vi.fn(async (url: string) => {
       if (url.includes("/learning-sessions/current")) {
-        return new Response(JSON.stringify({ id: "s-reg-a", status: "IN_PROGRESS", tasks: [] }), { status: 200, headers: { "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ id: "s-reg-a", sessionId: "s-reg-a", childId: 1, status: "IN_PROGRESS", tasks: [] }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
       if (url.includes("/learning-daily-queue")) {
         return new Response(JSON.stringify({
+          childId: 1,
           review: { sourceQueue: "REVIEW", dueCount: 0, items: [] }
         }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
@@ -2949,7 +3022,7 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
   it("68. Regression B: Daily Queue 503 -> error state, must NOT display zero-due empty state", async () => {
     vi.stubGlobal("fetch", vi.fn(async (url: string) => {
       if (url.includes("/learning-sessions/current")) {
-        return new Response(JSON.stringify({ id: "s-reg-b", status: "IN_PROGRESS", tasks: [] }), { status: 200, headers: { "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ id: "s-reg-b", sessionId: "s-reg-b", childId: 1, status: "IN_PROGRESS", tasks: [] }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
       if (url.includes("/learning-daily-queue")) {
         return new Response(JSON.stringify({ error: "Service Unavailable" }), { status: 503, headers: { "Content-Type": "application/json" } });
@@ -2978,7 +3051,7 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
   it("69. Regression C: Daily Queue malformed -> error state, must NOT display zero-due empty state", async () => {
     vi.stubGlobal("fetch", vi.fn(async (url: string) => {
       if (url.includes("/learning-sessions/current")) {
-        return new Response(JSON.stringify({ id: "s-reg-c", status: "IN_PROGRESS", tasks: [] }), { status: 200, headers: { "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ id: "s-reg-c", sessionId: "s-reg-c", childId: 1, status: "IN_PROGRESS", tasks: [] }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
       if (url.includes("/learning-daily-queue")) {
         return new Response(JSON.stringify({
@@ -3010,10 +3083,11 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     let sessionCreationAttempted = false;
     vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
       if (url.includes("/learning-sessions/current")) {
-        return new Response(JSON.stringify({ id: "s-reg-d", status: "IN_PROGRESS", tasks: [] }), { status: 200, headers: { "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ id: "s-reg-d", sessionId: "s-reg-d", childId: 1, status: "IN_PROGRESS", tasks: [] }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
       if (url.includes("/learning-daily-queue")) {
         return new Response(JSON.stringify({
+          childId: 1,
           review: {
             sourceQueue: "REVIEW",
             dueCount: 1,
@@ -3024,7 +3098,7 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
       if ((url.includes("/reconcile-reviews") || url.includes("/learning-sessions")) && init?.method === "POST") {
         sessionCreationAttempted = true;
         // Backend returns session with tasks=[] (cannot produce executable review task)
-        return new Response(JSON.stringify({ id: "s-reg-d", status: "IN_PROGRESS", tasks: [] }), { status: 200, headers: { "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ id: "s-reg-d", sessionId: "s-reg-d", childId: 1, status: "IN_PROGRESS", tasks: [] }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
       return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
     }));
@@ -3059,8 +3133,8 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     let backCalled = false;
     let finalSessionResponse: { id: string; status: string; tasks: Array<{ id: string; state: string }> } = { id: "", status: "", tasks: [] };
     const curriculumPendingTask = { id: "learn-required-curriculum", key: "curriculum-required-1", taskType: "LISTENING", sourceQueue: "CURRICULUM", lessonId: "book1-l01", state: "PENDING", required: true };
-    const reviewTask = (id: string, key: string, itemId: string, character: string, state: string) => ({
-      id, key, taskType: "REVIEW_RECOGNITION", sourceQueue: "REVIEW", lessonId: "book1-l01",
+    const reviewTask = (_id: string, key: string, itemId: string, character: string, state: string) => ({
+      id: `s-reg-e:${key}`, sessionId: "s-reg-e", childId: 1, key, taskType: "REVIEW_RECOGNITION", sourceQueue: "REVIEW", lessonId: "book1-l01",
       skillDomain: "recognition", itemId, state, required: true,
       taskData: {
         prompt: `選出聽到的字：${character}`,
@@ -3074,6 +3148,8 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
       if (url.includes("/learning-sessions/current")) {
         return new Response(JSON.stringify({
           id: "s-reg-e",
+          sessionId: "s-reg-e",
+          childId: 1,
           status: "IN_PROGRESS",
           lessonId: "book1-l01",
           tasks: [
@@ -3083,11 +3159,27 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
           ],
         }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
-      if (url.includes("/tasks/task-A/answer") && init?.method === "POST") {
-        answeredTaskIds.push("task-A");
+      if (url.includes("/learning-sessions/s-reg-e/reconcile-reviews") && init?.method === "POST") {
+        return new Response(JSON.stringify({
+          id: "s-reg-e",
+          sessionId: "s-reg-e",
+          childId: 1,
+          status: "IN_PROGRESS",
+          lessonId: "book1-l01",
+          tasks: [
+            reviewTask("task-A", "review-recognition-1", "item-ni", "你", taskStateA),
+            reviewTask("task-B", "review-recognition-2", "item-hao", "好", taskStateB),
+            curriculumPendingTask,
+          ],
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/tasks/s-reg-e:review-recognition-1/answer") && init?.method === "POST") {
+        answeredTaskIds.push("s-reg-e:review-recognition-1");
         taskStateA = "COMPLETED";
         return new Response(JSON.stringify({
           id: "s-reg-e",
+          sessionId: "s-reg-e",
+          childId: 1,
           status: "IN_PROGRESS",
           lessonId: "book1-l01",
           tasks: [
@@ -3097,11 +3189,13 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
           ],
         }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
-      if (url.includes("/tasks/task-B/answer") && init?.method === "POST") {
-        answeredTaskIds.push("task-B");
+      if (url.includes("/tasks/s-reg-e:review-recognition-2/answer") && init?.method === "POST") {
+        answeredTaskIds.push("s-reg-e:review-recognition-2");
         taskStateB = "COMPLETED";
         const completedSession = {
           id: "s-reg-e",
+          sessionId: "s-reg-e",
+          childId: 1,
           status: "IN_PROGRESS",
           lessonId: "book1-l01",
           tasks: [
@@ -3118,7 +3212,7 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
         return new Response(JSON.stringify({ id: "s-reg-e", status: "COMPLETED" }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
       if (url.includes("/learning-daily-queue")) {
-        return new Response(JSON.stringify({ review: { sourceQueue: "REVIEW", dueCount: 2, items: [
+        return new Response(JSON.stringify({ childId: 1, review: { sourceQueue: "REVIEW", dueCount: 2, items: [
           { id: "item-ni", character: "你", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" },
           { id: "item-hao", character: "好", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" },
         ] } }), { status: 200, headers: { "Content-Type": "application/json" } });
@@ -3142,7 +3236,7 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     const nextBtn = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
     await act(async () => { nextBtn.click(); });
 
-    expect(answeredTaskIds).toEqual(["task-A"]);
+    expect(answeredTaskIds).toEqual(["s-reg-e:review-recognition-1"]);
 
     // STEP 2: Bound to task-B (好)
     expect(container.querySelector(".large-char-display")?.textContent).toBe("好");
@@ -3152,7 +3246,7 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     const nextBtn2 = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
     await act(async () => { nextBtn2.click(); });
 
-    expect(answeredTaskIds).toEqual(["task-A", "task-B"]);
+    expect(answeredTaskIds).toEqual(["s-reg-e:review-recognition-1", "s-reg-e:review-recognition-2"]);
 
     // Advances to wrap-up
     expect(container.querySelector("[data-step-key='wrap_up']")).toBeTruthy();
@@ -3174,8 +3268,8 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
   it("72. Regression F: Multi-item review with second exact task missing -> must NOT synthesize or fallback to a question", async () => {
     let taskStateA = "PENDING";
     const answeredTaskIds: string[] = [];
-    const reviewTask = (id: string, key: string, itemId: string, character: string, state: string) => ({
-      id, key, taskType: "REVIEW_RECOGNITION", sourceQueue: "REVIEW", lessonId: "book1-l01",
+    const reviewTask = (key: string, itemId: string, character: string, state: string) => ({
+      id: `s-reg-f:${key}`, sessionId: "s-reg-f", childId: 1, key, taskType: "REVIEW_RECOGNITION", sourceQueue: "REVIEW", lessonId: "book1-l01",
       skillDomain: "recognition", itemId, state, required: true,
       taskData: {
         prompt: `選出聽到的字：${character}`,
@@ -3189,29 +3283,46 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
       if (url.includes("/learning-sessions/current")) {
         return new Response(JSON.stringify({
           id: "s-reg-f",
+          sessionId: "s-reg-f",
+          childId: 1,
           status: "IN_PROGRESS",
           lessonId: "book1-l01",
           tasks: [
-            reviewTask("task-A", "review-recognition-1", "item-ni", "你", taskStateA),
-            reviewTask("task-B", "review-recognition-2", "item-hao", "好", "PENDING"),
+            reviewTask("review-recognition-1", "item-ni", "你", taskStateA),
+            reviewTask("review-recognition-2", "item-hao", "好", "PENDING"),
           ],
         }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
-      if (url.includes("/tasks/task-A/answer") && init?.method === "POST") {
-        answeredTaskIds.push("task-A");
+      if (url.includes("/learning-sessions/s-reg-f/reconcile-reviews") && init?.method === "POST") {
+        return new Response(JSON.stringify({
+          id: "s-reg-f",
+          sessionId: "s-reg-f",
+          childId: 1,
+          status: "IN_PROGRESS",
+          lessonId: "book1-l01",
+          tasks: [
+            reviewTask("review-recognition-1", "item-ni", "你", taskStateA),
+            reviewTask("review-recognition-2", "item-hao", "好", "PENDING"),
+          ],
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/tasks/s-reg-f:review-recognition-1/answer") && init?.method === "POST") {
+        answeredTaskIds.push("s-reg-f:review-recognition-1");
         taskStateA = "COMPLETED";
         // CRITICAL: Backend session update mysteriously omits task-B (e.g. task-B is missing from session)
         return new Response(JSON.stringify({
           id: "s-reg-f",
+          sessionId: "s-reg-f",
+          childId: 1,
           status: "IN_PROGRESS",
           lessonId: "book1-l01",
           tasks: [
-            reviewTask("task-A", "review-recognition-1", "item-ni", "你", "COMPLETED"),
+            reviewTask("review-recognition-1", "item-ni", "你", "COMPLETED"),
           ],
         }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
       if (url.includes("/learning-daily-queue")) {
-        return new Response(JSON.stringify({ review: { sourceQueue: "REVIEW", dueCount: 2, items: [
+        return new Response(JSON.stringify({ childId: 1, review: { sourceQueue: "REVIEW", dueCount: 2, items: [
           { id: "item-ni", character: "你", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" },
           { id: "item-hao", character: "好", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" },
         ] } }), { status: 200, headers: { "Content-Type": "application/json" } });
@@ -3232,7 +3343,7 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     const choiceA = Array.from(container.querySelectorAll(".char-choice-card")).find((b) => b.textContent?.includes("你")) as HTMLButtonElement;
     await act(async () => { choiceA.click(); });
     // Task B disappeared from the authoritative session response, so no next button or question may render.
-    expect(answeredTaskIds).toEqual(["task-A"]);
+    expect(answeredTaskIds).toEqual(["s-reg-f:review-recognition-1"]);
     expect(container.querySelector(".large-char-display")).toBeNull();
     expect(container.querySelector(".char-choice-card")).toBeNull();
     expect(container.querySelector(".next-step-cta-btn")).toBeNull();
