@@ -5,7 +5,7 @@ import { createRoot } from "react-dom/client";
 import { addChildProfile, defaultProfiles, loadProfiles, reconcileProfiles, saveProfiles, selectProfile } from "./profiles";
 import { PARENT_GATE_NOTE, isPasswordEntered } from "./parentGate";
 import { ChildHomePage } from "../pages/ChildHomePage";
-import { isCanonicalHomePath, resolveLearningSessionChildId, routeFromPath } from "../AppShell";
+import { canonicalRedirectPath, isCanonicalHomePath, resolveLearningSessionChildId, routeFromPath } from "../AppShell";
 import { AppShell } from "../AppShell";
 import { DISPLAY_LANGUAGE_KEY } from "./i18n";
 
@@ -31,14 +31,14 @@ describe("child-first shell contracts", () => {
     expect(routeFromPath("/parent-dashboard")).toBe("parent");
     expect(routeFromPath("/practice")).toBe("practice");
     expect(routeFromPath("/")).toBe("home");
-    for (const productionAlias of ["/preview-2", "/preview-b", "/preview-kids", "/kids"]) {
-      expect(routeFromPath(productionAlias)).toBe("home");
+    expect(routeFromPath("/kids")).toBe("redirect-home");
+    expect(canonicalRedirectPath("/kids")).toBe("/TongXuan-Chinese/");
+    expect(canonicalRedirectPath("/TongXuan-Chinese/kids")).toBe("/TongXuan-Chinese/");
+    for (const retiredPath of ["/preview-kids", "/preview-2", "/preview-b", "/preview", "/preview-pixel", "/preview-reference", "/preview-directions", "/learning-desk", "/learning-calendar", "/lesson-player", "/player"]) {
+      expect(routeFromPath(retiredPath)).toBe("legacy-tombstone");
     }
-    for (const previewPath of ["/preview", "/preview-pixel", "/preview-reference", "/preview-directions", "/learning-desk", "/learning-calendar"]) {
-      expect(routeFromPath(previewPath)).toBe("archived-preview");
-    }
-    expect(routeFromPath("/TongXuan-Chinese/preview-2")).toBe("home");
-    expect(routeFromPath("/TongXuan-Chinese/preview-kids")).toBe("home");
+    expect(routeFromPath("/TongXuan-Chinese/preview-2")).toBe("legacy-tombstone");
+    expect(routeFromPath("/TongXuan-Chinese/preview-kids")).toBe("legacy-tombstone");
     expect(routeFromPath("/learning-session")).toBe("learning-session");
     expect(routeFromPath("/TongXuan-Chinese/learning-session")).toBe("learning-session");
     expect(isCanonicalHomePath("/")).toBe(true);
@@ -53,14 +53,61 @@ describe("child-first shell contracts", () => {
     expect(resolveLearningSessionChildId(profiles, "萌萌")).toBeNull();
     expect(resolveLearningSessionChildId(profiles, "家長管理者")).toBeNull();
     expect(resolveLearningSessionChildId([...profiles, { ...profiles[0], key: "child-8", childId: 8 }], "樂樂")).toBeNull();
-    expect(routeFromPath("/unknown")).toBe("home");
+    expect(routeFromPath("/unknown")).toBe("legacy-tombstone");
   });
 
-  it("starts the session only for the backend profile matching the selected portal learner", async () => {
+  it("renders a retired-route notice for a legacy URL and canonicalizes /kids through AppShell", async () => {
+    localStorage.clear();
+    localStorage.setItem(DISPLAY_LANGUAGE_KEY, "zh-Hant");
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("[]", { status: 200, headers: { "Content-Type": "application/json" } })));
+    document.body.innerHTML = '<div id="root"></div>';
+    window.history.replaceState({}, "", "/preview-2");
+    const root = createRoot(document.getElementById("root")!);
+
+    await act(async () => {
+      root.render(React.createElement(AppShell));
+      await Promise.resolve();
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    });
+    expect(document.querySelector("main.app-page h1")?.textContent).toBe("此舊路徑已停用");
+    expect(document.querySelector(".design-preview")).toBeNull();
+    expect(document.querySelector("main.weekly-main-hero")).toBeNull();
+    await act(async () => { root.unmount(); });
+
+    for (const retiredPath of ["/lesson-player", "/player"]) {
+      document.body.innerHTML = '<div id="root"></div>';
+      window.history.replaceState({}, "", retiredPath);
+      const retiredRoot = createRoot(document.getElementById("root")!);
+      await act(async () => {
+        retiredRoot.render(React.createElement(AppShell));
+        await Promise.resolve();
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      });
+      expect(document.querySelector("main.app-page h1")?.textContent).toBe("此舊路徑已停用");
+      expect(document.querySelector('main[aria-label="課堂學習播放器"]')).toBeNull();
+      expect(document.querySelector("main.weekly-main-hero")).toBeNull();
+      await act(async () => { retiredRoot.unmount(); });
+    }
+
+    document.body.innerHTML = '<div id="root"></div>';
+    window.history.replaceState({}, "", "/kids");
+    const compatibilityRoot = createRoot(document.getElementById("root")!);
+    await act(async () => {
+      compatibilityRoot.render(React.createElement(AppShell));
+      await Promise.resolve();
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    });
+    expect(window.location.pathname).toBe("/TongXuan-Chinese/");
+    expect(document.querySelector("main.weekly-main-hero")).toBeTruthy();
+    await act(async () => { compatibilityRoot.unmount(); });
+    vi.unstubAllGlobals();
+  });
+
+  it("routes the canonical home CTA to /learning-session and renders LessonPlayerPage for the matching learner", async () => {
     const renderHome = async (backendChildName: string) => {
       localStorage.clear();
       localStorage.setItem(DISPLAY_LANGUAGE_KEY, "zh-Hant");
-      window.history.replaceState({}, "", "/TongXuan-Chinese/");
+      window.history.replaceState({}, "", "/");
       vi.stubGlobal("fetch", vi.fn(async (url: string) => new Response(JSON.stringify(url.endsWith("/api/children") ? [{ id: 1, name: backendChildName }] : url.includes("daily-queue") ? [] : { balance: 0, rewards: [] }), { status: 200, headers: { "Content-Type": "application/json" } })));
       document.body.innerHTML = '<div id="root"></div>';
       const root = createRoot(document.getElementById("root")!);
@@ -70,16 +117,22 @@ describe("child-first shell contracts", () => {
     };
 
     const mismatchedRoot = await renderHome("Different learner");
+    expect(document.querySelector("main.weekly-main-hero")).toBeTruthy();
+    expect(routeFromPath(window.location.pathname)).toBe("home");
     await act(async () => { (document.querySelector(".validated-session-entry") as HTMLButtonElement).click(); });
-    expect(window.location.pathname).toBe("/TongXuan-Chinese/");
+    expect(window.location.pathname).toBe("/");
     expect(document.querySelector('[role="alert"]')?.textContent).toContain("找不到這位學習者");
-    mismatchedRoot.unmount();
+    await act(async () => { mismatchedRoot.unmount(); });
     vi.unstubAllGlobals();
 
     const matchedRoot = await renderHome("樂樂");
+    expect(document.querySelector("main.weekly-main-hero")).toBeTruthy();
+    await import("../pages/LessonPlayerPage");
     await act(async () => { (document.querySelector(".validated-session-entry") as HTMLButtonElement).click(); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 50)); });
     expect(window.location.pathname).toBe("/TongXuan-Chinese/learning-session");
-    matchedRoot.unmount();
+    expect(document.querySelector('main[aria-label="課堂學習播放器"]')).toBeTruthy();
+    await act(async () => { matchedRoot.unmount(); });
     vi.unstubAllGlobals();
   });
 
@@ -321,7 +374,7 @@ describe("child-first shell contracts", () => {
     }
   });
 
-  it("browsing or selecting Book 1 Lesson 2 in track keeps primary hero CTA launching book1-l01 and shows preview card", async () => {
+  it("browsing or selecting Book 1 Lesson 2 in track keeps primary hero CTA launching book1-l01 and shows upcoming lesson card", async () => {
     localStorage.clear();
     localStorage.setItem(DISPLAY_LANGUAGE_KEY, "zh-Hant");
     window.history.replaceState({}, "", "/TongXuan-Chinese/");
@@ -414,11 +467,11 @@ describe("child-first shell contracts", () => {
       await new Promise((resolve) => setTimeout(resolve, 50));
     });
 
-    // 3. Verify Course Preview card appears for Lesson 2
-    const previewCard = document.querySelector("[data-testid='official-course-preview']");
-    expect(previewCard).toBeTruthy();
-    expect(previewCard?.textContent).toMatch(/你.*家.*幾.*個.*人/);
-    expect(previewCard?.textContent).toContain("此課為後續課綱內容 · 請先完成今日課程");
+    // 3. Verify upcoming lesson card appears for Lesson 2
+    const upcomingCard = document.querySelector("[data-testid='upcoming-course']");
+    expect(upcomingCard).toBeTruthy();
+    expect(upcomingCard?.textContent).toMatch(/你.*家.*幾.*個.*人/);
+    expect(upcomingCard?.textContent).toContain("此課為後續課綱內容 · 請先完成今日課程");
 
     // 4. Verify Main Hero is STILL pinned to Lesson 1 (你好)
     const heroTitleAfterBrowse = document.querySelector(".official-lesson-hero .story-main-title");

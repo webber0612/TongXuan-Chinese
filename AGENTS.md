@@ -2,6 +2,18 @@
 
 This repository uses a role-separated frontend workflow. These rules apply to every agent modifying `frontend/`.
 
+## Canonical frontend guardrail
+
+When asked to modify the TongXuan website/UI, always modify the canonical TongXuan Web App declared in `docs/frontend-architecture.md`.
+
+Do not use archived previews, legacy preview routes, screenshots, or experimental branches as the implementation target unless the issue explicitly names that artifact.
+
+- A filename containing `Preview` does not mean it is the latest UI.
+- A URL opening successfully does not mean it is production.
+- An isolated component test passing does not prove the production UI was changed.
+- Verify the production import chain before changing UI.
+- Before changing UI, answer the seven checks in `docs/frontend-architecture.md` (branch, production entry, target route, final component, AppShell import, similarly named archived surface, and production build inclusion). If any answer is unknown, stop and report `CANONICAL_FRONTEND_NOT_VERIFIED`.
+
 ## Design authority
 
 - Product audience: children learning Chinese as beginners, with a parent supervising progress and settings.
@@ -18,7 +30,7 @@ The canonical design skill is the project-local `better-web-ui` installation und
 3. Produce at least three materially different layout/style directions in a short design note before implementing a substantial redesign. Record the selected direction and why it fits the task.
 4. Establish hierarchy, spacing, typography, color, radius, elevation, and motion tokens before adding decorative effects.
 5. Implement the smallest functional slice. Do not imply a feature is working when it is only a visual placeholder.
-6. Verify the result in the browser at `/preview-2` and at a narrow viewport. Check keyboard focus, reduced motion, touch/mouse drag, and overflow.
+6. Verify the result through the canonical `/` route and at a narrow viewport. Check keyboard focus, reduced motion, touch/mouse drag, and overflow. Legacy URLs are not visual verification targets.
 7. Run `npm run test` and `npm run build` from `frontend/` after UI changes.
 8. Perform a separate visual/a11y review using `.agents/roles/frontend-auditor.md`. The implementer may not approve their own visual result without this review checklist.
 

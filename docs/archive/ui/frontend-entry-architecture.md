@@ -1,3 +1,7 @@
+> **HISTORICAL_REFERENCE_ONLY — DO_NOT_IMPLEMENT**
+>
+> This archived note records an earlier UI direction. Its route and layout decisions are not current product specifications. Use [`docs/frontend-architecture.md`](../../frontend-architecture.md) for the canonical frontend.
+
 # Frontend entry architecture
 
 ## Decision

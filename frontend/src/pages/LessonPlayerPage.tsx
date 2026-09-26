@@ -1739,7 +1739,7 @@ export function LessonPlayerPage({
         }
       }
 
-      // Unauthenticated preview mode only (!activeChildId)
+      // Local unauthenticated practice mode only (!activeChildId)
       setExitTicketSubmitted(true);
       if (allCorrect) {
         setWeakDomains([]);
@@ -1790,7 +1790,7 @@ export function LessonPlayerPage({
       return;
     }
 
-    // Unauthenticated preview mode only (!activeChildId)
+    // Local unauthenticated practice mode only (!activeChildId)
     setExitTicketSubmitted(true);
     setWeakDomains(failedDomains);
     if (allCorrect) {

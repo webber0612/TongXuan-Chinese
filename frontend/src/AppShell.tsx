@@ -14,10 +14,9 @@ const CurriculumPage = lazy(async () => ({ default: (await import("./pages/Curri
 const TutorPage = lazy(async () => ({ default: (await import("./pages/TutorPage")).TutorPage }));
 const CommercializationPage = lazy(async () => ({ default: (await import("./pages/CommercializationPage")).CommercializationPage }));
 const DiagnosticsPage = lazy(async () => ({ default: (await import("./pages/DiagnosticsPage")).DiagnosticsPage }));
-const LearningSessionPage = lazy(async () => ({ default: (await import("./pages/LearningSessionPage")).LearningSessionPage }));
 const LessonPlayerPage = lazy(async () => ({ default: (await import("./pages/LessonPlayerPage")).LessonPlayerPage }));
 type Child = { id: number; name: string };
-type Route = "home" | "practice" | "parent" | "curriculum" | "course-zero" | "first-lesson" | "learning-session" | "lesson-player" | "tutor" | "me" | "commercialization" | "diagnostics" | "archived-preview";
+type Route = "home" | "practice" | "parent" | "curriculum" | "course-zero" | "first-lesson" | "learning-session" | "tutor" | "me" | "commercialization" | "diagnostics" | "legacy-tombstone" | "redirect-home";
 
 function appBaseAt(pathname: string): string {
   const normalized = pathname.replace(/\/+$/, "") || "/";
@@ -26,16 +25,23 @@ function appBaseAt(pathname: string): string {
   return new URL(import.meta.env.BASE_URL, `${window.location.origin}${pathname}`).pathname;
 }
 
-export function routeFromPath(pathname: string): Route {
+function appPathAt(pathname: string): string {
   const normalized = pathname.replace(/\/+$/, "") || "/";
   const appBase = appBaseAt(pathname).replace(/\/+$/, "");
-  const appPath = appBase && (normalized === appBase || normalized.startsWith(`${appBase}/`))
+  return appBase && (normalized === appBase || normalized.startsWith(`${appBase}/`))
     ? normalized.slice(appBase.length) || "/"
     : normalized;
-  if (["/kids", "/preview-kids", "/preview-2", "/preview-b"].includes(appPath)) return "home";
-  if (["/preview", "/preview-pixel", "/preview-reference", "/preview-directions", "/learning-desk", "/learning-calendar"].includes(appPath)) return "archived-preview";
-  if (appPath === "/lesson-player" || appPath === "/player") return "lesson-player";
+}
 
+export function canonicalRedirectPath(pathname: string): string | null {
+  return appPathAt(pathname) === "/kids" ? appBaseAt(pathname) : null;
+}
+
+export function routeFromPath(pathname: string): Route {
+  const appPath = appPathAt(pathname);
+  if (appPath === "/") return "home";
+  if (appPath === "/kids") return "redirect-home";
+  if (["/preview-kids", "/preview-2", "/preview-b", "/preview", "/preview-pixel", "/preview-reference", "/preview-directions", "/learning-desk", "/learning-calendar"].includes(appPath)) return "legacy-tombstone";
   if (appPath === "/parent-dashboard") return "parent";
   if (appPath === "/curriculum") return "curriculum";
   if (appPath === "/course-zero") return "course-zero";
@@ -46,16 +52,13 @@ export function routeFromPath(pathname: string): Route {
   if (appPath === "/diagnostics") return "diagnostics";
   if (appPath === "/practice") return "practice";
   if (appPath === "/settings" || appPath === "/me") return "me";
-  return "home";
+  return "legacy-tombstone";
 }
 
-const paths: Record<Exclude<Route, "archived-preview">, string> = { home: "/", practice: "/practice", parent: "/parent-dashboard", curriculum: "/curriculum", "course-zero": "/course-zero", "first-lesson": "/first-lesson", "learning-session": "/learning-session", "lesson-player": "/lesson-player", tutor: "/tutor", me: "/me", commercialization: "/admin/commercialization", diagnostics: "/diagnostics" };
+const paths: Record<Exclude<Route, "legacy-tombstone" | "redirect-home">, string> = { home: "/", practice: "/practice", parent: "/parent-dashboard", curriculum: "/curriculum", "course-zero": "/course-zero", "first-lesson": "/first-lesson", "learning-session": "/learning-session", tutor: "/tutor", me: "/me", commercialization: "/admin/commercialization", diagnostics: "/diagnostics" };
 
 export function isCanonicalHomePath(pathname: string): boolean {
-  const normalized = pathname.replace(/\/+$/, "") || "/";
-  const base = appBaseAt(pathname).replace(/\/+$/, "");
-  const appPath = base && (normalized === base || normalized.startsWith(`${base}/`)) ? normalized.slice(base.length) || "/" : normalized;
-  return appPath === "/";
+  return appPathAt(pathname) === "/";
 }
 
 export function resolveLearningSessionChildId(profiles: Profile[], learnerName: string): number | null {
@@ -90,7 +93,20 @@ export function AppShell() {
 
   useEffect(() => { saveProfiles(profiles); }, [profiles]);
   useEffect(() => { localStorage.setItem(ACTIVE_PROFILE_STORAGE_KEY, activeProfile.key); }, [activeProfile.key]);
-  useEffect(() => { const onPopState = () => setRoute(routeFromPath(window.location.pathname)); window.addEventListener("popstate", onPopState); return () => window.removeEventListener("popstate", onPopState); }, []);
+  useEffect(() => {
+    const syncRoute = () => {
+      const redirectPath = canonicalRedirectPath(window.location.pathname);
+      if (redirectPath) {
+        window.history.replaceState({}, "", redirectPath);
+        setRoute(routeFromPath(redirectPath));
+        return;
+      }
+      setRoute(routeFromPath(window.location.pathname));
+    };
+    syncRoute();
+    window.addEventListener("popstate", syncRoute);
+    return () => window.removeEventListener("popstate", syncRoute);
+  }, []);
 
   async function loadChildren() {
     setChildrenLoading(true); setChildrenError("");
@@ -107,7 +123,11 @@ export function AppShell() {
   }
   useEffect(() => { void loadChildren(); }, []);
 
-  function navigate(next: Route) { setRoute(next); window.history.pushState({}, "", pathAtAppBase(next === "archived-preview" ? "/" : paths[next])); }
+  function navigate(next: Route) {
+    if (next === "legacy-tombstone" || next === "redirect-home") return;
+    setRoute(next);
+    window.history.pushState({}, "", pathAtAppBase(paths[next]));
+  }
   function chooseProfile(key: string) { const profile = profiles.find((item) => item.key === key); if (!profile) return; setActiveKey(profile.key); setProfileOpen(false); navigate(profile.role === "parent" ? "parent" : "home"); }
   async function addProfile() {
     const cleanName = newName.trim();
@@ -134,7 +154,7 @@ export function AppShell() {
     { id: "me" as Route, label: t("mySpace"), icon: UserRound },
   ], [activeProfile.role, language]);
 
-  const isChildPortal = route === "home" || route === "archived-preview" || route === "learning-session";
+  const isChildPortal = route === "home" || route === "legacy-tombstone" || route === "redirect-home" || route === "learning-session";
   const showSessionEntry = isCanonicalHomePath(window.location.pathname);
 
   return <div className={`app-shell ${isChildPortal ? "app-shell-child-portal" : ""}`}>
@@ -154,7 +174,7 @@ export function AppShell() {
       <div className="main-column">
         {childrenLoading && !isChildPortal && <div className="offline-strip" role="status">{t("loading")}</div>}
         {childrenError && !isChildPortal && <div className="offline-strip error-strip" role="alert">{childrenError} <button className="button button-text" onClick={() => void loadChildren()}>{t("retry")}</button></div>}
-        {route === "archived-preview" && <main className="app-page"><PageHeading kicker={t("library")} title={t("previewArchived")} subtitle={t("previewArchivedDescription")} icon={<BookOpen/>}/><button className="button button-primary" onClick={() => navigate("home")}><House size={18}/>{t("today")}</button></main>}
+        {route === "legacy-tombstone" && <main className="app-page"><PageHeading kicker={t("today")} title={t("legacyRouteTitle")} subtitle={t("legacyRouteDescription")} icon={<BookOpen/>}/><button className="button button-primary" onClick={() => navigate("home")}><House size={18}/>{t("today")}</button></main>}
         <Suspense fallback={<AppLoading label={t("loading")} />}>
         {route === "home" && <ChildPortalPage activeChildId={activeChild?.id ?? null} activeChildName={childName} onOpenCurriculum={() => navigate("curriculum")} onStartLearningSession={showSessionEntry ? (learnerName, targetLessonId) => {
           const childId = resolveLearningSessionChildId(profiles, learnerName);
@@ -166,7 +186,6 @@ export function AppShell() {
           return true;
         } : undefined} />}
         {route === "learning-session" && <LessonPlayerPage lessonId={learningSessionLessonId} activeChildId={activeChild?.id ?? null} onBack={() => navigate("home")} />}
-        {route === "lesson-player" && <LessonPlayerPage lessonId={learningSessionLessonId} activeChildId={activeChild?.id ?? null} onBack={() => navigate("home")} />}
         {route === "practice" && <div className="app-page practice-page" key={activeProfile.key}><PageHeading kicker={t("practice")} title={t("practiceTitle")} subtitle={t("practiceHint")} icon={<Sparkles/>}/><LearningPage activeChildId={activeChild?.id ?? null} /></div>}
         {route === "parent" && <ParentAreaPage />}
         {route === "curriculum" && <CurriculumPage onOpenCourseZero={() => navigate("course-zero")} />}
