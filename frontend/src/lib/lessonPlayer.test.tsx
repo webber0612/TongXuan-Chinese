@@ -445,12 +445,32 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     expect(emptySteps.length).toBe(0);
 
     // B. With authoritative due item, builds exact retrieval step without full lesson replay
-    const dueItem = { id: "item-ni", character: "你", skillDomain: "recognition" };
+    const dueItem = {
+      id: "session-review:review-recognition-1",
+      key: "review-recognition-1",
+      taskType: "REVIEW_RECOGNITION",
+      sourceQueue: "REVIEW",
+      lessonId: "book1-l01",
+      skillDomain: "recognition",
+      itemId: "item-ni",
+      state: "PENDING",
+      required: true,
+      taskData: {
+        prompt: "聽一聽發音，選出聽到的字：",
+        audioText: "你",
+        choices: [{ id: "option-1", label: "好" }, { id: "option-2", label: "你" }],
+        dueAt: "2026-09-02T00:00:00Z",
+      },
+    };
     const revSteps = getStepsForMode(pkg, "REVIEW", [], [dueItem]);
     expect(revSteps.length).toBe(2); // exact due retrieval step + wrap up
     expect(revSteps[0].stepKey).toBe("characters");
     expect(revSteps[0].data?.dueCharacter).toBe("你");
     expect(revSteps[1].stepKey).toBe("wrap_up");
+    expect(getStepsForMode(pkg, "REVIEW", [], [{ id: dueItem.id, key: dueItem.key, taskType: dueItem.taskType, sourceQueue: dueItem.sourceQueue }])).toEqual([]);
+    expect(getStepsForMode(pkg, "REVIEW", [], [{ ...dueItem, taskData: { ...dueItem.taskData, choices: [{ id: "same", label: "你" }, { id: "same", label: "好" }] } }])).toEqual([]);
+    const retryableSteps = getStepsForMode(pkg, "REVIEW", [], [{ ...dueItem, state: "IN_PROGRESS" }]);
+    expect(retryableSteps[0].data?.taskId).toBe(dueItem.id);
   });
 
   // Test 12
@@ -2658,6 +2678,58 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     vi.unstubAllGlobals();
   });
 
+  it.each([
+    ["ID-only REVIEW row", {
+      id: "s-malformed:review-recognition-1", key: "review-recognition-1", taskType: "REVIEW_RECOGNITION",
+      sourceQueue: "REVIEW", lessonId: "book1-l01", skillDomain: "recognition", itemId: "item-ni",
+      state: "PENDING", required: true,
+    }],
+    ["REVIEW row with invalid duplicate choice ids", {
+      id: "s-malformed:review-recognition-1", key: "review-recognition-1", taskType: "REVIEW_RECOGNITION",
+      sourceQueue: "REVIEW", lessonId: "book1-l01", skillDomain: "recognition", itemId: "item-ni",
+      state: "PENDING", required: true,
+      taskData: {
+        prompt: "選出聽到的字：", audioText: "你", dueAt: "2026-09-02T00:00:00Z",
+        choices: [{ id: "option-1", label: "你" }, { id: "option-1", label: "好" }],
+      },
+    }],
+  ])("61a. malformed %s must fail closed without an actionable REVIEW question", async (_caseName, task) => {
+    const session = { id: "s-malformed", status: "IN_PROGRESS", lessonId: "book1-l01", tasks: [task] };
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (url.includes("/learning-sessions/current")) {
+        return new Response(JSON.stringify(session), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/learning-daily-queue")) {
+        return new Response(JSON.stringify({ review: {
+          sourceQueue: "REVIEW", dueCount: 1,
+          items: [{ id: "item-ni", character: "你", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" }],
+        } }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/reconcile-reviews")) {
+        return new Response(JSON.stringify(session), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    await act(async () => {
+      root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} initialMode="REVIEW" />);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(container.querySelector(".error-strip")).toBeTruthy();
+    expect(container.querySelector(".recognition-mini-check")).toBeNull();
+    expect(container.querySelector(".char-choice-card")).toBeNull();
+    expect(container.querySelector(".large-char-display")).toBeNull();
+    expect(container.querySelector(".empty-review-card")).toBeNull();
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
+
   it("62. Regression B: due recognition item = 你 -> REVIEW displays ONLY '你', does not display non-due items or other character tabs", async () => {
     vi.stubGlobal("fetch", vi.fn(async (url: string) => {
       if (url.includes("/learning-sessions/current")) {
@@ -2671,8 +2743,10 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
               taskType: "REVIEW_RECOGNITION",
               skillDomain: "recognition",
               sourceQueue: "REVIEW",
+              lessonId: "book1-l01",
               itemId: "item-ni",
               state: "PENDING",
+              required: true,
               taskData: {
                 prompt: "聽完今天的問候語，選出剛才出現的字。",
                 audioText: "你",
@@ -2725,8 +2799,10 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
               taskType: "REVIEW_RECOGNITION",
               skillDomain: "recognition",
               sourceQueue: "REVIEW",
+              lessonId: "book1-l01",
               itemId: "item-hao",
               state: "PENDING",
+              required: true,
               taskData: {
                 prompt: "聽完今天的問候語，選出剛才出現的字。",
                 audioText: "好",
@@ -2811,8 +2887,10 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
               taskType: "REVIEW_RECOGNITION",
               skillDomain: "recognition",
               sourceQueue: "REVIEW",
+              lessonId: "book1-l01",
               itemId: "item-ni",
               state: taskState,
+              required: true,
               taskData: {
                 prompt: "選出聽到的字：",
                 audioText: "你",
@@ -2840,9 +2918,17 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
               taskType: "REVIEW_RECOGNITION",
               skillDomain: "recognition",
               sourceQueue: "REVIEW",
+              lessonId: "book1-l01",
               itemId: "item-ni",
               state: "COMPLETED",
+              required: true,
               completedAt: "2026-09-26T14:00:00Z",
+              taskData: {
+                prompt: "選出聽到的字：",
+                audioText: "你",
+                choices: [{ id: "opt-hao", label: "好" }, { id: "opt-ni", label: "你" }],
+                dueAt: "2026-09-02T00:00:00Z",
+              },
             },
           ],
         }), { status: 200, headers: { "Content-Type": "application/json" } });
@@ -3061,31 +3147,26 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     let backCalled = false;
     let finalSessionResponse: { id: string; status: string; tasks: Array<{ id: string; state: string }> } = { id: "", status: "", tasks: [] };
     const curriculumPendingTask = { id: "learn-required-curriculum", key: "curriculum-required-1", taskType: "LISTENING", sourceQueue: "CURRICULUM", lessonId: "book1-l01", state: "PENDING", required: true };
+    const reviewTask = (id: string, key: string, itemId: string, character: string, state: string) => ({
+      id, key, taskType: "REVIEW_RECOGNITION", sourceQueue: "REVIEW", lessonId: "book1-l01",
+      skillDomain: "recognition", itemId, state, required: true,
+      taskData: {
+        prompt: `選出聽到的字：${character}`,
+        audioText: character,
+        choices: [{ id: "option-1", label: character === "你" ? "好" : "你" }, { id: "option-2", label: character }],
+        dueAt: "2026-09-02T00:00:00Z",
+      },
+    });
 
     vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
       if (url.includes("/learning-sessions/current")) {
         return new Response(JSON.stringify({
           id: "s-reg-e",
           status: "IN_PROGRESS",
+          lessonId: "book1-l01",
           tasks: [
-            {
-              id: "task-A",
-              key: "review-recog-1",
-              taskType: "REVIEW_RECOGNITION",
-              sourceQueue: "REVIEW",
-              itemId: "你",
-              state: taskStateA,
-              taskData: { prompt: "題目一：選出聽到的字", audioText: "你", choices: [{ id: "opt-ni", label: "你", isCorrect: true }, { id: "opt-hao", label: "好", isCorrect: false }] },
-            },
-            {
-              id: "task-B",
-              key: "review-recog-2",
-              taskType: "REVIEW_RECOGNITION",
-              sourceQueue: "REVIEW",
-              itemId: "好",
-              state: taskStateB,
-              taskData: { prompt: "題目二：選出聽到的字", audioText: "好", choices: [{ id: "opt-hao", label: "好", isCorrect: true }, { id: "opt-ni", label: "你", isCorrect: false }] },
-            },
+            reviewTask("task-A", "review-recognition-1", "item-ni", "你", taskStateA),
+            reviewTask("task-B", "review-recognition-2", "item-hao", "好", taskStateB),
             curriculumPendingTask,
           ],
         }), { status: 200, headers: { "Content-Type": "application/json" } });
@@ -3096,9 +3177,10 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
         return new Response(JSON.stringify({
           id: "s-reg-e",
           status: "IN_PROGRESS",
+          lessonId: "book1-l01",
           tasks: [
-            { id: "task-A", key: "review-recog-1", taskType: "REVIEW_RECOGNITION", sourceQueue: "REVIEW", itemId: "你", state: "COMPLETED" },
-            { id: "task-B", key: "review-recog-2", taskType: "REVIEW_RECOGNITION", sourceQueue: "REVIEW", itemId: "好", state: taskStateB },
+            reviewTask("task-A", "review-recognition-1", "item-ni", "你", "COMPLETED"),
+            reviewTask("task-B", "review-recognition-2", "item-hao", "好", taskStateB),
             curriculumPendingTask,
           ],
         }), { status: 200, headers: { "Content-Type": "application/json" } });
@@ -3109,9 +3191,10 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
         const completedSession = {
           id: "s-reg-e",
           status: "IN_PROGRESS",
+          lessonId: "book1-l01",
           tasks: [
-            { id: "task-A", key: "review-recog-1", taskType: "REVIEW_RECOGNITION", sourceQueue: "REVIEW", itemId: "你", state: "COMPLETED" },
-            { id: "task-B", key: "review-recog-2", taskType: "REVIEW_RECOGNITION", sourceQueue: "REVIEW", itemId: "好", state: "COMPLETED" },
+            reviewTask("task-A", "review-recognition-1", "item-ni", "你", "COMPLETED"),
+            reviewTask("task-B", "review-recognition-2", "item-hao", "好", "COMPLETED"),
             curriculumPendingTask,
           ],
         };
@@ -3170,34 +3253,29 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     vi.unstubAllGlobals();
   });
 
-  it("72. Regression F: Multi-item review with second exact task missing -> must NOT fallback to first task, fail closed and stay on step", async () => {
+  it("72. Regression F: Multi-item review with second exact task missing -> must NOT synthesize or fallback to a question", async () => {
     let taskStateA = "PENDING";
     const answeredTaskIds: string[] = [];
+    const reviewTask = (id: string, key: string, itemId: string, character: string, state: string) => ({
+      id, key, taskType: "REVIEW_RECOGNITION", sourceQueue: "REVIEW", lessonId: "book1-l01",
+      skillDomain: "recognition", itemId, state, required: true,
+      taskData: {
+        prompt: `選出聽到的字：${character}`,
+        audioText: character,
+        choices: [{ id: "option-1", label: character === "你" ? "好" : "你" }, { id: "option-2", label: character }],
+        dueAt: "2026-09-02T00:00:00Z",
+      },
+    });
 
     vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
       if (url.includes("/learning-sessions/current")) {
         return new Response(JSON.stringify({
           id: "s-reg-f",
           status: "IN_PROGRESS",
+          lessonId: "book1-l01",
           tasks: [
-            {
-              id: "task-A",
-              key: "review-recog-1",
-              taskType: "REVIEW_RECOGNITION",
-              sourceQueue: "REVIEW",
-              itemId: "你",
-              state: taskStateA,
-              taskData: { prompt: "題目一：選出聽到的字", audioText: "你", choices: [{ id: "opt-ni", label: "你", isCorrect: true }, { id: "opt-hao", label: "好", isCorrect: false }] },
-            },
-            {
-              id: "task-B",
-              key: "review-recog-2",
-              taskType: "REVIEW_RECOGNITION",
-              sourceQueue: "REVIEW",
-              itemId: "好",
-              state: "PENDING",
-              taskData: { prompt: "題目二：選出聽到的字", audioText: "好", choices: [{ id: "opt-hao", label: "好", isCorrect: true }, { id: "opt-ni", label: "你", isCorrect: false }] },
-            },
+            reviewTask("task-A", "review-recognition-1", "item-ni", "你", taskStateA),
+            reviewTask("task-B", "review-recognition-2", "item-hao", "好", "PENDING"),
           ],
         }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
@@ -3208,8 +3286,9 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
         return new Response(JSON.stringify({
           id: "s-reg-f",
           status: "IN_PROGRESS",
+          lessonId: "book1-l01",
           tasks: [
-            { id: "task-A", key: "review-recog-1", taskType: "REVIEW_RECOGNITION", sourceQueue: "REVIEW", itemId: "你", state: "COMPLETED" },
+            reviewTask("task-A", "review-recognition-1", "item-ni", "你", "COMPLETED"),
           ],
         }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
@@ -3228,27 +3307,14 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     expect(container.querySelector(".large-char-display")?.textContent).toBe("你");
     const choiceA = Array.from(container.querySelectorAll(".char-choice-card")).find((b) => b.textContent?.includes("你")) as HTMLButtonElement;
     await act(async () => { choiceA.click(); });
-    const nextBtn = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
-    await act(async () => { nextBtn.click(); });
-
+    // Task B disappeared from the authoritative session response, so no next button or question may render.
     expect(answeredTaskIds).toEqual(["task-A"]);
-
-    // STEP 2: Currently on step 2 (好), but task-B is missing in backend sessionRef.current.tasks
-    expect(container.querySelector(".large-char-display")?.textContent).toBe("好");
-    const choiceB = Array.from(container.querySelectorAll(".char-choice-card")).find((b) => b.textContent?.includes("好")) as HTMLButtonElement;
-    await act(async () => { choiceB.click(); });
-
-    // Try to advance
-    const nextBtn2 = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
-    await act(async () => { nextBtn2.click(); });
-
-    // Task A must NOT have been reused for Step 2!
-    expect(answeredTaskIds).toEqual(["task-A"]);
-    // Must NOT advance to wrap-up
+    expect(container.querySelector(".large-char-display")).toBeNull();
+    expect(container.querySelector(".char-choice-card")).toBeNull();
+    expect(container.querySelector(".next-step-cta-btn")).toBeNull();
     expect(container.querySelector("[data-step-key='wrap_up']")).toBeNull();
-    // Must fail closed: display error banner and stay on step 2
+    // Must fail closed with an error
     expect(container.querySelector(".error-strip")).toBeTruthy();
-    expect(container.querySelector(".large-char-display")?.textContent).toBe("好");
 
     root.unmount();
     container.remove();

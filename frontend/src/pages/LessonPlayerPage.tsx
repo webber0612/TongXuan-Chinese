@@ -24,6 +24,7 @@ import { BrowserSpeechSynthesisProvider } from "../lib/tts";
 import { BrowserMediaRecorderAdapter } from "../lib/readingAloud";
 import {
   buildAuthoritativeLearnSteps,
+  getAuthoritativeReviewTasks,
   getLessonPackage,
   getStepsForMode,
   getScaffoldText,
@@ -574,16 +575,18 @@ export function LessonPlayerPage({
   );
 
   // Authoritative due review items extraction: strictly from executable session review tasks
-  const authoritativeDueItems = useMemo(() => {
-    if (mode !== "REVIEW") return [];
-    if (reviewSessionTasks.length > 0) return reviewSessionTasks;
-    const sessionTasks = session?.tasks || [];
-    const reviewTasks = sessionTasks.filter(
-      (t) => (t.sourceQueue === "REVIEW" || t.taskType === "REVIEW_RECOGNITION" || t.key.startsWith("review-")) &&
-             typeof t.id === "string" && t.id.length > 0
-    );
-    return reviewTasks;
-  }, [mode, reviewSessionTasks, session?.tasks]);
+  const authoritativeReviewTasks = useMemo(() => {
+    if (mode !== "REVIEW" || !pkg) return null;
+    const currentTasks = getAuthoritativeReviewTasks(session?.tasks, pkg, resolvedLessonId);
+    if (!currentTasks) return null;
+    if (reviewSessionTasks.length === 0) return currentTasks;
+
+    const expectedIds = reviewSessionTasks.map((task) => task.id);
+    if (expectedIds.some((id) => typeof id !== "string" || !id) || new Set(expectedIds).size !== expectedIds.length) return null;
+    if (!expectedIds.every((id) => currentTasks.some((task) => task.id === id))) return null;
+    return currentTasks.filter((task) => expectedIds.includes(task.id));
+  }, [mode, reviewSessionTasks, session?.tasks, pkg, resolvedLessonId]);
+  const authoritativeDueItems = authoritativeReviewTasks ?? [];
 
   const steps: LessonStepDefinition[] = useMemo(() => {
     if (!pkg) return [];
@@ -600,6 +603,12 @@ export function LessonPlayerPage({
       setError(text.taskFailed);
     }
   }, [mode, activeChildId, session?.status, learnPlanValid, text.taskFailed]);
+
+  useEffect(() => {
+    if (mode === "REVIEW" && session && pkg && authoritativeReviewTasks === null) {
+      setError(text.taskFailed);
+    }
+  }, [mode, session, pkg, authoritativeReviewTasks, text.taskFailed]);
 
   const handleCompleteReview = () => {
     if (!activeChildId) {
@@ -696,11 +705,15 @@ export function LessonPlayerPage({
       }
 
       if (mode === "REVIEW" || initialMode === "REVIEW") {
+        const validatedReviewTasks = (s: typeof session) => {
+          if (!s) return null;
+          const sessionLessonId = s.curriculumContext?.lessonId || s.lessonId || lessonId || "book1-l01";
+          const reviewPkg = getLessonPackage(sessionLessonId);
+          return reviewPkg ? getAuthoritativeReviewTasks(s.tasks, reviewPkg, sessionLessonId) : null;
+        };
         const hasExecutableReviewTasks = (s: typeof session) => {
-          return (s?.tasks ?? []).some(
-            (t) => (t.sourceQueue === "REVIEW" || t.taskType === "REVIEW_RECOGNITION" || t.key.startsWith("review-")) &&
-                   typeof t.id === "string" && t.id.length > 0
-          );
+          const tasks = validatedReviewTasks(s);
+          return Boolean(tasks && tasks.length > 0);
         };
 
         try {
@@ -770,13 +783,12 @@ export function LessonPlayerPage({
           }
         }
 
-        const effectiveRevTasks = (sessionRef.current?.tasks ?? []).filter(
-          (t) => (t.sourceQueue === "REVIEW" || t.taskType === "REVIEW_RECOGNITION" || t.key.startsWith("review-")) &&
-                 typeof t.id === "string" && t.id.length > 0
-        );
-        if (effectiveRevTasks.length > 0) {
-          setReviewSessionTasks(effectiveRevTasks);
+        const effectiveRevTasks = validatedReviewTasks(sessionRef.current);
+        if (!effectiveRevTasks) {
+          setError(text.taskFailed);
+          return;
         }
+        setReviewSessionTasks(effectiveRevTasks);
       }
     } catch (err: any) {
       sessionRef.current = null;
@@ -2260,15 +2272,7 @@ export function LessonPlayerPage({
             const isReviewMode = mode === "REVIEW";
             const dueChar = currentStep.data?.dueCharacter;
             const charObj = currentStep.data?.charObj || (isReviewMode
-              ? (pkg.characters.find((c) => c.char === dueChar) || {
-                  char: dueChar || "你",
-                  pronunciation: { pinyin: "", zhuyin: "" },
-                  components: [],
-                  meaning: { zh: "", en: "" },
-                  commonWords: [],
-                  strokeCount: 0,
-                  reviewStatus: "APPROVED" as const,
-                })
+              ? pkg.characters.find((c) => c.char === dueChar)
               : pkg.characters[activeCharIndex]);
 
             const exactTaskId = currentStep.data?.taskId || currentStep.data?.dueItem?.id;
@@ -2281,13 +2285,19 @@ export function LessonPlayerPage({
                          (t.key === `recognition-${activeCharIndex + 1}` || t.itemId === charObj?.char)
                 );
 
-            const prompt = charTask?.taskData?.prompt || currentStep.data.recognitionCheck?.prompt || "聽一聽發音，選出聽到的字：";
-            const audioText = charTask?.taskData?.audioText || currentStep.data?.dueCharacter || charObj?.char || "你";
-            const choices = charTask?.taskData?.choices || currentStep.data.recognitionCheck?.choices || (
-              charObj?.char === "好"
-                ? [{ id: "opt-ni", label: "你", isCorrect: false }, { id: "opt-hao", label: "好", isCorrect: true }]
-                : [{ id: "opt-ni", label: "你", isCorrect: true }, { id: "opt-hao", label: "好", isCorrect: false }]
-            );
+            const prompt = isReviewMode
+              ? charTask?.taskData?.prompt ?? ""
+              : charTask?.taskData?.prompt || currentStep.data.recognitionCheck?.prompt || "聽一聽發音，選出聽到的字：";
+            const audioText = isReviewMode
+              ? charTask?.taskData?.audioText ?? ""
+              : charTask?.taskData?.audioText || currentStep.data?.dueCharacter || charObj?.char || "你";
+            const choices = isReviewMode
+              ? charTask?.taskData?.choices ?? []
+              : charTask?.taskData?.choices || currentStep.data.recognitionCheck?.choices || (
+                  charObj?.char === "好"
+                    ? [{ id: "opt-ni", label: "你", isCorrect: false }, { id: "opt-hao", label: "好", isCorrect: true }]
+                    : [{ id: "opt-ni", label: "你", isCorrect: true }, { id: "opt-hao", label: "好", isCorrect: false }]
+                );
 
             const reviewChoiceKey = `recog-rev-${exactTaskId || charObj?.char}`;
             const selectedChoiceVal = isReviewMode

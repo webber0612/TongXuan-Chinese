@@ -31,26 +31,19 @@ export function buildReviewStepsFromDueItems(
   pkg: LessonPackage,
   dueItems: any[]
 ): LessonStepDefinition[] {
+  const validatedTasks = getAuthoritativeReviewTasks(dueItems, pkg);
+  if (!validatedTasks) return [];
   const steps: LessonStepDefinition[] = [];
   let stepNum = 1;
 
-  for (const due of dueItems) {
-    const char = due.character || due.taskData?.audioText || due.itemId || "你";
-    const charObj = pkg.characters.find((c) => c.char === char) || {
-      char,
-      pronunciation: { pinyin: "", zhuyin: "" },
-      components: [],
-      meaning: { zh: "", en: "" },
-      commonWords: [],
-      strokeCount: 0,
-      reviewStatus: "APPROVED" as const,
-    };
-    const domain = due.skillDomain || due.domain || "recognition";
+  for (const due of validatedTasks) {
+    const char = due.taskData!.audioText;
+    const charObj = pkg.characters.find((c) => c.char === char)!;
 
     steps.push({
       stepNumber: stepNum++,
       stepKey: "characters",
-      domain: domain as any,
+      domain: "recognition",
       title: "到期生字複習",
       subtitle: `複習生字「${char}」`,
       primaryAction: "確認答案",
@@ -62,12 +55,9 @@ export function buildReviewStepsFromDueItems(
         dueCharacter: char,
         charObj,
         recognitionCheck: {
-          prompt: due.taskData?.prompt || "聽一聽發音，選出聽到的字：",
+          prompt: due.taskData!.prompt,
           audioText: char,
-          choices: due.taskData?.choices || [
-            { id: char === "好" ? "opt-hao" : "opt-ni", label: char, isCorrect: true },
-            { id: char === "好" ? "opt-ni" : "opt-hao", label: char === "好" ? "你" : "好", isCorrect: false },
-          ],
+          choices: due.taskData!.choices,
         },
       },
     });
@@ -106,6 +96,65 @@ export interface LearningFlowTaskContract {
   required?: boolean;
   itemId?: string | null;
   taskData?: Record<string, any>;
+}
+
+function isReviewTaskCandidate(task: any): boolean {
+  return Boolean(task && typeof task === "object" && (
+    task.sourceQueue === "REVIEW" ||
+    task.taskType === "REVIEW_RECOGNITION" ||
+    (typeof task.key === "string" && task.key.startsWith("review-"))
+  ));
+}
+
+function isValidReviewTask(task: any, pkg: LessonPackage, expectedLessonId?: string): boolean {
+  if (!isReviewTaskCandidate(task)) return false;
+  if (
+    typeof task.id !== "string" || !task.id.trim() ||
+    typeof task.key !== "string" || !/^review-recognition-\d+$/.test(task.key) ||
+    task.taskType !== "REVIEW_RECOGNITION" || task.sourceQueue !== "REVIEW" ||
+    task.skillDomain !== "recognition" || task.required !== true ||
+    typeof task.lessonId !== "string" || !task.lessonId.trim() ||
+    (expectedLessonId !== undefined && task.lessonId !== expectedLessonId) ||
+    typeof task.itemId !== "string" || !task.itemId.trim() ||
+    (task.state !== "PENDING" && task.state !== "IN_PROGRESS" && task.state !== "COMPLETED")
+  ) return false;
+
+  const data = task.taskData;
+  if (
+    !data || typeof data !== "object" ||
+    typeof data.prompt !== "string" || !data.prompt.trim() ||
+    typeof data.audioText !== "string" || !data.audioText.trim() ||
+    !pkg.characters.some((character) => character.char === data.audioText) ||
+    typeof data.dueAt !== "string" || !Number.isFinite(Date.parse(data.dueAt)) ||
+    !Array.isArray(data.choices) || data.choices.length !== 2
+  ) return false;
+
+  const choices = data.choices;
+  const ids = choices.map((choice: any) => choice?.id);
+  const labels = choices.map((choice: any) => choice?.label);
+  return choices.every((choice: any) =>
+    choice && typeof choice === "object" &&
+    typeof choice.id === "string" && choice.id.trim() &&
+    typeof choice.label === "string" && choice.label.trim()
+  ) && new Set(ids).size === choices.length && new Set(labels).size === choices.length &&
+    labels.includes(data.audioText) && labels.some((label: string) => label !== data.audioText);
+}
+
+/** REVIEW steps only exist for complete, unique backend planner task rows. */
+export function getAuthoritativeReviewTasks(
+  tasks: unknown,
+  pkg: LessonPackage,
+  expectedLessonId?: string,
+): LearningFlowTaskContract[] | null {
+  if (!Array.isArray(tasks)) return null;
+  const candidates = tasks.filter(isReviewTaskCandidate);
+  if (!candidates.every((task) => isValidReviewTask(task, pkg, expectedLessonId))) return null;
+
+  const ids = candidates.map((task: any) => task.id);
+  const keys = candidates.map((task: any) => task.key);
+  const itemIds = candidates.map((task: any) => task.itemId);
+  if (new Set(ids).size !== ids.length || new Set(keys).size !== keys.length || new Set(itemIds).size !== itemIds.length) return null;
+  return candidates as LearningFlowTaskContract[];
 }
 
 export interface AuthoritativeLearnStepPlan {
