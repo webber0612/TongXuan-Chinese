@@ -3103,6 +3103,322 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     container.remove();
     vi.unstubAllGlobals();
   });
+
+  // Semantic Runtime Validation Regressions 50-56
+  it("50. FAST_TRACK semantic runtime validation: passed=false with nextMode='BANANA' fails closed", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes("/learning-sessions/current")) {
+        return new Response(JSON.stringify({ id: "s-ft-50", status: "IN_PROGRESS", masteryStatus: "IN_PROGRESS", tasks: [] }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/fast-track") && init?.method === "POST") {
+        return new Response(JSON.stringify({
+          passed: false,
+          nextMode: "BANANA",
+          masteryStatus: "IN_PROGRESS",
+          weakDomains: ["recognition"],
+          nextReviewDueAt: null,
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} initialMode="FAST_TRACK" />);
+    });
+
+    const questionCards = container.querySelectorAll(".exit-ticket-item-card");
+    for (const card of Array.from(questionCards)) {
+      const choiceBtn = card.querySelector(".choice-card-btn") as HTMLButtonElement;
+      await act(async () => { choiceBtn?.click(); });
+    }
+
+    const submitBtn = container.querySelector(".submit-exit-ticket-btn") as HTMLButtonElement;
+    await act(async () => { submitBtn.click(); });
+
+    expect(container.textContent).toMatch(/Task operation failed|任務操作失敗/);
+    expect(container.querySelector(".mode-badge")?.className).toContain("mode-fast_track");
+    expect(container.querySelector(".mode-badge")?.className).not.toContain("mode-repair");
+    const nextBtn = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
+    expect(nextBtn.disabled).toBe(true);
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
+
+  it("51. FAST_TRACK semantic runtime validation: passed=false with masteryStatus='MASTERED' fails closed", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes("/learning-sessions/current")) {
+        return new Response(JSON.stringify({ id: "s-ft-51", status: "IN_PROGRESS", masteryStatus: "IN_PROGRESS", tasks: [] }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/fast-track") && init?.method === "POST") {
+        return new Response(JSON.stringify({
+          passed: false,
+          nextMode: "REPAIR",
+          masteryStatus: "MASTERED",
+          weakDomains: ["recognition"],
+          nextReviewDueAt: null,
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} initialMode="FAST_TRACK" />);
+    });
+
+    const questionCards = container.querySelectorAll(".exit-ticket-item-card");
+    for (const card of Array.from(questionCards)) {
+      const choiceBtn = card.querySelector(".choice-card-btn") as HTMLButtonElement;
+      await act(async () => { choiceBtn?.click(); });
+    }
+
+    const submitBtn = container.querySelector(".submit-exit-ticket-btn") as HTMLButtonElement;
+    await act(async () => { submitBtn.click(); });
+
+    expect(container.textContent).toMatch(/Task operation failed|任務操作失敗/);
+    expect(container.querySelector(".mode-badge")?.className).toContain("mode-fast_track");
+    expect(container.querySelector(".mode-badge")?.className).not.toContain("mode-repair");
+    const nextBtn = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
+    expect(nextBtn.disabled).toBe(true);
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
+
+  it("52. FAST_TRACK semantic runtime validation: passed=true with nextMode='REPAIR' fails closed", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes("/learning-sessions/current")) {
+        return new Response(JSON.stringify({ id: "s-ft-52", status: "IN_PROGRESS", masteryStatus: "IN_PROGRESS", tasks: [] }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/fast-track") && init?.method === "POST") {
+        return new Response(JSON.stringify({
+          passed: true,
+          nextMode: "REPAIR",
+          masteryStatus: "READY_FOR_CHECK",
+          weakDomains: [],
+          nextReviewDueAt: "2026-09-27T08:00:00Z",
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} initialMode="FAST_TRACK" />);
+    });
+
+    const questionCards = container.querySelectorAll(".exit-ticket-item-card");
+    for (const card of Array.from(questionCards)) {
+      const choiceBtn = card.querySelector(".choice-card-btn") as HTMLButtonElement;
+      await act(async () => { choiceBtn?.click(); });
+    }
+
+    const submitBtn = container.querySelector(".submit-exit-ticket-btn") as HTMLButtonElement;
+    await act(async () => { submitBtn.click(); });
+
+    expect(container.textContent).toMatch(/Task operation failed|任務操作失敗/);
+    expect(container.querySelector("[data-step-key='exit_ticket']")).toBeTruthy();
+    const nextBtn = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
+    expect(nextBtn.disabled).toBe(true);
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
+
+  it("53. FAST_TRACK semantic runtime validation: passed=true with weakDomains=[123] fails closed", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes("/learning-sessions/current")) {
+        return new Response(JSON.stringify({ id: "s-ft-53", status: "IN_PROGRESS", masteryStatus: "IN_PROGRESS", tasks: [] }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/fast-track") && init?.method === "POST") {
+        return new Response(JSON.stringify({
+          passed: true,
+          nextMode: "REVIEW",
+          masteryStatus: "READY_FOR_CHECK",
+          weakDomains: [123],
+          nextReviewDueAt: "2026-09-27T08:00:00Z",
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} initialMode="FAST_TRACK" />);
+    });
+
+    const questionCards = container.querySelectorAll(".exit-ticket-item-card");
+    for (const card of Array.from(questionCards)) {
+      const choiceBtn = card.querySelector(".choice-card-btn") as HTMLButtonElement;
+      await act(async () => { choiceBtn?.click(); });
+    }
+
+    const submitBtn = container.querySelector(".submit-exit-ticket-btn") as HTMLButtonElement;
+    await act(async () => { submitBtn.click(); });
+
+    expect(container.textContent).toMatch(/Task operation failed|任務操作失敗/);
+    expect(container.querySelector("[data-step-key='exit_ticket']")).toBeTruthy();
+    const nextBtn = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
+    expect(nextBtn.disabled).toBe(true);
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
+
+  it("54. FAST_TRACK semantic runtime validation: passed=false with nextReviewDueAt='future' fails closed", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes("/learning-sessions/current")) {
+        return new Response(JSON.stringify({ id: "s-ft-54", status: "IN_PROGRESS", masteryStatus: "IN_PROGRESS", tasks: [] }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/fast-track") && init?.method === "POST") {
+        return new Response(JSON.stringify({
+          passed: false,
+          nextMode: "REPAIR",
+          masteryStatus: "IN_PROGRESS",
+          weakDomains: ["recognition"],
+          nextReviewDueAt: "future",
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} initialMode="FAST_TRACK" />);
+    });
+
+    const questionCards = container.querySelectorAll(".exit-ticket-item-card");
+    for (const card of Array.from(questionCards)) {
+      const choiceBtn = card.querySelector(".choice-card-btn") as HTMLButtonElement;
+      await act(async () => { choiceBtn?.click(); });
+    }
+
+    const submitBtn = container.querySelector(".submit-exit-ticket-btn") as HTMLButtonElement;
+    await act(async () => { submitBtn.click(); });
+
+    expect(container.textContent).toMatch(/Task operation failed|任務操作失敗/);
+    expect(container.querySelector(".mode-badge")?.className).toContain("mode-fast_track");
+    expect(container.querySelector(".mode-badge")?.className).not.toContain("mode-repair");
+    const nextBtn = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
+    expect(nextBtn.disabled).toBe(true);
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
+
+  it("55. FAST_TRACK semantic runtime validation: passed=true with weakDomains=['recognition'] fails closed", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes("/learning-sessions/current")) {
+        return new Response(JSON.stringify({ id: "s-ft-55", status: "IN_PROGRESS", masteryStatus: "IN_PROGRESS", tasks: [] }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/fast-track") && init?.method === "POST") {
+        return new Response(JSON.stringify({
+          passed: true,
+          nextMode: "REVIEW",
+          masteryStatus: "READY_FOR_CHECK",
+          weakDomains: ["recognition"],
+          nextReviewDueAt: "2026-09-27T08:00:00Z",
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} initialMode="FAST_TRACK" />);
+    });
+
+    const questionCards = container.querySelectorAll(".exit-ticket-item-card");
+    for (const card of Array.from(questionCards)) {
+      const choiceBtn = card.querySelector(".choice-card-btn") as HTMLButtonElement;
+      await act(async () => { choiceBtn?.click(); });
+    }
+
+    const submitBtn = container.querySelector(".submit-exit-ticket-btn") as HTMLButtonElement;
+    await act(async () => { submitBtn.click(); });
+
+    expect(container.textContent).toMatch(/Task operation failed|任務操作失敗/);
+    expect(container.querySelector("[data-step-key='exit_ticket']")).toBeTruthy();
+    const nextBtn = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
+    expect(nextBtn.disabled).toBe(true);
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
+
+  it("56. FAST_TRACK semantic runtime validation: passed=true with exact valid contract (masteryStatus='READY_FOR_CHECK', nextMode='REVIEW', weakDomains=[], nextReviewDueAt=valid) is accepted and advances", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes("/learning-sessions/current")) {
+        return new Response(JSON.stringify({ id: "s-ft-56", status: "IN_PROGRESS", masteryStatus: "IN_PROGRESS", tasks: [] }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/fast-track") && init?.method === "POST") {
+        return new Response(JSON.stringify({
+          passed: true,
+          nextMode: "REVIEW",
+          masteryStatus: "READY_FOR_CHECK",
+          weakDomains: [],
+          nextReviewDueAt: "2026-09-27T08:00:00Z",
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} initialMode="FAST_TRACK" />);
+    });
+
+    const questionCards = container.querySelectorAll(".exit-ticket-item-card");
+    for (const card of Array.from(questionCards)) {
+      const choiceBtn = card.querySelector(".choice-card-btn") as HTMLButtonElement;
+      await act(async () => { choiceBtn?.click(); });
+    }
+
+    const submitBtn = container.querySelector(".submit-exit-ticket-btn") as HTMLButtonElement;
+    await act(async () => { submitBtn.click(); });
+
+    // Assert: error banner is NOT shown, next button is enabled
+    expect(container.querySelector(".error-strip")).toBeNull();
+    const nextBtn = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
+    expect(nextBtn.disabled).toBe(false);
+
+    // Clicking Next Step advances to wrap_up
+    await act(async () => { nextBtn.click(); });
+    expect(container.querySelector("[data-step-key='wrap_up']")).toBeTruthy();
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
 });
 
 

@@ -1385,41 +1385,47 @@ export function LessonPlayerPage({
           }
 
           if (res.passed === true) {
-            const validMastery = typeof res.masteryStatus === "string" && res.masteryStatus.trim().length > 0;
-            const validWeakDomains = Array.isArray(res.weakDomains);
-            const validNextReviewDueAt = res.nextReviewDueAt === null || typeof res.nextReviewDueAt === "string";
-            const validNextMode = typeof res.nextMode === "string" && res.nextMode.trim().length > 0;
+            const validWeakDomains = Array.isArray(res.weakDomains) &&
+              res.weakDomains.length === 0 &&
+              res.weakDomains.every((d: any) => typeof d === "string");
+            const validMastery = res.masteryStatus === "READY_FOR_CHECK";
+            const validNextMode = res.nextMode === "REVIEW";
+            const validNextReviewDueAt = res.nextReviewDueAt !== undefined && (
+              res.nextReviewDueAt === null ||
+              (typeof res.nextReviewDueAt === "string" && res.nextReviewDueAt.trim().length > 0)
+            );
 
-            if (!validMastery || !validWeakDomains || !validNextReviewDueAt || !validNextMode) {
+            if (!validWeakDomains || !validMastery || !validNextMode || !validNextReviewDueAt) {
               setError(text.taskFailed);
               return;
             }
 
             setExitTicketSubmitted(true);
-            setWeakDomains(res.weakDomains);
+            setWeakDomains([]);
             setNextReviewDueAt(res.nextReviewDueAt);
-            setMasteryStatus(res.masteryStatus);
+            setMasteryStatus("READY_FOR_CHECK");
             return;
           }
 
           if (res.passed === false) {
             const validWeakDomains = Array.isArray(res.weakDomains) &&
               res.weakDomains.length > 0 &&
-              res.weakDomains.every((d: any) => typeof d === "string");
-            const validMastery = typeof res.masteryStatus === "string" && res.masteryStatus.trim().length > 0;
-            const validNextMode = typeof res.nextMode === "string" && res.nextMode.trim().length > 0;
+              res.weakDomains.every((d: any) => typeof d === "string" && d.trim().length > 0);
+            const validMastery = res.masteryStatus === "IN_PROGRESS";
+            const validNextMode = res.nextMode === "REPAIR";
+            const validNextReviewDueAt = res.nextReviewDueAt === null;
 
-            if (!validWeakDomains || !validMastery || !validNextMode) {
+            if (!validWeakDomains || !validMastery || !validNextMode || !validNextReviewDueAt) {
               setError(text.taskFailed);
               return;
             }
 
             setExitTicketSubmitted(true);
             setWeakDomains(res.weakDomains);
-            setMode(res.nextMode as PedagogyMode);
+            setMode("REPAIR");
             setCurrentStepIndex(0); // Immediately transition into REPAIR mode tasks!
             setNextReviewDueAt(null);
-            setMasteryStatus(res.masteryStatus);
+            setMasteryStatus("IN_PROGRESS");
             return;
           }
 
