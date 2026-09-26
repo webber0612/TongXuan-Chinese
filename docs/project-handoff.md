@@ -1,5 +1,189 @@
 # ChatGPT ↔ Codex Project Handoff
 
+
+> ## ACTIVE HANDOFF SNAPSHOT — 2026-09-26
+>
+> **Read this section first. It supersedes stale “current state” wording lower in this file.**
+>
+> Repository: `webber0612/TongXuan-Chinese`
+>
+> ### Immediate GitHub state
+>
+> **PR #34 — Issue #33 Lesson Player v1**
+>
+> - URL: https://github.com/webber0612/TongXuan-Chinese/pull/34
+> - Branch: `issue-33-lesson-player`
+> - Base: `main`
+> - Status: **Draft / open / not merged / mergeable**
+> - Current head: `d554c6bc88ea3b71633a4139e3d313ebc2fe00ac`
+> - PR body reports: frontend Vitest **116/116** across 13 files; backend pytest **149/149**; production build successful.
+> - GitHub currently exposes **no Actions run** for this head, so those counts are implementation-side evidence, not CI evidence.
+> - **Architect has NOT yet published a final PASS for head `d554c6b`.**
+> - Last Architect review before this head was **CHANGES_REQUESTED** at `5f1be23`, for:
+>   1. REVIEW wrap-up incorrectly completing the whole mixed LEARN session.
+>   2. speaking provider completion / learning-flow evidence split-brain risk.
+> - `d554c6b` claims to fix both by:
+>   - making REVIEW completion settle only exact REVIEW tasks and return without calling whole-session `/complete`;
+>   - moving speaking provider completion + linked skill gate + learning-flow evidence into one backend transaction.
+> - **Next action for a new ChatGPT conversation:** re-review PR #34 at exact head `d554c6b`; do not assume PASS from local test counts.
+>
+> **PR #36 — Issue #35 Canonical Frontend Architecture**
+>
+> - URL: https://github.com/webber0612/TongXuan-Chinese/pull/36
+> - Branch: `codex/issue-35-frontend-architecture`
+> - Base: `issue-33-lesson-player` (stacked on PR #34)
+> - Status: **Draft / open / not merged / mergeable**
+> - Current head: `9adadc0ba2b3de2f5fb380ce3dd0f8605bee2f41`
+> - Architect result at this head: **PASS**
+> - Reported verification: frontend **117/117**, production build PASS, `git diff --check` PASS; no GitHub Actions run exposed.
+> - **Do not merge PR #36 before PR #34 is resolved.** After #34 merges, retarget/rebase #36 onto `main`, rerun tests/build, check drift/conflicts, then merge.
+>
+> ### Canonical frontend identity
+>
+> The formal product website name is:
+>
+> **TongXuan Web App**
+>
+> Canonical production identity:
+>
+> ```text
+> frontend/src/main.tsx
+>   → frontend/src/AppShell.tsx
+>
+> Child Home / Today:
+> /
+>
+> Canonical lesson runtime:
+> /learning-session → LessonPlayerPage
+> ```
+>
+> PR #36 removes executable historical preview React pages and makes legacy preview URLs tombstones.
+> It also removes the stale `LearningSessionPage.tsx` implementation and adds repo-level agent guardrails.
+>
+> After PR #36 is merged, all UI work must follow `docs/frontend-architecture.md`.
+> If canonical branch/route/component/import-chain cannot be verified, the required stop condition is:
+>
+> `CANONICAL_FRONTEND_NOT_VERIFIED`
+>
+> ### Learning-path architecture currently being finalized
+>
+> Core rule:
+>
+> **官方教材決定學什麼，TongXuan 決定怎麼學，能力狀態決定今天學多少與是否可以跳過。**
+>
+> Current golden flow:
+>
+> ```text
+> Placement
+> → Daily Queue
+> → Mode
+> → 情境
+> → 課文
+> → 生詞
+> → 生字
+> → 句型
+> → 口說
+> → 書寫
+> → 小挑戰
+> → Mastery Gate
+> → SRS
+> → 下一課
+> ```
+>
+> Modes:
+> - `LEARN` — full guided lesson.
+> - `FAST_TRACK` — short challenge; never grants instant permanent mastery.
+> - `REVIEW` — authoritative **due SRS items only**, exact backend task identity.
+> - `REPAIR` — targeted weak-domain practice.
+>
+> Book 1 Lesson 1 `你好` is the primary golden slice. Starter / Basic are secondary regression fixtures. Do not mass-expand Book 2–10 from this PR.
+>
+> ### Strict authority / evidence rules for PR #34
+>
+> This project intentionally uses fail-closed state transitions:
+>
+> ```text
+> USER ACTION
+> → REQUEST SENT
+> → BACKEND RESPONSE RECEIVED
+> → AUTHORITATIVE TASK STATE INSPECTED
+> → UI TRANSITION ALLOWED / DENIED
+> ```
+>
+> UI progression may be inferred only from authoritative persisted state.
+>
+> Allowed:
+> - `COMPLETED`
+> - `DEFERRED` only where explicit policy permits.
+>
+> Must NOT advance on:
+> - `PENDING`
+> - `IN_PROGRESS`
+> - `PAUSED`
+> - missing / malformed / unknown state
+> - request failure
+> - dedup hit without completion proof
+>
+> Never accept these as proof by themselves:
+> - HTTP 200
+> - “request was sent”
+> - “code changed”
+> - “test passed”
+> - “no exception”
+> - local boolean success
+>
+> ### Important PR #34 review history
+>
+> Multiple prior blockers were fixed iteratively. Before final PASS, verify the current head still preserves all of them:
+>
+> - wrong-answer progression is gated by authoritative post-task state;
+> - missing session/task/state fails closed;
+> - FAST_TRACK response schema is semantically validated, not just syntactically;
+> - `nextReviewDueAt` is a valid timestamp when non-null;
+> - REVIEW uses backend-authoritative due SRS items, not static package `reviewSteps`;
+> - REVIEW task binding uses exact backend task identity, no “first review task” fallback;
+> - Daily Queue failure is not treated as “zero due”;
+> - REVIEW reconciliation is backend-supported, idempotent, lesson-local, and executable;
+> - PAUSED review sessions are authoritatively resumed before answer submission;
+> - REVIEW completion does not complete unrelated pending LEARN tasks;
+> - speaking recorder/evidence failure does not mark local success;
+> - speaking provider completion + linked skill gate + learning-flow task evidence are transactionally consistent.
+>
+> ### Curriculum / provenance boundaries
+>
+> - OCAC / HuayuWorld `學華語向前走`: Starter + Basic + Book 1–10 = 12 volumes.
+> - Book 1 L1 verified title: `你好`.
+> - Book 1 first three verified titles: `你好`, `你家有幾個人？`, `你們班有幾個同學？`.
+> - Course 0 is TongXuan-authored orientation and must not masquerade as official textbook content.
+> - Exact official textbook text/media/exercises remain provenance/license gated.
+> - Legacy custom content such as `日月與星光` must not leak into the official L1 flow unless explicitly labeled as TongXuan-authored extra practice.
+>
+> ### Deployment caveat
+>
+> GitHub Pages currently serves frontend-only unless a real API base is configured.
+> A Pages build without `VITE_API_BASE` may call `/api/children` against GitHub Pages and get 404.
+> This is a separate deployment issue; do not conflate it with Lesson Player pedagogy or frontend canonicalization.
+>
+> ### How a fresh ChatGPT conversation should continue
+>
+> When the owner says `繼續`, `看 GitHub`, or similar:
+>
+> 1. Read this ACTIVE HANDOFF SNAPSHOT.
+> 2. Fetch PR #34 and verify its exact current head/state.
+> 3. Re-review PR #34 before doing anything with PR #36.
+> 4. If #34 passes, publish a top-level Architect PASS comment.
+> 5. Only after #34 is merged, retarget/rebase PR #36 to `main`, revalidate, then allow #36 to merge.
+> 6. After #36 merges, close/resolve Issue #35 and treat `docs/frontend-architecture.md` as authoritative for all UI work.
+> 7. Do not ask the Product Owner to re-explain this history unless GitHub state contradicts this document.
+>
+> ### Collaboration rule
+>
+> ChatGPT = Architect / Auditor. Codex = Implementer.
+>
+> Codex may push and maintain Draft PRs but must not merge, mark Ready, bypass review, or silently expand scope.
+> ChatGPT must inspect actual GitHub state rather than trust a completion report.
+>
+
 ## Purpose
 
 This document is the persistent handoff for the TongXuan Chinese project.
