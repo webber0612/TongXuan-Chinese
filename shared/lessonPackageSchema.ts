@@ -124,6 +124,7 @@ export type LessonStepKey =
   | "speaking"
   | "writing"
   | "exit_ticket"
+  | "mini_check"
   | "wrap_up";
 
 export interface LessonStepChoice {

@@ -118,6 +118,43 @@ def test_plan_is_deterministic_and_does_not_disclose_answer_keys(tmp_path):
         assert all(not any(key.startswith("_") for key in task) for task in first["tasks"])
 
 
+def test_each_supported_lesson_planner_task_set_reaches_authoritative_settlement(tmp_path):
+    """Exercise actual planner output, not a client-shaped approximation."""
+    with client(tmp_path) as api:
+        for placement, lesson_id, writing_level in (
+            ("STARTER", "starter-l01", None),
+            ("BASIC", "basic-l01", None),
+            ("BOOK_1", "book1-l01", None),
+            # The same official lesson can also include a real optional task
+            # when the placement profile makes writing a targeted gap.
+            ("BOOK_1", "book1-l01", "BASIC"),
+        ):
+            child_id = child(api, lesson_id)
+            place(child_id, placement, writing=writing_level)
+            planned = session(api, child_id)
+
+            assert planned["curriculumContext"]["lessonId"] == lesson_id
+            assert planned["status"] == "IN_PROGRESS"
+            assert planned["tasks"]
+            assert not any(task["sourceQueue"] == "REVIEW" for task in planned["tasks"])
+            assert len({task["id"] for task in planned["tasks"]}) == len(planned["tasks"])
+            assert any(task["taskType"] == "LESSON_WRAP_UP" for task in planned["tasks"])
+
+            # `complete_session` walks the real plan and submits each exact task
+            # through its authoritative answer/evidence/skip endpoint before
+            # asking the session settlement endpoint to commit.
+            settled = complete_session(api, child_id, planned)
+            final_by_id = {task["id"]: task for task in settled["tasks"]}
+            assert settled["status"] == "COMPLETED"
+            assert set(final_by_id) == {task["id"] for task in planned["tasks"]}
+            assert all(
+                final_by_id[task["id"]]["state"] in {"COMPLETED", "DEFERRED"}
+                for task in planned["tasks"]
+                if task["required"]
+            )
+            assert final_by_id[next(task["id"] for task in planned["tasks"] if task["taskType"] == "LESSON_WRAP_UP")]["state"] == "COMPLETED"
+
+
 def test_equal_age_children_start_from_their_assessed_placement(tmp_path):
     with client(tmp_path) as api:
         starter, basic = child(api, "Starter"), child(api, "Basic")
