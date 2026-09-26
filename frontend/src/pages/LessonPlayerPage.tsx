@@ -527,22 +527,25 @@ export function LessonPlayerPage({
   const submittedSkipsRef = useRef<Record<string, boolean>>({});
 
   const [dailyQueueDueItems, setDailyQueueDueItems] = useState<any[]>([]);
+  const [dailyQueueStatus, setDailyQueueStatus] = useState<"IDLE" | "SUCCESS" | "ERROR">("IDLE");
+  const [dailyQueueZeroDue, setDailyQueueZeroDue] = useState<boolean>(false);
+  const [reviewSessionTasks, setReviewSessionTasks] = useState<any[]>([]);
 
   // Canonical lesson ID resolution
   const resolvedLessonId = session?.curriculumContext?.lessonId || session?.lessonId || lessonId || "book1-l01";
   const pkg: LessonPackage | null = useMemo(() => getLessonPackage(resolvedLessonId), [resolvedLessonId]);
 
-  // Authoritative due review items extraction
+  // Authoritative due review items extraction: strictly from executable session review tasks
   const authoritativeDueItems = useMemo(() => {
     if (mode !== "REVIEW") return [];
+    if (reviewSessionTasks.length > 0) return reviewSessionTasks;
     const sessionTasks = session?.tasks || [];
     const reviewTasks = sessionTasks.filter(
-      (t) => t.sourceQueue === "REVIEW" || t.taskType === "REVIEW_RECOGNITION" || t.key.startsWith("review-")
+      (t) => (t.sourceQueue === "REVIEW" || t.taskType === "REVIEW_RECOGNITION" || t.key.startsWith("review-")) &&
+             typeof t.id === "string" && t.id.length > 0
     );
-    if (reviewTasks.length > 0) return reviewTasks;
-    if (dailyQueueDueItems.length > 0) return dailyQueueDueItems;
-    return [];
-  }, [mode, session?.tasks, dailyQueueDueItems]);
+    return reviewTasks;
+  }, [mode, reviewSessionTasks, session?.tasks]);
 
   const steps: LessonStepDefinition[] = useMemo(() => {
     if (!pkg) return [];
@@ -604,6 +607,13 @@ export function LessonPlayerPage({
       }
 
       if (mode === "REVIEW" || initialMode === "REVIEW") {
+        const hasExecutableReviewTasks = (s: typeof session) => {
+          return (s?.tasks ?? []).some(
+            (t) => (t.sourceQueue === "REVIEW" || t.taskType === "REVIEW_RECOGNITION" || t.key.startsWith("review-")) &&
+                   typeof t.id === "string" && t.id.length > 0
+          );
+        };
+
         try {
           const dq = await api<{
             review?: {
@@ -612,11 +622,74 @@ export function LessonPlayerPage({
               items?: Array<{ id: string; character: string; lessonId: string; dueAt: string }>;
             };
           }>(`/api/children/${activeChildId}/learning-daily-queue`);
-          if (dq?.review?.items) {
+
+          if (
+            !dq ||
+            typeof dq !== "object" ||
+            !dq.review ||
+            typeof dq.review.dueCount !== "number" ||
+            !Array.isArray(dq.review.items)
+          ) {
+            if (!hasExecutableReviewTasks(sessionRef.current)) {
+              setDailyQueueStatus("ERROR");
+              setDailyQueueZeroDue(false);
+              setError(text.taskFailed);
+              return;
+            }
+          } else {
+            setDailyQueueStatus("SUCCESS");
             setDailyQueueDueItems(dq.review.items);
+
+            if (dq.review.dueCount === 0 && dq.review.items.length === 0) {
+              setDailyQueueZeroDue(true);
+            } else {
+              setDailyQueueZeroDue(false);
+              let effectiveSession = sessionRef.current;
+              if (!hasExecutableReviewTasks(effectiveSession)) {
+                try {
+                  const reconciled = await api<typeof session>(
+                    `/api/children/${activeChildId}/learning-sessions`,
+                    {
+                      method: "POST",
+                      body: JSON.stringify({
+                        lesson_id: lessonId || undefined,
+                        target_minutes: 18,
+                        script_mode: locale === "zh-CN" ? "SIMPLIFIED" : "TRADITIONAL",
+                      }),
+                    }
+                  );
+                  if (reconciled && reconciled.id) {
+                    effectiveSession = reconciled;
+                    sessionRef.current = reconciled;
+                    setSession(reconciled);
+                    if (reconciled.masteryStatus) setMasteryStatus(reconciled.masteryStatus);
+                  }
+                } catch {
+                  // Reconcile failed
+                }
+              }
+
+              if (!hasExecutableReviewTasks(effectiveSession)) {
+                setError(text.taskFailed);
+                return;
+              }
+            }
           }
-        } catch {
-          // ignore unmocked endpoint in test environments
+        } catch (err: any) {
+          if (!hasExecutableReviewTasks(sessionRef.current)) {
+            setDailyQueueStatus("ERROR");
+            setDailyQueueZeroDue(false);
+            setError(err?.message || text.taskFailed);
+            return;
+          }
+        }
+
+        const effectiveRevTasks = (sessionRef.current?.tasks ?? []).filter(
+          (t) => (t.sourceQueue === "REVIEW" || t.taskType === "REVIEW_RECOGNITION" || t.key.startsWith("review-")) &&
+                 typeof t.id === "string" && t.id.length > 0
+        );
+        if (effectiveRevTasks.length > 0) {
+          setReviewSessionTasks(effectiveRevTasks);
         }
       }
     } catch (err: any) {
@@ -1167,9 +1240,10 @@ export function LessonPlayerPage({
       const charObj = isReviewMode
         ? (currentStep.data?.charObj || pkg.characters.find((c) => c.char === dueChar) || { char: dueChar || "你" })
         : pkg.characters[activeCharIndex];
-      const reviewChoiceKey = `recog-rev-${charObj?.char}`;
+      const exactTaskId = currentStep.data?.taskId || currentStep.data?.dueItem?.id;
+      const reviewChoiceKey = `recog-rev-${exactTaskId || charObj?.char}`;
       const currentAnswer = isReviewMode
-        ? (selectedChoices[reviewChoiceKey] || selectedChoices["recog"] || selectedChoices[`recog-${activeCharIndex}`])
+        ? (selectedChoices[reviewChoiceKey] || (exactTaskId ? selectedChoices[`recog-${exactTaskId}`] : selectedChoices["recog"]))
         : selectedChoices[`recog-${activeCharIndex}`];
 
       if (!currentAnswer) {
@@ -1185,12 +1259,7 @@ export function LessonPlayerPage({
         }
 
         const charTask = isReviewMode
-          ? currentSessChar.tasks.find(
-              (t) => (t.sourceQueue === "REVIEW" || t.taskType === "REVIEW_RECOGNITION" || t.key.startsWith("review-")) &&
-                     (t.id === currentStep.data?.dueItem?.id || t.itemId === charObj?.char || t.taskData?.audioText === charObj?.char)
-            ) || currentSessChar.tasks.find(
-              (t) => t.sourceQueue === "REVIEW" || t.taskType === "REVIEW_RECOGNITION"
-            )
+          ? (exactTaskId ? currentSessChar.tasks.find((t) => t.id === exactTaskId) : null)
           : currentSessChar.tasks.find(
               (t) => (t.taskType === "RECOGNITION" || t.taskType === "MINI_CHECK" || t.key.startsWith("recognition-")) &&
                      (t.key === `recognition-${activeCharIndex + 1}` || (charObj && t.itemId === charObj.char)) &&
@@ -1771,7 +1840,9 @@ export function LessonPlayerPage({
             {mode === "REPAIR" && text.repairMode}
           </span>
           <span className="step-counter-text">
-            {steps.length === 0 ? text.noDueReviews : `${text.step} ${currentStepIndex + 1} ${text.of} ${steps.length}`}
+            {steps.length === 0
+              ? (mode === "REVIEW" && dailyQueueStatus === "SUCCESS" && dailyQueueZeroDue && !error ? text.noDueReviews : "")
+              : `${text.step} ${currentStepIndex + 1} ${text.of} ${steps.length}`}
           </span>
         </div>
 
@@ -1786,8 +1857,8 @@ export function LessonPlayerPage({
         </div>
       </section>
 
-      {/* Empty State when in REVIEW mode with no due SRS items */}
-      {mode === "REVIEW" && steps.length === 0 && (
+      {/* Empty State when in REVIEW mode with confirmed zero due SRS items */}
+      {mode === "REVIEW" && steps.length === 0 && dailyQueueStatus === "SUCCESS" && dailyQueueZeroDue && !error && (
         <article className="lesson-step-card empty-review-card" data-step-key="empty_review">
           <header className="step-card-header">
             <h2 className="step-card-title">{text.noDueReviews}</h2>
@@ -1980,11 +2051,9 @@ export function LessonPlayerPage({
                 })
               : pkg.characters[activeCharIndex];
 
+            const exactTaskId = currentStep.data?.taskId || currentStep.data?.dueItem?.id;
             const charTask = isReviewMode
-              ? session?.tasks?.find(
-                  (t) => (t.sourceQueue === "REVIEW" || t.taskType === "REVIEW_RECOGNITION" || t.key.startsWith("review-")) &&
-                         (t.id === currentStep.data?.dueItem?.id || t.itemId === charObj?.char || t.taskData?.audioText === charObj?.char)
-                ) || session?.tasks?.find((t) => t.sourceQueue === "REVIEW" || t.taskType === "REVIEW_RECOGNITION")
+              ? (exactTaskId ? session?.tasks?.find((t) => t.id === exactTaskId) : null)
               : session?.tasks?.find(
                   (t) => (t.taskType === "RECOGNITION" || t.taskType === "MINI_CHECK" || t.key.startsWith("recognition-")) &&
                          (t.key === `recognition-${activeCharIndex + 1}` || t.itemId === charObj?.char)
@@ -1998,9 +2067,9 @@ export function LessonPlayerPage({
                 : [{ id: "opt-ni", label: "你", isCorrect: true }, { id: "opt-hao", label: "好", isCorrect: false }]
             );
 
-            const reviewChoiceKey = `recog-rev-${charObj?.char}`;
+            const reviewChoiceKey = `recog-rev-${exactTaskId || charObj?.char}`;
             const selectedChoiceVal = isReviewMode
-              ? (selectedChoices[reviewChoiceKey] || selectedChoices["recog"] || selectedChoices[`recog-${activeCharIndex}`])
+              ? (selectedChoices[reviewChoiceKey] || (exactTaskId ? selectedChoices[`recog-${exactTaskId}`] : selectedChoices["recog"]))
               : selectedChoices[`recog-${activeCharIndex}`];
 
             return (
@@ -2078,7 +2147,7 @@ export function LessonPlayerPage({
                   </button>
                   <div className="choices-horizontal-row">
                     {choices?.map((choice: { id: string; label: string; isCorrect?: boolean }) => {
-                      const isSelected = selectedChoiceVal === choice.id || selectedChoices["recog"] === choice.id;
+                      const isSelected = selectedChoiceVal === choice.id || (!isReviewMode && selectedChoices["recog"] === choice.id);
                       const isCorrect = choice.id === (charObj?.char === "好" ? "opt-hao" : "opt-ni") || choice.isCorrect;
                       return (
                         <button
@@ -2090,12 +2159,24 @@ export function LessonPlayerPage({
                               ...prev,
                               recog: choice.id,
                               [reviewChoiceKey]: choice.id,
+                              ...(exactTaskId ? { [`recog-${exactTaskId}`]: choice.id } : {}),
                               [`recog-${activeCharIndex}`]: choice.id,
                             }));
-                            await submitBackendTaskAnswer(
-                              (t) => t.id === charTask?.id || (isReviewMode ? (t.sourceQueue === "REVIEW" || t.taskType === "REVIEW_RECOGNITION") : t.key === `recognition-${activeCharIndex + 1}`),
-                              choice.id
-                            );
+                            if (isReviewMode) {
+                              if (!exactTaskId) {
+                                setError(text.taskFailed);
+                                return;
+                              }
+                              await submitBackendTaskAnswer(
+                                (t) => t.id === exactTaskId,
+                                choice.id
+                              );
+                            } else {
+                              await submitBackendTaskAnswer(
+                                (t) => t.id === charTask?.id || t.key === `recognition-${activeCharIndex + 1}`,
+                                choice.id
+                              );
+                            }
                           }}
                         >
                           <span className="char-choice-text">{choice.label}</span>

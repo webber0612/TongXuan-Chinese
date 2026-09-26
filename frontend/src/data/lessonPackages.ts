@@ -56,6 +56,7 @@ export function buildReviewStepsFromDueItems(
       estimatedMinutes: 2,
       required: true,
       data: {
+        taskId: due.id,
         dueItem: due,
         dueCharacter: char,
         charObj,
@@ -63,8 +64,8 @@ export function buildReviewStepsFromDueItems(
           prompt: due.taskData?.prompt || "聽一聽發音，選出聽到的字：",
           audioText: char,
           choices: due.taskData?.choices || [
-            { id: "option-1", label: char === "好" ? "你" : "好", isCorrect: false },
-            { id: "option-2", label: char, isCorrect: true },
+            { id: char === "好" ? "opt-hao" : "opt-ni", label: char, isCorrect: true },
+            { id: char === "好" ? "opt-ni" : "opt-hao", label: char === "好" ? "你" : "好", isCorrect: false },
           ],
         },
       },

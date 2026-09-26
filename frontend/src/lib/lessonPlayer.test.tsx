@@ -3886,6 +3886,9 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
       if (url.includes("/learning-sessions/current")) {
         return new Response(JSON.stringify({ id: "s-rev-f", status: "IN_PROGRESS", tasks: [] }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
+      if (url.includes("/learning-daily-queue")) {
+        return new Response(JSON.stringify({ review: { sourceQueue: "REVIEW", dueCount: 0, items: [] } }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
       return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
     }));
 
@@ -3899,6 +3902,324 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
 
     expect(container.querySelector("[data-step-key='exit_ticket']")).toBeNull();
     expect(container.querySelector(".empty-review-card")).toBeTruthy();
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
+
+  it("67. Regression A: Daily Queue 200 + dueCount=0 + items=[] -> normal zero-due empty state", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (url.includes("/learning-sessions/current")) {
+        return new Response(JSON.stringify({ id: "s-reg-a", status: "IN_PROGRESS", tasks: [] }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/learning-daily-queue")) {
+        return new Response(JSON.stringify({
+          review: { sourceQueue: "REVIEW", dueCount: 0, items: [] }
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} initialMode="REVIEW" />);
+    });
+
+    expect(container.querySelector(".empty-review-card")).toBeTruthy();
+    expect(container.querySelector(".error-strip")).toBeNull();
+    expect(container.textContent).toMatch(/目前沒有到期的複習項目|No due reviews right now/);
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
+
+  it("68. Regression B: Daily Queue 503 -> error state, must NOT display zero-due empty state", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (url.includes("/learning-sessions/current")) {
+        return new Response(JSON.stringify({ id: "s-reg-b", status: "IN_PROGRESS", tasks: [] }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/learning-daily-queue")) {
+        return new Response(JSON.stringify({ error: "Service Unavailable" }), { status: 503, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} initialMode="REVIEW" />);
+    });
+
+    // Must NOT show no-due empty state!
+    expect(container.querySelector(".empty-review-card")).toBeNull();
+    // Must display error state
+    expect(container.querySelector(".error-strip")).toBeTruthy();
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
+
+  it("69. Regression C: Daily Queue malformed -> error state, must NOT display zero-due empty state", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (url.includes("/learning-sessions/current")) {
+        return new Response(JSON.stringify({ id: "s-reg-c", status: "IN_PROGRESS", tasks: [] }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/learning-daily-queue")) {
+        return new Response(JSON.stringify({
+          review: { broken: true }
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} initialMode="REVIEW" />);
+    });
+
+    // Must NOT show no-due empty state!
+    expect(container.querySelector(".empty-review-card")).toBeNull();
+    // Must display error state
+    expect(container.querySelector(".error-strip")).toBeTruthy();
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
+
+  it("70. Regression D: Daily Queue due item + no executable session task -> fail closed, must NOT render actionable question", async () => {
+    let sessionCreationAttempted = false;
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes("/learning-sessions/current")) {
+        return new Response(JSON.stringify({ id: "s-reg-d", status: "IN_PROGRESS", tasks: [] }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/learning-daily-queue")) {
+        return new Response(JSON.stringify({
+          review: {
+            sourceQueue: "REVIEW",
+            dueCount: 1,
+            items: [{ id: "due-item-ni", character: "你", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" }]
+          }
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/learning-sessions") && init?.method === "POST") {
+        sessionCreationAttempted = true;
+        // Backend returns session with tasks=[] (cannot produce executable review task)
+        return new Response(JSON.stringify({ id: "s-reg-d", status: "IN_PROGRESS", tasks: [] }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} initialMode="REVIEW" />);
+    });
+
+    expect(sessionCreationAttempted).toBe(true);
+    // Must NOT render actionable question
+    expect(container.querySelector(".large-char-display")).toBeNull();
+    expect(container.querySelector(".char-choice-card")).toBeNull();
+    // Must NOT show no-due empty state
+    expect(container.querySelector(".empty-review-card")).toBeNull();
+    // Must show error
+    expect(container.querySelector(".error-strip")).toBeTruthy();
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
+
+  it("71. Regression E: 2 due items (Task A and Task B) -> each step strictly binds to its own task.id", async () => {
+    let taskStateA = "PENDING";
+    let taskStateB = "PENDING";
+    const answeredTaskIds: string[] = [];
+
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes("/learning-sessions/current")) {
+        return new Response(JSON.stringify({
+          id: "s-reg-e",
+          status: "IN_PROGRESS",
+          tasks: [
+            {
+              id: "task-A",
+              key: "review-recog-1",
+              taskType: "REVIEW_RECOGNITION",
+              sourceQueue: "REVIEW",
+              itemId: "你",
+              state: taskStateA,
+              taskData: { prompt: "題目一：選出聽到的字", audioText: "你", choices: [{ id: "opt-ni", label: "你", isCorrect: true }, { id: "opt-hao", label: "好", isCorrect: false }] },
+            },
+            {
+              id: "task-B",
+              key: "review-recog-2",
+              taskType: "REVIEW_RECOGNITION",
+              sourceQueue: "REVIEW",
+              itemId: "好",
+              state: taskStateB,
+              taskData: { prompt: "題目二：選出聽到的字", audioText: "好", choices: [{ id: "opt-hao", label: "好", isCorrect: true }, { id: "opt-ni", label: "你", isCorrect: false }] },
+            },
+          ],
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/tasks/task-A/answer") && init?.method === "POST") {
+        answeredTaskIds.push("task-A");
+        taskStateA = "COMPLETED";
+        return new Response(JSON.stringify({
+          id: "s-reg-e",
+          status: "IN_PROGRESS",
+          tasks: [
+            { id: "task-A", key: "review-recog-1", taskType: "REVIEW_RECOGNITION", sourceQueue: "REVIEW", itemId: "你", state: "COMPLETED" },
+            { id: "task-B", key: "review-recog-2", taskType: "REVIEW_RECOGNITION", sourceQueue: "REVIEW", itemId: "好", state: taskStateB },
+          ],
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/tasks/task-B/answer") && init?.method === "POST") {
+        answeredTaskIds.push("task-B");
+        taskStateB = "COMPLETED";
+        return new Response(JSON.stringify({
+          id: "s-reg-e",
+          status: "IN_PROGRESS",
+          tasks: [
+            { id: "task-A", key: "review-recog-1", taskType: "REVIEW_RECOGNITION", sourceQueue: "REVIEW", itemId: "你", state: "COMPLETED" },
+            { id: "task-B", key: "review-recog-2", taskType: "REVIEW_RECOGNITION", sourceQueue: "REVIEW", itemId: "好", state: "COMPLETED" },
+          ],
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/learning-sessions/s-reg-e/complete") && init?.method === "POST") {
+        return new Response(JSON.stringify({ id: "s-reg-e", status: "COMPLETED" }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} initialMode="REVIEW" />);
+    });
+
+    // STEP 1: Bound to task-A (你)
+    expect(container.querySelector(".large-char-display")?.textContent).toBe("你");
+    const choiceA = Array.from(container.querySelectorAll(".char-choice-card")).find((b) => b.textContent?.includes("你")) as HTMLButtonElement;
+    expect(choiceA).toBeTruthy();
+    await act(async () => { choiceA.click(); });
+    const nextBtn = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
+    await act(async () => { nextBtn.click(); });
+
+    expect(answeredTaskIds).toEqual(["task-A"]);
+
+    // STEP 2: Bound to task-B (好)
+    expect(container.querySelector(".large-char-display")?.textContent).toBe("好");
+    const choiceB = Array.from(container.querySelectorAll(".char-choice-card")).find((b) => b.textContent?.includes("好")) as HTMLButtonElement;
+    expect(choiceB).toBeTruthy();
+    await act(async () => { choiceB.click(); });
+    const nextBtn2 = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
+    await act(async () => { nextBtn2.click(); });
+
+    expect(answeredTaskIds).toEqual(["task-A", "task-B"]);
+
+    // Advances to wrap-up
+    expect(container.querySelector("[data-step-key='wrap_up']")).toBeTruthy();
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
+
+  it("72. Regression F: Multi-item review with second exact task missing -> must NOT fallback to first task, fail closed and stay on step", async () => {
+    let taskStateA = "PENDING";
+    const answeredTaskIds: string[] = [];
+
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes("/learning-sessions/current")) {
+        return new Response(JSON.stringify({
+          id: "s-reg-f",
+          status: "IN_PROGRESS",
+          tasks: [
+            {
+              id: "task-A",
+              key: "review-recog-1",
+              taskType: "REVIEW_RECOGNITION",
+              sourceQueue: "REVIEW",
+              itemId: "你",
+              state: taskStateA,
+              taskData: { prompt: "題目一：選出聽到的字", audioText: "你", choices: [{ id: "opt-ni", label: "你", isCorrect: true }, { id: "opt-hao", label: "好", isCorrect: false }] },
+            },
+            {
+              id: "task-B",
+              key: "review-recog-2",
+              taskType: "REVIEW_RECOGNITION",
+              sourceQueue: "REVIEW",
+              itemId: "好",
+              state: "PENDING",
+              taskData: { prompt: "題目二：選出聽到的字", audioText: "好", choices: [{ id: "opt-hao", label: "好", isCorrect: true }, { id: "opt-ni", label: "你", isCorrect: false }] },
+            },
+          ],
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/tasks/task-A/answer") && init?.method === "POST") {
+        answeredTaskIds.push("task-A");
+        taskStateA = "COMPLETED";
+        // CRITICAL: Backend session update mysteriously omits task-B (e.g. task-B is missing from session)
+        return new Response(JSON.stringify({
+          id: "s-reg-f",
+          status: "IN_PROGRESS",
+          tasks: [
+            { id: "task-A", key: "review-recog-1", taskType: "REVIEW_RECOGNITION", sourceQueue: "REVIEW", itemId: "你", state: "COMPLETED" },
+          ],
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} initialMode="REVIEW" />);
+    });
+
+    // STEP 1: Bound to task-A (你)
+    expect(container.querySelector(".large-char-display")?.textContent).toBe("你");
+    const choiceA = Array.from(container.querySelectorAll(".char-choice-card")).find((b) => b.textContent?.includes("你")) as HTMLButtonElement;
+    await act(async () => { choiceA.click(); });
+    const nextBtn = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
+    await act(async () => { nextBtn.click(); });
+
+    expect(answeredTaskIds).toEqual(["task-A"]);
+
+    // STEP 2: Currently on step 2 (好), but task-B is missing in backend sessionRef.current.tasks
+    expect(container.querySelector(".large-char-display")?.textContent).toBe("好");
+    const choiceB = Array.from(container.querySelectorAll(".char-choice-card")).find((b) => b.textContent?.includes("好")) as HTMLButtonElement;
+    await act(async () => { choiceB.click(); });
+
+    // Try to advance
+    const nextBtn2 = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
+    await act(async () => { nextBtn2.click(); });
+
+    // Task A must NOT have been reused for Step 2!
+    expect(answeredTaskIds).toEqual(["task-A"]);
+    // Must NOT advance to wrap-up
+    expect(container.querySelector("[data-step-key='wrap_up']")).toBeNull();
+    // Must fail closed: display error banner and stay on step 2
+    expect(container.querySelector(".error-strip")).toBeTruthy();
+    expect(container.querySelector(".large-char-display")?.textContent).toBe("好");
 
     root.unmount();
     container.remove();
