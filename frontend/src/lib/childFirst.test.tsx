@@ -119,7 +119,7 @@ describe("child-first shell contracts", () => {
     const mismatchedRoot = await renderHome("Different learner");
     expect(document.querySelector("main.weekly-main-hero")).toBeTruthy();
     expect(routeFromPath(window.location.pathname)).toBe("home");
-    await act(async () => { (document.querySelector(".validated-session-entry") as HTMLButtonElement).click(); });
+    await act(async () => { (document.querySelector(".hero-primary-cta-row .launch-quiz-cta-btn") as HTMLButtonElement).click(); });
     expect(window.location.pathname).toBe("/");
     expect(document.querySelector('[role="alert"]')?.textContent).toContain("找不到這位學習者");
     await act(async () => { mismatchedRoot.unmount(); });
@@ -128,11 +128,397 @@ describe("child-first shell contracts", () => {
     const matchedRoot = await renderHome("樂樂");
     expect(document.querySelector("main.weekly-main-hero")).toBeTruthy();
     await import("../pages/LessonPlayerPage");
-    await act(async () => { (document.querySelector(".validated-session-entry") as HTMLButtonElement).click(); });
+    await act(async () => { (document.querySelector(".hero-primary-cta-row .launch-quiz-cta-btn") as HTMLButtonElement).click(); });
     await act(async () => { await new Promise((resolve) => setTimeout(resolve, 50)); });
     expect(window.location.pathname).toBe("/TongXuan-Chinese/learning-session");
     expect(document.querySelector('main[aria-label="課堂學習播放器"]')).toBeTruthy();
+    expect(document.querySelector(".mode-badge.mode-learn")).toBeTruthy();
     await act(async () => { matchedRoot.unmount(); });
+    vi.unstubAllGlobals();
+  });
+
+  it("routes the canonical due-review CTA through /learning-session in REVIEW, preserves the session on Home, and keeps the next normal launch in LEARN", async () => {
+    localStorage.clear();
+    localStorage.setItem(DISPLAY_LANGUAGE_KEY, "zh-Hant");
+    window.history.replaceState({}, "", "/");
+    const requestLog: Array<{ url: string; method: string }> = [];
+    let reviewTaskState = "PENDING";
+    const curriculumTask = {
+      id: "learn-session:curriculum-recognition-1",
+      key: "recognition-1",
+      taskType: "RECOGNITION",
+      skillDomain: "recognition",
+      sourceQueue: "CURRICULUM",
+      itemId: "curriculum-item-ni",
+      lessonId: "book1-l01",
+      state: "PENDING",
+      required: true,
+      taskData: {},
+    };
+    const reviewTask = () => ({
+      id: "learn-session:review-recognition-1",
+      key: "review-recognition-1",
+      taskType: "REVIEW_RECOGNITION",
+      skillDomain: "recognition",
+      sourceQueue: "REVIEW",
+      itemId: "item-ni",
+      lessonId: "book1-l01",
+      state: reviewTaskState,
+      required: true,
+      taskData: {
+        prompt: "選出聽到的字：",
+        audioText: "你",
+        choices: [
+          { id: "opt-hao", label: "好", isCorrect: false },
+          { id: "opt-ni", label: "你", isCorrect: true },
+        ],
+        dueAt: "2026-09-02T00:00:00Z",
+      },
+    });
+    const session = (includeReviewTask: boolean) => ({
+      id: "learn-session",
+      status: "IN_PROGRESS",
+      lessonId: "book1-l01",
+      curriculumContext: { lessonId: "book1-l01", lessonMasteredBeforeSession: true },
+      tasks: [curriculumTask, ...(includeReviewTask ? [reviewTask()] : [])],
+    });
+    let latestSessionResponse: ReturnType<typeof session> = session(false);
+    const dueQueue = {
+      childId: 1,
+      asOf: "2026-09-05T00:00:00Z",
+      placementStart: "BOOK_1",
+      review: { sourceQueue: "REVIEW", dueCount: 1, items: [{ id: "item-ni", character: "你", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" }] },
+      newLesson: null,
+      completedLesson: { sourceQueue: "CURRICULUM", lessonId: "book1-l01", title: "日月星辰", domains: ["recognition"], status: "COMPLETED" },
+      currentLessonComplete: true,
+      nextLessonComingSoon: true,
+      nextAccessibleLesson: null,
+      activeSession: { id: "learn-session", status: "IN_PROGRESS" },
+      schoolQueueSeparate: true,
+      targetMinutes: 18,
+    };
+    const normalQueue = {
+      ...dueQueue,
+      review: { sourceQueue: "REVIEW", dueCount: 0, items: [] },
+      newLesson: { sourceQueue: "CURRICULUM", lessonId: "book1-l01", title: "日月星辰", domains: ["recognition"], status: "AVAILABLE", availableInLearningFlowV1: true },
+      completedLesson: null,
+      currentLessonComplete: false,
+      nextLessonComingSoon: false,
+    };
+
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+      requestLog.push({ url, method });
+      if (url.endsWith("/api/children")) return new Response(JSON.stringify([{ id: 1, name: "樂樂" }]), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.includes("/learning-daily-queue")) {
+        return new Response(JSON.stringify(reviewTaskState === "COMPLETED" ? normalQueue : dueQueue), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/learning-sessions/current")) {
+        latestSessionResponse = session(false);
+        return new Response(JSON.stringify(latestSessionResponse), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/reconcile-reviews") && method === "POST") {
+        latestSessionResponse = session(true);
+        return new Response(JSON.stringify(latestSessionResponse), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/tasks/learn-session:review-recognition-1/answer") && method === "POST") {
+        reviewTaskState = "COMPLETED";
+        latestSessionResponse = session(true);
+        return new Response(JSON.stringify(latestSessionResponse), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify({}), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    document.body.innerHTML = '<div id="root"></div>';
+    const root = createRoot(document.getElementById("root")!);
+    await act(async () => { root.render(React.createElement(AppShell)); await Promise.resolve(); await Promise.resolve(); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 40)); });
+
+    const dueCta = Array.from(document.querySelectorAll(".hero-primary-cta-row .launch-quiz-cta-btn"))
+      .find((button) => button.textContent?.includes("開始複習任務")) as HTMLButtonElement;
+    expect(dueCta).toBeTruthy();
+    await import("../pages/LessonPlayerPage");
+    await act(async () => { dueCta.click(); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 120)); });
+
+    expect(window.location.pathname).toBe("/TongXuan-Chinese/learning-session");
+    expect(document.querySelector('main[aria-label="課堂學習播放器"]')).toBeTruthy();
+    expect(document.querySelector(".mode-badge.mode-review")).toBeTruthy();
+    expect(document.querySelector(".large-char-display")?.textContent).toBe("你");
+    expect(requestLog.some((request) => request.url.includes("/learning-sessions/learn-session/reconcile-reviews") && request.method === "POST")).toBe(true);
+
+    const correctChoice = Array.from(document.querySelectorAll(".char-choice-card"))
+      .find((button) => button.textContent?.includes("你")) as HTMLButtonElement;
+    expect(correctChoice).toBeTruthy();
+    await act(async () => { correctChoice.click(); });
+    await act(async () => { (document.querySelector(".next-step-cta-btn") as HTMLButtonElement).click(); });
+    expect(requestLog.some((request) => request.url.includes("/tasks/learn-session:review-recognition-1/answer") && request.method === "POST")).toBe(true);
+    expect(document.querySelector("[data-step-key='wrap_up']")).toBeTruthy();
+
+    await act(async () => { (document.querySelector(".finish-session-cta-btn") as HTMLButtonElement).click(); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 45)); });
+    expect(window.location.pathname).toBe("/TongXuan-Chinese/");
+    expect(document.querySelector(".hero-primary-cta-row .launch-quiz-cta-btn")?.textContent).toContain("開始今日學習");
+    expect(requestLog.some((request) => /\/learning-sessions\/learn-session\/complete(?:\?|$)/.test(request.url) && request.method === "POST")).toBe(false);
+    expect(reviewTaskState).toBe("COMPLETED");
+    expect(latestSessionResponse.status).toBe("IN_PROGRESS");
+    expect(latestSessionResponse.tasks.find((task) => task.id === curriculumTask.id)?.state).toBe("PENDING");
+
+    const normalCta = document.querySelector(".hero-primary-cta-row .launch-quiz-cta-btn") as HTMLButtonElement;
+    await act(async () => { normalCta.click(); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 60)); });
+    expect(window.location.pathname).toBe("/TongXuan-Chinese/learning-session");
+    expect(document.querySelector(".mode-badge.mode-learn")).toBeTruthy();
+
+    await act(async () => { root.unmount(); });
+    vi.unstubAllGlobals();
+  });
+
+  it.each([
+    ["reconcile returns the later due item", false],
+    ["reconcile still omits the later due item", true],
+  ])("canonical REVIEW reconciles only Daily Queue due IDs when %s", async (_caseName, omitDueItem) => {
+    localStorage.clear();
+    localStorage.setItem(DISPLAY_LANGUAGE_KEY, "zh-Hant");
+    window.history.replaceState({}, "", "/");
+    const requestLog: Array<{ url: string; method: string; body?: string }> = [];
+    let dueBState = "PENDING";
+    let reconcileCalls = 0;
+    const curriculumTask = {
+      id: "learn-session:recognition-1", key: "recognition-1", taskType: "RECOGNITION",
+      sourceQueue: "CURRICULUM", skillDomain: "recognition", lessonId: "book1-l01",
+      itemId: "curriculum-item-ni", state: "PENDING", required: true, taskData: {},
+    };
+    const reviewA = {
+      id: "learn-session:review-recognition-1", key: "review-recognition-1", taskType: "REVIEW_RECOGNITION",
+      sourceQueue: "REVIEW", skillDomain: "recognition", lessonId: "book1-l01", itemId: "item-ni",
+      state: "COMPLETED", required: true,
+      taskData: { prompt: "選出聽到的字：你", audioText: "你", choices: [{ id: "option-1", label: "好" }, { id: "option-2", label: "你" }], dueAt: "2026-08-01T00:00:00Z" },
+    };
+    const reviewB = () => ({
+      id: "learn-session:review-recognition-2", key: "review-recognition-2", taskType: "REVIEW_RECOGNITION",
+      sourceQueue: "REVIEW", skillDomain: "recognition", lessonId: "book1-l01", itemId: "item-hao",
+      state: dueBState, required: true,
+      taskData: { prompt: "選出新到期的字：好", audioText: "好", choices: [{ id: "option-1", label: "你" }, { id: "option-2", label: "好" }], dueAt: "2026-09-02T00:00:00Z" },
+    });
+    const session = (includeDueB: boolean) => ({
+      id: "learn-session", status: "IN_PROGRESS", lessonId: "book1-l01",
+      curriculumContext: { lessonId: "book1-l01", lessonMasteredBeforeSession: true },
+      tasks: [curriculumTask, reviewA, ...(includeDueB ? [reviewB()] : [])],
+    });
+    const dueQueue = {
+      childId: 1, asOf: "2026-09-05T00:00:00Z", placementStart: "BOOK_1",
+      review: { sourceQueue: "REVIEW", dueCount: 1, items: [{ id: "item-hao", character: "好", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" }] },
+      newLesson: null, completedLesson: { sourceQueue: "CURRICULUM", lessonId: "book1-l01", title: "你好", domains: ["recognition"], status: "COMPLETED" },
+      currentLessonComplete: true, nextLessonComingSoon: true, nextAccessibleLesson: null,
+      activeSession: { id: "learn-session", status: "IN_PROGRESS" }, schoolQueueSeparate: true, targetMinutes: 18,
+    };
+    const normalQueue = { ...dueQueue, review: { sourceQueue: "REVIEW", dueCount: 0, items: [] }, newLesson: { sourceQueue: "CURRICULUM", lessonId: "book1-l01", title: "你好", domains: ["recognition"], status: "AVAILABLE", availableInLearningFlowV1: true }, completedLesson: null, currentLessonComplete: false, nextLessonComingSoon: false };
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+      requestLog.push({ url, method, body: typeof init?.body === "string" ? init.body : undefined });
+      if (url.endsWith("/api/children")) return new Response(JSON.stringify([{ id: 1, name: "樂樂" }]), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.includes("/learning-daily-queue")) return new Response(JSON.stringify(dueBState === "COMPLETED" ? normalQueue : dueQueue), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.includes("/learning-sessions/current")) return new Response(JSON.stringify(session(false)), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.includes("/reconcile-reviews") && method === "POST") {
+        reconcileCalls += 1;
+        return new Response(JSON.stringify(session(!omitDueItem)), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/tasks/learn-session:review-recognition-2/answer") && method === "POST") {
+        dueBState = "COMPLETED";
+        return new Response(JSON.stringify(session(true)), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify({}), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    document.body.innerHTML = '<div id="root"></div>';
+    const root = createRoot(document.getElementById("root")!);
+    await act(async () => { root.render(React.createElement(AppShell)); await new Promise((resolve) => setTimeout(resolve, 45)); });
+    const dueCta = Array.from(document.querySelectorAll(".hero-primary-cta-row .launch-quiz-cta-btn"))
+      .find((button) => button.textContent?.includes("開始複習任務")) as HTMLButtonElement;
+    expect(dueCta).toBeTruthy();
+    await import("../pages/LessonPlayerPage");
+    await act(async () => { dueCta.click(); await new Promise((resolve) => setTimeout(resolve, 120)); });
+
+    expect(window.location.pathname).toBe("/TongXuan-Chinese/learning-session");
+    expect(document.querySelector(".mode-badge.mode-review")).toBeTruthy();
+    expect(reconcileCalls).toBe(1);
+    expect(requestLog.some((request) => request.url.includes("/learning-sessions/learn-session/reconcile-reviews") && request.method === "POST")).toBe(true);
+
+    if (omitDueItem) {
+      expect(document.querySelector(".error-strip")).toBeTruthy();
+      expect(document.querySelector(".large-char-display")).toBeNull();
+      expect(document.querySelector(".char-choice-card")).toBeNull();
+      expect(document.querySelector("[data-step-key='wrap_up']")).toBeNull();
+    } else {
+      expect(document.querySelector(".large-char-display")?.textContent).toBe("好");
+      expect(document.querySelector(".interaction-prompt")?.textContent).toContain("新到期的字：好");
+      expect(document.querySelector(".large-char-display")?.textContent).not.toBe("你");
+      const correctChoice = Array.from(document.querySelectorAll(".char-choice-card"))
+        .find((button) => button.textContent?.includes("好")) as HTMLButtonElement;
+      expect(correctChoice).toBeTruthy();
+      await act(async () => { correctChoice.click(); });
+      await act(async () => { (document.querySelector(".next-step-cta-btn") as HTMLButtonElement).click(); });
+      expect(requestLog.some((request) => request.url.includes("/tasks/learn-session:review-recognition-2/answer") && request.method === "POST")).toBe(true);
+      expect(requestLog.some((request) => request.url.includes("/tasks/learn-session:review-recognition-1/answer"))).toBe(false);
+      expect(document.querySelector("[data-step-key='wrap_up']")).toBeTruthy();
+      expect(session(true).tasks.find((task) => task.id === curriculumTask.id)?.state).toBe("PENDING");
+    }
+
+    await act(async () => { root.unmount(); });
+    vi.unstubAllGlobals();
+  });
+
+  it.each([
+    ["missing Queue payload", "missing"],
+    ["throwing Queue request", "throw"],
+    ["dueCount mismatch", "count-mismatch"],
+    ["malformed due ID", "malformed-id"],
+    ["duplicate due IDs", "duplicate-id"],
+    ["cross-lesson due ID", "cross-lesson"],
+  ])("canonical REVIEW fails closed on %s instead of replaying a stale session task", async (_caseName, invalidQueue) => {
+    localStorage.clear();
+    localStorage.setItem(DISPLAY_LANGUAGE_KEY, "zh-Hant");
+    window.history.replaceState({}, "", "/");
+    let reconcileCalls = 0;
+    const curriculumTask = {
+      id: "learn-session:recognition-1", key: "recognition-1", taskType: "RECOGNITION",
+      sourceQueue: "CURRICULUM", skillDomain: "recognition", lessonId: "book1-l01",
+      itemId: "curriculum-item-ni", state: "PENDING", required: true, taskData: {},
+    };
+    const staleReviewTask = {
+      id: "learn-session:review-recognition-1", key: "review-recognition-1", taskType: "REVIEW_RECOGNITION",
+      sourceQueue: "REVIEW", skillDomain: "recognition", lessonId: "book1-l01", itemId: "item-ni",
+      state: "COMPLETED", required: true,
+      taskData: { prompt: "選出聽到的字：你", audioText: "你", choices: [{ id: "option-1", label: "好" }, { id: "option-2", label: "你" }], dueAt: "2026-08-01T00:00:00Z" },
+    };
+    const session = {
+      id: "learn-session", status: "IN_PROGRESS", lessonId: "book1-l01",
+      curriculumContext: { lessonId: "book1-l01", lessonMasteredBeforeSession: true },
+      tasks: [curriculumTask, staleReviewTask],
+    };
+    const dueQueue = {
+      childId: 1, asOf: "2026-09-05T00:00:00Z", placementStart: "BOOK_1",
+      review: { sourceQueue: "REVIEW", dueCount: 1, items: [{ id: "item-hao", character: "好", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" }] },
+      newLesson: null, completedLesson: { sourceQueue: "CURRICULUM", lessonId: "book1-l01", title: "你好", domains: ["recognition"], status: "COMPLETED" },
+      currentLessonComplete: true, nextLessonComingSoon: true, nextAccessibleLesson: null,
+      activeSession: { id: "learn-session", status: "IN_PROGRESS" }, schoolQueueSeparate: true, targetMinutes: 18,
+    };
+    const invalidReview = invalidQueue === "count-mismatch"
+      ? { ...dueQueue.review, dueCount: 2 }
+      : invalidQueue === "malformed-id"
+        ? { ...dueQueue.review, items: [{ character: "好", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" }] }
+      : invalidQueue === "duplicate-id"
+        ? { ...dueQueue.review, dueCount: 2, items: [dueQueue.review.items[0], dueQueue.review.items[0]] }
+        : invalidQueue === "cross-lesson"
+          ? { ...dueQueue.review, items: [{ ...dueQueue.review.items[0], lessonId: "basic-l01" }] }
+        : dueQueue.review;
+    const requestLog: Array<{ url: string; method: string }> = [];
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+      requestLog.push({ url, method });
+      if (url.endsWith("/api/children")) return new Response(JSON.stringify([{ id: 1, name: "樂樂" }]), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.includes("/learning-daily-queue")) {
+        if (window.location.pathname.includes("/learning-session")) {
+          if (invalidQueue === "throw") throw new Error("Queue unavailable");
+          if (invalidQueue === "missing") return new Response(JSON.stringify({}), { status: 200, headers: { "Content-Type": "application/json" } });
+          return new Response(JSON.stringify({ ...dueQueue, review: invalidReview }), { status: 200, headers: { "Content-Type": "application/json" } });
+        }
+        return new Response(JSON.stringify(dueQueue), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/learning-sessions/current")) return new Response(JSON.stringify(session), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.includes("/reconcile-reviews") && method === "POST") {
+        reconcileCalls += 1;
+        return new Response(JSON.stringify(session), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify({}), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    document.body.innerHTML = '<div id="root"></div>';
+    const root = createRoot(document.getElementById("root")!);
+    await act(async () => { root.render(React.createElement(AppShell)); await new Promise((resolve) => setTimeout(resolve, 45)); });
+    const dueCta = Array.from(document.querySelectorAll(".hero-primary-cta-row .launch-quiz-cta-btn"))
+      .find((button) => button.textContent?.includes("開始複習任務")) as HTMLButtonElement;
+    expect(dueCta).toBeTruthy();
+    await import("../pages/LessonPlayerPage");
+    await act(async () => { dueCta.click(); await new Promise((resolve) => setTimeout(resolve, 120)); });
+
+    expect(window.location.pathname).toBe("/TongXuan-Chinese/learning-session");
+    expect(document.querySelector(".mode-badge.mode-review")).toBeTruthy();
+    expect(document.querySelector(".error-strip")).toBeTruthy();
+    expect(document.querySelector(".large-char-display")).toBeNull();
+    expect(document.querySelector(".char-choice-card")).toBeNull();
+    expect(document.querySelector("[data-step-key='wrap_up']")).toBeNull();
+    expect(reconcileCalls).toBe(invalidQueue === "duplicate-id" || invalidQueue === "malformed-id" ? 1 : 0);
+    expect(requestLog.some((request) => request.url.includes("/tasks/learn-session:review-recognition-1/answer"))).toBe(false);
+
+    await act(async () => { root.unmount(); });
+    vi.unstubAllGlobals();
+  });
+
+  it("clears REVIEW launch intent when browser history leaves the canonical lesson route", async () => {
+    localStorage.clear();
+    localStorage.setItem(DISPLAY_LANGUAGE_KEY, "zh-Hant");
+    window.history.replaceState({}, "", "/");
+    let homeQueueMode: "due" | "normal" = "due";
+    const queue = () => ({
+      childId: 1,
+      asOf: "2026-09-05T00:00:00Z",
+      placementStart: "BOOK_1" as const,
+      review: homeQueueMode === "due"
+        ? { sourceQueue: "REVIEW" as const, dueCount: 1, items: [{ id: "item-ni", character: "你", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" }] }
+        : { sourceQueue: "REVIEW" as const, dueCount: 0, items: [] },
+      newLesson: homeQueueMode === "normal" ? { sourceQueue: "CURRICULUM" as const, lessonId: "book1-l01", title: "日月星辰", domains: ["recognition"], status: "AVAILABLE", availableInLearningFlowV1: true } : null,
+      completedLesson: homeQueueMode === "due" ? { sourceQueue: "CURRICULUM" as const, lessonId: "book1-l01", title: "日月星辰", domains: ["recognition"], status: "COMPLETED" } : null,
+      currentLessonComplete: homeQueueMode === "due",
+      nextLessonComingSoon: false,
+      nextAccessibleLesson: null,
+      activeSession: { id: "learn-session", status: "IN_PROGRESS" },
+      schoolQueueSeparate: true,
+      targetMinutes: 18,
+    });
+    const activeSession = { id: "learn-session", status: "IN_PROGRESS", lessonId: "book1-l01", tasks: [] };
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith("/api/children")) return new Response(JSON.stringify([{ id: 1, name: "樂樂" }]), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.includes("/learning-daily-queue")) return new Response(JSON.stringify(queue()), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.includes("/learning-sessions/current")) return new Response(JSON.stringify(activeSession), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.includes("/reconcile-reviews") && init?.method === "POST") return new Response(JSON.stringify(activeSession), { status: 200, headers: { "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({}), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    document.body.innerHTML = '<div id="root"></div>';
+    const root = createRoot(document.getElementById("root")!);
+    await act(async () => { root.render(React.createElement(AppShell)); await Promise.resolve(); await Promise.resolve(); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 50)); });
+    const dueCta = Array.from(document.querySelectorAll(".hero-primary-cta-row .launch-quiz-cta-btn"))
+      .find((button) => button.textContent?.includes("開始複習任務")) as HTMLButtonElement;
+    expect(dueCta).toBeTruthy();
+    await import("../pages/LessonPlayerPage");
+    await act(async () => { dueCta.click(); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 80)); });
+    expect(document.querySelector(".mode-badge.mode-review")).toBeTruthy();
+    expect(document.querySelector(".large-char-display")).toBeNull();
+    expect(document.querySelector(".error-strip")).toBeTruthy();
+
+    homeQueueMode = "normal";
+    await act(async () => {
+      window.history.replaceState({}, "", "/TongXuan-Chinese/");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+    expect(window.location.pathname).toBe("/TongXuan-Chinese/");
+    const normalCta = document.querySelector(".hero-primary-cta-row .launch-quiz-cta-btn") as HTMLButtonElement;
+    expect(normalCta.textContent).toContain("開始今日學習");
+    await act(async () => { normalCta.click(); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 70)); });
+    expect(window.location.pathname).toBe("/TongXuan-Chinese/learning-session");
+    expect(document.querySelector(".mode-badge.mode-learn")).toBeTruthy();
+
+    await act(async () => { root.unmount(); });
     vi.unstubAllGlobals();
   });
 

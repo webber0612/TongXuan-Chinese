@@ -1,8 +1,8 @@
 # Mainline Completeness Audit
 
-**Audit baseline:** main at 71d928b6d0d00d0a5738bf61fc4d6cbf2fe72321 (merge of PR #36)
+**Audit baseline:** main at 06516a47b4b3c2c77d1f82eefa63e67d454f6282 (squash merge of PR #40 / Issue #39)
 **Scope:** Issue #38 end-to-end learning journey, limited to executable code, tests, APIs, schema, and currently approved curriculum boundaries.
-**Result:** The underlying services and isolated mode components exist, but the production path does not yet compose them into a reliable end-to-end journey. Two P0 contract gaps are selected for autonomous repair before broader work.
+**Result:** PR #40 closed the supported-lesson planner/runtime task-parity P0 for `starter-l01`, `basic-l01`, and `book1-l01`. Issue #41 verifies the canonical Home → REVIEW mode handoff on branch `issue-41-home-review-routing`; its Draft PR is awaiting independent review. Core services and isolated mode components exist, but the production path still does not compose every stage into one reliable end-to-end journey.
 
 ## Current executable path
 
@@ -10,8 +10,9 @@
       → AppShell.tsx
       → / renders ChildPortalPage
       → Home fetches /api/children/{child_id}/learning-daily-queue
-      → “start today” callback stores lessonId and navigates to /learning-session
-      → AppShell renders LessonPlayerPage (initialMode defaults to LEARN)
+      → Home “start today” callback passes LEARN; due-review CTA passes REVIEW
+      → AppShell stores launch lesson + mode and navigates to /learning-session
+      → AppShell renders LessonPlayerPage with the selected initialMode
       → backend POST /api/children/{child_id}/learning-sessions builds tasks
       → task answer/evidence APIs write attempts, gates, and SRS
       → POST .../complete checks required task states, assesses mastery, awards 5 points
@@ -19,7 +20,9 @@
 
 The backend also exposes /api/children/{child_id}/learning-sessions/report and a parent-authorized placement profile API. The production Parent Dashboard does not consume the learning-session report, and the production frontend does not call the placement profile API.
 
-A direct component test can initialize LessonPlayerPage in REVIEW, but the canonical AppShell path never passes that mode. The backend planner conditionally emits required tasks by lesson domain; the Lesson Player uses the package step sequence and requires matching backend task identities before advancing. Those contracts do not match for all three supported lesson IDs.
+When the current lesson is complete and the Daily Queue has due reviews, the Home CTA now carries REVIEW through AppShell to the canonical `/learning-session` route. The ordinary lesson CTA explicitly carries LEARN. AppShell resets launch intent when leaving the session route through Home navigation or browser history, so REVIEW cannot persist into a later normal launch. Frontend route regressions exercise due-task reconciliation, exact task completion, return Home with the mixed LEARN session intact, the next normal LEARN launch, and fail-closed behavior when a browser-history exit returns to Home. The backend integration independently verifies exact reconciliation and SRS persistence.
+
+PR #40 aligned backend planner tasks with executable player steps for the three supported lesson IDs. Its real API regressions cover planner output, exact task evidence, and settlement for full and supported partial recognition plans. It did not change adaptive/teaching policy, mastery thresholds, SRS policy, or the UI.
 
 ## Mainline completeness matrix
 
@@ -27,18 +30,18 @@ A direct component test can initialize LessonPlayerPage in REVIEW, but the canon
 |---|---|---:|---|
 | Learner / profile | PARTIAL | P1 | Backend children are reconciled with local profiles, while Child Home retains its own local learner list and can resolve backend identity by displayed name. Profile and child identity do not have one fully canonical persisted selection boundary. |
 | Placement / current ability | PARTIAL | P1 | placement_profiles and parent/admin GET/PUT /placement-profile exist. Placement starts at the lowest assessed core domain; age is not used as a gate. The production frontend does not call this API, so a new or unconfigured learner silently defaults to STARTER. |
-| Daily Queue | PARTIAL | P1 | The backend deterministically returns the placement start, due recognition items, and active session. It supports executable sessions only for starter-l01, basic-l01, and book1-l01; later accessible curriculum lessons are returned as unavailable. The due list can include items that are not reconciled into the selected lesson session. |
-| Authoritative lesson / review selection | BROKEN | P0 | Home's due-review action passes a learner and lesson ID, then navigates to /learning-session. AppShell renders LessonPlayerPage without initialMode, whose default is LEARN. Thus the production entry does not select REVIEW even though the button says review. |
-| LEARN | BROKEN | P0 | learning_flow._session_plan conditionally creates tasks by curriculum domain; package steps and Lesson Player Next guards expect tasks that the real planner may not emit. For example, Starter L1 has no backend vocabulary, recognition, or sentence-pattern task; Basic L1 has no sentence-pattern task; Book 1 L1 has no vocabulary task. Missing task identity fails closed, so a real session can stop before settlement. |
+| Daily Queue | PARTIAL | P1 | The backend deterministically returns the placement start, due recognition items, and active session. Executable LEARN is limited to starter-l01, basic-l01, and book1-l01; later accessible curriculum lessons are reported unavailable. The due list can include items requiring reconciliation into the selected session. |
+| Authoritative lesson / review selection | COMPLETE | P2 | On the supported canonical Home flow, the due-review CTA passes REVIEW through AppShell to `/learning-session`; the normal lesson CTA explicitly passes LEARN. REVIEW tasks still come only from backend Daily Queue + reconciliation, and missing tasks fail closed. |
+| LEARN | COMPLETE | P2 | For the three currently executable lessons, PR #40 aligned real backend planner tasks to Lesson Player steps, including the supported single `recognition-1` MINI_CHECK partial plan. Backend API regressions submit exact tasks and settle the session. Later validated lessons remain unavailable (tracked under continuation), and broader settlement/resilience gaps are tracked separately. |
 | FAST_TRACK | PARTIAL | P1 | The server validates the challenge and does not directly grant MASTERED. On failure it pauses the active session; the UI transitions to REPAIR without first authoritatively resuming it. Task mutation APIs require an IN_PROGRESS session, so this path is not executable end to end. |
-| REVIEW | BROKEN | P0 | Exact-task retrieval and review wrap-up are implemented and component-tested, including avoiding whole-session completion. However, canonical Home/AppShell cannot enter that mode. Due tasks inserted into the parent LEARN session are not rendered by LEARN steps and can remain required, causing /complete to reject with required_learning_tasks_incomplete. |
+| REVIEW | COMPLETE | P2 | The canonical due-review CTA enters REVIEW. Exact-task reconciliation, task completion, SRS advancement, and wrap-up are covered; wrap-up returns Home without completing the parent LEARN session or changing pending curriculum work. |
 | REPAIR | BROKEN | P1 | The component renders targeted weak-domain steps, but the FAST_TRACK failure route leaves the parent session PAUSED. No authoritative active repair lifecycle is completed before interaction. |
-| Task evidence | PARTIAL | P1 | Server-side scoring, linked evidence, and task persistence exist. Speaking provider completion, skill gate, and learning task share a transaction with backend failure/retry tests. Real planner-to-runtime task parity is not covered by the current full-flow frontend fixture. |
-| Mastery Gate | PARTIAL | P1 | Server-side per-domain scored floors and non-score gates exist, and client-provided mastery scores are rejected. End-to-end mastery remains blocked by the LEARN task mismatch; session completion and mastery remain separate concepts. |
-| SRS | PARTIAL | P1 | Domain/item-specific SRS state and append-only events implement deterministic intervals, assistance behavior, and miss resets. Backend due retrieval and interval tests exist. Production Home→REVIEW selection is broken, and the due list is wider than the same-lesson reconciliation boundary. |
+| Task evidence | PARTIAL | P1 | Server-side scoring, linked evidence, and task persistence exist. Speaking provider completion, skill gate, and learning task share a transaction with backend failure/retry tests. PR #40 adds real planner-task evidence and settlement coverage for all three currently executable lessons; other domains remain separate. |
+| Mastery Gate | PARTIAL | P1 | Server-side per-domain scored floors and non-score gates exist, and client-provided mastery scores are rejected. Supported LEARN task parity is now covered; full product mastery visibility and failure-atomic settlement remain incomplete. Session completion and mastery remain separate concepts. |
+| SRS | PARTIAL | P1 | Domain/item-specific SRS state and append-only events implement deterministic intervals, assistance behavior, and miss resets. Backend due retrieval, interval advancement, and exact REVIEW task completion are tested. The due list can exceed the items reconciled into one session. |
 | Adaptive | COMPLETE | P2 | The adaptive planner is deterministic, explainable, as-of bounded, child-scoped, and non-mutating, with separate tests. It is an independent recommendation/read model; it does not choose the authoritative lesson or replace the Daily Queue. |
 | Session settlement | PARTIAL | P1 | The backend checks required tasks, writes PRACTICED, assesses mastery, awards points, completes wrap-up/session, and logs transitions. These steps use separate database connections rather than one failure-atomic boundary; failure injection/retry consistency is not covered. Lesson summary text also says 10 stars while backend awards 5 points. |
-| Return Home | PARTIAL | P1 | onBack returns to canonical Home, and REVIEW wrap-up uses it without completing the parent session. A realistic API-backed path from Home through a full session settlement and refreshed queue is not proven while LEARN/REVIEW contracts fail. |
+| Return Home | COMPLETE | P2 | REVIEW wrap-up returns to canonical Home while preserving the active LEARN session and pending curriculum task. Browser-history exits also clear launch intent. The next normal CTA still launches LEARN. |
 | Next-day due review / next lesson | PARTIAL | P1 | SRS state and due retrieval work in backend tests. The runner is limited to three stage-start lesson IDs, while the validated curriculum manifest lists 12 Starter, 12 Basic, and Book 1 lessons 1–3. Subsequent lessons are explicitly reported unavailable. |
 | Parent-visible progress | PARTIAL | P1 | A parent-authorized learning-flow report returns session, task, deferred, mastery, due-count, and privacy summaries. The production Dashboard still consumes the older /api/dashboard projection and never calls /learning-sessions/report. |
 | Validated lesson-content continuation | NEEDS_PRODUCT_DECISION | P1 | The source-aware manifest validates titles/objective summaries for Starter, Basic, and Book 1 lessons 1–3, but lesson text/media/activity content remains PERMISSION_REQUIRED; only three lesson packages are in the runtime. Do not infer permission from metadata validation or add Book 2–10 content. |
@@ -52,23 +55,28 @@ A direct component test can initialize LessonPlayerPage in REVIEW, but the canon
 - Policy and architecture: docs/frontend-architecture.md, docs/learning-path-v2.md, docs/mastery-gates.md, docs/srs-policy.md, docs/roadmap.md, and docs/project-handoff.md.
 - Relevant test suites: backend/tests/test_learning_flow.py, backend/tests/test_lesson_player.py, backend/tests/test_validated_curriculum_policy.py, backend/tests/test_adaptive.py, backend/tests/test_dashboard.py, frontend/src/lib/lessonPlayer.test.tsx, and frontend/src/lib/childFirst.test.tsx.
 
-The code-level Book 1 full-flow test supplies a hand-built session task list. It includes vocabulary and sentence-pattern tasks that the production Book 1 L1 planner does not emit. Component REVIEW tests pass initialMode="REVIEW" directly and therefore do not exercise the canonical Home→AppShell mode handoff. These tests demonstrate component behavior, not the full production contract.
+PR #40 adds real-backend tests for full-flow task parity on all three supported lesson IDs and the legitimate partial recognition plan on Basic and Book 1. Issue #41 adds canonical Home/AppShell route tests for due-review→REVIEW, normal CTA→LEARN, browser-history intent reset, exact reconciled task completion, Home return, and no whole-session `/complete`. The realistic backend REVIEW lifecycle test covers a pending required curriculum task, exact review task completion, unchanged IN_PROGRESS parent session, exact SRS row advancement, and reconciliation deduplication.
 
 ## Ranked gaps
 
 ### P0
 
-1. **Planner/runtime task parity for the three currently executable lessons.** Real backend plans and production package steps disagree; a child can be blocked before task completion or settlement. This affects the base LEARN path.
-2. **Canonical Home→REVIEW selection.** Due-review UI cannot enter the tested REVIEW mode. Required review tasks may be stranded inside LEARN, and due items from different lesson scopes are shown more broadly than the active session can reconcile.
+No open P0 remains in the validated Home→LEARN/REVIEW handoff slice. Issue #41 closes the Home→REVIEW selection gap on its Draft branch; main remains at the audit baseline until merge.
+
+### Resolved P0
+
+- **Planner/runtime task parity for the three currently executable lessons** — closed by Issue #39 / PR #40, reviewed PASS on exact head `3398cee41bd8b0ce9118282682216e30e9fd939b`, then squash-merged to main at `06516a47b4b3c2c77d1f82eefa63e67d454f6282`. Full backend/frontend tests and production build passed locally; GitHub Actions had no run for that exact head.
+- **Canonical Home→REVIEW selection** — implemented and verified by Issue #41 on branch `issue-41-home-review-routing`; due tasks use the exact Daily Queue + reconciliation contract, normal launches explicitly use LEARN, and REVIEW wrap-up returns Home without settling the mixed parent session. The PR remains Draft pending independent exact-head review; current main baseline is `06516a47b4b3c2c77d1f82eefa63e67d454f6282`.
 
 ### P1
 
-3. **FAST_TRACK failure→REPAIR lifecycle.** The parent session becomes PAUSED and is not authoritatively resumed before repair interaction.
-4. **Failure-atomic/idempotent settlement.** Progress, assessment, reward, session status, and wrap-up completion need a consistent persistence boundary or an explicitly recoverable idempotent contract.
-5. **Canonical backend child identity and usable placement flow.** Placement endpoints exist but are not wired into the current parent/profile experience.
-6. **Parent dashboard integration.** The authoritative learning-flow report is not surfaced by the production Parent Dashboard.
-7. **Next lesson continuation within the already validated slice.** The runner stops at the first lesson for each curriculum stage. Runtime expansion must stay within the manifest and respect the explicit lesson-content licensing boundary.
-8. **Real learner/device trial.** Requires a real child/parent and device; this is an explicit owner gate, not a code-level substitute.
+1. **FAST_TRACK failure→REPAIR lifecycle.** The parent session becomes PAUSED and is not authoritatively resumed before repair interaction.
+2. **Failure-atomic/idempotent settlement.** Progress, assessment, reward, session status, and wrap-up completion need a consistent persistence boundary or an explicitly recoverable idempotent contract.
+3. **Canonical backend child identity and usable placement flow.** Placement endpoints exist but are not wired into the current parent/profile experience.
+4. **Parent dashboard integration.** The authoritative learning-flow report is not surfaced by the production Parent Dashboard.
+5. **Next lesson continuation within the already validated slice.** The runner stops at the first lesson for each curriculum stage. Runtime expansion must stay within the manifest and respect the explicit lesson-content licensing boundary.
+6. **Adaptive selection policy.** The planner's existing `char_ids[:1]` can choose a strong first character when a later character is weak. Whether to change target selection is a pedagogical policy decision; keep current behavior until a concrete learner-impact fix can preserve the established policy or needs owner decision.
+7. **Real learner/device trial.** Requires a real child/parent and device; this is an explicit owner gate, not a code-level substitute.
 
 ### P2
 
@@ -76,14 +84,13 @@ The code-level Book 1 full-flow test supplies a hand-built session task list. It
 
 ## Proposed autonomous issue sequence
 
-1. **Next: P0 real planner ↔ Lesson Player parity for starter-l01, basic-l01, and book1-l01.** Use actual backend session responses in regressions. Every required backend task must map to a supported runtime step; no mocked task may be added solely to satisfy the test. Each supported LEARN path must reach authoritative wrap-up and settlement without changing mastery policy or visual direction.
-2. **P0 Home→REVIEW contract.** Route the due-review action into the exact REVIEW mode and exact authoritative tasks. Keep the parent LEARN session IN_PROGRESS, do not call whole-session /complete, preserve pending curriculum tasks, and test the canonical Home/AppShell path.
-3. **P1 FAST_TRACK failure→REPAIR lifecycle.** Require authoritative IN_PROGRESS session state before repair task UI or writes.
-4. **P1 settlement consistency.** Add failure-injection and retry coverage for curriculum progress, mastery assessment, rewards, wrap-up task, and session status; return authoritative settlement values to the UI.
-5. **P1 profile identity / placement integration.** Use stable backend child IDs end to end and expose the existing placement contract without changing its policy.
-6. **P1 parent report integration.** Display the existing child-scoped authoritative learning report on the Parent surface.
-7. **P1 continue the executable path only within the validated curriculum manifest.** Do not reproduce protected source lesson text/media or expand Books 2–10. If completion requires content covered by the current PERMISSION_REQUIRED boundary, stop that content issue at OWNER_DECISION_REQUIRED.
-8. **Real child/device trial** remains NEEDS_REAL_CHILD_VALIDATION; do not claim completion from mocks.
+1. **Next: P1 FAST_TRACK failure→REPAIR lifecycle.** Require authoritative IN_PROGRESS session state before repair task UI or writes.
+2. **P1 settlement consistency.** Add failure-injection and retry coverage for curriculum progress, mastery assessment, rewards, wrap-up task, and session status; return authoritative settlement values to the UI.
+3. **P1 profile identity / placement integration.** Use stable backend child IDs end to end and expose the existing placement contract without changing its policy.
+4. **P1 parent report integration.** Display the existing child-scoped authoritative learning report on the Parent surface.
+5. **P1 continue the executable path only within the validated curriculum manifest.** Do not reproduce protected source lesson text/media or expand Books 2–10. If completion requires content covered by the current PERMISSION_REQUIRED boundary, stop that content issue at OWNER_DECISION_REQUIRED.
+6. **Adaptive target selection** only after confirming the policy can remain unchanged; otherwise mark OWNER_DECISION_REQUIRED for the pedagogical choice.
+7. **Real child/device trial** remains NEEDS_REAL_CHILD_VALIDATION; do not claim completion from mocks.
 
 ## Explicit exclusions and decisions
 
@@ -94,8 +101,8 @@ The code-level Book 1 full-flow test supplies a hand-built session task list. It
 
 ## Audit limits and repository state
 
-- main is at 71d928b6d0d00d0a5738bf61fc4d6cbf2fe72321; PR #36 is merged at this head.
-- GitHub currently has open Issues #30, #37, and #38; the open-PR search returned no open PRs. Relevant completed work includes Issues/PRs #28/#29, #31/#32, #33/#34, and #35/#36. Issue #38 supersedes old phase-based stop instructions in handoff text.
+- main is at 06516a47b4b3c2c77d1f82eefa63e67d454f6282; PR #40 / Issue #39 is squash-merged and closes the planner/runtime parity P0.
+- GitHub currently has open Issues #30, #37, #38, and #41. Issue #38 supersedes old phase-based stop instructions in handoff text; Issue #41 is in independent Draft review.
 - docs/project-handoff.md contains historical active-handoff and Phase 20 wording that no longer matches current main or Issue #38. Phase labels were not used as evidence of feature completeness.
 - No TONGXUAN_DB_PATH is configured in this audit environment and the worktree has no SQLite database. Backend tests use isolated temporary databases. Deployed learner DB state is **NOT VERIFIED**.
-- This deliverable is a static code/test/API/docs audit. Tests and build were inspected but not executed during audit.
+- Initial audit was static. Issue #39 exact-head validation ran backend pytest (151 passed), frontend Vitest (13 files / 128 passed), production build (PASS), and base-to-head `git diff --check` (PASS). Issue #41 review lifecycle validation passed (5 backend tests), full frontend Vitest passed (13 files / 130 tests), production build passed, and `git diff --check` passed locally; PR #41 is awaiting independent Architect review.
