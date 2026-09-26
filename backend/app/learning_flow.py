@@ -24,8 +24,8 @@ from .curriculum_policy import (
     validated_slice,
 )
 from .database import connect, initialize_database
-from .learning import award_points, ensure_child, now, record_attempt, uid
-from .sprint_b import practice_pronunciation
+from .learning import _record_attempt_in_transaction, award_points, ensure_child, now, uid
+from .sprint_b import _practice_pronunciation_in_transaction
 
 
 FLOW_LESSONS = {"starter-l01", "basic-l01", "book1-l01"}
@@ -831,172 +831,181 @@ def _load_task(child_id: int, session_id: str, task_id: str) -> tuple[dict[str, 
         return dict(session), dict(row)
 
 
-def _update_task_attempt(*, child_id: int, session_id: str, task: dict[str, Any], result: str, correct: bool | None, assisted: bool, evidence_refs: list[str] | None = None, score: float | None = None, scorer_version: str | None = None) -> dict[str, Any]:
+def _update_task_attempt_in_transaction(db: Any, *, child_id: int, session_id: str, task: dict[str, Any], result: str, correct: bool | None, assisted: bool, evidence_refs: list[str] | None = None, score: float | None = None, scorer_version: str | None = None) -> dict[str, Any]:
     evidence_refs = evidence_refs or []
     stamp = now()
-    with connect() as db:
-        session = db.execute("SELECT * FROM learning_flow_sessions WHERE id=? AND child_id=?", (session_id, child_id)).fetchone()
-        row = db.execute("SELECT * FROM learning_flow_tasks WHERE id=? AND session_id=? AND child_id=?", (task["id"], session_id, child_id)).fetchone()
-        if session is None or row is None:
-            raise ValueError("learning_task_not_found")
-        if session["status"] != "IN_PROGRESS":
-            raise ValueError("learning_session_not_in_progress")
-        if row["state"] == "COMPLETED":
-            return _session_payload(db, session)
-        previous_attempts = int(row["attempt_count"])
-        for index, evidence_ref in enumerate(evidence_refs):
-            db.execute(
-                "INSERT OR IGNORE INTO learning_flow_task_attempts(id,session_id,task_id,child_id,skill_domain,result,score,assisted,evidence_ref,scorer_version,occurred_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
-                (uid("flow-attempt"), session_id, task["id"], child_id, row["skill_domain"], result, score, int(assisted), evidence_ref, scorer_version, stamp),
-            )
-        correct_count = sum(1 for ref in evidence_refs if ref)
-        total_attempts = max(1, len(evidence_refs))
-        if correct is None:
-            success = result == "completed" or result.startswith("self_report_")
-        else:
-            success = correct
-        if correct is True:
-            next_state = "COMPLETED"
-            completed_at = stamp
-            failure_count = int(row["failure_count"])
-        else:
-            failure_count = int(row["failure_count"]) + (0 if correct is None else int(not correct))
-            next_state = "COMPLETED" if success else "IN_PROGRESS"
-            completed_at = stamp if success else None
-        if row["task_type"].startswith("WRITING_") and correct is False:
-            failure_count = int(row["failure_count"]) + 1
-            if failure_count >= 2:
-                next_state = "DEFERRED"
-                completed_at = None
-        started = _parse_stamp(row["started_at"]) or _parse_stamp(stamp)
-        stamp_dt = _parse_stamp(stamp) or _utcnow_naive()
-        duration = max(0, int((stamp_dt - started).total_seconds())) if started else 0
-        if row["task_type"].startswith("WRITING_") and correct is True:
-            repeat_count = int(task.get("taskData", {}).get("repeatCount", 1))
-            prior_successes = int(db.execute("""SELECT COUNT(*) FROM learning_flow_task_attempts a
-                JOIN writing_attempts w ON w.id=a.evidence_ref
-                WHERE a.task_id=? AND a.result='correct' AND (w.phase<>'independent' OR a.assisted=0)""", (task["id"],)).fetchone()[0])
-            next_state = "COMPLETED" if prior_successes + len(evidence_refs) >= repeat_count else "IN_PROGRESS"
-            completed_at = stamp if next_state == "COMPLETED" else None
-        primary_ref = evidence_refs[-1] if evidence_refs else row["evidence_ref"]
-        db.execute(
-            "UPDATE learning_flow_tasks SET state=?,attempt_count=attempt_count+?,failure_count=?,completed_at=?,elapsed_seconds=elapsed_seconds+?,evidence_ref=COALESCE(?,evidence_ref) WHERE id=? AND session_id=?",
-            (next_state, total_attempts, failure_count, completed_at, duration, primary_ref, task["id"], session_id),
-        )
-        _log(db, session_id, child_id, "task_attempted", task["id"], row["skill_domain"], {"taskType": row["task_type"], "result": result, "correct": correct, "assisted": assisted, "attemptCount": previous_attempts + total_attempts, "durationSeconds": duration}, stamp)
-        if assisted:
-            _log(db, session_id, child_id, "hint_used", task["id"], row["skill_domain"], {"taskType": row["task_type"], "attemptCount": previous_attempts + total_attempts}, stamp)
-        if row["source_queue"] == "REVIEW":
-            due_at = _parse_stamp(task.get("taskData", {}).get("dueAt"))
-            due_age_days = max(0, (stamp_dt - due_at).days) if due_at else None
-            review_details = {"taskType": row["task_type"], "result": result, "correct": correct, "assisted": assisted, "dueAgeDays": due_age_days}
-            _log(db, session_id, child_id, "review_result", task["id"], row["skill_domain"], review_details, stamp)
-            if due_age_days is not None and due_age_days >= 6:
-                _log(db, session_id, child_id, "seven_day_review_result", task["id"], row["skill_domain"], review_details, stamp)
-        if row["task_type"].startswith("WRITING_"):
-            _log(db, session_id, child_id, "writing_retry" if result == "incorrect" else "writing_progressed", task["id"], row["skill_domain"], {"phase": task.get("taskData", {}).get("phase"), "result": result, "attemptCount": previous_attempts + total_attempts}, stamp)
-        if correct is False and failure_count >= MAX_FAILURES_PER_TASK:
-            current_session = db.execute("SELECT * FROM learning_flow_sessions WHERE id=?", (session_id,)).fetchone()
-            _log(db, session_id, child_id, "repeated_failures", task["id"], row["skill_domain"], {"failureCount": failure_count, "limit": MAX_FAILURES_PER_TASK}, stamp)
-            _pause(db, current_session, "REPEATED_FAILURES", task["id"], stamp)
-        if row["task_type"].startswith("WRITING_") and next_state == "DEFERRED":
-            _log(db, session_id, child_id, "task_deferred", task["id"], row["skill_domain"], {"reason": "WRITING_RETRY_CAP"}, stamp)
-        updated = db.execute("SELECT * FROM learning_flow_sessions WHERE id=?", (session_id,)).fetchone()
-        return _session_payload(db, updated)
-
-
-def submit_learning_answer(*, child_id: int, session_id: str, task_id: str, selected_option_id: str | None = None, answers: dict[str, str] | None = None, assisted: bool = False) -> dict[str, Any]:
-    session, row = _load_task(child_id, session_id, task_id)
+    session = db.execute("SELECT * FROM learning_flow_sessions WHERE id=? AND child_id=?", (session_id, child_id)).fetchone()
+    row = db.execute("SELECT * FROM learning_flow_tasks WHERE id=? AND session_id=? AND child_id=?", (task["id"], session_id, child_id)).fetchone()
+    if session is None or row is None:
+        raise ValueError("learning_task_not_found")
     if session["status"] != "IN_PROGRESS":
         raise ValueError("learning_session_not_in_progress")
     if row["state"] == "COMPLETED":
-        return get_learning_session(child_id=child_id, session_id=session_id)
-    if row["state"] == "DEFERRED":
-        raise ValueError("learning_task_deferred")
-    task = json.loads(row["task_json"])
-    task_type = row["task_type"]
-    refs: list[str] = []
-    correct: bool | None = None
-    result = "completed"
-    score: float | None = None
-    scorer_version: str | None = None
-    if task_type in {"RECOGNITION", "REVIEW_RECOGNITION", "VOCABULARY", "SENTENCE_PATTERN", "MINI_CHECK"}:
-        if task.get("taskData", {}).get("mode") == "reflection":
-            choices = {item["id"] for item in task["taskData"].get("choices", [])}
-            if selected_option_id not in choices:
+        return _session_payload(db, session)
+    previous_attempts = int(row["attempt_count"])
+    for index, evidence_ref in enumerate(evidence_refs):
+        db.execute(
+            "INSERT OR IGNORE INTO learning_flow_task_attempts(id,session_id,task_id,child_id,skill_domain,result,score,assisted,evidence_ref,scorer_version,occurred_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+            (uid("flow-attempt"), session_id, task["id"], child_id, row["skill_domain"], result, score, int(assisted), evidence_ref, scorer_version, stamp),
+        )
+    total_attempts = max(1, len(evidence_refs))
+    if correct is None:
+        success = result == "completed" or result.startswith("self_report_")
+    else:
+        success = correct
+    if correct is True:
+        next_state = "COMPLETED"
+        completed_at = stamp
+        failure_count = int(row["failure_count"])
+    else:
+        failure_count = int(row["failure_count"]) + (0 if correct is None else int(not correct))
+        next_state = "COMPLETED" if success else "IN_PROGRESS"
+        completed_at = stamp if success else None
+    if row["task_type"].startswith("WRITING_") and correct is False:
+        failure_count = int(row["failure_count"]) + 1
+        if failure_count >= 2:
+            next_state = "DEFERRED"
+            completed_at = None
+    started = _parse_stamp(row["started_at"]) or _parse_stamp(stamp)
+    stamp_dt = _parse_stamp(stamp) or _utcnow_naive()
+    duration = max(0, int((stamp_dt - started).total_seconds())) if started else 0
+    if row["task_type"].startswith("WRITING_") and correct is True:
+        repeat_count = int(task.get("taskData", {}).get("repeatCount", 1))
+        prior_successes = int(db.execute("""SELECT COUNT(*) FROM learning_flow_task_attempts a
+            JOIN writing_attempts w ON w.id=a.evidence_ref
+            WHERE a.task_id=? AND a.result='correct' AND (w.phase<>'independent' OR a.assisted=0)""", (task["id"],)).fetchone()[0])
+        next_state = "COMPLETED" if prior_successes + len(evidence_refs) >= repeat_count else "IN_PROGRESS"
+        completed_at = stamp if next_state == "COMPLETED" else None
+    primary_ref = evidence_refs[-1] if evidence_refs else row["evidence_ref"]
+    db.execute(
+        "UPDATE learning_flow_tasks SET state=?,attempt_count=attempt_count+?,failure_count=?,completed_at=?,elapsed_seconds=elapsed_seconds+?,evidence_ref=COALESCE(?,evidence_ref) WHERE id=? AND session_id=?",
+        (next_state, total_attempts, failure_count, completed_at, duration, primary_ref, task["id"], session_id),
+    )
+    _log(db, session_id, child_id, "task_attempted", task["id"], row["skill_domain"], {"taskType": row["task_type"], "result": result, "correct": correct, "assisted": assisted, "attemptCount": previous_attempts + total_attempts, "durationSeconds": duration}, stamp)
+    if assisted:
+        _log(db, session_id, child_id, "hint_used", task["id"], row["skill_domain"], {"taskType": row["task_type"], "attemptCount": previous_attempts + total_attempts}, stamp)
+    if row["source_queue"] == "REVIEW":
+        due_at = _parse_stamp(task.get("taskData", {}).get("dueAt"))
+        due_age_days = max(0, (stamp_dt - due_at).days) if due_at else None
+        review_details = {"taskType": row["task_type"], "result": result, "correct": correct, "assisted": assisted, "dueAgeDays": due_age_days}
+        _log(db, session_id, child_id, "review_result", task["id"], row["skill_domain"], review_details, stamp)
+        if due_age_days is not None and due_age_days >= 6:
+            _log(db, session_id, child_id, "seven_day_review_result", task["id"], row["skill_domain"], review_details, stamp)
+    if row["task_type"].startswith("WRITING_"):
+        _log(db, session_id, child_id, "writing_retry" if result == "incorrect" else "writing_progressed", task["id"], row["skill_domain"], {"phase": task.get("taskData", {}).get("phase"), "result": result, "attemptCount": previous_attempts + total_attempts}, stamp)
+    if correct is False and failure_count >= MAX_FAILURES_PER_TASK:
+        current_session = db.execute("SELECT * FROM learning_flow_sessions WHERE id=?", (session_id,)).fetchone()
+        _log(db, session_id, child_id, "repeated_failures", task["id"], row["skill_domain"], {"failureCount": failure_count, "limit": MAX_FAILURES_PER_TASK}, stamp)
+        _pause(db, current_session, "REPEATED_FAILURES", task["id"], stamp)
+    if row["task_type"].startswith("WRITING_") and next_state == "DEFERRED":
+        _log(db, session_id, child_id, "task_deferred", task["id"], row["skill_domain"], {"reason": "WRITING_RETRY_CAP"}, stamp)
+    updated = db.execute("SELECT * FROM learning_flow_sessions WHERE id=?", (session_id,)).fetchone()
+    return _session_payload(db, updated)
+
+
+def _update_task_attempt(*, child_id: int, session_id: str, task: dict[str, Any], result: str, correct: bool | None, assisted: bool, evidence_refs: list[str] | None = None, score: float | None = None, scorer_version: str | None = None) -> dict[str, Any]:
+    with connect() as db:
+        return _update_task_attempt_in_transaction(db, child_id=child_id, session_id=session_id, task=task, result=result, correct=correct, assisted=assisted, evidence_refs=evidence_refs, score=score, scorer_version=scorer_version)
+
+
+def submit_learning_answer(*, child_id: int, session_id: str, task_id: str, selected_option_id: str | None = None, answers: dict[str, str] | None = None, assisted: bool = False) -> dict[str, Any]:
+    _load_task(child_id, session_id, task_id)  # Enforces session time before accepting an answer.
+    with connect() as db:
+        session_row = db.execute("SELECT * FROM learning_flow_sessions WHERE id=? AND child_id=?", (session_id, child_id)).fetchone()
+        row = db.execute("SELECT * FROM learning_flow_tasks WHERE id=? AND session_id=? AND child_id=?", (task_id, session_id, child_id)).fetchone()
+        if session_row is None:
+            raise ValueError("learning_session_not_found")
+        if row is None:
+            raise ValueError("learning_task_not_found")
+        if session_row["status"] != "IN_PROGRESS":
+            raise ValueError("learning_session_not_in_progress")
+        if row["state"] == "COMPLETED":
+            return _session_payload(db, session_row)
+        if row["state"] == "DEFERRED":
+            raise ValueError("learning_task_deferred")
+        session = dict(session_row)
+        row = dict(row)
+        task = json.loads(row["task_json"])
+        task_type = row["task_type"]
+        refs: list[str] = []
+        correct: bool | None = None
+        result = "completed"
+        score: float | None = None
+        scorer_version: str | None = None
+        if task_type in {"RECOGNITION", "REVIEW_RECOGNITION", "VOCABULARY", "SENTENCE_PATTERN", "MINI_CHECK"}:
+            if task.get("taskData", {}).get("mode") == "reflection":
+                choices = {item["id"] for item in task["taskData"].get("choices", [])}
+                if selected_option_id not in choices:
+                    raise ValueError("invalid_answer_choice")
+                result = "self_report_practiced" if selected_option_id == "practiced" else "self_report_more_practice"
+                return _update_task_attempt_in_transaction(db, child_id=child_id, session_id=session_id, task=task, result=result, correct=None, assisted=assisted, scorer_version="self_reflection-v1")
+            choices = {item["id"] for item in task.get("taskData", {}).get("choices", [])}
+            alias_map = {
+                "greeting": ["opt-hello", "opt-correct-order", "greeting"],
+                "name": ["opt-eat", "name"],
+                "farewell": ["opt-wrong-order", "farewell"],
+                "option-1": ["opt-hao", "option-1"],
+                "option-2": ["opt-ni", "option-2"],
+                "opt-ni": ["option-2", "opt-ni"],
+                "opt-hao": ["option-1", "opt-hao"],
+                "opt-hello": ["greeting", "opt-hello"],
+                "opt-eat": ["name", "opt-eat"],
+                "opt-correct-order": ["greeting", "opt-correct-order"],
+                "opt-wrong-order": ["farewell", "opt-wrong-order"],
+            }
+            valid_choices = set(choices)
+            for c in choices:
+                if c in alias_map:
+                    valid_choices.update(alias_map[c])
+            if selected_option_id not in valid_choices:
                 raise ValueError("invalid_answer_choice")
-            result = "self_report_practiced" if selected_option_id == "practiced" else "self_report_more_practice"
-            return _update_task_attempt(child_id=child_id, session_id=session_id, task=task, result=result, correct=None, assisted=assisted, scorer_version="self_reflection-v1")
-        choices = {item["id"] for item in task.get("taskData", {}).get("choices", [])}
-        alias_map = {
-            "greeting": ["opt-hello", "opt-correct-order", "greeting"],
-            "name": ["opt-eat", "name"],
-            "farewell": ["opt-wrong-order", "farewell"],
-            "option-1": ["opt-hao", "option-1"],
-            "option-2": ["opt-ni", "option-2"],
-            "opt-ni": ["option-2", "opt-ni"],
-            "opt-hao": ["option-1", "opt-hao"],
-            "opt-hello": ["greeting", "opt-hello"],
-            "opt-eat": ["name", "opt-eat"],
-            "opt-correct-order": ["greeting", "opt-correct-order"],
-            "opt-wrong-order": ["farewell", "opt-wrong-order"],
-        }
-        valid_choices = set(choices)
-        for c in choices:
-            if c in alias_map:
-                valid_choices.update(alias_map[c])
-        if selected_option_id not in valid_choices:
-            raise ValueError("invalid_answer_choice")
-        answer_key = task.get("_answerKey")
-        expected_keys = {answer_key}
-        if answer_key in alias_map:
-            expected_keys.update(alias_map[answer_key])
-        correct = selected_option_id in expected_keys
-        result = "correct" if correct else "incorrect"
-        if task.get("_answerKind") == "recognition":
-            attempt = record_attempt(child_id, session["recognition_session_id"], row["activity_item_id"], result, assisted, row["source_queue"])
-            refs = [attempt["id"]]
-            score = float(correct)
-            scorer_version = "recognition-engine-v1"
-            with connect() as db:
+            answer_key = task.get("_answerKey")
+            expected_keys = {answer_key}
+            if answer_key in alias_map:
+                expected_keys.update(alias_map[answer_key])
+            correct = selected_option_id in expected_keys
+            result = "correct" if correct else "incorrect"
+            if task.get("_answerKind") == "recognition":
+                attempt = _record_attempt_in_transaction(db, child_id, session["recognition_session_id"], row["activity_item_id"], result, assisted, row["source_queue"])
+                refs = [attempt["id"]]
+                score = float(correct)
+                scorer_version = "recognition-engine-v1"
                 record_linked_score_evidence(db, child_id=child_id, skill_domain="recognition", item_id=row["activity_item_id"], score=score, assisted=assisted, evidence_ref=attempt["id"], evidence_type="recognition_attempt")
-        elif task.get("_answerKind") == "vocabulary":
-            refs = [uid("session-vocabulary-attempt")]
-            score = float(correct)
-            scorer_version = "session-vocabulary-choice-v1"
-            with connect() as db:
+            elif task.get("_answerKind") == "vocabulary":
+                refs = [uid("session-vocabulary-attempt")]
+                score = float(correct)
+                scorer_version = "session-vocabulary-choice-v1"
                 record_linked_score_evidence(db, child_id=child_id, skill_domain="vocabulary", item_id=row["activity_item_id"], score=score, assisted=assisted, evidence_ref=refs[0], evidence_type="learning_session_vocabulary_choice")
                 record_srs_review(db, child_id=child_id, skill_domain="word", item_id=row["activity_item_id"], result=result, assisted=assisted)
+            else:
+                refs = [uid("session-practice-attempt")]
+                score = float(correct)
+                scorer_version = "tongxuan-authored-practice-v1"
+        elif task_type == "PHONETICS":
+            answers = answers or {}
+            question_ids = set(task.get("_answerKeys", {}))
+            if set(answers) != question_ids:
+                raise ValueError("phonetics_answers_incomplete")
+            outcomes: list[bool] = []
+            for question in task["taskData"]["questions"]:
+                choice_ids = {item["id"] for item in question["choices"]}
+                selected = answers[question["id"]]
+                if selected not in choice_ids:
+                    raise ValueError("invalid_answer_choice")
+                item_id = task["_readingIds"][question["id"]]
+                selected_notation = next(item["label"] for item in question["choices"] if item["id"] == selected)
+                correct_choice = task["_answerKeys"][question["id"]]
+                is_correct = selected == correct_choice
+                attempt = _practice_pronunciation_in_transaction(db, child_id, item_id, selected_notation, assisted, source_type="CURRICULUM")
+                refs.append(attempt["attempt_id"])
+                outcomes.append(is_correct)
+            correct = all(outcomes)
+            score = sum(outcomes) / len(outcomes) if outcomes else 0.0
+            result = "correct" if correct else "incorrect"
+            scorer_version = "phonetic-notation-v1"
         else:
-            refs = [uid("session-practice-attempt")]
-            score = float(correct)
-            scorer_version = "tongxuan-authored-practice-v1"
-    elif task_type == "PHONETICS":
-        answers = answers or {}
-        question_ids = set(task.get("_answerKeys", {}))
-        if set(answers) != question_ids:
-            raise ValueError("phonetics_answers_incomplete")
-        outcomes: list[bool] = []
-        for question in task["taskData"]["questions"]:
-            choice_ids = {item["id"] for item in question["choices"]}
-            selected = answers[question["id"]]
-            if selected not in choice_ids:
-                raise ValueError("invalid_answer_choice")
-            item_id = task["_readingIds"][question["id"]]
-            selected_notation = next(item["label"] for item in question["choices"] if item["id"] == selected)
-            correct_choice = task["_answerKeys"][question["id"]]
-            is_correct = selected == correct_choice
-            from .sprint_b import practice_pronunciation
-            attempt = practice_pronunciation(child_id, item_id, selected_notation, assisted, source_type="CURRICULUM")
-            refs.append(attempt["attempt_id"])
-            outcomes.append(is_correct)
-        correct = all(outcomes)
-        score = sum(outcomes) / len(outcomes) if outcomes else 0.0
-        result = "correct" if correct else "incorrect"
-        scorer_version = "phonetic-notation-v1"
-    else:
-        raise ValueError("learning_task_requires_provider_evidence")
-    return _update_task_attempt(child_id=child_id, session_id=session_id, task=task, result=result, correct=correct, assisted=assisted, evidence_refs=refs, score=score, scorer_version=scorer_version)
+            raise ValueError("learning_task_requires_provider_evidence")
+        return _update_task_attempt_in_transaction(db, child_id=child_id, session_id=session_id, task=task, result=result, correct=correct, assisted=assisted, evidence_refs=refs, score=score, scorer_version=scorer_version)
 
 
 def _validate_external_evidence(db: Any, child_id: int, row: Any, evidence_ref: str) -> tuple[str, bool, str]:

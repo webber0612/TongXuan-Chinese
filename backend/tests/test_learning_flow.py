@@ -579,6 +579,130 @@ def test_speaking_evidence_failure_rolls_back_all_writes_and_retry_commits_once(
         assert evidence_count == 1
 
 
+@pytest.mark.parametrize("scorer_kind", ["recognition", "vocabulary", "phonetics"])
+def test_scored_learn_answer_is_atomic_across_activity_evidence_srs_and_flow(tmp_path, scorer_kind):
+    from app.database import connect
+
+    with client(tmp_path) as api:
+        child_id = child(api)
+        place(child_id, "STARTER" if scorer_kind == "phonetics" else "BASIC")
+        current = session(api, child_id)
+        if scorer_kind == "recognition":
+            task = next(t for t in current["tasks"] if t["taskType"] in {"RECOGNITION", "MINI_CHECK"})
+            with connect() as db:
+                private_task = json.loads(db.execute("SELECT task_json FROM learning_flow_tasks WHERE id=?", (task["id"],)).fetchone()["task_json"])
+            assert private_task["_answerKind"] == "recognition"
+            answer_body = {"selected_option_id": private_task["_answerKey"], "assisted": True}
+            item_ids = [task["itemId"]]
+            srs_domain = "recognition"
+        elif scorer_kind == "vocabulary":
+            task = next(t for t in current["tasks"] if t["taskType"] == "VOCABULARY")
+            with connect() as db:
+                private_task = json.loads(db.execute("SELECT task_json FROM learning_flow_tasks WHERE id=?", (task["id"],)).fetchone()["task_json"])
+            assert private_task["_answerKind"] == "vocabulary"
+            answer_body = {"selected_option_id": private_task["_answerKey"], "assisted": True}
+            item_ids = [task["itemId"]]
+            srs_domain = "word"
+        else:
+            task = next(t for t in current["tasks"] if t["taskType"] == "PHONETICS")
+            with connect() as db:
+                private_task = json.loads(db.execute("SELECT task_json FROM learning_flow_tasks WHERE id=?", (task["id"],)).fetchone()["task_json"])
+            answer_body = {"answers": private_task["_answerKeys"], "assisted": True}
+            item_ids = list(private_task["_readingIds"].values())
+            srs_domain = None
+
+        current = start_task(api, child_id, current, task)
+        flow_session_id = current["id"]
+        with connect() as db:
+            recognition_session_id = db.execute("SELECT recognition_session_id FROM learning_flow_sessions WHERE id=?", (flow_session_id,)).fetchone()[0]
+
+        def authoritative_snapshot():
+            placeholders = ",".join("?" for _ in item_ids)
+            with connect() as db:
+                task_row = db.execute("SELECT state,attempt_count,failure_count,completed_at,evidence_ref,elapsed_seconds FROM learning_flow_tasks WHERE id=?", (task["id"],)).fetchone()
+                flow_attempts = [tuple(row) for row in db.execute("SELECT result,score,assisted,evidence_ref,scorer_version FROM learning_flow_task_attempts WHERE task_id=? ORDER BY rowid", (task["id"],))]
+                telemetry = [tuple(row) for row in db.execute("SELECT event_type,details_json FROM learning_flow_telemetry WHERE task_id=? ORDER BY rowid", (task["id"],))]
+                domain = "recognition" if scorer_kind == "recognition" else "vocabulary" if scorer_kind == "vocabulary" else "phonetics"
+                linked_evidence = [tuple(row) for row in db.execute(f"SELECT skill_domain,evidence_ref,score,assisted,script_mode FROM curriculum_skill_evidence WHERE child_id=? AND skill_domain=? AND evidence_item_id IN ({placeholders}) ORDER BY rowid", (child_id, domain, *item_ids))]
+                if scorer_kind == "recognition":
+                    scorer_attempts = [tuple(row) for row in db.execute("SELECT id,result,assisted,item_id FROM recognition_attempts WHERE session_id=? AND item_id=? ORDER BY rowid", (recognition_session_id, item_ids[0]))]
+                    scorer_states = [tuple(row) for row in db.execute("SELECT item_id,correct_count,incorrect_count,assisted_count,last_result FROM recognition_states WHERE child_id=? AND item_id=?", (child_id, item_ids[0]))]
+                elif scorer_kind == "phonetics":
+                    scorer_attempts = [tuple(row) for row in db.execute(f"SELECT id,reading_id,correct,assisted FROM pronunciation_attempts WHERE child_id=? AND reading_id IN ({placeholders}) ORDER BY rowid", (child_id, *item_ids))]
+                    scorer_states = [tuple(row) for row in db.execute(f"SELECT reading_id,correct_count,incorrect_count,assisted_count FROM pronunciation_states WHERE child_id=? AND reading_id IN ({placeholders}) ORDER BY reading_id", (child_id, *item_ids))]
+                else:
+                    scorer_attempts = []
+                    scorer_states = []
+                if srs_domain:
+                    srs_states = [tuple(row) for row in db.execute(f"SELECT skill_domain,item_id,stage,last_result,last_assisted FROM srs_review_states WHERE child_id=? AND skill_domain=? AND item_id IN ({placeholders}) ORDER BY item_id", (child_id, srs_domain, *item_ids))]
+                    srs_events = [tuple(row) for row in db.execute(f"SELECT skill_domain,item_id,result,assisted,previous_stage,next_stage FROM srs_review_events WHERE child_id=? AND skill_domain=? AND item_id IN ({placeholders}) ORDER BY rowid", (child_id, srs_domain, *item_ids))]
+                else:
+                    srs_states = []
+                    srs_events = []
+                return {
+                    "task": tuple(task_row), "flow_attempts": flow_attempts, "telemetry": telemetry,
+                    "linked_evidence": linked_evidence, "scorer_attempts": scorer_attempts,
+                    "scorer_states": scorer_states, "srs_states": srs_states, "srs_events": srs_events,
+                }
+
+        before = authoritative_snapshot()
+        assert before["task"][0] == "IN_PROGRESS"
+        assert before["flow_attempts"] == before["linked_evidence"] == []
+        assert [entry[0] for entry in before["telemetry"]] == ["task_started"]
+        assert before["scorer_attempts"] == before["scorer_states"] == before["srs_states"] == before["srs_events"] == []
+
+        with connect() as db:
+            db.execute(f"""CREATE TRIGGER fail_scored_task_telemetry
+                BEFORE INSERT ON learning_flow_telemetry
+                WHEN NEW.session_id='{flow_session_id}' AND NEW.task_id='{task['id']}' AND NEW.event_type='task_attempted'
+                BEGIN SELECT RAISE(ABORT, 'injected_scored_task_persistence_failure'); END""")
+        failed = api.post(f"/api/children/{child_id}/learning-sessions/{flow_session_id}/tasks/{task['id']}/answer", json=answer_body)
+        assert failed.status_code == 500
+        assert authoritative_snapshot() == before
+
+        with connect() as db:
+            db.execute("DROP TRIGGER fail_scored_task_telemetry")
+        retry = api.post(f"/api/children/{child_id}/learning-sessions/{flow_session_id}/tasks/{task['id']}/answer", json=answer_body)
+        assert retry.status_code == 200, retry.text
+        completed = next(t for t in retry.json()["tasks"] if t["id"] == task["id"])
+        assert completed["state"] == "COMPLETED"
+        after_success = authoritative_snapshot()
+        expected_attempts = len(item_ids) if scorer_kind == "phonetics" else 1
+        assert after_success["task"][0] == "COMPLETED" and after_success["task"][2] == 0
+        assert after_success["task"][1] == expected_attempts
+        assert len(after_success["flow_attempts"]) == expected_attempts
+        assert len(after_success["linked_evidence"]) == len(item_ids)
+        assert len([entry for entry in after_success["telemetry"] if entry[0] == "task_attempted"]) == 1
+        assert len([entry for entry in after_success["telemetry"] if entry[0] == "hint_used"]) == 1
+        assert all(entry[0] == "correct" and entry[1] == 1.0 and entry[2] == 1 for entry in after_success["flow_attempts"])
+        assert all(entry[2:4] == (1.0, 1) for entry in after_success["linked_evidence"])
+        flow_refs = {entry[3] for entry in after_success["flow_attempts"]}
+        assert flow_refs == {entry[1] for entry in after_success["linked_evidence"]}
+        task_attempt_event = next(json.loads(entry[1]) for entry in after_success["telemetry"] if entry[0] == "task_attempted")
+        hint_event = next(json.loads(entry[1]) for entry in after_success["telemetry"] if entry[0] == "hint_used")
+        assert task_attempt_event["assisted"] is True and task_attempt_event["correct"] is True
+        assert hint_event["attemptCount"] == expected_attempts
+        if scorer_kind == "recognition":
+            assert len(after_success["scorer_attempts"]) == len(after_success["scorer_states"]) == len(after_success["srs_events"]) == len(after_success["srs_states"]) == 1
+            assert after_success["scorer_attempts"][0][1:3] == ("correct", 1)
+            assert after_success["scorer_states"][0][1:4] == (0, 0, 1)
+            assert after_success["srs_states"][0][2:] == (0, "correct", 1)
+            assert after_success["srs_events"][0][2:6] == ("correct", 1, 0, 0)
+        elif scorer_kind == "vocabulary":
+            assert len(after_success["srs_events"]) == len(after_success["srs_states"]) == 1
+            assert after_success["srs_states"][0][2:] == (0, "correct", 1)
+            assert after_success["srs_events"][0][2:6] == ("correct", 1, 0, 0)
+        else:
+            assert len(after_success["scorer_attempts"]) == len(after_success["scorer_states"]) == len(item_ids)
+            assert all(row[2:] == (1, 1) for row in after_success["scorer_attempts"])
+            assert all(row[1:] == (0, 0, 1) for row in after_success["scorer_states"])
+            assert after_success["srs_states"] == after_success["srs_events"] == []
+
+        replay = api.post(f"/api/children/{child_id}/learning-sessions/{flow_session_id}/tasks/{task['id']}/answer", json=answer_body)
+        assert replay.status_code == 200, replay.text
+        assert authoritative_snapshot() == after_success
+
+
 def test_day_one_correct_review_schedules_short_interval(tmp_path):
     from app.database import connect
     with client(tmp_path) as api:
