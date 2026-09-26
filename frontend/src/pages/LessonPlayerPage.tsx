@@ -49,10 +49,26 @@ export interface TaskWriteResult {
   persisted: boolean;
   deduped: boolean;
   taskId?: string;
-  taskState?: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "DEFERRED" | "SKIPPED" | "UNKNOWN";
+  taskState?: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "DEFERRED" | "UNKNOWN";
   attemptCount?: number;
   failureCount?: number;
   completedAt?: string | null;
+}
+
+export function optionalWritingSkipResult(
+  task: { id?: string; state?: unknown; attemptCount?: number; failureCount?: number; completedAt?: string | null },
+  deduped: boolean
+): TaskWriteResult {
+  const taskState = task.state === "COMPLETED" || task.state === "DEFERRED" ? task.state : "UNKNOWN";
+  return {
+    persisted: taskState !== "UNKNOWN",
+    deduped,
+    taskId: task.id,
+    taskState,
+    attemptCount: task.attemptCount,
+    failureCount: task.failureCount,
+    completedAt: task.completedAt ?? null,
+  };
 }
 
 export function isValidBackendTimestamp(val: unknown): boolean {
@@ -481,7 +497,7 @@ export function LessonPlayerPage({
   initialMode = "LEARN",
   initialScaffoldMode = "FULL",
 }: LessonPlayerProps) {
-  const { language } = useLocale();
+  const { language, t } = useLocale();
   const text = copy[language] ?? copy.en;
   const locale = currentLearningLocale();
   const speech = useMemo(() => new BrowserSpeechSynthesisProvider(), []);
@@ -565,6 +581,7 @@ export function LessonPlayerPage({
   }, [pkg, mode, weakDomains, authoritativeDueItems]);
 
   const currentStep = steps[currentStepIndex] ?? null;
+  const learnSessionReady = mode !== "LEARN" || !activeChildId || session?.status === "IN_PROGRESS";
 
   const handleCompleteReview = () => {
     if (!activeChildId) {
@@ -603,10 +620,32 @@ export function LessonPlayerPage({
       } | null>(
         `/api/children/${activeChildId}/learning-sessions/current`
       );
-      if (current && (current.status === "IN_PROGRESS" || current.status === "PAUSED")) {
-        sessionRef.current = current;
-        setSession(current);
-        if (current.masteryStatus) setMasteryStatus(current.masteryStatus);
+      let activeSession = current;
+      if (current?.status === "PAUSED" && mode === "LEARN") {
+        // LEARN task mutations require an active session. The start endpoint is also
+        // the authoritative resume operation for an existing paused session.
+        activeSession = await api<NonNullable<typeof current>>(
+          `/api/children/${activeChildId}/learning-sessions`,
+          {
+            method: "POST",
+            body: JSON.stringify({
+              lesson_id: lessonId || undefined,
+              target_minutes: 18,
+              script_mode: locale === "zh-CN" ? "SIMPLIFIED" : "TRADITIONAL",
+            }),
+          }
+        );
+        if (!activeSession || activeSession.id !== current.id || activeSession.status !== "IN_PROGRESS") {
+          sessionRef.current = null;
+          setSession(null);
+          setError(text.taskFailed);
+          return;
+        }
+      }
+      if (activeSession && (activeSession.status === "IN_PROGRESS" || (activeSession.status === "PAUSED" && mode !== "LEARN"))) {
+        sessionRef.current = activeSession;
+        setSession(activeSession);
+        if (activeSession.masteryStatus) setMasteryStatus(activeSession.masteryStatus);
       } else {
         const started = await api<{
           id: string;
@@ -943,27 +982,13 @@ export function LessonPlayerPage({
       return { persisted: false, deduped: false, taskState: "UNKNOWN" };
     }
     if (matchingTask.state === "COMPLETED" || matchingTask.state === "DEFERRED") {
-      return {
-        persisted: true,
-        deduped: true,
-        taskId: matchingTask.id,
-        taskState: matchingTask.state as any,
-        attemptCount: matchingTask.attemptCount,
-        failureCount: matchingTask.failureCount,
-        completedAt: matchingTask.completedAt ?? null,
-      };
+      return optionalWritingSkipResult(matchingTask, true);
     }
     if (submittedSkipsRef.current[matchingTask.id]) {
       const latestTask = sessionRef.current?.tasks?.find((t) => t.id === matchingTask.id) ?? matchingTask;
-      return {
-        persisted: true,
-        deduped: true,
-        taskId: latestTask.id,
-        taskState: latestTask.state as any,
-        attemptCount: latestTask.attemptCount,
-        failureCount: latestTask.failureCount,
-        completedAt: latestTask.completedAt ?? null,
-      };
+      const result = optionalWritingSkipResult(latestTask, true);
+      if (!result.persisted) setError(text.taskFailed);
+      return result;
     }
     try {
       setError(null);
@@ -975,7 +1000,6 @@ export function LessonPlayerPage({
       );
       if (updated && updated.tasks) {
         sessionRef.current = updated;
-        submittedSkipsRef.current[matchingTask.id] = true;
         setSession(updated);
         if (updated.masteryStatus) setMasteryStatus(updated.masteryStatus);
         const postTask = updated.tasks.find((t) => t.id === matchingTask.id);
@@ -988,15 +1012,13 @@ export function LessonPlayerPage({
             taskState: "UNKNOWN",
           };
         }
-        return {
-          persisted: true,
-          deduped: false,
-          taskId: postTask.id,
-          taskState: (postTask.state ?? "DEFERRED") as any,
-          attemptCount: postTask.attemptCount,
-          failureCount: postTask.failureCount,
-          completedAt: postTask.completedAt ?? null,
-        };
+        const result = optionalWritingSkipResult(postTask, false);
+        if (result.persisted) {
+          submittedSkipsRef.current[matchingTask.id] = true;
+        } else {
+          setError(text.taskFailed);
+        }
+        return result;
       }
       setError(text.taskFailed);
       return {
@@ -1196,6 +1218,10 @@ export function LessonPlayerPage({
     if (activeChildId) {
       const currentSess = sessionRef.current;
       if (!currentSess || !currentSess.id) {
+        setError(text.taskFailed);
+        return;
+      }
+      if (mode === "LEARN" && currentSess.status !== "IN_PROGRESS") {
         setError(text.taskFailed);
         return;
       }
@@ -1407,12 +1433,12 @@ export function LessonPlayerPage({
       );
       if (writingTask) {
         const skipRes = await skipBackendTask((t) => t.id === writingTask.id);
-        if (skipRes.taskState !== "COMPLETED" && skipRes.taskState !== "DEFERRED" && skipRes.taskState !== "SKIPPED") {
+        if (!skipRes.persisted || (skipRes.taskState !== "COMPLETED" && skipRes.taskState !== "DEFERRED")) {
           setError(text.taskFailed);
           return;
         }
         const postWritingTask = sessionRef.current?.tasks?.find((t) => t.id === writingTask.id);
-        if (!postWritingTask || (postWritingTask.state !== "COMPLETED" && postWritingTask.state !== "DEFERRED" && postWritingTask.state !== "SKIPPED")) {
+        if (!postWritingTask || (postWritingTask.state !== "COMPLETED" && postWritingTask.state !== "DEFERRED")) {
           setError(text.taskFailed);
           return;
         }
@@ -1880,6 +1906,9 @@ export function LessonPlayerPage({
           </button>
         </div>
       )}
+      {mode === "LEARN" && activeChildId && !learnSessionReady && busy && (
+        <div className="app-loading" role="status">{t("loading")}</div>
+      )}
       {/* Top Header Bar */}
       <header className="lesson-player-topbar">
         <button
@@ -1921,6 +1950,7 @@ export function LessonPlayerPage({
               className="fast-track-trigger-btn"
               onClick={handleStartFastTrack}
               title={text.fastTrackHint}
+              disabled={!learnSessionReady}
             >
               <Zap size={16} />
               <span>{text.fastTrackBtn}</span>
@@ -1979,7 +2009,7 @@ export function LessonPlayerPage({
       )}
 
       {/* Primary Single Column Content View */}
-      {currentStep && (
+      {currentStep && learnSessionReady && (
         <article className="lesson-step-card" data-step-key={currentStep.stepKey}>
           <header className="step-card-header">
             <div className="step-badge-pill">
@@ -2373,10 +2403,12 @@ export function LessonPlayerPage({
                     type="button"
                     className="button button-text skip-writing-btn"
                     onClick={async () => {
-                      const ok = await skipBackendTask((t) => t.taskType.startsWith("WRITING_") || t.key.startsWith("writing"));
-                      if (ok) {
+                      const result = await skipBackendTask((t) => t.taskType.startsWith("WRITING_") || t.key.startsWith("writing"));
+                      if (result.persisted && (result.taskState === "COMPLETED" || result.taskState === "DEFERRED")) {
                         setWritingSkipped(true);
                         void handleNextStep();
+                      } else {
+                        setWritingSkipped(false);
                       }
                     }}
                   >
@@ -2535,7 +2567,7 @@ export function LessonPlayerPage({
                   className="button button-primary next-step-cta-btn"
                   onClick={handleNextStep}
                   disabled={
-                    currentStep.stepKey === "exit_ticket" && !exitTicketSubmitted
+                    !learnSessionReady || (currentStep.stepKey === "exit_ticket" && !exitTicketSubmitted)
                   }
                 >
                   <span>{text.nextStep}</span>

@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import React, { act } from "react";
 import { createRoot } from "react-dom/client";
 
-import { LessonPlayerPage } from "../pages/LessonPlayerPage";
+import { LessonPlayerPage, optionalWritingSkipResult } from "../pages/LessonPlayerPage";
 import {
   getLessonPackage,
   getAllLessonPackages,
@@ -75,7 +75,7 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
       root.render(
         <LessonPlayerPage
           lessonId="book1-l01"
-          activeChildId={1}
+          activeChildId={null}
           onBack={() => {}}
         />
       );
@@ -192,7 +192,7 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
       root.render(
         <LessonPlayerPage
           lessonId="book1-l01"
-          activeChildId={1}
+          activeChildId={null}
           onBack={() => {}}
           initialScaffoldMode="TAP_TO_REVEAL"
         />
@@ -581,9 +581,11 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
       );
     });
 
-    // Should render gracefully without exploding
+    // Without an authoritative session, task interaction stays unavailable.
     const card = container.querySelector(".lesson-step-card");
-    expect(card).toBeTruthy();
+    expect(card).toBeNull();
+    expect(container.querySelector(".next-step-cta-btn")).toBeNull();
+    expect(container.querySelector(".error-strip")).toBeTruthy();
 
     root.unmount();
     container.remove();
@@ -820,7 +822,7 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
         const taskId = decodeURIComponent(url.split("/tasks/")[1].split("/skip")[0]);
         const task = tasksState.find((t) => t.id === taskId);
         if (task) {
-          task.state = "SKIPPED";
+          task.state = "DEFERRED";
           recordedEvents.push(`skip:${taskId}`);
         }
         return new Response(JSON.stringify({ ...currentSession }), {
@@ -831,7 +833,7 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
 
       // 7. Complete session
       if (url.includes("/complete") && init?.method === "POST") {
-        const pendingRequired = tasksState.filter((t) => t.required && t.state !== "COMPLETED" && t.state !== "SKIPPED");
+        const pendingRequired = tasksState.filter((t) => t.required && t.state !== "COMPLETED" && t.state !== "DEFERRED");
         if (pendingRequired.length > 0) {
           return new Response(JSON.stringify({ detail: "required_learning_tasks_incomplete" }), {
             status: 409,
@@ -2585,16 +2587,10 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     // An error banner must be displayed indicating session loading/initialization failed
     expect(container.textContent).toMatch(/Service Unavailable|Task operation failed|任務操作失敗/);
 
-    // The learner clicks Next Step on Step 1 (Context)
+    // Task UI and Next stay unavailable until an authoritative session exists.
     const nextBtn = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
-    expect(nextBtn).toBeTruthy();
-
-    await act(async () => {
-      nextBtn.click();
-    });
-
-    // Progression must be BLOCKED: cannot advance locally to Step 2 (Dialogue)
-    expect(container.querySelector("[data-step-key='context']")).toBeTruthy();
+    expect(nextBtn).toBeNull();
+    expect(container.querySelector(".lesson-step-card")).toBeNull();
     expect(container.querySelector("[data-step-key='dialogue']")).toBeNull();
     expect(completeCallbackCalled).toBe(false);
 
@@ -4472,5 +4468,149 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     container.remove();
     vi.unstubAllGlobals();
   });
-});
 
+  it("75. LEARN resumes a PAUSED session authoritatively before rendering task interaction or Next", async () => {
+    const pausedSession = {
+      id: "s-paused-resume",
+      status: "PAUSED",
+      tasks: [{ id: "t-listen", key: "listen", taskType: "LISTENING", state: "COMPLETED", itemId: "phrase-hello" }],
+    };
+    const activeSession = { ...pausedSession, status: "IN_PROGRESS" };
+    let resolveResume!: (response: Response) => void;
+    const pendingResume = new Promise<Response>((resolve) => { resolveResume = resolve; });
+    const requestedUrls: string[] = [];
+    let resumeCalls = 0;
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      requestedUrls.push(`${init?.method ?? "GET"} ${url}`);
+      if (url.includes("/learning-sessions/current")) {
+        return new Response(JSON.stringify(pausedSession), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.endsWith("/learning-sessions") && init?.method === "POST") {
+        resumeCalls++;
+        return pendingResume;
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    await act(async () => {
+      root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} initialMode="LEARN" />);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(resumeCalls).toBe(1);
+    expect(container.querySelector(".lesson-step-card")).toBeNull();
+    expect(container.querySelector(".next-step-cta-btn")).toBeNull();
+    expect(container.querySelector(".fast-track-trigger-btn")?.hasAttribute("disabled")).toBe(true);
+    expect(requestedUrls.some((request) => /\/tasks\/|\/complete/.test(request))).toBe(false);
+
+    await act(async () => {
+      resolveResume(new Response(JSON.stringify(activeSession), { status: 200, headers: { "Content-Type": "application/json" } }));
+      await Promise.resolve();
+    });
+
+    expect(container.querySelector("[data-step-key='context']")).toBeTruthy();
+    const next = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
+    expect(next).toBeTruthy();
+    expect(next.disabled).toBe(false);
+    await act(async () => { next.click(); });
+    expect(container.querySelector("[data-step-key='dialogue']")).toBeTruthy();
+    expect(resumeCalls).toBe(1);
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
+
+  it("76. Optional writing skip accepts only authoritative COMPLETED or DEFERRED states", () => {
+    expect(optionalWritingSkipResult({ id: "writing" }, false)).toMatchObject({ persisted: false, taskState: "UNKNOWN" });
+    expect(optionalWritingSkipResult({ id: "writing", state: "SKIPPED" }, false)).toMatchObject({ persisted: false, taskState: "UNKNOWN" });
+    expect(optionalWritingSkipResult({ id: "writing", state: "DEFERRED" }, false)).toMatchObject({ persisted: true, taskState: "DEFERRED" });
+    expect(optionalWritingSkipResult({ id: "writing", state: "COMPLETED" }, false)).toMatchObject({ persisted: true, taskState: "COMPLETED" });
+  });
+
+  it.each([
+    ["missing state", undefined, false],
+    ["unexpected SKIPPED state", "SKIPPED", false],
+    ["authoritative DEFERRED state", "DEFERRED", true],
+  ] as const)("77. Optional writing skip with %s follows persisted-state policy", async (_label, skipState, shouldAdvance) => {
+    const tasks: any[] = [
+      { id: "t-listen", key: "listen", taskType: "LISTENING", state: "COMPLETED", itemId: "phrase-hello" },
+      { id: "t-vocab", key: "vocabulary", taskType: "VOCABULARY", state: "COMPLETED", itemId: "vocab-hello" },
+      { id: "t-recog-1", key: "recognition-1", taskType: "RECOGNITION", state: "COMPLETED", itemId: "char-ni" },
+      { id: "t-recog-2", key: "recognition-2", taskType: "RECOGNITION", state: "COMPLETED", itemId: "char-hao" },
+      { id: "t-sentence", key: "sentence-pattern", taskType: "SENTENCE_PATTERN", state: "COMPLETED", itemId: "pattern-greeting" },
+      { id: "t-speaking", key: "speaking", taskType: "SPEAKING_ATTEMPT", state: "COMPLETED", itemId: "phrase-hello" },
+      { id: "t-pronunciation", key: "pronunciation", taskType: "PRONUNCIATION_ATTEMPT", state: "COMPLETED", itemId: "phrase-hello" },
+      { id: "t-writing", key: "writing-1", taskType: "WRITING_PRACTICE", state: "PENDING", itemId: "char-ni" },
+    ];
+    let currentSession: any = { id: "s-writing-skip", status: "IN_PROGRESS", lessonId: "book1-l01", tasks };
+    let skipCalls = 0;
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes("/learning-sessions/current")) {
+        return new Response(JSON.stringify(currentSession), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/tasks/t-writing/skip") && init?.method === "POST") {
+        skipCalls++;
+        const updatedTasks = currentSession.tasks.map((task: any) => ({ ...task }));
+        const writing = updatedTasks.find((task: any) => task.id === "t-writing");
+        if (skipState === undefined) delete writing.state;
+        else writing.state = skipState;
+        currentSession = { ...currentSession, tasks: updatedTasks };
+        return new Response(JSON.stringify(currentSession), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    await act(async () => {
+      root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} initialMode="LEARN" />);
+    });
+
+    const advance = async () => {
+      const next = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
+      expect(next).toBeTruthy();
+      await act(async () => { next.click(); });
+    };
+    await advance(); // context
+    await advance(); // dialogue
+    const vocabChoice = container.querySelector(".step-vocab-body .choice-card-btn") as HTMLButtonElement;
+    await act(async () => { vocabChoice.click(); });
+    await advance(); // vocabulary
+    const firstCharacterChoice = container.querySelectorAll(".char-choice-card")[0] as HTMLButtonElement;
+    await act(async () => { firstCharacterChoice.click(); });
+    const characterTab = container.querySelectorAll(".character-tab-btn")[1] as HTMLButtonElement;
+    await act(async () => { characterTab.click(); });
+    const secondCharacterChoice = container.querySelectorAll(".char-choice-card")[1] as HTMLButtonElement;
+    await act(async () => { secondCharacterChoice.click(); });
+    await advance(); // characters
+    const sentenceChoice = container.querySelector(".step-sentence-body .choice-card-btn") as HTMLButtonElement;
+    await act(async () => { sentenceChoice.click(); });
+    await advance(); // sentence pattern
+    await advance(); // speaking
+
+    expect(container.querySelector("[data-step-key='writing']")).toBeTruthy();
+    const skipButton = container.querySelector(".skip-writing-btn") as HTMLButtonElement;
+    await act(async () => { skipButton.click(); });
+
+    expect(skipCalls).toBe(1);
+    if (shouldAdvance) {
+      expect(currentSession.tasks.find((task: any) => task.id === "t-writing").state).toBe("DEFERRED");
+      expect(container.querySelector("[data-step-key='exit_ticket']")).toBeTruthy();
+      expect(container.querySelector(".error-strip")).toBeNull();
+    } else {
+      expect(currentSession.tasks.find((task: any) => task.id === "t-writing").state).toBe(skipState);
+      expect(container.querySelector("[data-step-key='writing']")).toBeTruthy();
+      expect(container.querySelector("[data-step-key='exit_ticket']")).toBeNull();
+      expect(container.querySelector(".error-strip")).toBeTruthy();
+    }
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
+});
