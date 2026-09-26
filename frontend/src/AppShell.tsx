@@ -4,7 +4,7 @@ import { Button as AriaButton, ListBox, ListBoxItem, Popover, Select, SelectValu
 import { ChildPortalPage } from "./pages/ChildPortalPage";
 import { CourseZeroPage } from "./pages/CourseZeroPage";
 import { FirstLessonPage } from "./pages/FirstLessonPage";
-import { Profile, ACTIVE_PROFILE_STORAGE_KEY, defaultProfiles, loadProfiles, reconcileProfiles, saveProfiles, selectProfile } from "./lib/profiles";
+import { Profile, ACTIVE_PROFILE_STORAGE_KEY, BackendChild, defaultProfiles, isValidBackendChildId, loadProfiles, normalizeBackendChildren, reconcileProfiles, saveProfiles, selectedBackendChild, selectProfile } from "./lib/profiles";
 import { ANNOTATION_MODE_KEY, currentAnnotationMode, currentLearningLocale, LEARNING_LOCALE_KEY, useLocale, type AnnotationMode, type DisplayLanguage, type LearningLocale } from "./lib/i18n";
 
 const API = import.meta.env.VITE_API_BASE ?? "";
@@ -15,7 +15,7 @@ const TutorPage = lazy(async () => ({ default: (await import("./pages/TutorPage"
 const CommercializationPage = lazy(async () => ({ default: (await import("./pages/CommercializationPage")).CommercializationPage }));
 const DiagnosticsPage = lazy(async () => ({ default: (await import("./pages/DiagnosticsPage")).DiagnosticsPage }));
 const LessonPlayerPage = lazy(async () => ({ default: (await import("./pages/LessonPlayerPage")).LessonPlayerPage }));
-type Child = { id: number; name: string };
+type Child = BackendChild;
 type Route = "home" | "practice" | "parent" | "curriculum" | "course-zero" | "first-lesson" | "learning-session" | "tutor" | "me" | "commercialization" | "diagnostics" | "legacy-tombstone" | "redirect-home";
 
 function appBaseAt(pathname: string): string {
@@ -61,12 +61,6 @@ export function isCanonicalHomePath(pathname: string): boolean {
   return appPathAt(pathname) === "/";
 }
 
-export function resolveLearningSessionChildId(profiles: Profile[], learnerName: string): number | null {
-  const expectedName = learnerName.trim().toLocaleLowerCase();
-  const matchingChildren = profiles.filter((profile) => profile.role === "child" && profile.name.trim().toLocaleLowerCase() === expectedName && profile.childId !== null);
-  return matchingChildren.length === 1 ? matchingChildren[0].childId : null;
-}
-
 function pathAtAppBase(path: string): string {
   const appBase = appBaseAt(window.location.pathname);
   return `${appBase}${path.replace(/^\/+/, "")}`;
@@ -89,11 +83,13 @@ export function AppShell() {
   const [profileOpen, setProfileOpen] = useState(false);
 
   const activeProfile = selectProfile(profiles, activeKey);
-  const activeChild = activeProfile.role === "child" ? children.find((child) => child.id === activeProfile.childId) ?? null : null;
+  const activeChild = selectedBackendChild(activeProfile, children);
   const childName = activeProfile.role === "child" ? activeProfile.name : t("childRole");
 
   useEffect(() => { saveProfiles(profiles); }, [profiles]);
-  useEffect(() => { localStorage.setItem(ACTIVE_PROFILE_STORAGE_KEY, activeProfile.key); }, [activeProfile.key]);
+  useEffect(() => {
+    if (profiles.some((profile) => profile.key === activeKey)) localStorage.setItem(ACTIVE_PROFILE_STORAGE_KEY, activeKey);
+  }, [activeKey, profiles]);
   useEffect(() => {
     const syncRoute = () => {
       const redirectPath = canonicalRedirectPath(window.location.pathname);
@@ -113,16 +109,19 @@ export function AppShell() {
   }, []);
 
   async function loadChildren() {
-    setChildrenLoading(true); setChildrenError("");
+    setChildrenLoading(true); setChildrenError(""); setChildren([]);
     try {
       const response = await fetch(`${API}/api/children`);
       if (!response.ok) throw new Error("children_unavailable");
-      const value = await response.json() as Child[];
-      setChildren(value);
-      const nextProfiles = reconcileProfiles(value, loadProfiles());
+      const value: unknown = await response.json();
+      if (!Array.isArray(value)) throw new Error("children_invalid");
+      const nextChildren = normalizeBackendChildren(value);
+      setChildren(nextChildren);
+      const nextProfiles = reconcileProfiles(nextChildren, loadProfiles());
       setProfiles(nextProfiles);
-      setActiveKey((current) => nextProfiles.some((profile) => profile.key === current) ? current : (nextProfiles.find((profile) => profile.role === "child") ?? nextProfiles.find((profile) => profile.role === "parent")!).key);
-    } catch { setChildrenError(t("childrenError")); }
+      // Keep an unresolved profile unresolved. Selecting the first returned child
+      // here would silently redirect Home to someone other than the saved learner.
+    } catch { setChildren([]); setChildrenError(t("childrenError")); }
     finally { setChildrenLoading(false); }
   }
   useEffect(() => { void loadChildren(); }, []);
@@ -181,11 +180,8 @@ export function AppShell() {
         {childrenError && !isChildPortal && <div className="offline-strip error-strip" role="alert">{childrenError} <button className="button button-text" onClick={() => void loadChildren()}>{t("retry")}</button></div>}
         {route === "legacy-tombstone" && <main className="app-page"><PageHeading kicker={t("today")} title={t("legacyRouteTitle")} subtitle={t("legacyRouteDescription")} icon={<BookOpen/>}/><button className="button button-primary" onClick={() => navigate("home")}><House size={18}/>{t("today")}</button></main>}
         <Suspense fallback={<AppLoading label={t("loading")} />}>
-        {route === "home" && <ChildPortalPage activeChildId={activeChild?.id ?? null} activeChildName={childName} onOpenCurriculum={() => navigate("curriculum")} onStartLearningSession={showSessionEntry ? (learnerName, targetLessonId, mode) => {
-          const childId = resolveLearningSessionChildId(profiles, learnerName);
-          const childProfile = profiles.find((profile) => profile.role === "child" && profile.childId === childId);
-          if (!childId || !childProfile) return false;
-          setActiveKey(childProfile.key);
+        {route === "home" && <ChildPortalPage key={activeChild?.id ?? "unresolved-child"} activeChildId={activeChild?.id ?? null} activeChildName={childName} onOpenCurriculum={() => navigate("curriculum")} onStartLearningSession={showSessionEntry ? (requestedChildId, targetLessonId, mode) => {
+          if (!isValidBackendChildId(requestedChildId) || !activeChild || requestedChildId !== activeChild.id) return false;
           setLearningSessionLessonId(targetLessonId);
           setLearningSessionMode(mode);
           navigate("learning-session");
