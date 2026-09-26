@@ -14,6 +14,7 @@ import {
   type LessonPackage,
 } from "../data/lessonPackages";
 import { officialCoursePath } from "../data/officialCoursePath";
+import partialRecognitionContract from "../../../shared/test-fixtures/partial-recognition-contract.json";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -39,9 +40,13 @@ function learningFlowTask(
   };
 }
 
-// Planner-faithful LEARN task sets from backend/app/learning_flow.py::_session_plan
-// for clean children with no due reviews and no optional writing placement target.
-function plannerTasksForLesson(lessonId: "starter-l01" | "basic-l01" | "book1-l01", includeOptionalWriting = false) {
+// Planner-faithful LEARN task sets from backend/app/learning_flow.py::_session_plan.
+// The partial-recognition contract is shared with the backend API regression fixture.
+function plannerTasksForLesson(
+  lessonId: "starter-l01" | "basic-l01" | "book1-l01",
+  includeOptionalWriting = false,
+  partialRecognition = false,
+) {
   const tasks: ReturnType<typeof learningFlowTask>[] = [];
   tasks.push(learningFlowTask(lessonId, "listen", "listen", "LISTENING", "listening", { text: "你好", locale: "zh-TW", textKind: "character" }));
 
@@ -57,14 +62,29 @@ function plannerTasksForLesson(lessonId: "starter-l01" | "basic-l01" | "book1-l0
 
   if (lessonId !== "starter-l01") {
     const chars = ["你", "好"];
-    chars.forEach((character, index) => tasks.push(learningFlowTask(
-      lessonId,
-      `recognition-${index + 1}`,
-      `recognition-${index + 1}`,
-      index === 0 ? "RECOGNITION" : "MINI_CHECK",
-      "recognition",
-      { prompt: "聽一聽發音，選出聽到的字：", audioText: character, choices: [{ id: "option-1", label: chars[1 - index] }, { id: "option-2", label: character }] },
-    )));
+    const indexes = partialRecognition
+      ? [partialRecognitionContract.expectedFreshCharacterIndex - 1]
+      : chars.map((_, index) => index);
+    indexes.forEach((index) => {
+      const recognitionIndex = index + 1;
+      const key = partialRecognition ? partialRecognitionContract.task.key : `recognition-${recognitionIndex}`;
+      const taskType = partialRecognition
+        ? partialRecognitionContract.task.taskType
+        : index === 0 ? "RECOGNITION" : "MINI_CHECK";
+      const itemId = partialRecognitionContract.task.itemIdTemplate
+        .replace("{child_id}", "1")
+        .replace("{lesson_id}", lessonId)
+        .replace("{index}", String(recognitionIndex));
+      const task = learningFlowTask(
+        lessonId,
+        key,
+        key,
+        taskType,
+        partialRecognitionContract.task.skillDomain,
+        { prompt: "聽一聽發音，選出聽到的字：", audioText: chars[index], choices: [{ id: "option-1", label: chars[1 - index] }, { id: "option-2", label: chars[index] }] },
+      );
+      tasks.push({ ...task, itemId });
+    });
   }
 
   if (lessonId === "basic-l01") {
@@ -100,8 +120,9 @@ function authoritativeSessionFixture(
   states: Record<string, string> = {},
   taskOverrides: Record<string, Record<string, unknown>> = {},
   includeOptionalWriting = false,
+  partialRecognition = false,
 ) {
-  const tasks = plannerTasksForLesson(lessonId, includeOptionalWriting).map((task) => ({
+  const tasks = plannerTasksForLesson(lessonId, includeOptionalWriting, partialRecognition).map((task) => ({
     ...task,
     id: `${sessionId}:${task.key}`,
     state: states[task.key] ?? task.state,
@@ -190,7 +211,12 @@ async function advanceToPlannerStep(container: HTMLElement, targetStepKey: strin
     }
 
     const next = container.querySelector(".next-step-cta-btn") as HTMLButtonElement | null;
-    if (!next || next.disabled) throw new Error(`Planner step ${currentKey} cannot advance`);
+    if (!next || next.disabled) {
+      const target = card?.querySelector(".large-char-display")?.textContent;
+      const choices = Array.from(container.querySelectorAll(".char-choice-card")).map((button) => button.textContent);
+      const error = container.querySelector(".error-strip")?.textContent;
+      throw new Error(`Planner step ${currentKey} cannot advance (target=${target}; choices=${choices.join("|")}; error=${error})`);
+    }
     await act(async () => { next.click(); });
   }
   throw new Error(`Planner step ${targetStepKey} was not reached`);
@@ -478,6 +504,41 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     }
   });
 
+  it("14b. The shared partial-recognition contract maps only the planner's single first-character MINI_CHECK", () => {
+    expect(partialRecognitionContract.expectedFreshCharacterIndex).toBe(1);
+    expect(partialRecognitionContract.strongSeedCharacterIndex).toBe(2);
+    for (const lessonId of partialRecognitionContract.lessonIds as Array<"basic-l01" | "book1-l01">) {
+      const pkg = getLessonPackage(lessonId)!;
+      const tasks = plannerTasksForLesson(lessonId, false, true);
+      const recognitionTasks = tasks.filter((task) => task.skillDomain === "recognition");
+      expect(recognitionTasks).toHaveLength(1);
+      expect(recognitionTasks[0]).toMatchObject({
+        key: partialRecognitionContract.task.key,
+        taskType: partialRecognitionContract.task.taskType,
+        sourceQueue: partialRecognitionContract.task.sourceQueue,
+        lessonId,
+        skillDomain: partialRecognitionContract.task.skillDomain,
+        required: partialRecognitionContract.task.required,
+        itemId: partialRecognitionContract.task.itemIdTemplate
+          .replace("{child_id}", "1")
+          .replace("{lesson_id}", lessonId)
+          .replace("{index}", String(partialRecognitionContract.expectedFreshCharacterIndex)),
+      });
+      expect(recognitionTasks[0].taskData.audioText).toBe("你");
+      expect(recognitionTasks[0].taskData.choices.some((choice: { label: string }) => choice.label === recognitionTasks[0].taskData.audioText)).toBe(true);
+      expect(recognitionTasks[0].taskData.choices).toHaveLength(partialRecognitionContract.task.minimumChoices);
+
+      const plan = buildAuthoritativeLearnSteps(pkg, tasks);
+      expect(plan.valid).toBe(true);
+      const recognitionSteps = plan.steps.filter((step) => step.stepKey === "characters");
+      expect(recognitionSteps).toHaveLength(1);
+      expect(recognitionSteps[0].data.taskId).toBe(recognitionTasks[0].id);
+      expect(recognitionSteps[0].data.dueCharacter).toBe(recognitionTasks[0].taskData.audioText);
+      expect(recognitionSteps[0].data.charObj.pronunciation.pinyin).not.toBe("");
+      expect(recognitionSteps[0].data.charObj.pronunciation.zhuyin).not.toBe("");
+    }
+  });
+
   it("15. Missing, unexpected, duplicated, or mismatched planner tasks fail closed", () => {
     const pkg = getLessonPackage("basic-l01");
     expect(pkg).not.toBeNull();
@@ -488,6 +549,77 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     expect(buildAuthoritativeLearnSteps(pkg, [...tasks, { ...tasks[0], id: tasks[0].id, key: "duplicate-id" }]).valid).toBe(false);
     expect(buildAuthoritativeLearnSteps(pkg, tasks.map((task, index) => index === 0 ? { ...task, lessonId: "book1-l01" } : task)).valid).toBe(false);
     expect(buildAuthoritativeLearnSteps(pkg, tasks.slice(0, -1)).valid).toBe(false);
+
+    // An accidental omission from a fresh two-character plan keeps recognition-1
+    // typed RECOGNITION and must not be accepted as the adaptive partial shape.
+    expect(buildAuthoritativeLearnSteps(pkg, tasks.filter((task) => task.key !== "recognition-2")).valid).toBe(false);
+    const partialTasks = plannerTasksForLesson("basic-l01", false, true);
+    expect(buildAuthoritativeLearnSteps(pkg, partialTasks).valid).toBe(true);
+    expect(buildAuthoritativeLearnSteps(pkg, partialTasks.map((task) => task.key === "recognition-1" ? { ...task, key: "recognition-2" } : task)).valid).toBe(false);
+    expect(buildAuthoritativeLearnSteps(pkg, partialTasks.map((task) => task.key === "recognition-1" ? { ...task, taskType: "RECOGNITION" } : task)).valid).toBe(false);
+    expect(buildAuthoritativeLearnSteps(pkg, partialTasks.map((task) => task.key === "recognition-1" ? { ...task, itemId: "lf_1_basic-l01_char_2" } : task)).valid).toBe(false);
+    expect(buildAuthoritativeLearnSteps(pkg, partialTasks.map((task) => task.key === "recognition-1" ? { ...task, taskData: { ...task.taskData, audioText: "好" } } : task)).valid).toBe(false);
+    expect(buildAuthoritativeLearnSteps(pkg, partialTasks.map((task) => task.key === "recognition-1" ? { ...task, itemId: "item-without-child-or-index" } : task)).valid).toBe(false);
+    expect(buildAuthoritativeLearnSteps(pkg, partialTasks.map((task) => task.key === "recognition-1" ? { ...task, sourceQueue: "REVIEW" } : task)).valid).toBe(false);
+    expect(buildAuthoritativeLearnSteps(pkg, partialTasks.map((task) => task.key === "recognition-1" ? { ...task, state: "SKIPPED" } : task)).valid).toBe(false);
+  });
+
+  it("16b. A planner-shaped partial recognition session renders, answers one exact task, then advances", async () => {
+    const session = authoritativeSessionFixture("basic-l01", "session-partial-recognition", { listen: "COMPLETED" }, {}, false, true);
+    const requests = installPlannerSessionMock(session);
+    const container = document.createElement("div"); document.body.appendChild(container);
+    const root = createRoot(container);
+    await act(async () => { root.render(<LessonPlayerPage lessonId="basic-l01" activeChildId={1} onBack={() => {}} initialMode="LEARN" />); });
+
+    await advanceToPlannerStep(container, "characters");
+    expect(container.querySelector(".large-char-display")?.textContent).toBe("你");
+    expect(container.querySelectorAll(".character-tabs-row [role='tab']")).toHaveLength(0);
+    const answer = Array.from(container.querySelectorAll<HTMLButtonElement>(".char-choice-card"))
+      .find((button) => button.textContent?.includes("你"));
+    expect(answer).not.toBeNull();
+    await act(async () => { answer?.click(); });
+    expect(session.tasks.find((task) => task.key === "recognition-1")?.state).toBe("COMPLETED");
+    expect(requests.some((request) => request.includes("/tasks/session-partial-recognition:recognition-1/answer"))).toBe(true);
+    await act(async () => { (container.querySelector(".next-step-cta-btn") as HTMLButtonElement).click(); });
+    expect(container.querySelector("[data-step-key='vocabulary']")).toBeTruthy();
+    expect(container.querySelector(".large-char-display")).toBeNull();
+
+    root.unmount(); container.remove(); vi.unstubAllGlobals();
+  });
+
+  it("16c. A lesson-mastered context change invalidates the memoized LEARN task plan", async () => {
+    const session = authoritativeSessionFixture("basic-l01", "session-mastered-context", { listen: "COMPLETED" });
+    const requests: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      requests.push(`${init?.method ?? "GET"} ${url}`);
+      if (url.includes("/learning-sessions/current")) return { ok: true, json: async () => session } as Response;
+      if (url.includes("/tasks/") && url.endsWith("/answer") && init?.method === "POST") {
+        const taskId = decodeURIComponent(url.split("/tasks/")[1].split("/answer")[0]);
+        const answeredTask = session.tasks.find((task) => task.id === taskId)!;
+        answeredTask.state = "COMPLETED";
+        if (answeredTask.key !== "vocabulary") return { ok: true, json: async () => session } as Response;
+        const updated = {
+          ...session,
+          curriculumContext: { ...session.curriculumContext, lessonMasteredBeforeSession: true },
+          tasks: session.tasks,
+        };
+        return { ok: true, json: async () => updated } as Response;
+      }
+      return { ok: true, json: async () => null } as Response;
+    }));
+    const container = document.createElement("div"); document.body.appendChild(container);
+    const root = createRoot(container);
+    await act(async () => { root.render(<LessonPlayerPage lessonId="basic-l01" activeChildId={1} onBack={() => {}} initialMode="LEARN" />); });
+    await advanceToPlannerStep(container, "vocabulary");
+    const choice = container.querySelector<HTMLButtonElement>(".step-vocab-body .choice-card-btn");
+    expect(choice).not.toBeNull();
+    await act(async () => { choice?.click(); });
+    expect(session.curriculumContext.lessonMasteredBeforeSession).toBe(false);
+    expect(container.querySelector(".lesson-step-card")).toBeNull();
+    expect(container.querySelector(".error-strip")).toBeTruthy();
+    expect(requests.some((request) => request.endsWith("/answer"))).toBe(true);
+
+    root.unmount(); container.remove(); vi.unstubAllGlobals();
   });
 
   it("16. A planner-faithful Book 1 session renders exact task-backed steps and answers the exact recognition task", async () => {

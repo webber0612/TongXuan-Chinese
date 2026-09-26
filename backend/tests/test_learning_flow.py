@@ -208,6 +208,72 @@ def test_strong_recognition_state_reduces_fresh_recognition_tasks(tmp_path):
         assert sum(task["taskType"] in {"RECOGNITION", "MINI_CHECK"} and task["skillDomain"] == "recognition" for task in adapted["tasks"]) < sum(task["taskType"] in {"RECOGNITION", "MINI_CHECK"} and task["skillDomain"] == "recognition" for task in full["tasks"])
 
 
+def test_partial_recognition_planner_contract_reaches_settlement_for_basic_and_book1(tmp_path):
+    from app.database import connect
+
+    contract_path = Path(__file__).resolve().parents[2] / "shared" / "test-fixtures" / "partial-recognition-contract.json"
+    contract = json.loads(contract_path.read_text(encoding="utf-8"))
+    task_contract = contract["task"]
+
+    with client(tmp_path) as api:
+        for placement, lesson_id in (("BASIC", "basic-l01"), ("BOOK_1", "book1-l01")):
+            assert lesson_id in contract["lessonIds"]
+            child_id = child(api, lesson_id)
+            place(child_id, placement)
+            ensure_lesson_materials(child_id, lesson_id)
+            weak_item_id = task_contract["itemIdTemplate"].format(
+                child_id=child_id, lesson_id=lesson_id, index=contract["expectedFreshCharacterIndex"]
+            )
+            strong_item_id = task_contract["itemIdTemplate"].format(
+                child_id=child_id, lesson_id=lesson_id, index=contract["strongSeedCharacterIndex"]
+            )
+            with connect() as db:
+                weak_character = db.execute("SELECT character FROM learning_items WHERE child_id=? AND id=?", (child_id, weak_item_id)).fetchone()[0]
+                strong_character = db.execute("SELECT character FROM learning_items WHERE child_id=? AND id=?", (child_id, strong_item_id)).fetchone()[0]
+                db.execute(
+                    "INSERT INTO recognition_states(child_id,item_id,correct_count,incorrect_count,assisted_count,last_result) VALUES(?,?,2,0,0,'correct')",
+                    (child_id, strong_item_id),
+                )
+                assert db.execute("SELECT 1 FROM recognition_states WHERE child_id=? AND item_id=?", (child_id, weak_item_id)).fetchone() is None
+
+            planned_response = api.post(f"/api/children/{child_id}/learning-sessions/plan", json={"as_of": "2026-09-20T08:00:00Z"})
+            assert planned_response.status_code == 200, planned_response.text
+            planned = planned_response.json()
+            recognition_tasks = [task for task in planned["tasks"] if task["skillDomain"] == "recognition"]
+            assert len(recognition_tasks) == 1
+            partial_task = recognition_tasks[0]
+            assert partial_task["key"] == task_contract["key"]
+            assert partial_task["taskType"] == task_contract["taskType"]
+            assert partial_task["sourceQueue"] == task_contract["sourceQueue"]
+            assert partial_task["lessonId"] == lesson_id
+            assert partial_task["skillDomain"] == task_contract["skillDomain"]
+            assert partial_task["required"] is task_contract["required"]
+            assert partial_task["itemId"] == weak_item_id
+            assert partial_task["state"] in task_contract["allowedStates"]
+            assert partial_task["taskData"]["audioText"] == weak_character
+            assert len(partial_task["taskData"]["choices"]) >= task_contract["minimumChoices"]
+            assert strong_character != weak_character
+
+            current = session(api, child_id)
+            session_recognition_tasks = [task for task in current["tasks"] if task["skillDomain"] == "recognition"]
+            assert len(session_recognition_tasks) == 1
+            assert session_recognition_tasks[0]["key"] == task_contract["key"]
+            assert session_recognition_tasks[0]["taskType"] == task_contract["taskType"]
+            assert session_recognition_tasks[0]["itemId"] == weak_item_id
+
+            settled = complete_session(api, child_id, current)
+            assert settled["status"] == "COMPLETED"
+            completed_task = next(task for task in settled["tasks"] if task["id"] == session_recognition_tasks[0]["id"])
+            assert completed_task["state"] == "COMPLETED"
+            with connect() as db:
+                weak_state = db.execute("SELECT correct_count,last_result FROM recognition_states WHERE child_id=? AND item_id=?", (child_id, weak_item_id)).fetchone()
+                strong_state = db.execute("SELECT correct_count,last_result FROM recognition_states WHERE child_id=? AND item_id=?", (child_id, strong_item_id)).fetchone()
+                assert weak_state["correct_count"] == 1
+                assert weak_state["last_result"] == "correct"
+                assert strong_state["correct_count"] == 2
+                assert strong_state["last_result"] == "correct"
+
+
 def test_weaker_writing_placement_adds_only_optional_targeted_writing(tmp_path):
     with client(tmp_path) as api:
         child_id = child(api)

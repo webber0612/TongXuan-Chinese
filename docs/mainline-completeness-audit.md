@@ -1,7 +1,7 @@
 # Mainline Completeness Audit
 
-**Audit baseline:** main at 71d928b6d0d00d0a5738bf61fc4d6cbf2fe72321 (merge of PR #36)  
-**Scope:** Issue #38 end-to-end learning journey, limited to executable code, tests, APIs, schema, and currently approved curriculum boundaries.  
+**Audit baseline:** main at 71d928b6d0d00d0a5738bf61fc4d6cbf2fe72321 (merge of PR #36)
+**Scope:** Issue #38 end-to-end learning journey, limited to executable code, tests, APIs, schema, and currently approved curriculum boundaries.
 **Result:** The underlying services and isolated mode components exist, but the production path does not yet compose them into a reliable end-to-end journey. Two P0 contract gaps are selected for autonomous repair before broader work.
 
 ## Current executable path
@@ -99,4 +99,3 @@ The code-level Book 1 full-flow test supplies a hand-built session task list. It
 - docs/project-handoff.md contains historical active-handoff and Phase 20 wording that no longer matches current main or Issue #38. Phase labels were not used as evidence of feature completeness.
 - No TONGXUAN_DB_PATH is configured in this audit environment and the worktree has no SQLite database. Backend tests use isolated temporary databases. Deployed learner DB state is **NOT VERIFIED**.
 - This deliverable is a static code/test/API/docs audit. Tests and build were inspected but not executed during audit.
-

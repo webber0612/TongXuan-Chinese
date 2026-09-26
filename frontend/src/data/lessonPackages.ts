@@ -128,8 +128,16 @@ export function buildAuthoritativeLearnSteps(
   const ids = new Set<string>();
   const keys = new Set<string>();
   const mappedIds = new Set<string>();
+  const recognitionItemIds = new Set<string>();
   const steps: LessonStepDefinition[] = [];
   let wrapCount = 0;
+  const plannerLesson = officialCoursePath.stages
+    .flatMap((stage) => stage.lessons)
+    .find((lesson) => lesson.id === pkg.lessonId);
+  const plannerCharacters = plannerLesson
+    ? Array.from(new Set(plannerLesson.official.title.match(/[\u3400-\u9fff]/g) ?? [])).slice(0, 2)
+    : [];
+  if (!plannerLesson || plannerCharacters.length === 0) return { valid: false, steps: [] };
 
   const template = (stepKey: LessonStepDefinition["stepKey"]) =>
     pkg.taskBlueprint.learnSteps.find((step) => step.stepKey === stepKey) ??
@@ -206,7 +214,7 @@ export function buildAuthoritativeLearnSteps(
         continue;
       }
       const review = task.taskType === "REVIEW_RECOGNITION";
-      const recognitionKey = /^recognition-\d+$/.test(task.key);
+      const recognitionKey = task.key.match(/^recognition-(\d+)$/);
       if (
         task.skillDomain !== "recognition" ||
         (review && (task.sourceQueue !== "REVIEW" || !task.key.startsWith("review-"))) ||
@@ -214,8 +222,32 @@ export function buildAuthoritativeLearnSteps(
         !Array.isArray(data.choices) || data.choices.length < 2 ||
         typeof data.audioText !== "string"
       ) return { valid: false, steps: [] };
+      if (review) {
+        if (!/^review-recognition-\d+$/.test(task.key) || typeof task.itemId !== "string" || task.itemId.length === 0) {
+          return { valid: false, steps: [] };
+        }
+      } else {
+        const characterIndex = Number(recognitionKey?.[1]);
+        const itemSuffix = `_${pkg.lessonId}_char_${characterIndex}`;
+        const itemPrefix = typeof task.itemId === "string" && task.itemId.endsWith(itemSuffix)
+          ? task.itemId.slice(0, -itemSuffix.length)
+          : "";
+        if (
+          !Number.isInteger(characterIndex) ||
+          characterIndex < 1 || characterIndex > plannerCharacters.length ||
+          data.audioText !== plannerCharacters[characterIndex - 1] ||
+          !data.choices.some((choice: any) => choice?.label === data.audioText) ||
+          !/^lf_\d+$/.test(itemPrefix) ||
+          !task.itemId ||
+          recognitionItemIds.has(task.itemId)
+        ) return { valid: false, steps: [] };
+        recognitionItemIds.add(task.itemId);
+      }
       const character = data.audioText;
-      const charObj = pkg.characters.find((item) => item.char === character) ?? {
+      const canonicalCharacter = getAllLessonPackages()
+        .flatMap((lessonPackage) => lessonPackage.characters)
+        .find((item) => item.char === character);
+      const charObj = pkg.characters.find((item) => item.char === character) ?? canonicalCharacter ?? {
         char: character,
         pronunciation: { pinyin: "", zhuyin: "" },
         meaning: { zh: "", en: "" },
@@ -224,6 +256,7 @@ export function buildAuthoritativeLearnSteps(
         strokeCount: 0,
         radical: "",
       };
+      if (!review && (!charObj.pronunciation?.pinyin || !charObj.pronunciation?.zhuyin)) return { valid: false, steps: [] };
       if (!append(task, "characters", "recognition", { taskId: task.id, dueCharacter: character, charObj })) return { valid: false, steps: [] };
       continue;
     }
@@ -257,10 +290,7 @@ export function buildAuthoritativeLearnSteps(
     return { valid: false, steps: [] };
   }
 
-  const lessonDomains = officialCoursePath.stages
-    .flatMap((stage) => stage.lessons)
-    .find((lesson) => lesson.id === pkg.lessonId)?.tongxuan.domains;
-  if (!lessonDomains) return { valid: false, steps: [] };
+  const lessonDomains = plannerLesson;
   const count = (taskType: string) => tasks.filter((task) => task.taskType === taskType).length;
   const exactlyOneForDomain: Record<string, string> = {
     listening: "LISTENING",
@@ -270,12 +300,42 @@ export function buildAuthoritativeLearnSteps(
     pronunciation: "PRONUNCIATION_ATTEMPT",
   };
   for (const [domain, taskType] of Object.entries(exactlyOneForDomain)) {
-    if (lessonDomains.includes(domain as any) && !lessonMasteredBeforeSession && count(taskType) !== 1) return { valid: false, steps: [] };
-    if ((!lessonDomains.includes(domain as any) || lessonMasteredBeforeSession) && count(taskType) !== 0) return { valid: false, steps: [] };
+    if (lessonDomains.tongxuan.domains.includes(domain as any) && !lessonMasteredBeforeSession && count(taskType) !== 1) return { valid: false, steps: [] };
+    if ((!lessonDomains.tongxuan.domains.includes(domain as any) || lessonMasteredBeforeSession) && count(taskType) !== 0) return { valid: false, steps: [] };
   }
-  const recognitionCount = tasks.filter((task) => task.taskType === "RECOGNITION" || task.taskType === "MINI_CHECK" && task.taskData?.mode !== "reflection").length;
-  const expectedRecognitionCount = lessonDomains.includes("recognition") && !lessonMasteredBeforeSession ? pkg.characters.length : 0;
-  if (recognitionCount !== expectedRecognitionCount) return { valid: false, steps: [] };
+  const recognitionTasks = tasks.filter((task) =>
+    task.skillDomain === "recognition" && (task.taskType === "RECOGNITION" || task.taskType === "MINI_CHECK")
+  );
+  const recognitionExpected = lessonDomains.tongxuan.domains.includes("recognition") && !lessonMasteredBeforeSession;
+  if (!recognitionExpected && recognitionTasks.length !== 0) return { valid: false, steps: [] };
+  if (recognitionExpected) {
+    const fullCharacterSet = recognitionTasks.length === plannerCharacters.length && recognitionTasks.every((task, index) =>
+      task.key === `recognition-${index + 1}` &&
+      task.taskType === (index === 0 && recognitionTasks.length > 1 ? "RECOGNITION" : "MINI_CHECK") &&
+      task.sourceQueue === "CURRICULUM" &&
+      task.lessonId === pkg.lessonId &&
+      task.skillDomain === "recognition" &&
+      task.required === true &&
+      Number(task.key.slice("recognition-".length)) === index + 1 &&
+      task.taskData?.audioText === plannerCharacters[index] &&
+      task.taskData?.choices?.some((choice: any) => choice?.label === task.taskData?.audioText)
+    );
+    const plannerPartialCharacterSet = plannerCharacters.length > 1 && recognitionTasks.length === 1 && (() => {
+      const task = recognitionTasks[0];
+      return task.key === "recognition-1" &&
+        task.taskType === "MINI_CHECK" &&
+        task.sourceQueue === "CURRICULUM" &&
+        task.lessonId === pkg.lessonId &&
+        task.skillDomain === "recognition" &&
+        task.required === true &&
+        task.taskData?.audioText === plannerCharacters[0] &&
+        task.taskData?.choices?.some((choice: any) => choice?.label === task.taskData?.audioText) &&
+        typeof task.itemId === "string" &&
+        task.itemId.endsWith(`_${pkg.lessonId}_char_1`) &&
+        task.taskData?.mode !== "reflection";
+    })();
+    if (!fullCharacterSet && !plannerPartialCharacterSet) return { valid: false, steps: [] };
+  }
   if (tasks.filter((task) => task.taskType === "MINI_CHECK" && task.taskData?.mode === "reflection").length !== 1) return { valid: false, steps: [] };
   if (!lessonMasteredBeforeSession && pkg.lessonId === "book1-l01" ? count("SENTENCE_PATTERN") !== 1 : count("SENTENCE_PATTERN") !== 0) return { valid: false, steps: [] };
   if (wrapCount !== 1 || mappedIds.size !== tasks.length || steps.at(-1)?.stepKey !== "wrap_up") {

@@ -570,7 +570,7 @@ export function LessonPlayerPage({
     () => mode === "LEARN" && activeChildId && pkg
       ? buildAuthoritativeLearnSteps(pkg, session?.tasks, session?.curriculumContext?.lessonMasteredBeforeSession)
       : null,
-    [mode, activeChildId, pkg, session?.tasks],
+    [mode, activeChildId, pkg, session?.tasks, session?.curriculumContext?.lessonMasteredBeforeSession],
   );
 
   // Authoritative due review items extraction: strictly from executable session review tasks
