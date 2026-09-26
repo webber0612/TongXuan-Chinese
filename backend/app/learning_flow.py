@@ -217,12 +217,12 @@ def _session_plan(db: Any, child_id: int, as_of_text: str, lesson: dict[str, Any
     tasks: list[dict[str, Any]] = []
 
     # Review is deliberately curriculum/SRS-only here; School Queue remains its own queue.
-    for index, due in enumerate(_due_recognition(db, child_id, as_of_text)):
+    for index, due in enumerate([due for due in _due_recognition(db, child_id, as_of_text) if due["lesson_id"] == lesson_id]):
         distractor = next((value for value in chars if value != due["character"]), lesson["title"])
         correct_id = "option-2"
         choices = [{"id": "option-1", "label": distractor}, {"id": correct_id, "label": due["character"]}]
         tasks.append(_task(
-            f"review-recognition-{index + 1}", "REVIEW_RECOGNITION", lesson_id,
+            f"review-recognition-{index + 1}", "REVIEW_RECOGNITION", due["lesson_id"],
             skill="recognition", item_id=due["item_id"], source="REVIEW", is_new=False,
             minutes=3, evidence_type="recognition_attempt", mastery_impact="SCORED_DOMAIN_EVIDENCE",
             data={"prompt": "聽完今天的問候語，選出剛才出現的字。", "audioText": due["character"], "choices": choices, "dueAt": due["due_at"]},
@@ -583,6 +583,19 @@ def reconcile_learning_session_reviews(*, child_id: int, session_id: str, as_of:
 
         flow_id = session["id"]
         lesson_id = session["lesson_id"]
+
+        if session["status"] == "PAUSED":
+            resumed_at = now()
+            db.execute(
+                "UPDATE learning_flow_tasks SET state='PENDING',deferred_reason=NULL WHERE session_id=? AND state='DEFERRED' AND deferred_reason IN ('FATIGUE','PARENT_LIMIT','SESSION_TARGET_REACHED','USER_EXIT','STOP_SESSION_TARGET_REACHED','STOP_USER_EXIT','STOP_FATIGUE','STOP_PARENT_LIMIT','STOP_REPEATED_FAILURES','STOP_SPEAKING_ABORTS')",
+                (flow_id,),
+            )
+            db.execute(
+                "UPDATE learning_flow_sessions SET status='IN_PROGRESS',last_resumed_at=?,termination_reason=NULL WHERE id=? AND child_id=?",
+                (resumed_at, flow_id, child_id),
+            )
+            _log(db, flow_id, child_id, "session_resumed", None, None, {"completedTaskCount": _completed_task_count(db, flow_id)}, resumed_at)
+
         lesson, _ = _lesson_for_child(db, child_id, lesson_id)
         chars = _characters(lesson)
 
@@ -599,7 +612,10 @@ def reconcile_learning_session_reviews(*, child_id: int, session_id: str, as_of:
         existing_review_count = sum(1 for row in existing_tasks if row["source_queue"] == "REVIEW")
         max_position = max((row["position"] for row in existing_tasks), default=-1)
 
-        due_items = _due_recognition(db, child_id, as_of_text)
+        due_items = [
+            due for due in _due_recognition(db, child_id, as_of_text)
+            if due["lesson_id"] == lesson_id
+        ]
 
         new_tasks_count = 0
         for due in due_items:
@@ -613,7 +629,7 @@ def reconcile_learning_session_reviews(*, child_id: int, session_id: str, as_of:
             task = _task(
                 review_key,
                 "REVIEW_RECOGNITION",
-                lesson_id,
+                due["lesson_id"],
                 skill="recognition",
                 item_id=due["item_id"],
                 source="REVIEW",

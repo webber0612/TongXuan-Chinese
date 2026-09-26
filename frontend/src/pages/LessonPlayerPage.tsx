@@ -1343,19 +1343,21 @@ export function LessonPlayerPage({
     }
 
     // 5. Speaking step: ensure speaking attempts are completed
-    if (currentStep.stepKey === "speaking" && activeChildId) {
+    if (currentStep.stepKey === "speaking") {
       const sessAfterSpeaking = sessionRef.current;
-      if (!sessAfterSpeaking || !sessAfterSpeaking.id || !sessAfterSpeaking.tasks) {
+      const speakingTasks = (sessAfterSpeaking?.tasks ?? []).filter(
+        (t) => t.taskType === "SPEAKING_ATTEMPT" || t.taskType === "PRONUNCIATION_ATTEMPT" || t.key === "speaking" || t.key === "pronunciation"
+      );
+      const allCompleted = speakingTasks.length > 0 && speakingTasks.every((t) => t.state === "COMPLETED" || t.state === "DEFERRED");
+      if (!allCompleted) {
         setError(text.taskFailed);
         return;
       }
-      const pendingSpeaking = (sessAfterSpeaking.tasks ?? []).filter(
-        (t) => (t.taskType === "SPEAKING_ATTEMPT" || t.taskType === "PRONUNCIATION_ATTEMPT" || t.key === "speaking" || t.key === "pronunciation") &&
-               t.state !== "COMPLETED" && t.state !== "DEFERRED"
-      );
-      if (pendingSpeaking.length > 0) {
-        setError(text.taskFailed);
-        return;
+      if (activeChildId) {
+        if (!sessAfterSpeaking || !sessAfterSpeaking.id || !sessAfterSpeaking.tasks) {
+          setError(text.taskFailed);
+          return;
+        }
       }
     }
 
@@ -1430,22 +1432,79 @@ export function LessonPlayerPage({
     }
   };
 
+  const cleanupAndAbortSpeakingAttempts = async (ids: { speaking?: string; pronunciation?: string }) => {
+    const currentSess = sessionRef.current;
+    if (activeChildId) {
+      if (ids.speaking) {
+        await api(`/api/reading-aloud/attempts/${ids.speaking}/abort?child_id=${activeChildId}`, {
+          method: "POST",
+          body: "{}",
+        }).catch(() => undefined);
+        const speakingTask = currentSess?.tasks?.find(
+          (t) => t.taskType === "SPEAKING_ATTEMPT" || t.key === "speaking"
+        );
+        if (currentSess?.id && speakingTask?.id) {
+          const updated = await api<typeof session>(
+            `/api/children/${activeChildId}/learning-sessions/${currentSess.id}/tasks/${speakingTask.id}/abort`,
+            {
+              method: "POST",
+              body: JSON.stringify({ evidence_ref: ids.speaking }),
+            }
+          ).catch(() => undefined);
+          if (updated && updated.tasks) {
+            sessionRef.current = updated;
+            setSession(updated);
+          }
+        }
+      }
+      if (ids.pronunciation) {
+        await api(`/api/reading-aloud/attempts/${ids.pronunciation}/abort?child_id=${activeChildId}`, {
+          method: "POST",
+          body: "{}",
+        }).catch(() => undefined);
+        const pronTask = currentSess?.tasks?.find(
+          (t) => t.taskType === "PRONUNCIATION_ATTEMPT" || t.key === "pronunciation"
+        );
+        if (currentSess?.id && pronTask?.id) {
+          const updated = await api<typeof session>(
+            `/api/children/${activeChildId}/learning-sessions/${currentSess.id}/tasks/${pronTask.id}/abort`,
+            {
+              method: "POST",
+              body: JSON.stringify({ evidence_ref: ids.pronunciation }),
+            }
+          ).catch(() => undefined);
+          if (updated && updated.tasks) {
+            sessionRef.current = updated;
+            setSession(updated);
+          }
+        }
+      }
+    }
+    recorder.delete();
+    activeSpeakingAttemptIdsRef.current = {};
+    setActiveSpeakingAttemptIds({});
+  };
+
   const handleRecordSpeaking = async () => {
     if (recording) {
+      setError(null);
+      const ids = { ...activeSpeakingAttemptIdsRef.current };
       try {
         await recorder.stop();
         if (activeChildId) {
-          const ids = activeSpeakingAttemptIdsRef.current;
           // Complete speaking attempt and attach evidence
           if (ids.speaking) {
             await api(`/api/reading-aloud/attempts/${ids.speaking}/complete?child_id=${activeChildId}`, {
               method: "POST",
               body: JSON.stringify({ duration_ms: 2000 }),
             });
-            await submitBackendTaskEvidence(
+            const res = await submitBackendTaskEvidence(
               (t) => t.taskType === "SPEAKING_ATTEMPT" || t.key === "speaking",
               ids.speaking
             );
+            if (!res.persisted || (res.taskState !== "COMPLETED" && res.taskState !== "DEFERRED")) {
+              throw new Error(text.taskFailed);
+            }
           }
           // Complete pronunciation attempt and attach evidence
           if (ids.pronunciation) {
@@ -1453,21 +1512,29 @@ export function LessonPlayerPage({
               method: "POST",
               body: JSON.stringify({ duration_ms: 2000 }),
             });
-            await submitBackendTaskEvidence(
+            const res = await submitBackendTaskEvidence(
               (t) => t.taskType === "PRONUNCIATION_ATTEMPT" || t.key === "pronunciation",
               ids.pronunciation
             );
+            if (!res.persisted || (res.taskState !== "COMPLETED" && res.taskState !== "DEFERRED")) {
+              throw new Error(text.taskFailed);
+            }
           }
           recorder.delete();
           activeSpeakingAttemptIdsRef.current = {};
           setActiveSpeakingAttemptIds({});
         }
+        setRecording(false);
+        setSpeakingAttempted(true);
       } catch (err: any) {
+        setRecording(false);
+        setSpeakingAttempted(false);
         setError(err?.message || text.taskFailed);
+        await cleanupAndAbortSpeakingAttempts(ids);
       }
-      setRecording(false);
-      setSpeakingAttempted(true);
     } else {
+      setError(null);
+      const ids: { speaking?: string; pronunciation?: string } = {};
       try {
         const currentSess = sessionRef.current;
         if (activeChildId && currentSess?.tasks) {
@@ -1477,7 +1544,6 @@ export function LessonPlayerPage({
           const pronTask = currentSess.tasks.find(
             (t) => (t.taskType === "PRONUNCIATION_ATTEMPT" || t.key === "pronunciation") && t.state !== "COMPLETED"
           );
-          const ids: { speaking?: string; pronunciation?: string } = {};
 
           if (speakingTask && speakingTask.itemId) {
             const attempt = await api<{ id: string }>(`/api/reading-aloud/attempts/start?child_id=${activeChildId}`, {
@@ -1515,8 +1581,10 @@ export function LessonPlayerPage({
         await recorder.start();
         setRecording(true);
       } catch (err: any) {
+        setRecording(false);
+        setSpeakingAttempted(false);
         setError(err?.message || text.taskFailed);
-        setSpeakingAttempted(true);
+        await cleanupAndAbortSpeakingAttempts(ids);
       }
     }
   };

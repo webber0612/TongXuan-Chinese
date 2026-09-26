@@ -4225,6 +4225,240 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     container.remove();
     vi.unstubAllGlobals();
   });
+
+  it("73. Speaking failure regression A: recorder.start() throws -> backend attempt aborted/cleaned -> speakingAttempted=false -> task incomplete -> Next blocked", async () => {
+    const tasksState = [
+      { id: "s-sp-a:listen", key: "listen", taskType: "LISTENING", state: "COMPLETED", itemId: "p-1" },
+      { id: "s-sp-a:vocab", key: "vocabulary", taskType: "VOCABULARY", state: "COMPLETED", itemId: "v-1" },
+      { id: "s-sp-a:recog-1", key: "recognition-1", taskType: "RECOGNITION", state: "COMPLETED", itemId: "你" },
+      { id: "s-sp-a:recog-2", key: "recognition-2", taskType: "RECOGNITION", state: "COMPLETED", itemId: "好" },
+      { id: "s-sp-a:sent", key: "sentence-pattern", taskType: "SENTENCE_PATTERN", state: "COMPLETED", itemId: "s-1" },
+      { id: "s-sp-a:speaking", key: "speaking", taskType: "SPEAKING_ATTEMPT", state: "PENDING", required: false, itemId: "phrase-hello" },
+      { id: "s-sp-a:pron", key: "pronunciation", taskType: "PRONUNCIATION_ATTEMPT", state: "PENDING", required: false, itemId: "phrase-hello" },
+      { id: "s-sp-a:writing", key: "writing", taskType: "WRITING_GUIDED", state: "PENDING", required: false, itemId: "char-1" },
+    ];
+
+    let createdAttemptId: string | null = null;
+    let abortAttemptCalled = false;
+    let abortTaskCalled = false;
+
+    // MediaDevices throws permission denied
+    const getUserMedia = vi.fn().mockRejectedValue(new Error("microphone_permission_denied"));
+    vi.stubGlobal("navigator", { ...navigator, mediaDevices: { getUserMedia } });
+
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes("/learning-sessions/current")) {
+        return new Response(JSON.stringify({
+          id: "s-sp-a",
+          status: "IN_PROGRESS",
+          curriculumContext: { lessonId: "book1-l01" },
+          tasks: tasksState,
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/reading-aloud/attempts/start")) {
+        createdAttemptId = "aloud-err-1";
+        return new Response(JSON.stringify({ id: createdAttemptId, status: "STARTED" }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/reading-aloud/attempts/aloud-err-1/abort")) {
+        abortAttemptCalled = true;
+        return new Response(JSON.stringify({ id: "aloud-err-1", status: "ABORTED" }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/tasks/s-sp-a:speaking/abort") || url.includes("/tasks/s-sp-a:pron/abort")) {
+        abortTaskCalled = true;
+        return new Response(JSON.stringify({
+          id: "s-sp-a",
+          status: "IN_PROGRESS",
+          curriculumContext: { lessonId: "book1-l01" },
+          tasks: tasksState,
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} initialMode="LEARN" />);
+    });
+
+    const nextBtn = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
+    // Step 1 -> 2
+    await act(async () => { nextBtn.click(); });
+    // Step 2 -> 3
+    await act(async () => { nextBtn.click(); });
+    // Step 3 (Vocab) -> advance
+    const vocabChoices = container.querySelectorAll(".choice-card-btn");
+    await act(async () => { (vocabChoices[0] as HTMLButtonElement)?.click(); });
+    await act(async () => { nextBtn.click(); });
+    // Step 4 (Chars) -> advance
+    const charChoices1 = container.querySelectorAll(".char-choice-card");
+    await act(async () => { (charChoices1[0] as HTMLButtonElement)?.click(); });
+    await act(async () => { nextBtn.click(); });
+    const charChoices2 = container.querySelectorAll(".char-choice-card");
+    await act(async () => { (charChoices2[1] as HTMLButtonElement)?.click(); });
+    await act(async () => { nextBtn.click(); });
+    // Step 5 (Sentence Pattern) -> advance
+    const sentChoices = container.querySelectorAll(".choice-card-btn");
+    await act(async () => { (sentChoices[0] as HTMLButtonElement)?.click(); });
+    await act(async () => { nextBtn.click(); });
+
+    // Step 6: Speaking step
+    expect(container.querySelector(".step-speaking-body")).toBeTruthy();
+    const recordBtn = container.querySelector(".mic-record-btn") as HTMLButtonElement;
+    expect(recordBtn).toBeTruthy();
+
+    // Click Record button -> start attempt -> recorder.start() throws
+    await act(async () => { recordBtn.click(); });
+
+    // 1. Verify backend attempt was created
+    expect(createdAttemptId).toBe("aloud-err-1");
+    // 2. Verify backend attempt was aborted/cleaned
+    expect(abortAttemptCalled).toBe(true);
+    // 3. Verify speakingAttempted is false (UI does not show saved)
+    const statusLabel = container.querySelector(".recording-status-label");
+    expect(statusLabel?.textContent).toContain("Hold to record speaking");
+    expect(statusLabel?.textContent).not.toContain("Speaking practice recorded");
+    expect(recordBtn.getAttribute("aria-label")).toBe("Hold to record speaking");
+    expect(recordBtn.classList.contains("is-attempted")).toBe(false);
+    // 4. Verify authoritative tasks remain incomplete (PENDING)
+    const speakingTask = tasksState.find((t) => t.id === "s-sp-a:speaking");
+    expect(speakingTask?.state).toBe("PENDING");
+    // 5. Next button must be blocked
+    await act(async () => { nextBtn.click(); });
+    expect(container.querySelector(".step-speaking-body")).toBeTruthy();
+    expect(container.querySelector(".step-writing-body")).toBeNull();
+    expect(container.querySelector(".error-strip")).toBeTruthy();
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
+
+  it("74. Speaking failure regression B: recorder.stop() succeeds -> evidence POST fails -> speakingAttempted=false -> task incomplete -> UI error -> Next blocked", async () => {
+    const tasksState = [
+      { id: "s-sp-b:listen", key: "listen", taskType: "LISTENING", state: "COMPLETED", itemId: "p-1" },
+      { id: "s-sp-b:vocab", key: "vocabulary", taskType: "VOCABULARY", state: "COMPLETED", itemId: "v-1" },
+      { id: "s-sp-b:recog-1", key: "recognition-1", taskType: "RECOGNITION", state: "COMPLETED", itemId: "你" },
+      { id: "s-sp-b:recog-2", key: "recognition-2", taskType: "RECOGNITION", state: "COMPLETED", itemId: "好" },
+      { id: "s-sp-b:sent", key: "sentence-pattern", taskType: "SENTENCE_PATTERN", state: "COMPLETED", itemId: "s-1" },
+      { id: "s-sp-b:speaking", key: "speaking", taskType: "SPEAKING_ATTEMPT", state: "PENDING", required: false, itemId: "phrase-hello" },
+      { id: "s-sp-b:pron", key: "pronunciation", taskType: "PRONUNCIATION_ATTEMPT", state: "PENDING", required: false, itemId: "phrase-hello" },
+      { id: "s-sp-b:writing", key: "writing", taskType: "WRITING_GUIDED", state: "PENDING", required: false, itemId: "char-1" },
+    ];
+
+    const track = { stop: vi.fn() };
+    const stream = { getTracks: () => [track] };
+    class MockMediaRecorder {
+      state = "inactive";
+      mimeType = "audio/webm";
+      ondataavailable = (_event: { data: Blob }) => {};
+      onstop = () => {};
+      onerror = () => {};
+      constructor(public stream: unknown) {}
+      start() { this.state = "recording"; }
+      stop() { this.state = "inactive"; this.ondataavailable({ data: new Blob(["audio"]) }); this.onstop(); }
+    }
+    const getUserMedia = vi.fn().mockResolvedValue(stream);
+    vi.stubGlobal("navigator", { ...navigator, mediaDevices: { getUserMedia } });
+    vi.stubGlobal("MediaRecorder", MockMediaRecorder);
+
+    let createdAttemptId: string | null = null;
+    let completeCalled = false;
+
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes("/learning-sessions/current")) {
+        return new Response(JSON.stringify({
+          id: "s-sp-b",
+          status: "IN_PROGRESS",
+          curriculumContext: { lessonId: "book1-l01" },
+          tasks: tasksState,
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/reading-aloud/attempts/start")) {
+        createdAttemptId = "aloud-ok-1";
+        return new Response(JSON.stringify({ id: createdAttemptId, status: "STARTED" }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/reading-aloud/attempts/aloud-ok-1/complete")) {
+        completeCalled = true;
+        return new Response(JSON.stringify({ id: "aloud-ok-1", status: "COMPLETED" }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/tasks/s-sp-b:speaking/evidence")) {
+        // Evidence POST fails with 500 error
+        return new Response(JSON.stringify({ error: "evidence_persistence_failed" }), { status: 500, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/reading-aloud/attempts/aloud-ok-1/abort")) {
+        return new Response(JSON.stringify({ id: "aloud-ok-1", status: "ABORTED" }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} initialMode="LEARN" />);
+    });
+
+    const nextBtn = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
+    // Step 1 -> 2
+    await act(async () => { nextBtn.click(); });
+    // Step 2 -> 3
+    await act(async () => { nextBtn.click(); });
+    // Step 3 (Vocab) -> advance
+    const vocabChoices = container.querySelectorAll(".choice-card-btn");
+    await act(async () => { (vocabChoices[0] as HTMLButtonElement)?.click(); });
+    await act(async () => { nextBtn.click(); });
+    // Step 4 (Chars) -> advance
+    const charChoices1 = container.querySelectorAll(".char-choice-card");
+    await act(async () => { (charChoices1[0] as HTMLButtonElement)?.click(); });
+    await act(async () => { nextBtn.click(); });
+    const charChoices2 = container.querySelectorAll(".char-choice-card");
+    await act(async () => { (charChoices2[1] as HTMLButtonElement)?.click(); });
+    await act(async () => { nextBtn.click(); });
+    // Step 5 (Sentence Pattern) -> advance
+    const sentChoices = container.querySelectorAll(".choice-card-btn");
+    await act(async () => { (sentChoices[0] as HTMLButtonElement)?.click(); });
+    await act(async () => { nextBtn.click(); });
+
+    // Step 6: Speaking step
+    expect(container.querySelector(".step-speaking-body")).toBeTruthy();
+    const recordBtn = container.querySelector(".mic-record-btn") as HTMLButtonElement;
+    expect(recordBtn).toBeTruthy();
+
+    // 1. Click Record button -> start recording
+    await act(async () => { recordBtn.click(); });
+    expect(createdAttemptId).toBe("aloud-ok-1");
+
+    // 2. Click Record button again -> stop recording -> evidence POST fails
+    await act(async () => { recordBtn.click(); });
+    expect(completeCalled).toBe(true);
+
+    // 3. Verify speakingAttempted is false
+    const statusLabel = container.querySelector(".recording-status-label");
+    expect(statusLabel?.textContent).toContain("Hold to record speaking");
+    expect(statusLabel?.textContent).not.toContain("Speaking practice recorded");
+    expect(recordBtn.getAttribute("aria-label")).toBe("Hold to record speaking");
+    expect(recordBtn.classList.contains("is-attempted")).toBe(false);
+
+    // 4. Verify UI displays error
+    expect(container.querySelector(".error-strip")).toBeTruthy();
+
+    // 5. Verify authoritative tasks remain incomplete (PENDING)
+    const speakingTask = tasksState.find((t) => t.id === "s-sp-b:speaking");
+    expect(speakingTask?.state).toBe("PENDING");
+
+    // 6. Next button must be blocked
+    await act(async () => { nextBtn.click(); });
+    expect(container.querySelector(".step-speaking-body")).toBeTruthy();
+    expect(container.querySelector(".step-writing-body")).toBeNull();
+
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
 });
 
 

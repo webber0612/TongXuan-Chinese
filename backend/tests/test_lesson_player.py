@@ -654,4 +654,180 @@ def test_review_authoritative_reconciliation_integration(tmp_path):
         assert second_review_tasks[0]["id"] == review_task["id"]
 
 
+def test_review_paused_session_reconciliation_and_answer(tmp_path):
+    from app.auth import issue_session
+    from app.database import connect
+    with make_client(tmp_path) as client:
+        # Setup child and placement
+        child_resp = client.post("/api/children", json={"name": "小安"})
+        assert child_resp.status_code == 200
+        child_id = child_resp.json()["id"]
+
+        parent_token = issue_session(subject="parent", role="parent", child_ids=[child_id])
+        parent_headers = {"Authorization": f"Bearer {parent_token}"}
+        client.put(
+            f"/api/children/{child_id}/placement-profile",
+            headers=parent_headers,
+            json={"domain_levels": {"listening": "BOOK_1", "recognition": "BOOK_1", "speaking": "BOOK_1", "writing": "STARTER"}},
+        )
+
+        # 1. 建立 active session
+        start_resp = client.post(
+            f"/api/children/{child_id}/learning-sessions",
+            json={"target_minutes": 18, "lesson_id": "book1-l01", "as_of": "2026-09-01T00:00:00Z"},
+        )
+        assert start_resp.status_code == 200
+        session_id = start_resp.json()["id"]
+
+        # 2. 注入 due SRS review item
+        with connect() as db:
+            db.execute(
+                "INSERT INTO learning_items(id,child_id,character,curriculum_source,provenance_status,created_at) "
+                "VALUES('item-ni',?,'你','OFFICIAL_OCAC','VERIFIED_OFFICIAL_TITLE','2026-09-01T00:00:00Z')",
+                (child_id,),
+            )
+            db.execute(
+                "INSERT INTO curriculum_item_links(child_id,skill_domain,item_id,lesson_id) "
+                "VALUES(?,'recognition','item-ni','book1-l01')",
+                (child_id,),
+            )
+            db.execute(
+                "INSERT INTO srs_review_states(child_id,skill_domain,item_id,stage,due_at,last_result,last_assisted,updated_at) "
+                "VALUES(?,'recognition','item-ni',1,'2026-09-02T00:00:00Z','correct',0,'2026-09-01T00:00:00Z')",
+                (child_id,),
+            )
+
+        as_of_eval = "2026-09-05T00:00:00Z"
+
+        # 3. 將 session 設為 PAUSED (模擬中斷/暫停)
+        with connect() as db:
+            db.execute(
+                "UPDATE learning_flow_sessions SET status='PAUSED', termination_reason='FATIGUE' WHERE id=?",
+                (session_id,),
+            )
+
+        # 驗證 before session.status == PAUSED
+        before_resp = client.get(f"/api/children/{child_id}/learning-sessions/{session_id}")
+        assert before_resp.status_code == 200
+        assert before_resp.json()["status"] == "PAUSED"
+
+        # 4. 執行 reconcile
+        reconcile_resp = client.post(
+            f"/api/children/{child_id}/learning-sessions/{session_id}/reconcile-reviews?as_of={as_of_eval}"
+        )
+        assert reconcile_resp.status_code == 200
+        reconciled_session = reconcile_resp.json()
+
+        # 5. 驗證 after session.status == IN_PROGRESS (authoritative resume)
+        assert reconciled_session["status"] == "IN_PROGRESS"
+
+        # 6. 驗證 REVIEW task state 為 PENDING 且為 backend-issued ID
+        review_tasks = [t for t in reconciled_session["tasks"] if t["sourceQueue"] == "REVIEW"]
+        assert len(review_tasks) == 1
+        review_task = review_tasks[0]
+        assert review_task["state"] == "PENDING"
+        assert review_task["itemId"] == "item-ni"
+        assert review_task["id"] == f"{session_id}:review-recognition-1"
+
+        # 7. 對 exact REVIEW task 作答，必須成功 answer (HTTP 200)
+        answer_resp = client.post(
+            f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{review_task['id']}/answer",
+            json={"selected_option_id": "option-2"},
+        )
+        assert answer_resp.status_code == 200
+        answered_session = answer_resp.json()
+        answered_task = next(t for t in answered_session["tasks"] if t["id"] == review_task["id"])
+        assert answered_task["state"] == "COMPLETED"
+
+        # 8. 驗證 SRS row 更新
+        with connect() as db:
+            srs_row = db.execute(
+                "SELECT * FROM srs_review_states WHERE child_id=? AND skill_domain='recognition' AND item_id='item-ni'",
+                (child_id,),
+            ).fetchone()
+            assert srs_row["last_result"] == "correct"
+            assert srs_row["stage"] == 2
+
+
+def test_review_cross_lesson_items_filtered(tmp_path):
+    from app.auth import issue_session
+    from app.database import connect
+    with make_client(tmp_path) as client:
+        # Setup child and placement
+        child_resp = client.post("/api/children", json={"name": "小安"})
+        assert child_resp.status_code == 200
+        child_id = child_resp.json()["id"]
+
+        parent_token = issue_session(subject="parent", role="parent", child_ids=[child_id])
+        parent_headers = {"Authorization": f"Bearer {parent_token}"}
+        client.put(
+            f"/api/children/{child_id}/placement-profile",
+            headers=parent_headers,
+            json={"domain_levels": {"listening": "BOOK_1", "recognition": "BOOK_1", "speaking": "BOOK_1", "writing": "STARTER"}},
+        )
+
+        # 1. 建立 active session for book1-l01 (as of 2026-09-01)
+        start_resp = client.post(
+            f"/api/children/{child_id}/learning-sessions",
+            json={"target_minutes": 18, "lesson_id": "book1-l01", "as_of": "2026-09-01T00:00:00Z"},
+        )
+        assert start_resp.status_code == 200
+        session_id = start_resp.json()["id"]
+
+        # 2. 插入兩個 due items：
+        #    due item A: lesson_id = book1-l01 (item-a, '你')
+        #    due item B: lesson_id = starter-l01 (item-b, '字')
+        with connect() as db:
+            db.execute(
+                "INSERT INTO learning_items(id,child_id,character,curriculum_source,provenance_status,created_at) "
+                "VALUES('item-a',?,'你','OFFICIAL_OCAC','VERIFIED_OFFICIAL_TITLE','2026-09-01T00:00:00Z'),"
+                "('item-b',?,'字','OFFICIAL_OCAC','VERIFIED_OFFICIAL_TITLE','2026-09-01T00:00:00Z')",
+                (child_id, child_id),
+            )
+            db.execute(
+                "INSERT INTO curriculum_item_links(child_id,skill_domain,item_id,lesson_id) "
+                "VALUES(?,'recognition','item-a','book1-l01'),(?,'recognition','item-b','starter-l01')",
+                (child_id, child_id),
+            )
+            db.execute(
+                "INSERT INTO srs_review_states(child_id,skill_domain,item_id,stage,due_at,last_result,last_assisted,updated_at) "
+                "VALUES(?,'recognition','item-a',1,'2026-09-02T00:00:00Z','correct',0,'2026-09-01T00:00:00Z'),"
+                "(?,'recognition','item-b',1,'2026-09-02T00:00:00Z','correct',0,'2026-09-01T00:00:00Z')",
+                (child_id, child_id),
+            )
+
+        as_of_eval = "2026-09-05T00:00:00Z"
+
+        # 3. Daily Queue 必須確認兩者皆 due
+        dq_resp = client.get(f"/api/children/{child_id}/learning-daily-queue?as_of={as_of_eval}")
+        assert dq_resp.status_code == 200
+        dq_items = dq_resp.json()["review"]["items"]
+        assert len(dq_items) == 2
+        assert any(it["id"] == "item-a" and it["lessonId"] == "book1-l01" for it in dq_items)
+        assert any(it["id"] == "item-b" and it["lessonId"] == "starter-l01" for it in dq_items)
+
+        # 4. 執行 reconcile on active session (book1-l01)
+        reconcile_resp = client.post(
+            f"/api/children/{child_id}/learning-sessions/{session_id}/reconcile-reviews?as_of={as_of_eval}"
+        )
+        assert reconcile_resp.status_code == 200
+        reconciled = reconcile_resp.json()
+
+        # 5. 驗證：
+        #    - 只新增 A (item-a)
+        #    - B 不得新增
+        #    - B 不得被 relabel 成 book1-l01
+        review_tasks = [t for t in reconciled["tasks"] if t["sourceQueue"] == "REVIEW"]
+        assert len(review_tasks) == 1
+        assert review_tasks[0]["itemId"] == "item-a"
+        assert review_tasks[0]["lessonId"] == "book1-l01"
+
+        # 確認 session 中沒有任何 task 的 itemId 是 item-b
+        assert not any(t["itemId"] == "item-b" for t in reconciled["tasks"])
+
+        # 6. Daily Queue 仍保留 B
+        dq_after = client.get(f"/api/children/{child_id}/learning-daily-queue?as_of={as_of_eval}").json()
+        assert any(it["id"] == "item-b" and it["lessonId"] == "starter-l01" for it in dq_after["review"]["items"])
+
+
 
