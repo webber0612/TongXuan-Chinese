@@ -512,21 +512,26 @@ export function LessonPlayerPage({
     void initSession();
   }, [initSession]);
 
-  // Backend task progression helpers with strict error surfacing
+  // Backend task progression helpers with strict error surfacing and authoritative task state return
   const submitBackendTaskAnswer = async (
     matcher: (t: { id: string; key: string; taskType: string; state: string; itemId?: string; taskData?: any }) => boolean,
     selectedOptionId?: string,
     answers?: Record<string, string>,
     assisted = false
-  ): Promise<boolean> => {
+  ): Promise<string | null> => {
     const currentSess = sessionRef.current;
-    if (!activeChildId || !currentSess?.id || !currentSess.tasks) return true;
-    const matchingTask = currentSess.tasks.find((t) => matcher(t) && t.state !== "COMPLETED" && t.state !== "DEFERRED");
-    if (!matchingTask) return true;
+    if (!activeChildId || !currentSess?.id || !currentSess.tasks) return "COMPLETED";
+    const matchingTask = currentSess.tasks.find((t) => matcher(t));
+    if (!matchingTask) return "COMPLETED";
+    if (matchingTask.state === "COMPLETED" || matchingTask.state === "DEFERRED") {
+      return matchingTask.state;
+    }
     const answersKey = JSON.stringify(answers ?? {});
     const recorded = submittedAnswersRef.current[matchingTask.id];
     if (recorded && recorded.optionId === (selectedOptionId || null) && recorded.answersKey === answersKey) {
-      return true; // Already submitted with this exact answer
+      // Re-query latest authoritative state from sessionRef.current
+      const latestTask = sessionRef.current?.tasks?.find((t) => t.id === matchingTask.id);
+      return latestTask?.state ?? matchingTask.state;
     }
     try {
       setError(null);
@@ -549,24 +554,30 @@ export function LessonPlayerPage({
         };
         setSession(updated);
         if (updated.masteryStatus) setMasteryStatus(updated.masteryStatus);
+        const postTask = updated.tasks?.find((t) => t.id === matchingTask.id);
+        return postTask?.state ?? null;
       }
-      return true;
+      return null;
     } catch (err: any) {
       setError(err?.message || text.taskFailed);
-      return false;
+      return null;
     }
   };
 
   const submitBackendTaskEvidence = async (
     matcher: (t: { id: string; key: string; taskType: string; state: string; itemId?: string; taskData?: any }) => boolean,
     evidenceRef: string
-  ): Promise<boolean> => {
+  ): Promise<string | null> => {
     const currentSess = sessionRef.current;
-    if (!activeChildId || !currentSess?.id || !currentSess.tasks) return true;
-    const matchingTask = currentSess.tasks.find((t) => matcher(t) && t.state !== "COMPLETED" && t.state !== "DEFERRED");
-    if (!matchingTask) return true;
+    if (!activeChildId || !currentSess?.id || !currentSess.tasks) return "COMPLETED";
+    const matchingTask = currentSess.tasks.find((t) => matcher(t));
+    if (!matchingTask) return "COMPLETED";
+    if (matchingTask.state === "COMPLETED" || matchingTask.state === "DEFERRED") {
+      return matchingTask.state;
+    }
     if (submittedEvidenceRef.current[matchingTask.id] === evidenceRef) {
-      return true;
+      const latestTask = sessionRef.current?.tasks?.find((t) => t.id === matchingTask.id);
+      return latestTask?.state ?? matchingTask.state;
     }
     try {
       setError(null);
@@ -584,23 +595,29 @@ export function LessonPlayerPage({
         submittedEvidenceRef.current[matchingTask.id] = evidenceRef;
         setSession(updated);
         if (updated.masteryStatus) setMasteryStatus(updated.masteryStatus);
+        const postTask = updated.tasks?.find((t) => t.id === matchingTask.id);
+        return postTask?.state ?? null;
       }
-      return true;
+      return null;
     } catch (err: any) {
       setError(err?.message || text.taskFailed);
-      return false;
+      return null;
     }
   };
 
   const skipBackendTask = async (
     matcher: (t: { id: string; key: string; taskType: string; state: string; itemId?: string; taskData?: any }) => boolean
-  ): Promise<boolean> => {
+  ): Promise<string | null> => {
     const currentSess = sessionRef.current;
-    if (!activeChildId || !currentSess?.id || !currentSess.tasks) return true;
-    const matchingTask = currentSess.tasks.find((t) => matcher(t) && t.state !== "COMPLETED" && t.state !== "DEFERRED");
-    if (!matchingTask) return true;
+    if (!activeChildId || !currentSess?.id || !currentSess.tasks) return "COMPLETED";
+    const matchingTask = currentSess.tasks.find((t) => matcher(t));
+    if (!matchingTask) return "COMPLETED";
+    if (matchingTask.state === "COMPLETED" || matchingTask.state === "DEFERRED") {
+      return matchingTask.state;
+    }
     if (submittedSkipsRef.current[matchingTask.id]) {
-      return true;
+      const latestTask = sessionRef.current?.tasks?.find((t) => t.id === matchingTask.id);
+      return latestTask?.state ?? matchingTask.state;
     }
     try {
       setError(null);
@@ -615,11 +632,13 @@ export function LessonPlayerPage({
         submittedSkipsRef.current[matchingTask.id] = true;
         setSession(updated);
         if (updated.masteryStatus) setMasteryStatus(updated.masteryStatus);
+        const postTask = updated.tasks?.find((t) => t.id === matchingTask.id);
+        return postTask?.state ?? null;
       }
-      return true;
+      return null;
     } catch (err: any) {
       setError(err?.message || text.taskFailed);
-      return false;
+      return null;
     }
   };
 
@@ -648,8 +667,9 @@ export function LessonPlayerPage({
   // Listening attempt starter & evidence attacher
   const handlePlayListeningAudio = async (textToPlay: string): Promise<boolean> => {
     playAudio(textToPlay);
-    if (!activeChildId || !session?.id || !session.tasks) return true;
-    const listenTask = session.tasks.find(
+    const currentSess = sessionRef.current;
+    if (!activeChildId || !currentSess?.id || !currentSess.tasks) return true;
+    const listenTask = currentSess.tasks.find(
       (t) => (t.taskType === "LISTENING" || t.key === "listen") && t.state !== "COMPLETED" && t.state !== "DEFERRED"
     );
     if (listenTask && listenTask.itemId) {
@@ -670,11 +690,11 @@ export function LessonPlayerPage({
             }
           );
           if (completeRes?.status === "COMPLETED") {
-            const ok = await submitBackendTaskEvidence(
+            const state = await submitBackendTaskEvidence(
               (t) => t.id === listenTask.id || t.taskType === "LISTENING" || t.key === "listen",
               startRes.id
             );
-            return ok;
+            return state === "COMPLETED" || state === "DEFERRED";
           }
         }
         return false;
@@ -790,15 +810,22 @@ export function LessonPlayerPage({
     // 1. Context step: ensure listening task is completed
     if (currentStep.stepKey === "context" && activeChildId && currentSess?.tasks) {
       const listenTask = currentSess.tasks.find(
-        (t) => (t.taskType === "LISTENING" || t.key === "listen") && t.state !== "COMPLETED" && t.state !== "DEFERRED"
+        (t) => (t.taskType === "LISTENING" || t.key === "listen")
       );
       if (listenTask) {
-        const ok = await handlePlayListeningAudio(currentStep.data.audioText || "你好");
-        if (!ok) return;
+        if (listenTask.state !== "COMPLETED" && listenTask.state !== "DEFERRED") {
+          const ok = await handlePlayListeningAudio(currentStep.data.audioText || "你好");
+          if (!ok) return;
+        }
+        const postListenTask = sessionRef.current?.tasks?.find((t) => t.id === listenTask.id);
+        if (postListenTask && postListenTask.state !== "COMPLETED" && postListenTask.state !== "DEFERRED") {
+          setError(text.taskFailed);
+          return;
+        }
       }
     }
 
-    // 2. Vocabulary step: ensure vocabulary choice was made
+    // 2. Vocabulary step: ensure vocabulary choice was made and task is COMPLETED / DEFERRED
     if (currentStep.stepKey === "vocabulary") {
       const selected = selectedChoices["vocab"];
       if (!selected) {
@@ -808,53 +835,71 @@ export function LessonPlayerPage({
       const sessAfterVocab = sessionRef.current;
       if (activeChildId && sessAfterVocab?.tasks) {
         const vocabTask = sessAfterVocab.tasks.find(
-          (t) => (t.taskType === "VOCABULARY" || t.key === "vocabulary") && t.state !== "COMPLETED" && t.state !== "DEFERRED"
+          (t) => (t.taskType === "VOCABULARY" || t.key === "vocabulary")
         );
         if (vocabTask) {
-          const ok = await submitBackendTaskAnswer((t) => t.id === vocabTask.id, selected);
-          if (!ok) return;
+          if (vocabTask.state !== "COMPLETED" && vocabTask.state !== "DEFERRED") {
+            await submitBackendTaskAnswer((t) => t.id === vocabTask.id, selected);
+          }
+          const postVocabTask = sessionRef.current?.tasks?.find((t) => t.id === vocabTask.id);
+          if (postVocabTask && postVocabTask.state !== "COMPLETED" && postVocabTask.state !== "DEFERRED") {
+            setError(text.taskFailed);
+            return;
+          }
         }
       }
     }
 
-    // 3. Characters step: ensure all recognition tasks are completed
+    // 3. Characters step: ensure recognition tasks are completed authoritatively
     if (currentStep.stepKey === "characters") {
       const currentAnswer = selectedChoices[`recog-${activeCharIndex}`];
       if (!currentAnswer) {
         setError(text.pleaseAnswerQuestion);
         return;
       }
+
+      // Check current active character's task
+      const currentSessChar = sessionRef.current;
+      const charObj = pkg.characters[activeCharIndex];
+      const charTask = currentSessChar?.tasks?.find(
+        (t) => (t.taskType === "RECOGNITION" || t.taskType === "MINI_CHECK" || t.key.startsWith("recognition-")) &&
+               (t.key === `recognition-${activeCharIndex + 1}` || (charObj && t.itemId === charObj.char)) &&
+               t.key !== "mini-check-reflection"
+      );
+
+      if (charTask) {
+        if (charTask.state !== "COMPLETED" && charTask.state !== "DEFERRED") {
+          await submitBackendTaskAnswer((t) => t.id === charTask.id, currentAnswer);
+        }
+        const postCharTask = sessionRef.current?.tasks?.find((t) => t.id === charTask.id);
+        if (postCharTask && postCharTask.state !== "COMPLETED" && postCharTask.state !== "DEFERRED") {
+          setError(text.taskFailed);
+          return; // Remain on current character tab
+        }
+      }
+
+      // If there are more characters in this step, advance tab
       if (activeCharIndex < pkg.characters.length - 1) {
         setActiveCharIndex((prev) => prev + 1);
         setError(null);
         return;
       }
-      for (let i = 0; i < pkg.characters.length; i++) {
-        if (!selectedChoices[`recog-${i}`]) {
-          setError(text.pleaseAnswerQuestion);
-          return;
-        }
-      }
+
+      // If on the last character tab, ensure ALL recognition tasks are COMPLETED / DEFERRED before advancing step
       const sessAfterRecog = sessionRef.current;
       if (activeChildId && sessAfterRecog?.tasks) {
         const pendingRecog = sessAfterRecog.tasks.filter(
           (t) => (t.taskType === "RECOGNITION" || t.taskType === "MINI_CHECK" || t.key.startsWith("recognition-")) &&
                  t.state !== "COMPLETED" && t.state !== "DEFERRED" && t.key !== "mini-check-reflection"
         );
-        for (const t of pendingRecog) {
-          const idx = t.key === "recognition-1" ? 0 : 1;
-          const selected = selectedChoices[`recog-${idx}`];
-          if (!selected) {
-            setError(text.pleaseAnswerQuestion);
-            return;
-          }
-          const ok = await submitBackendTaskAnswer((task) => task.id === t.id, selected);
-          if (!ok) return;
+        if (pendingRecog.length > 0) {
+          setError(text.taskFailed);
+          return;
         }
       }
     }
 
-    // 4. Sentence Pattern step: ensure sentence-pattern choice was made
+    // 4. Sentence Pattern step: ensure sentence-pattern choice was made and task is COMPLETED / DEFERRED
     if (currentStep.stepKey === "sentence_pattern") {
       const selected = selectedChoices["sentence"];
       if (!selected) {
@@ -864,11 +909,17 @@ export function LessonPlayerPage({
       const sessAfterSent = sessionRef.current;
       if (activeChildId && sessAfterSent?.tasks) {
         const sentTask = sessAfterSent.tasks.find(
-          (t) => (t.taskType === "SENTENCE_PATTERN" || t.key === "sentence-pattern") && t.state !== "COMPLETED" && t.state !== "DEFERRED"
+          (t) => (t.taskType === "SENTENCE_PATTERN" || t.key === "sentence-pattern")
         );
         if (sentTask) {
-          const ok = await submitBackendTaskAnswer((t) => t.id === sentTask.id, selected);
-          if (!ok) return;
+          if (sentTask.state !== "COMPLETED" && sentTask.state !== "DEFERRED") {
+            await submitBackendTaskAnswer((t) => t.id === sentTask.id, selected);
+          }
+          const postSentTask = sessionRef.current?.tasks?.find((t) => t.id === sentTask.id);
+          if (postSentTask && postSentTask.state !== "COMPLETED" && postSentTask.state !== "DEFERRED") {
+            setError(text.taskFailed);
+            return;
+          }
         }
       }
     }
@@ -893,8 +944,12 @@ export function LessonPlayerPage({
         (t) => t.taskType.startsWith("WRITING_") && t.state !== "COMPLETED" && t.state !== "DEFERRED"
       );
       if (writingTask) {
-        const ok = await skipBackendTask((t) => t.id === writingTask.id);
-        if (!ok) return;
+        await skipBackendTask((t) => t.id === writingTask.id);
+        const postWritingTask = sessionRef.current?.tasks?.find((t) => t.id === writingTask.id);
+        if (postWritingTask && postWritingTask.state !== "COMPLETED" && postWritingTask.state !== "DEFERRED" && postWritingTask.state !== "SKIPPED") {
+          setError(text.taskFailed);
+          return;
+        }
       }
     }
 
@@ -906,8 +961,12 @@ export function LessonPlayerPage({
                t.state !== "COMPLETED" && t.state !== "DEFERRED"
       );
       if (refTask) {
-        const ok = await submitBackendTaskAnswer((t) => t.id === refTask.id, "practiced");
-        if (!ok) return;
+        await submitBackendTaskAnswer((t) => t.id === refTask.id, "practiced");
+        const postRefTask = sessionRef.current?.tasks?.find((t) => t.id === refTask.id);
+        if (postRefTask && postRefTask.state !== "COMPLETED" && postRefTask.state !== "DEFERRED") {
+          setError(text.taskFailed);
+          return;
+        }
       }
     }
 

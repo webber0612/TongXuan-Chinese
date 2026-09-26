@@ -464,3 +464,64 @@ def test_recognition_task_wrong_answer_attempt_counts(tmp_path):
             assert attempts[1]["result"] == "correct"
 
 
+def test_vocabulary_task_wrong_retry_correct_authoritative_trace(tmp_path):
+    from app.auth import issue_session
+    from app.database import connect
+    with make_client(tmp_path) as client:
+        child_resp = client.post("/api/children", json={"name": "小樂"})
+        assert child_resp.status_code == 200
+        child_id = child_resp.json()["id"]
+
+        parent_token = issue_session(subject="parent", role="parent", child_ids=[child_id])
+        parent_headers = {"Authorization": f"Bearer {parent_token}"}
+        client.put(
+            f"/api/children/{child_id}/placement-profile",
+            headers=parent_headers,
+            json={"domain_levels": {"recognition": "BASIC", "reading": "BASIC", "listening": "BASIC", "speaking": "BASIC", "writing": "STARTER"}},
+        )
+
+        start_resp = client.post(f"/api/children/{child_id}/learning-sessions", json={"target_minutes": 18, "lesson_id": "basic-l01"})
+        assert start_resp.status_code == 200
+        session_id = start_resp.json()["id"]
+        vocab_task = next(t for t in start_resp.json()["tasks"] if t["taskType"] == "VOCABULARY")
+        vocab_id = vocab_task["id"]
+
+        # 1. Attempt 1: wrong choice 'opt-eat' for vocabulary '你好'
+        resp1 = client.post(f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{vocab_id}/answer", json={"selected_option_id": "opt-eat"})
+        assert resp1.status_code == 200
+        t1 = next(t for t in resp1.json()["tasks"] if t["id"] == vocab_id)
+        assert t1["state"] == "IN_PROGRESS"
+        assert t1["attemptCount"] == 1
+        assert t1["failureCount"] == 1
+        assert t1.get("completedAt") is None
+
+        with connect() as db:
+            task_row = db.execute("SELECT state, attempt_count, failure_count, completed_at FROM learning_flow_tasks WHERE id=?", (vocab_id,)).fetchone()
+            assert task_row["state"] == "IN_PROGRESS"
+            assert task_row["attempt_count"] == 1
+            assert task_row["failure_count"] == 1
+            assert task_row["completed_at"] is None
+
+        # 2. Attempt 2: correct choice 'opt-hello' for vocabulary '你好'
+        resp2 = client.post(f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{vocab_id}/answer", json={"selected_option_id": "opt-hello"})
+        assert resp2.status_code == 200
+        t2 = next(t for t in resp2.json()["tasks"] if t["id"] == vocab_id)
+        assert t2["state"] == "COMPLETED"
+        assert t2["attemptCount"] == 2
+        assert t2["failureCount"] == 1
+        assert t2.get("completedAt") is not None
+
+        with connect() as db:
+            task_row = db.execute("SELECT state, attempt_count, failure_count, completed_at FROM learning_flow_tasks WHERE id=?", (vocab_id,)).fetchone()
+            assert task_row["state"] == "COMPLETED"
+            assert task_row["attempt_count"] == 2
+            assert task_row["failure_count"] == 1
+            assert task_row["completed_at"] is not None
+
+            attempts = db.execute("SELECT * FROM learning_flow_task_attempts WHERE task_id=? ORDER BY rowid", (vocab_id,)).fetchall()
+            assert len(attempts) == 2
+            assert attempts[0]["result"] == "incorrect"
+            assert attempts[1]["result"] == "correct"
+
+
+
