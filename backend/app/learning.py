@@ -88,32 +88,36 @@ def next_recognition_item(child_id: int, session_id: str) -> dict[str, Any] | No
         return dict(row) if row else None
 
 
-def record_attempt(child_id: int, session_id: str, item_id: str, result: str, assisted: bool, source_queue: str, response_metadata: dict[str, Any] | None = None) -> dict[str, Any]:
+def _record_attempt_in_transaction(db: sqlite3.Connection, child_id: int, session_id: str, item_id: str, result: str, assisted: bool, source_queue: str, response_metadata: dict[str, Any] | None = None) -> dict[str, Any]:
     if result not in {"correct", "incorrect"}:
         raise ValueError("result_must_be_correct_or_incorrect")
+    ensure_child(db, child_id)
+    item = db.execute("SELECT 1 FROM learning_items WHERE id=? AND child_id=?", (item_id, child_id)).fetchone()
+    session = db.execute("SELECT 1 FROM learning_sessions WHERE id=? AND child_id=?", (session_id, child_id)).fetchone()
+    if item is None or session is None:
+        raise ValueError("child_item_or_session_not_found")
+    attempt_id = uid("attempt")
+    db.execute("INSERT INTO recognition_attempts (id, child_id, item_id, result, assisted, source_queue, session_id, response_metadata) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (attempt_id, child_id, item_id, result, int(assisted), source_queue, session_id, json.dumps(response_metadata or {}, ensure_ascii=False)))
+    if result == "incorrect":
+        db.execute(
+            """INSERT OR IGNORE INTO review_queue_items
+               (id, child_id, item_id, character, source_detail, reason, priority)
+               SELECT ?, child_id, id, character, ?, ?, 10 FROM learning_items WHERE id=?""",
+            (uid("review"), "Recognition incorrect", "Recognition incorrect", item_id),
+        )
+    delay = 0 if result == "incorrect" or assisted else 1
+    db.execute("""INSERT INTO recognition_states (child_id,item_id,correct_count,incorrect_count,assisted_count,last_result,due_at,updated_at)
+      VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(child_id,item_id) DO UPDATE SET
+      correct_count=correct_count+excluded.correct_count, incorrect_count=incorrect_count+excluded.incorrect_count,
+      assisted_count=assisted_count+excluded.assisted_count,last_result=excluded.last_result,due_at=excluded.due_at,updated_at=excluded.updated_at""",
+      (child_id, item_id, int(result == "correct" and not assisted), int(result == "incorrect"), int(assisted), result, (datetime.now(timezone.utc) + timedelta(days=delay)).strftime("%Y-%m-%d %H:%M:%S"), now()))
+    srs = record_srs_review(db, child_id=child_id, skill_domain="recognition", item_id=item_id, result=result, assisted=assisted)
+    return dict(db.execute("SELECT * FROM recognition_attempts WHERE id=?", (attempt_id,)).fetchone()) | {"srs": srs}
+
+
+def record_attempt(child_id: int, session_id: str, item_id: str, result: str, assisted: bool, source_queue: str, response_metadata: dict[str, Any] | None = None) -> dict[str, Any]:
     with connect() as db:
-        ensure_child(db, child_id)
-        item = db.execute("SELECT 1 FROM learning_items WHERE id=? AND child_id=?", (item_id, child_id)).fetchone()
-        session = db.execute("SELECT 1 FROM learning_sessions WHERE id=? AND child_id=?", (session_id, child_id)).fetchone()
-        if item is None or session is None:
-            raise ValueError("child_item_or_session_not_found")
-        attempt_id = uid("attempt")
-        db.execute("INSERT INTO recognition_attempts (id, child_id, item_id, result, assisted, source_queue, session_id, response_metadata) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (attempt_id, child_id, item_id, result, int(assisted), source_queue, session_id, json.dumps(response_metadata or {}, ensure_ascii=False)))
-        if result == "incorrect":
-            db.execute(
-                """INSERT OR IGNORE INTO review_queue_items
-                   (id, child_id, item_id, character, source_detail, reason, priority)
-                   SELECT ?, child_id, id, character, ?, ?, 10 FROM learning_items WHERE id=?""",
-                (uid("review"), "Recognition incorrect", "Recognition incorrect", item_id),
-            )
-        delay = 0 if result == "incorrect" or assisted else 1
-        db.execute("""INSERT INTO recognition_states (child_id,item_id,correct_count,incorrect_count,assisted_count,last_result,due_at,updated_at)
-          VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(child_id,item_id) DO UPDATE SET
-          correct_count=correct_count+excluded.correct_count, incorrect_count=incorrect_count+excluded.incorrect_count,
-          assisted_count=assisted_count+excluded.assisted_count,last_result=excluded.last_result,due_at=excluded.due_at,updated_at=excluded.updated_at""",
-          (child_id, item_id, int(result == "correct" and not assisted), int(result == "incorrect"), int(assisted), result, (datetime.now(timezone.utc) + timedelta(days=delay)).strftime("%Y-%m-%d %H:%M:%S"), now()))
-        srs = record_srs_review(db, child_id=child_id, skill_domain="recognition", item_id=item_id, result=result, assisted=assisted)
-        return dict(db.execute("SELECT * FROM recognition_attempts WHERE id=?", (attempt_id,)).fetchone()) | {"srs": srs}
+        return _record_attempt_in_transaction(db, child_id, session_id, item_id, result, assisted, source_queue, response_metadata)
 
 
 def _record_linked_curriculum_evidence(

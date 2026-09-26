@@ -155,20 +155,24 @@ def list_readings(character: str | None = None, script: str | None = None, db: s
     return rows
 
 
+def _practice_pronunciation_in_transaction(db: sqlite3.Connection, child_id: int, reading_id: str, answer: str, assisted: bool, source_type: str = "SPRINT_B", school_queue_item_id: str | None = None, prompt_id: str | None = None) -> dict[str, Any]:
+    ensure_child(db, child_id); reading = db.execute("SELECT * FROM pronunciation_readings WHERE id=?", (reading_id,)).fetchone()
+    if reading is None: raise ValueError("reading_not_found")
+    normalized_answer = normalize_pinyin(answer) if reading["notation_system"] == "PINYIN" else answer.strip().lower()
+    normalized_target = normalize_pinyin(reading["notation"]) if reading["notation_system"] == "PINYIN" else reading["notation"].strip().lower()
+    correct = int(normalized_answer == normalized_target)
+    attempt_id = uid("pron_attempt")
+    db.execute("INSERT INTO pronunciation_attempts (id,child_id,reading_id,answer,correct,assisted,source_type,school_queue_item_id,prompt_id,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)", (attempt_id, child_id, reading_id, answer, correct, int(assisted), source_type, school_queue_item_id, prompt_id, now()))
+    db.execute("""INSERT INTO pronunciation_states (child_id,reading_id,correct_count,incorrect_count,assisted_count,updated_at) VALUES (?,?,?,?,?,?) ON CONFLICT(child_id,reading_id) DO UPDATE SET correct_count=correct_count+excluded.correct_count,incorrect_count=incorrect_count+excluded.incorrect_count,assisted_count=assisted_count+excluded.assisted_count,updated_at=excluded.updated_at""", (child_id, reading_id, int(correct and not assisted), int(not correct), int(assisted), now()))
+    evidence_id = None
+    if source_type != "SCHOOL_QUEUE_PRIVATE":
+        evidence_id = record_linked_score_evidence(db, child_id=child_id, skill_domain="phonetics", item_id=reading_id, score=float(correct), assisted=assisted, evidence_ref=attempt_id, evidence_type="phonetic_notation_attempt", script_mode="zhuyin" if reading["notation_system"] == "ZHUYIN" else "pinyin")
+    return {"attempt_id": attempt_id, "evidence_id": evidence_id, "correct": bool(correct), "reading_id": reading_id, "normalized_answer": normalized_answer, "domain": "phonetics", "source_type": source_type, "school_queue_item_id": school_queue_item_id, "prompt_id": prompt_id, "state": dict(db.execute("SELECT * FROM pronunciation_states WHERE child_id=? AND reading_id=?", (child_id, reading_id)).fetchone()), "srs": None}
+
+
 def practice_pronunciation(child_id: int, reading_id: str, answer: str, assisted: bool, source_type: str = "SPRINT_B", school_queue_item_id: str | None = None, prompt_id: str | None = None) -> dict[str, Any]:
     with connect() as db:
-        ensure_child(db, child_id); reading = db.execute("SELECT * FROM pronunciation_readings WHERE id=?", (reading_id,)).fetchone()
-        if reading is None: raise ValueError("reading_not_found")
-        normalized_answer = normalize_pinyin(answer) if reading["notation_system"] == "PINYIN" else answer.strip().lower()
-        normalized_target = normalize_pinyin(reading["notation"]) if reading["notation_system"] == "PINYIN" else reading["notation"].strip().lower()
-        correct = int(normalized_answer == normalized_target)
-        attempt_id = uid("pron_attempt")
-        db.execute("INSERT INTO pronunciation_attempts (id,child_id,reading_id,answer,correct,assisted,source_type,school_queue_item_id,prompt_id,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)", (attempt_id, child_id, reading_id, answer, correct, int(assisted), source_type, school_queue_item_id, prompt_id, now()))
-        db.execute("""INSERT INTO pronunciation_states (child_id,reading_id,correct_count,incorrect_count,assisted_count,updated_at) VALUES (?,?,?,?,?,?) ON CONFLICT(child_id,reading_id) DO UPDATE SET correct_count=correct_count+excluded.correct_count,incorrect_count=incorrect_count+excluded.incorrect_count,assisted_count=assisted_count+excluded.assisted_count,updated_at=excluded.updated_at""", (child_id, reading_id, int(correct and not assisted), int(not correct), int(assisted), now()))
-        evidence_id = None
-        if source_type != "SCHOOL_QUEUE_PRIVATE":
-            evidence_id = record_linked_score_evidence(db, child_id=child_id, skill_domain="phonetics", item_id=reading_id, score=float(correct), assisted=assisted, evidence_ref=attempt_id, evidence_type="phonetic_notation_attempt", script_mode="zhuyin" if reading["notation_system"] == "ZHUYIN" else "pinyin")
-        return {"attempt_id": attempt_id, "evidence_id": evidence_id, "correct": bool(correct), "reading_id": reading_id, "normalized_answer": normalized_answer, "domain": "phonetics", "source_type": source_type, "school_queue_item_id": school_queue_item_id, "prompt_id": prompt_id, "state": dict(db.execute("SELECT * FROM pronunciation_states WHERE child_id=? AND reading_id=?", (child_id, reading_id)).fetchone()), "srs": None}
+        return _practice_pronunciation_in_transaction(db, child_id, reading_id, answer, assisted, source_type, school_queue_item_id, prompt_id)
 
 
 def create_school_pinyin_prompt(child_id: int, school_queue_item_id: str, reading_id: str | None = None, context: str | None = None) -> dict[str, Any]:
