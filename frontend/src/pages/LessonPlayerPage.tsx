@@ -23,6 +23,7 @@ import { useLocale, currentLearningLocale } from "../lib/i18n";
 import { BrowserSpeechSynthesisProvider } from "../lib/tts";
 import { BrowserMediaRecorderAdapter } from "../lib/readingAloud";
 import {
+  buildAuthoritativeLearnSteps,
   getLessonPackage,
   getStepsForMode,
   getScaffoldText,
@@ -526,7 +527,7 @@ export function LessonPlayerPage({
     lessonId?: string;
     masteryStatus?: string | null;
     targetMinutes?: number;
-    curriculumContext?: { stageId?: string; stageTitle?: string; lessonId?: string; official?: { title?: string; objectiveSummary?: string } };
+    curriculumContext?: { stageId?: string; stageTitle?: string; lessonId?: string; lessonMasteredBeforeSession?: boolean; official?: { title?: string; objectiveSummary?: string } };
     tasks?: Array<{
       id: string;
       key: string;
@@ -534,6 +535,8 @@ export function LessonPlayerPage({
       sourceQueue: string;
       lessonId: string;
       state: string;
+      required?: boolean;
+      skillDomain?: string | null;
       itemId?: string;
       taskData?: any;
       attemptCount?: number;
@@ -563,6 +566,13 @@ export function LessonPlayerPage({
   const resolvedLessonId = session?.curriculumContext?.lessonId || session?.lessonId || lessonId || "book1-l01";
   const pkg: LessonPackage | null = useMemo(() => getLessonPackage(resolvedLessonId), [resolvedLessonId]);
 
+  const authoritativeLearnPlan = useMemo(
+    () => mode === "LEARN" && activeChildId && pkg
+      ? buildAuthoritativeLearnSteps(pkg, session?.tasks, session?.curriculumContext?.lessonMasteredBeforeSession)
+      : null,
+    [mode, activeChildId, pkg, session?.tasks, session?.curriculumContext?.lessonMasteredBeforeSession],
+  );
+
   // Authoritative due review items extraction: strictly from executable session review tasks
   const authoritativeDueItems = useMemo(() => {
     if (mode !== "REVIEW") return [];
@@ -577,11 +587,19 @@ export function LessonPlayerPage({
 
   const steps: LessonStepDefinition[] = useMemo(() => {
     if (!pkg) return [];
+    if (mode === "LEARN" && activeChildId) return authoritativeLearnPlan?.steps ?? [];
     return getStepsForMode(pkg, mode, weakDomains, authoritativeDueItems);
-  }, [pkg, mode, weakDomains, authoritativeDueItems]);
+  }, [pkg, mode, activeChildId, authoritativeLearnPlan, weakDomains, authoritativeDueItems]);
 
   const currentStep = steps[currentStepIndex] ?? null;
-  const learnSessionReady = mode !== "LEARN" || !activeChildId || session?.status === "IN_PROGRESS";
+  const learnPlanValid = !activeChildId || mode !== "LEARN" || authoritativeLearnPlan?.valid === true;
+  const learnSessionReady = mode !== "LEARN" || !activeChildId || (session?.status === "IN_PROGRESS" && learnPlanValid);
+
+  useEffect(() => {
+    if (mode === "LEARN" && activeChildId && session?.status === "IN_PROGRESS" && !learnPlanValid) {
+      setError(text.taskFailed);
+    }
+  }, [mode, activeChildId, session?.status, learnPlanValid, text.taskFailed]);
 
   const handleCompleteReview = () => {
     if (!activeChildId) {
@@ -615,7 +633,7 @@ export function LessonPlayerPage({
         lessonId?: string;
         masteryStatus?: string | null;
         targetMinutes?: number;
-        curriculumContext?: { stageId?: string; stageTitle?: string; lessonId?: string; official?: { title?: string; objectiveSummary?: string } };
+    curriculumContext?: { stageId?: string; stageTitle?: string; lessonId?: string; lessonMasteredBeforeSession?: boolean; official?: { title?: string; objectiveSummary?: string } };
         tasks?: Array<{ id: string; key: string; taskType: string; sourceQueue: string; lessonId: string; state: string; itemId?: string; taskData?: any }>;
       } | null>(
         `/api/children/${activeChildId}/learning-sessions/current`
@@ -653,7 +671,7 @@ export function LessonPlayerPage({
           lessonId?: string;
           masteryStatus?: string | null;
           targetMinutes?: number;
-          curriculumContext?: { stageId?: string; stageTitle?: string; lessonId?: string; official?: { title?: string; objectiveSummary?: string } };
+          curriculumContext?: { stageId?: string; stageTitle?: string; lessonId?: string; lessonMasteredBeforeSession?: boolean; official?: { title?: string; objectiveSummary?: string } };
           tasks?: Array<{ id: string; key: string; taskType: string; sourceQueue: string; lessonId: string; state: string; itemId?: string; taskData?: any }>;
         }>(
           `/api/children/${activeChildId}/learning-sessions`,
@@ -1061,7 +1079,7 @@ export function LessonPlayerPage({
   }, [locale, speech]);
 
   // Listening attempt starter & evidence attacher
-  const handlePlayListeningAudio = async (textToPlay: string): Promise<boolean> => {
+  const handlePlayListeningAudio = async (textToPlay: string, exactTaskId?: string): Promise<boolean> => {
     playAudio(textToPlay);
     if (!activeChildId) return true;
     const currentSess = sessionRef.current;
@@ -1069,9 +1087,9 @@ export function LessonPlayerPage({
       setError(text.taskFailed);
       return false;
     }
-    const listenTask = currentSess.tasks.find(
-      (t) => (t.taskType === "LISTENING" || t.key === "listen")
-    );
+    const listenTask = currentSess.tasks.find((t) => exactTaskId
+      ? t.id === exactTaskId
+      : (t.taskType === "LISTENING" || t.key === "listen"));
     if (!listenTask) {
       setError(text.taskFailed);
       return false;
@@ -1127,7 +1145,7 @@ export function LessonPlayerPage({
   useEffect(() => {
     if (currentStep?.stepKey === "writing" && canvasContainerRef.current) {
       canvasContainerRef.current.innerHTML = "";
-      const char = pkg?.characters[activeCharIndex]?.char ?? "你";
+      const char = currentStep?.data.character || pkg?.characters[activeCharIndex]?.char || "你";
       try {
         const instance = HanziWriter.create(canvasContainerRef.current, char, {
           width: 200,
@@ -1165,9 +1183,11 @@ export function LessonPlayerPage({
 
   const handleWritingTrace = async (result: "correct" | "incorrect") => {
     if (activeChildId && pkg) {
-      const char = pkg.characters[activeCharIndex]?.char ?? "你";
+      const char = currentStep?.data.character || pkg.characters[activeCharIndex]?.char || "你";
       const currentSess = sessionRef.current;
-      const writingTask = currentSess?.tasks?.find((t) => t.taskType.startsWith("WRITING_") || t.key.startsWith("writing"));
+      const writingTask = currentSess?.tasks?.find((t) => currentStep?.data.taskId
+        ? t.id === currentStep.data.taskId
+        : t.taskType.startsWith("WRITING_") || t.key.startsWith("writing"));
       const phase = writingTask?.taskData?.phase || "guided";
       const scriptMode = writingTask?.taskData?.scriptMode || (locale === "zh-CN" ? "SIMPLIFIED" : "TRADITIONAL");
       const writingRes = await api<{ id?: string; attempt_id?: string }>(`/api/sprint-b/writing/attempts?child_id=${activeChildId}&character=${encodeURIComponent(char)}`, {
@@ -1184,7 +1204,9 @@ export function LessonPlayerPage({
         return undefined;
       });
       if (writingRes && (writingRes.id || writingRes.attempt_id)) {
-        await submitBackendTaskEvidence((t) => t.taskType.startsWith("WRITING_") || t.key.startsWith("writing"), (writingRes.id || writingRes.attempt_id)!);
+        await submitBackendTaskEvidence((t) => currentStep?.data.taskId
+          ? t.id === currentStep.data.taskId
+          : t.taskType.startsWith("WRITING_") || t.key.startsWith("writing"), (writingRes.id || writingRes.attempt_id)!);
       }
     }
   };
@@ -1225,6 +1247,10 @@ export function LessonPlayerPage({
         setError(text.taskFailed);
         return;
       }
+      if (mode === "LEARN" && !learnPlanValid) {
+        setError(text.taskFailed);
+        return;
+      }
     }
 
     // 1. Context step: ensure listening task is completed
@@ -1234,15 +1260,15 @@ export function LessonPlayerPage({
         setError(text.taskFailed);
         return;
       }
-      const listenTask = currentSess.tasks.find(
-        (t) => (t.taskType === "LISTENING" || t.key === "listen")
-      );
+      const listenTask = currentSess.tasks.find((t) => currentStep.data.taskId
+        ? t.id === currentStep.data.taskId
+        : (t.taskType === "LISTENING" || t.key === "listen"));
       if (!listenTask) {
         setError(text.taskFailed);
         return;
       }
       if (listenTask.state !== "COMPLETED" && listenTask.state !== "DEFERRED") {
-        const ok = await handlePlayListeningAudio(currentStep.data.audioText || "你好");
+        const ok = await handlePlayListeningAudio(currentStep.data.audioText || "你好", listenTask.id);
         if (!ok) {
           setError(text.taskFailed);
           return;
@@ -1268,9 +1294,9 @@ export function LessonPlayerPage({
           setError(text.taskFailed);
           return;
         }
-        const vocabTask = sessAfterVocab.tasks.find(
-          (t) => (t.taskType === "VOCABULARY" || t.key === "vocabulary")
-        );
+        const vocabTask = sessAfterVocab.tasks.find((t) => currentStep.data.taskId
+          ? t.id === currentStep.data.taskId
+          : (t.taskType === "VOCABULARY" || t.key === "vocabulary"));
         if (!vocabTask) {
           setError(text.taskFailed);
           return;
@@ -1294,14 +1320,14 @@ export function LessonPlayerPage({
     if (currentStep.stepKey === "characters") {
       const isReviewMode = mode === "REVIEW";
       const dueChar = currentStep.data?.dueCharacter;
-      const charObj = isReviewMode
-        ? (currentStep.data?.charObj || pkg.characters.find((c) => c.char === dueChar) || { char: dueChar || "你" })
-        : pkg.characters[activeCharIndex];
+      const charObj = currentStep.data?.charObj || (isReviewMode
+        ? (pkg.characters.find((c) => c.char === dueChar) || { char: dueChar || "你" })
+        : pkg.characters[activeCharIndex]);
       const exactTaskId = currentStep.data?.taskId || currentStep.data?.dueItem?.id;
       const reviewChoiceKey = `recog-rev-${exactTaskId || charObj?.char}`;
       const currentAnswer = isReviewMode
         ? (selectedChoices[reviewChoiceKey] || (exactTaskId ? selectedChoices[`recog-${exactTaskId}`] : selectedChoices["recog"]))
-        : selectedChoices[`recog-${activeCharIndex}`];
+        : (exactTaskId ? selectedChoices[`recog-${exactTaskId}`] : selectedChoices[`recog-${activeCharIndex}`]);
 
       if (!currentAnswer) {
         setError(text.pleaseAnswerQuestion);
@@ -1315,8 +1341,10 @@ export function LessonPlayerPage({
           return;
         }
 
-        const charTask = isReviewMode
-          ? (exactTaskId ? currentSessChar.tasks.find((t) => t.id === exactTaskId) : null)
+        const charTask = exactTaskId
+          ? currentSessChar.tasks.find((t) => t.id === exactTaskId)
+          : isReviewMode
+          ? null
           : currentSessChar.tasks.find(
               (t) => (t.taskType === "RECOGNITION" || t.taskType === "MINI_CHECK" || t.key.startsWith("recognition-")) &&
                      (t.key === `recognition-${activeCharIndex + 1}` || (charObj && t.itemId === charObj.char)) &&
@@ -1343,21 +1371,21 @@ export function LessonPlayerPage({
       }
 
       // In LEARN mode, if there are more characters, advance tab
-      if (!isReviewMode && activeCharIndex < pkg.characters.length - 1) {
+      if (!isReviewMode && !exactTaskId && activeCharIndex < pkg.characters.length - 1) {
         setActiveCharIndex((prev) => prev + 1);
         setError(null);
         return;
       }
 
       // If on the last character tab in LEARN mode, ensure ALL recognition tasks are COMPLETED / DEFERRED before advancing step
-      if (!isReviewMode && activeChildId) {
+      if (!isReviewMode && activeChildId && !exactTaskId) {
         const sessAfterRecog = sessionRef.current;
         if (!sessAfterRecog || !sessAfterRecog.id || !sessAfterRecog.tasks) {
           setError(text.taskFailed);
           return;
         }
         const pendingRecog = sessAfterRecog.tasks.filter(
-          (t) => (t.taskType === "RECOGNITION" || t.taskType === "MINI_CHECK" || t.key.startsWith("recognition-")) &&
+          (t) => (t.taskType === "RECOGNITION" || t.taskType === "REVIEW_RECOGNITION" || t.taskType === "MINI_CHECK" || t.key.startsWith("recognition-") || t.key.startsWith("review-")) &&
                  t.state !== "COMPLETED" && t.state !== "DEFERRED" && t.key !== "mini-check-reflection"
         );
         if (pendingRecog.length > 0) {
@@ -1380,9 +1408,9 @@ export function LessonPlayerPage({
           setError(text.taskFailed);
           return;
         }
-        const sentTask = sessAfterSent.tasks.find(
-          (t) => (t.taskType === "SENTENCE_PATTERN" || t.key === "sentence-pattern")
-        );
+        const sentTask = sessAfterSent.tasks.find((t) => currentStep.data.taskId
+          ? t.id === currentStep.data.taskId
+          : (t.taskType === "SENTENCE_PATTERN" || t.key === "sentence-pattern"));
         if (!sentTask) {
           setError(text.taskFailed);
           return;
@@ -1405,9 +1433,10 @@ export function LessonPlayerPage({
     // 5. Speaking step: ensure speaking attempts are completed
     if (currentStep.stepKey === "speaking") {
       const sessAfterSpeaking = sessionRef.current;
-      const speakingTasks = (sessAfterSpeaking?.tasks ?? []).filter(
-        (t) => t.taskType === "SPEAKING_ATTEMPT" || t.taskType === "PRONUNCIATION_ATTEMPT" || t.key === "speaking" || t.key === "pronunciation"
-      );
+      const stepTaskIds: string[] = currentStep.data.taskIds ?? [];
+      const speakingTasks = (sessAfterSpeaking?.tasks ?? []).filter((t) => stepTaskIds.length
+        ? stepTaskIds.includes(t.id)
+        : t.taskType === "SPEAKING_ATTEMPT" || t.taskType === "PRONUNCIATION_ATTEMPT" || t.key === "speaking" || t.key === "pronunciation");
       const allCompleted = speakingTasks.length > 0 && speakingTasks.every((t) => t.state === "COMPLETED" || t.state === "DEFERRED");
       if (!allCompleted) {
         setError(text.taskFailed);
@@ -1428,9 +1457,9 @@ export function LessonPlayerPage({
         setError(text.taskFailed);
         return;
       }
-      const writingTask = sessAfterWriting.tasks.find(
-        (t) => t.taskType.startsWith("WRITING_") && t.state !== "COMPLETED" && t.state !== "DEFERRED"
-      );
+      const writingTask = sessAfterWriting.tasks.find((t) => (currentStep.data.taskId
+        ? t.id === currentStep.data.taskId
+        : t.taskType.startsWith("WRITING_")) && t.state !== "COMPLETED" && t.state !== "DEFERRED");
       if (writingTask) {
         const skipRes = await skipBackendTask((t) => t.id === writingTask.id);
         if (!skipRes.persisted || (skipRes.taskState !== "COMPLETED" && skipRes.taskState !== "DEFERRED")) {
@@ -1451,7 +1480,13 @@ export function LessonPlayerPage({
         setError(text.pleaseAnswerQuestion);
         return;
       }
-      if (mode === "LEARN" && activeChildId) {
+      if (mode === "LEARN" && activeChildId && currentStep.data.taskId) {
+        const task = sessionRef.current?.tasks?.find((candidate) => candidate.id === currentStep.data.taskId);
+        if (!task || (task.state !== "COMPLETED" && task.state !== "DEFERRED")) {
+          setError(text.taskFailed);
+          return;
+        }
+      } else if (mode === "LEARN" && activeChildId) {
         const sessAfterTicket = sessionRef.current;
         if (!sessAfterTicket || !sessAfterTicket.id || !sessAfterTicket.tasks) {
           setError(text.taskFailed);
@@ -1476,6 +1511,15 @@ export function LessonPlayerPage({
           setError(text.taskFailed);
           return;
         }
+      }
+    }
+
+    if (currentStep.stepKey === "mini_check" && activeChildId) {
+      const taskId = currentStep.data.taskId;
+      const task = sessionRef.current?.tasks?.find((candidate) => candidate.id === taskId);
+      if (!taskId || !task || (task.state !== "COMPLETED" && task.state !== "DEFERRED")) {
+        setError(text.taskFailed);
+        return;
       }
     }
 
@@ -1558,9 +1602,10 @@ export function LessonPlayerPage({
         }
         if (activeChildId) {
           // The learning-flow evidence operation atomically completes provider and curriculum evidence.
+          const plannedSpeakingTaskIds: string[] = currentStep?.data.taskIds ?? [];
           if (ids.speaking) {
             const res = await submitBackendTaskEvidence(
-              (t) => t.taskType === "SPEAKING_ATTEMPT" || t.key === "speaking",
+              (t) => plannedSpeakingTaskIds.includes(t.id) && t.taskType === "SPEAKING_ATTEMPT",
               ids.speaking,
               2000
             );
@@ -1571,7 +1616,7 @@ export function LessonPlayerPage({
           }
           if (ids.pronunciation) {
             const res = await submitBackendTaskEvidence(
-              (t) => t.taskType === "PRONUNCIATION_ATTEMPT" || t.key === "pronunciation",
+              (t) => plannedSpeakingTaskIds.includes(t.id) && t.taskType === "PRONUNCIATION_ATTEMPT",
               ids.pronunciation,
               2000
             );
@@ -1598,11 +1643,12 @@ export function LessonPlayerPage({
       try {
         const currentSess = sessionRef.current;
         if (activeChildId && currentSess?.tasks) {
+          const plannedSpeakingIds: string[] = currentStep?.data.taskIds ?? [];
           const speakingTask = currentSess.tasks.find(
-            (t) => (t.taskType === "SPEAKING_ATTEMPT" || t.key === "speaking") && t.state !== "COMPLETED"
+            (t) => plannedSpeakingIds.includes(t.id) && t.taskType === "SPEAKING_ATTEMPT" && t.state !== "COMPLETED" && t.state !== "DEFERRED"
           );
           const pronTask = currentSess.tasks.find(
-            (t) => (t.taskType === "PRONUNCIATION_ATTEMPT" || t.key === "pronunciation") && t.state !== "COMPLETED"
+            (t) => plannedSpeakingIds.includes(t.id) && t.taskType === "PRONUNCIATION_ATTEMPT" && t.state !== "COMPLETED" && t.state !== "DEFERRED"
           );
 
           if (speakingTask && speakingTask.itemId) {
@@ -1652,6 +1698,36 @@ export function LessonPlayerPage({
   const handleExitTicketSubmit = async () => {
     if (!currentStep?.data.questions) return;
     setError(null);
+
+    if (mode === "LEARN" && activeChildId) {
+      const taskId = currentStep.data.taskId;
+      const task = sessionRef.current?.tasks?.find((candidate) => candidate.id === taskId);
+      if (!taskId || !task) {
+        setError(text.taskFailed);
+        return;
+      }
+      const questions = currentStep.data.questions;
+      if (Object.keys(exitTicketAnswers).length !== questions.length || questions.some((question: any) => !exitTicketAnswers[question.id])) {
+        setError(text.pleaseAnswerQuestion);
+        return;
+      }
+      const result = task.taskType === "PHONETICS"
+        ? await submitBackendTaskAnswer((candidate) => candidate.id === taskId, undefined, exitTicketAnswers)
+        : task.taskType === "MINI_CHECK" && task.taskData?.mode === "reflection"
+        ? await submitBackendTaskAnswer((candidate) => candidate.id === taskId, exitTicketAnswers[taskId])
+        : { persisted: false, deduped: false, taskState: "UNKNOWN" as const };
+      const postTask = sessionRef.current?.tasks?.find((candidate) => candidate.id === taskId);
+      if (
+        !result.persisted ||
+        (result.taskState !== "COMPLETED" && result.taskState !== "DEFERRED") ||
+        !postTask || (postTask.state !== "COMPLETED" && postTask.state !== "DEFERRED")
+      ) {
+        setError(text.taskFailed);
+        return;
+      }
+      setExitTicketSubmitted(true);
+      return;
+    }
 
     const questions = currentStep.data.questions;
     const failedDomains: string[] = [];
@@ -1816,6 +1892,17 @@ export function LessonPlayerPage({
     if (!currentSess?.id) {
       setError(text.taskFailed);
       return;
+    }
+    if (mode === "LEARN") {
+      const wrapUpTaskId = currentStep?.stepKey === "wrap_up" ? currentStep.data.taskId : undefined;
+      const wrapUpTask = currentSess.tasks?.find((task) => task.id === wrapUpTaskId && task.taskType === "LESSON_WRAP_UP");
+      const pendingRequired = currentSess.tasks?.some((task) =>
+        task.required && task.taskType !== "LESSON_WRAP_UP" && task.state !== "COMPLETED" && task.state !== "DEFERRED"
+      );
+      if (!learnPlanValid || !wrapUpTask || pendingRequired) {
+        setError(text.taskFailed);
+        return;
+      }
     }
 
     setBusy(true);
@@ -2038,7 +2125,7 @@ export function LessonPlayerPage({
                   <button
                     type="button"
                     className="audio-play-large-btn"
-                    onClick={() => void handlePlayListeningAudio(currentStep.data.audioText || "你好")}
+                    onClick={() => void handlePlayListeningAudio(currentStep.data.audioText || "你好", currentStep.data.taskId)}
                     aria-label={text.listenAudio}
                   >
                     <Volume2 size={32} />
@@ -2063,7 +2150,7 @@ export function LessonPlayerPage({
                       className={`choice-card-btn ${isSelected ? "selected" : ""}`}
                       onClick={() => {
                         setSelectedChoices((prev) => ({ ...prev, context: choice.id }));
-                        void handlePlayListeningAudio(currentStep.data.audioText || "你好");
+                        void handlePlayListeningAudio(currentStep.data.audioText || "你好", currentStep.data.taskId);
                       }}
                     >
                       <span className="choice-label">{choice.label}</span>
@@ -2109,9 +2196,11 @@ export function LessonPlayerPage({
 
           {/* STEP 3: Vocabulary */}
           {currentStep.stepKey === "vocabulary" && (() => {
-            const vocabTask = session?.tasks?.find((t) => t.taskType === "VOCABULARY" || t.key === "vocabulary");
-            const prompt = vocabTask?.taskData?.prompt || currentStep.data.prompt;
-            const choices = vocabTask?.taskData?.choices || currentStep.data.choices;
+            const vocabTask = session?.tasks?.find((t) => currentStep.data.taskId
+              ? t.id === currentStep.data.taskId
+              : t.taskType === "VOCABULARY" || t.key === "vocabulary");
+            const prompt = currentStep.data.taskId ? currentStep.data.prompt : vocabTask?.taskData?.prompt || currentStep.data.prompt;
+            const choices = currentStep.data.taskId ? currentStep.data.choices : vocabTask?.taskData?.choices || currentStep.data.choices;
 
             return (
               <div className="step-body step-vocab-body">
@@ -2151,7 +2240,9 @@ export function LessonPlayerPage({
                         className={`choice-card-btn ${isSelected ? "selected" : ""}`}
                         onClick={async () => {
                           setSelectedChoices((prev) => ({ ...prev, vocab: choice.id }));
-                          await submitBackendTaskAnswer((t) => t.taskType === "VOCABULARY" || t.key === "vocabulary", choice.id);
+                          await submitBackendTaskAnswer((t) => currentStep.data.taskId
+                            ? t.id === currentStep.data.taskId
+                            : t.taskType === "VOCABULARY" || t.key === "vocabulary", choice.id);
                         }}
                       >
                         <span className="choice-label">{choice.label}</span>
@@ -2168,8 +2259,8 @@ export function LessonPlayerPage({
           {currentStep.stepKey === "characters" && (() => {
             const isReviewMode = mode === "REVIEW";
             const dueChar = currentStep.data?.dueCharacter;
-            const charObj = isReviewMode
-              ? (currentStep.data?.charObj || pkg.characters.find((c) => c.char === dueChar) || {
+            const charObj = currentStep.data?.charObj || (isReviewMode
+              ? (pkg.characters.find((c) => c.char === dueChar) || {
                   char: dueChar || "你",
                   pronunciation: { pinyin: "", zhuyin: "" },
                   components: [],
@@ -2178,10 +2269,12 @@ export function LessonPlayerPage({
                   strokeCount: 0,
                   reviewStatus: "APPROVED" as const,
                 })
-              : pkg.characters[activeCharIndex];
+              : pkg.characters[activeCharIndex]);
 
             const exactTaskId = currentStep.data?.taskId || currentStep.data?.dueItem?.id;
-            const charTask = isReviewMode
+            const charTask = exactTaskId
+              ? session?.tasks?.find((t) => t.id === exactTaskId)
+              : isReviewMode
               ? (exactTaskId ? session?.tasks?.find((t) => t.id === exactTaskId) : null)
               : session?.tasks?.find(
                   (t) => (t.taskType === "RECOGNITION" || t.taskType === "MINI_CHECK" || t.key.startsWith("recognition-")) &&
@@ -2199,11 +2292,11 @@ export function LessonPlayerPage({
             const reviewChoiceKey = `recog-rev-${exactTaskId || charObj?.char}`;
             const selectedChoiceVal = isReviewMode
               ? (selectedChoices[reviewChoiceKey] || (exactTaskId ? selectedChoices[`recog-${exactTaskId}`] : selectedChoices["recog"]))
-              : selectedChoices[`recog-${activeCharIndex}`];
+              : (exactTaskId ? selectedChoices[`recog-${exactTaskId}`] : selectedChoices[`recog-${activeCharIndex}`]);
 
             return (
               <div className="step-body step-characters-body">
-                {!isReviewMode && (
+                {!isReviewMode && !exactTaskId && (
                   <div className="character-tabs-row" role="tablist">
                     {pkg.characters.map((c, idx) => {
                       const taskForChar = session?.tasks?.find(
@@ -2301,10 +2394,12 @@ export function LessonPlayerPage({
                                 choice.id
                               );
                             } else {
-                              await submitBackendTaskAnswer(
-                                (t) => t.id === charTask?.id || t.key === `recognition-${activeCharIndex + 1}`,
-                                choice.id
-                              );
+          await submitBackendTaskAnswer(
+            (t) => exactTaskId
+              ? t.id === exactTaskId
+              : t.id === charTask?.id || t.key === `recognition-${activeCharIndex + 1}`,
+            choice.id
+          );
                             }
                           }}
                         >
@@ -2321,9 +2416,11 @@ export function LessonPlayerPage({
 
           {/* STEP 5: Sentence Pattern */}
           {currentStep.stepKey === "sentence_pattern" && (() => {
-            const sentTask = session?.tasks?.find((t) => t.taskType === "SENTENCE_PATTERN" || t.key === "sentence-pattern");
-            const prompt = sentTask?.taskData?.prompt || currentStep.data.prompt;
-            const choices = sentTask?.taskData?.choices || currentStep.data.choices;
+            const sentTask = session?.tasks?.find((t) => currentStep.data.taskId
+              ? t.id === currentStep.data.taskId
+              : t.taskType === "SENTENCE_PATTERN" || t.key === "sentence-pattern");
+            const prompt = currentStep.data.taskId ? currentStep.data.prompt : sentTask?.taskData?.prompt || currentStep.data.prompt;
+            const choices = currentStep.data.taskId ? currentStep.data.choices : sentTask?.taskData?.choices || currentStep.data.choices;
 
             return (
               <div className="step-body step-sentence-body">
@@ -2347,7 +2444,9 @@ export function LessonPlayerPage({
                         className={`choice-card-btn ${isSelected ? "selected" : ""}`}
                         onClick={async () => {
                           setSelectedChoices((prev) => ({ ...prev, sentence: choice.id }));
-                          await submitBackendTaskAnswer((t) => t.taskType === "SENTENCE_PATTERN" || t.key === "sentence-pattern", choice.id);
+                          await submitBackendTaskAnswer((t) => currentStep.data.taskId
+                            ? t.id === currentStep.data.taskId
+                            : t.taskType === "SENTENCE_PATTERN" || t.key === "sentence-pattern", choice.id);
                         }}
                       >
                         <span className="choice-label">{choice.label}</span>
@@ -2367,7 +2466,7 @@ export function LessonPlayerPage({
                 <p className="speaking-instruction">
                   {currentStep.data.speakingPrompt?.instruction || "請對著麥克風說一次：「你好！」"}
                 </p>
-                <div className="speaking-target-phrase">「你好！」</div>
+                <div className="speaking-target-phrase">「{currentStep.data.speakingPrompt?.expectedText || "你好！"}」</div>
               </div>
 
               <div className="speaking-control-center">
@@ -2375,6 +2474,7 @@ export function LessonPlayerPage({
                   type="button"
                   className={`mic-record-btn ${recording ? "is-recording" : ""} ${speakingAttempted ? "is-attempted" : ""}`}
                   onClick={handleRecordSpeaking}
+                  disabled={!recording && !(session?.tasks ?? []).some((task) => (currentStep.data.taskIds ?? []).includes(task.id) && task.state !== "COMPLETED" && task.state !== "DEFERRED")}
                   aria-label={recording ? text.recordStop : text.recordStart}
                 >
                   <Mic size={36} />
@@ -2403,7 +2503,9 @@ export function LessonPlayerPage({
                     type="button"
                     className="button button-text skip-writing-btn"
                     onClick={async () => {
-                      const result = await skipBackendTask((t) => t.taskType.startsWith("WRITING_") || t.key.startsWith("writing"));
+                      const result = await skipBackendTask((t) => currentStep.data.taskId
+                        ? t.id === currentStep.data.taskId
+                        : t.taskType.startsWith("WRITING_") || t.key.startsWith("writing"));
                       if (result.persisted && (result.taskState === "COMPLETED" || result.taskState === "DEFERRED")) {
                         setWritingSkipped(true);
                         void handleNextStep();
@@ -2479,7 +2581,9 @@ export function LessonPlayerPage({
                 </button>
               ) : (
                 <div className="exit-ticket-feedback-banner">
-                  {weakDomains.length === 0 ? (
+                  {mode === "LEARN" && activeChildId && currentStep.data.taskId ? (
+                    <p className="feedback-text positive">{"已記錄作答結果，可繼續進行收尾結算。"}</p>
+                  ) : weakDomains.length === 0 ? (
                     <p className="feedback-text positive">
                       <Sparkles size={20} />
                       {mode === "FAST_TRACK" ? text.fastTrackPassed : text.correct}
@@ -2491,6 +2595,36 @@ export function LessonPlayerPage({
                   )}
                 </div>
               )}
+            </div>
+          )}
+
+          {currentStep.stepKey === "mini_check" && (
+            <div className="step-body step-exit-ticket-body">
+              <p className="interaction-prompt">{currentStep.data.prompt}</p>
+              <div className="choices-vertical-list">
+                {currentStep.data.choices?.map((choice: { id: string; label: string }) => {
+                  const taskId = currentStep.data.taskId;
+                  const selected = selectedChoices[taskId] === choice.id;
+                  return (
+                    <button
+                      key={choice.id}
+                      type="button"
+                      className={`choice-card-btn ${selected ? "selected" : ""}`}
+                      onClick={async () => {
+                        if (!taskId) {
+                          setError(text.taskFailed);
+                          return;
+                        }
+                        setSelectedChoices((previous) => ({ ...previous, [taskId]: choice.id }));
+                        const result = await submitBackendTaskAnswer((task) => task.id === taskId, choice.id);
+                        if (result.taskState !== "COMPLETED" && result.taskState !== "DEFERRED") setError(text.taskFailed);
+                      }}
+                    >
+                      <span className="choice-label">{choice.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           )}
 
@@ -2567,7 +2701,9 @@ export function LessonPlayerPage({
                   className="button button-primary next-step-cta-btn"
                   onClick={handleNextStep}
                   disabled={
-                    !learnSessionReady || (currentStep.stepKey === "exit_ticket" && !exitTicketSubmitted)
+                    !learnSessionReady ||
+                    (currentStep.stepKey === "exit_ticket" && !exitTicketSubmitted) ||
+                    (currentStep.stepKey === "mini_check" && !selectedChoices[currentStep.data.taskId])
                   }
                 >
                   <span>{text.nextStep}</span>

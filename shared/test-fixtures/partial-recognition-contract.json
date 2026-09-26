@@ -1,0 +1,18 @@
+{
+  "contractVersion": 1,
+  "lessonIds": ["basic-l01", "book1-l01"],
+  "plannerCondition": "At least one character recognition state for this lesson is strong before planning.",
+  "expectedFreshCharacterIndex": 1,
+  "strongSeedCharacterIndex": 2,
+  "task": {
+    "key": "recognition-1",
+    "taskType": "MINI_CHECK",
+    "sourceQueue": "CURRICULUM",
+    "skillDomain": "recognition",
+    "required": true,
+    "itemIdTemplate": "lf_{child_id}_{lesson_id}_char_{index}",
+    "audioTextCharacterIndex": 1,
+    "minimumChoices": 2,
+    "allowedStates": ["PENDING", "IN_PROGRESS", "COMPLETED", "DEFERRED"]
+  }
+}
