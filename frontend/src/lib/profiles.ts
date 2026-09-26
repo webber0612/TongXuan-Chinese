@@ -8,6 +8,31 @@ export type Profile = {
   color: string;
 };
 
+export type BackendChild = { id: number; name: string };
+
+export function isValidBackendChildId(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value > 0;
+}
+
+export function normalizeBackendChildren(value: unknown): BackendChild[] {
+  if (!Array.isArray(value)) return [];
+  const candidates = value.filter((child): child is BackendChild =>
+    typeof child === "object" && child !== null &&
+    isValidBackendChildId((child as { id?: unknown }).id) &&
+    typeof (child as { name?: unknown }).name === "string" &&
+    Boolean((child as { name: string }).name.trim())
+  );
+  const counts = new Map<number, number>();
+  for (const child of candidates) counts.set(child.id, (counts.get(child.id) ?? 0) + 1);
+  return candidates.filter((child) => counts.get(child.id) === 1);
+}
+
+export function selectedBackendChild(profile: Profile, children: BackendChild[]): BackendChild | null {
+  if (profile.role !== "child" || !isValidBackendChildId(profile.childId)) return null;
+  const matches = children.filter((child) => child.id === profile.childId);
+  return matches.length === 1 ? matches[0] : null;
+}
+
 export const PROFILE_STORAGE_KEY = "tongxuan.child-first.profiles";
 export const ACTIVE_PROFILE_STORAGE_KEY = "tongxuan.child-first.active-profile";
 
@@ -33,10 +58,12 @@ export function saveProfiles(profiles: Profile[], storage: Pick<Storage, "setIte
 }
 
 export function selectProfile(profiles: Profile[], key: string): Profile {
-  return profiles.find((profile) => profile.key === key) ?? profiles[0] ?? defaultProfiles[0];
+  // An unresolved local selection is presentation-only. Never turn it into the
+  // first backend child, since that would silently select another learner.
+  return profiles.find((profile) => profile.key === key) ?? defaultProfiles[0];
 }
 
-export function reconcileProfiles(children: Array<{ id: number; name: string }>, saved: Profile[] = defaultProfiles): Profile[] {
+export function reconcileProfiles(children: BackendChild[], saved: Profile[] = defaultProfiles): Profile[] {
   const parent = saved.find((profile) => profile.role === "parent") ?? defaultProfiles.find((profile) => profile.role === "parent")!;
   return [...children.map((child, index) => {
     const previous = saved.find((profile) => profile.role === "child" && profile.childId === child.id);

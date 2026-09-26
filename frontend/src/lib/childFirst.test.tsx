@@ -2,15 +2,34 @@
 import { describe, expect, it, vi } from "vitest";
 import React, { act } from "react";
 import { createRoot } from "react-dom/client";
-import { addChildProfile, defaultProfiles, loadProfiles, reconcileProfiles, saveProfiles, selectProfile } from "./profiles";
+import { ACTIVE_PROFILE_STORAGE_KEY, PROFILE_STORAGE_KEY, addChildProfile, defaultProfiles, isValidBackendChildId, loadProfiles, reconcileProfiles, saveProfiles, selectProfile, selectedBackendChild } from "./profiles";
 import { PARENT_GATE_NOTE, isPasswordEntered } from "./parentGate";
 import { ChildHomePage } from "../pages/ChildHomePage";
-import { canonicalRedirectPath, isCanonicalHomePath, resolveLearningSessionChildId, routeFromPath } from "../AppShell";
+import { canonicalRedirectPath, isCanonicalHomePath, routeFromPath } from "../AppShell";
 import { AppShell } from "../AppShell";
 import { DISPLAY_LANGUAGE_KEY } from "./i18n";
 import { authoritativeSessionFixture, plannerTasksForLesson } from "./testFixtures/learningFlow";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
+function persistSelectedBackendChild(id: number, name: string) {
+  localStorage.setItem(ACTIVE_PROFILE_STORAGE_KEY, `child-${id}`);
+  localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify([
+    { key: `child-${id}`, name, role: "child", childId: id, color: "mint" },
+    { key: "parent", name: "家長管理者", role: "parent", childId: null, color: "navy" },
+  ]));
+}
+
+function noDueQueue(childId: number, lessonId = "book1-l01") {
+  return {
+    childId, asOf: "2026-09-25T08:00:00Z",
+    placementStart: lessonId.startsWith("book1") ? "BOOK_1" : lessonId.startsWith("basic") ? "BASIC" : "STARTER",
+    review: { sourceQueue: "REVIEW", dueCount: 0, items: [] },
+    newLesson: { sourceQueue: "CURRICULUM", lessonId, title: "你好", domains: ["recognition"], status: "AVAILABLE", availableInLearningFlowV1: true },
+    completedLesson: null, currentLessonComplete: false, nextLessonComingSoon: false,
+    nextAccessibleLesson: null, activeSession: null, schoolQueueSeparate: true, targetMinutes: 18,
+  };
+}
 
 describe("child-first shell contracts", () => {
   it("keeps two child profiles and a parent profile, with local add-user persistence", () => {
@@ -46,14 +65,17 @@ describe("child-first shell contracts", () => {
     expect(isCanonicalHomePath("/TongXuan-Chinese/")).toBe(true);
     expect(isCanonicalHomePath("/preview-2")).toBe(false);
     expect(isCanonicalHomePath("/TongXuan-Chinese/preview-kids")).toBe(false);
-    const profiles = [
-      { key: "child-7", name: "樂樂", role: "child" as const, childId: 7, color: "mint" },
-      { key: "parent", name: "家長管理者", role: "parent" as const, childId: null, color: "navy" },
-    ];
-    expect(resolveLearningSessionChildId(profiles, " 樂樂 ")).toBe(7);
-    expect(resolveLearningSessionChildId(profiles, "萌萌")).toBeNull();
-    expect(resolveLearningSessionChildId(profiles, "家長管理者")).toBeNull();
-    expect(resolveLearningSessionChildId([...profiles, { ...profiles[0], key: "child-8", childId: 8 }], "樂樂")).toBeNull();
+    const duplicateNameProfiles = reconcileProfiles([{ id: 7, name: "樂樂" }, { id: 8, name: "樂樂" }]);
+    expect(duplicateNameProfiles.filter((profile) => profile.role === "child").map((profile) => profile.childId)).toEqual([7, 8]);
+    expect(selectedBackendChild(duplicateNameProfiles[0], [{ id: 7, name: "樂樂" }, { id: 8, name: "樂樂" }])?.id).toBe(7);
+    expect(selectedBackendChild(duplicateNameProfiles[1], [{ id: 7, name: "樂樂" }, { id: 8, name: "樂樂" }])?.id).toBe(8);
+    expect(selectedBackendChild({ ...duplicateNameProfiles[0], childId: null }, [{ id: 7, name: "樂樂" }])).toBeNull();
+    expect(selectedBackendChild({ ...duplicateNameProfiles[0], childId: 0 }, [{ id: 7, name: "樂樂" }])).toBeNull();
+    expect(isValidBackendChildId(7)).toBe(true);
+    expect(isValidBackendChildId(0)).toBe(false);
+    expect(isValidBackendChildId(-1)).toBe(false);
+    expect(isValidBackendChildId("7")).toBe(false);
+    expect(selectProfile(duplicateNameProfiles, "missing-profile")).toEqual(defaultProfiles[0]);
     expect(routeFromPath("/unknown")).toBe("legacy-tombstone");
   });
 
@@ -104,43 +126,123 @@ describe("child-first shell contracts", () => {
     vi.unstubAllGlobals();
   });
 
-  it("routes the canonical home CTA to /learning-session and renders LessonPlayerPage for the matching learner", async () => {
-    const renderHome = async (backendChildName: string) => {
-      localStorage.clear();
-      localStorage.setItem(DISPLAY_LANGUAGE_KEY, "zh-Hant");
-      window.history.replaceState({}, "", "/");
-      vi.stubGlobal("fetch", vi.fn(async (url: string) => new Response(JSON.stringify(url.endsWith("/api/children") ? [{ id: 1, name: backendChildName }] : url.includes("daily-queue") ? [] : { balance: 0, rewards: [] }), { status: 200, headers: { "Content-Type": "application/json" } })));
-      document.body.innerHTML = '<div id="root"></div>';
-      const root = createRoot(document.getElementById("root")!);
-      await act(async () => { root.render(React.createElement(AppShell)); await Promise.resolve(); await Promise.resolve(); });
-      await act(async () => { await new Promise((resolve) => setTimeout(resolve, 25)); });
-      return root;
-    };
+  it("switches between duplicate-name backend profiles by exact ID and launches LEARN for only the selected child", async () => {
+    localStorage.clear();
+    localStorage.setItem(DISPLAY_LANGUAGE_KEY, "zh-Hant");
+    persistSelectedBackendChild(11, "Twin");
+    window.history.replaceState({}, "", "/practice");
+    const requestUrls: string[] = [];
+    const queue = (childId: number) => ({
+      childId, asOf: "2026-09-25T08:00:00Z", placementStart: "STARTER",
+      review: { sourceQueue: "REVIEW", dueCount: 0, items: [] },
+      newLesson: { sourceQueue: "CURRICULUM", lessonId: "starter-l01", title: "你好", domains: ["recognition"], status: "AVAILABLE", availableInLearningFlowV1: true },
+      completedLesson: null, currentLessonComplete: false, nextLessonComingSoon: false,
+      nextAccessibleLesson: null, activeSession: null, schoolQueueSeparate: true, targetMinutes: 18,
+    });
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      requestUrls.push(url);
+      if (url.endsWith("/api/children")) return new Response(JSON.stringify([{ id: 11, name: "Twin" }, { id: 22, name: "Twin" }]), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.endsWith("/api/children/22/learning-daily-queue")) return new Response(JSON.stringify(queue(22)), { status: 200, headers: { "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({}), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
 
-    const mismatchedRoot = await renderHome("Different learner");
-    expect(document.querySelector("main.weekly-main-hero")).toBeTruthy();
-    expect(routeFromPath(window.location.pathname)).toBe("home");
-    await act(async () => { (document.querySelector(".hero-primary-cta-row .launch-quiz-cta-btn") as HTMLButtonElement).click(); });
-    expect(window.location.pathname).toBe("/");
-    expect(document.querySelector('[role="alert"]')?.textContent).toContain("找不到這位學習者");
-    await act(async () => { mismatchedRoot.unmount(); });
-    vi.unstubAllGlobals();
+    document.body.innerHTML = '<div id="root"></div>';
+    const root = createRoot(document.getElementById("root")!);
+    await act(async () => { root.render(React.createElement(AppShell)); await new Promise((resolve) => setTimeout(resolve, 35)); });
+    // Use the existing profile selector while it is visible, then return to Home.
+    await act(async () => { (document.querySelector(".profile-trigger") as HTMLButtonElement).click(); });
+    const options = Array.from(document.querySelectorAll(".profile-option")) as HTMLButtonElement[];
+    expect(options).toHaveLength(3);
+    expect(options[0].getAttribute("aria-checked")).toBe("true");
+    await act(async () => { options[1].click(); await new Promise((resolve) => setTimeout(resolve, 40)); });
+    expect(window.location.pathname).toBe("/TongXuan-Chinese/");
+    expect(requestUrls).toContain("/api/children/22/learning-daily-queue");
+    expect(requestUrls).not.toContain("/api/children/11/learning-daily-queue");
 
-    const matchedRoot = await renderHome("樂樂");
-    expect(document.querySelector("main.weekly-main-hero")).toBeTruthy();
+    await act(async () => { (document.querySelector(".header-learner-interactive-btn") as HTMLButtonElement).click(); });
+    const localPrototype = Array.from(document.querySelectorAll(".learner-select-tile"))
+      .find((tile) => tile.querySelector(".learner-tile-name")?.textContent === "萌萌") as HTMLElement;
+    expect(localPrototype).toBeTruthy();
+    await act(async () => { localPrototype.click(); });
+    expect(document.querySelector(".learner-name-large")?.textContent).toContain("萌萌");
+    expect(requestUrls.filter((url) => url.includes("/learning-daily-queue"))).toEqual(["/api/children/22/learning-daily-queue"]);
+
     await import("../pages/LessonPlayerPage");
     await act(async () => { (document.querySelector(".hero-primary-cta-row .launch-quiz-cta-btn") as HTMLButtonElement).click(); });
     await act(async () => { await new Promise((resolve) => setTimeout(resolve, 50)); });
     expect(window.location.pathname).toBe("/TongXuan-Chinese/learning-session");
     expect(document.querySelector('main[aria-label="課堂學習播放器"]')).toBeTruthy();
     expect(document.querySelector(".mode-badge.mode-learn")).toBeTruthy();
-    await act(async () => { matchedRoot.unmount(); });
+    expect(requestUrls.some((url) => url.includes("/api/children/22/learning-sessions"))).toBe(true);
+    expect(requestUrls.some((url) => url.includes("/api/children/11/learning-sessions"))).toBe(false);
+
+    await act(async () => { root.unmount(); });
+    vi.unstubAllGlobals();
+  });
+
+  it.each([
+    ["unresolved selected key", "child-999", [{ key: "child-999", name: "樂樂", role: "child", childId: 999, color: "mint" }]],
+    ["invalid selected ID", "child-0", [{ key: "child-0", name: "樂樂", role: "child", childId: 0, color: "mint" }]],
+  ])("keeps Home fail-closed for %s without querying a fallback child", async (_caseName, selectedKey, selectedProfiles) => {
+    localStorage.clear();
+    localStorage.setItem(DISPLAY_LANGUAGE_KEY, "zh-Hant");
+    localStorage.setItem(ACTIVE_PROFILE_STORAGE_KEY, selectedKey);
+    localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify([
+      ...selectedProfiles,
+      { key: "parent", name: "家長管理者", role: "parent", childId: null, color: "navy" },
+    ]));
+    window.history.replaceState({}, "", "/");
+    const requestUrls: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      requestUrls.push(url);
+      if (url.endsWith("/api/children")) return new Response(JSON.stringify([{ id: 11, name: "Twin" }, { id: 22, name: "Twin" }]), { status: 200, headers: { "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({}), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+    document.body.innerHTML = '<div id="root"></div>';
+    const root = createRoot(document.getElementById("root")!);
+    await act(async () => { root.render(React.createElement(AppShell)); await new Promise((resolve) => setTimeout(resolve, 40)); });
+    expect(document.querySelector("main.weekly-main-hero")).toBeTruthy();
+    expect(requestUrls.some((url) => url.includes("/learning-daily-queue"))).toBe(false);
+    await act(async () => { (document.querySelector(".hero-primary-cta-row .launch-quiz-cta-btn") as HTMLButtonElement).click(); });
+    expect(window.location.pathname).toBe("/");
+    expect(requestUrls.some((url) => url.includes("/learning-sessions"))).toBe(false);
+    expect(document.querySelector('[role="alert"]')?.textContent).toContain("找不到這位學習者");
+    await act(async () => { root.unmount(); });
+    vi.unstubAllGlobals();
+  });
+
+  it("rejects a Daily Queue response whose childId differs from the explicitly selected backend profile", async () => {
+    localStorage.clear();
+    localStorage.setItem(DISPLAY_LANGUAGE_KEY, "zh-Hant");
+    persistSelectedBackendChild(22, "Twin");
+    window.history.replaceState({}, "", "/");
+    const requestUrls: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      requestUrls.push(url);
+      if (url.endsWith("/api/children")) return new Response(JSON.stringify([{ id: 11, name: "Twin" }, { id: 22, name: "Twin" }]), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.endsWith("/api/children/22/learning-daily-queue")) return new Response(JSON.stringify({ childId: 11, placementStart: "STARTER" }), { status: 200, headers: { "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({}), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+    document.body.innerHTML = '<div id="root"></div>';
+    const root = createRoot(document.getElementById("root")!);
+    await act(async () => { root.render(React.createElement(AppShell)); await new Promise((resolve) => setTimeout(resolve, 40)); });
+    expect(requestUrls).toContain("/api/children/22/learning-daily-queue");
+    expect(requestUrls).not.toContain("/api/children/11/learning-daily-queue");
+    await act(async () => { (document.querySelector(".hero-primary-cta-row .launch-quiz-cta-btn") as HTMLButtonElement).click(); });
+    expect(window.location.pathname).toBe("/");
+    expect(requestUrls.some((url) => url.includes("/learning-sessions"))).toBe(false);
+    expect(document.querySelector('[role="alert"]')?.textContent).toContain("找不到這位學習者");
+    await act(async () => { root.unmount(); });
     vi.unstubAllGlobals();
   });
 
   it("canonical Fast Track failure waits for same-session resume, repairs exact tasks, and returns Home without settlement", async () => {
     localStorage.clear();
     localStorage.setItem(DISPLAY_LANGUAGE_KEY, "zh-Hant");
+    persistSelectedBackendChild(1, "樂樂");
     window.history.replaceState({}, "", "/");
     const session = authoritativeSessionFixture("book1-l01", "repair-session");
     const requests: Array<{ url: string; method: string; body?: string }> = [];
@@ -154,7 +256,7 @@ describe("child-first shell contracts", () => {
       const method = init?.method ?? "GET";
       requests.push({ url, method, body: typeof init?.body === "string" ? init.body : undefined });
       if (url.endsWith("/api/children")) return new Response(JSON.stringify([{ id: 1, name: "樂樂" }]), { status: 200, headers: { "Content-Type": "application/json" } });
-      if (url.includes("daily-queue")) return new Response(JSON.stringify([]), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.includes("daily-queue")) return new Response(JSON.stringify(noDueQueue(1)), { status: 200, headers: { "Content-Type": "application/json" } });
       if (url.endsWith("/learning-sessions/current")) return new Response(JSON.stringify(session), { status: 200, headers: { "Content-Type": "application/json" } });
       if (url.endsWith("/book1-l01/fast-track") && method === "POST") {
         const body = JSON.parse(String(init?.body));
@@ -250,6 +352,7 @@ describe("child-first shell contracts", () => {
   it("canonical REPAIR fails closed on resume identity/API failure and unsupported domains, with exact-session retry", async () => {
     localStorage.clear();
     localStorage.setItem(DISPLAY_LANGUAGE_KEY, "zh-Hant");
+    persistSelectedBackendChild(1, "樂樂");
     window.history.replaceState({}, "", "/");
     const session = authoritativeSessionFixture("book1-l01", "repair-unsupported-session");
     const requests: Array<{ url: string; method: string; body?: string }> = [];
@@ -262,7 +365,7 @@ describe("child-first shell contracts", () => {
       const body = typeof init?.body === "string" ? init.body : undefined;
       requests.push({ url, method, body });
       if (url.endsWith("/api/children")) return new Response(JSON.stringify([{ id: 1, name: "樂樂" }]), { status: 200, headers: { "Content-Type": "application/json" } });
-      if (url.includes("daily-queue")) return new Response(JSON.stringify([]), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.includes("daily-queue")) return new Response(JSON.stringify(noDueQueue(1)), { status: 200, headers: { "Content-Type": "application/json" } });
       if (url.endsWith("/learning-sessions/current")) return new Response(JSON.stringify(session), { status: 200, headers: { "Content-Type": "application/json" } });
       if (url.endsWith("/book1-l01/fast-track") && method === "POST") {
         expect(JSON.parse(body ?? "{}").session_id).toBe(session.id);
@@ -341,20 +444,21 @@ describe("child-first shell contracts", () => {
   it("routes the canonical due-review CTA through /learning-session in REVIEW, preserves the session on Home, and keeps the next normal launch in LEARN", async () => {
     localStorage.clear();
     localStorage.setItem(DISPLAY_LANGUAGE_KEY, "zh-Hant");
+    persistSelectedBackendChild(22, "樂樂");
     window.history.replaceState({}, "", "/");
     const requestLog: Array<{ url: string; method: string }> = [];
     const reviewStates = { ni: "PENDING", hao: "PENDING" };
     const curriculumTasks = plannerTasksForLesson("book1-l01").map((task) => ({
       ...task,
       id: `learn-session:${task.key}`,
-      childId: 1,
+      childId: 22,
       sessionId: "learn-session",
     }));
     const pendingCurriculum = curriculumTasks.find((task) => task.sourceQueue === "CURRICULUM" && task.required)!;
     const reviewTask = (which: "ni" | "hao") => ({
       id: `learn-session:review-recognition-${which === "ni" ? 1 : 2}`,
       sessionId: "learn-session",
-      childId: 1,
+      childId: 22,
       key: `review-recognition-${which === "ni" ? 1 : 2}`,
       taskType: "REVIEW_RECOGNITION",
       skillDomain: "recognition",
@@ -375,7 +479,7 @@ describe("child-first shell contracts", () => {
     const session = (includeReviewTasks: boolean) => ({
       id: "learn-session",
       sessionId: "learn-session",
-      childId: 1,
+      childId: 22,
       status: "IN_PROGRESS",
       lessonId: "book1-l01",
       curriculumContext: { lessonId: "book1-l01", lessonMasteredBeforeSession: false },
@@ -384,7 +488,7 @@ describe("child-first shell contracts", () => {
     let latestSessionResponse: ReturnType<typeof session> = session(false);
     let reviewTaskState = "PENDING";
     const dueQueue = {
-      childId: 1,
+      childId: 22,
       asOf: "2026-09-05T00:00:00Z",
       placementStart: "BOOK_1",
       review: { sourceQueue: "REVIEW", dueCount: 2, items: [
@@ -413,7 +517,7 @@ describe("child-first shell contracts", () => {
       const url = String(input);
       const method = init?.method ?? "GET";
       requestLog.push({ url, method });
-      if (url.endsWith("/api/children")) return new Response(JSON.stringify([{ id: 1, name: "樂樂" }]), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.endsWith("/api/children")) return new Response(JSON.stringify([{ id: 11, name: "樂樂" }, { id: 22, name: "樂樂" }]), { status: 200, headers: { "Content-Type": "application/json" } });
       if (url.includes("/learning-daily-queue")) {
         return new Response(JSON.stringify(reviewTaskState === "COMPLETED" ? normalQueue : dueQueue), { status: 200, headers: { "Content-Type": "application/json" } });
       }
@@ -457,6 +561,9 @@ describe("child-first shell contracts", () => {
     expect(document.querySelector('main[aria-label="課堂學習播放器"]')).toBeTruthy();
     expect(document.querySelector(".mode-badge.mode-review")).toBeTruthy();
     expect(document.querySelector(".large-char-display")?.textContent).toBe("你");
+    expect(requestLog.some((request) => request.url === "/api/children/22/learning-daily-queue")).toBe(true);
+    expect(requestLog.some((request) => /\/api\/children\/22\/learning-sessions(?:\/|$)/.test(request.url))).toBe(true);
+    expect(requestLog.some((request) => request.url.startsWith("/api/children/11/"))).toBe(false);
     expect(requestLog.some((request) => request.url.includes("/learning-sessions/learn-session/reconcile-reviews") && request.method === "POST")).toBe(true);
 
     const correctChoice = Array.from(document.querySelectorAll(".char-choice-card"))
@@ -504,6 +611,7 @@ describe("child-first shell contracts", () => {
   ])("canonical REVIEW reconciles only Daily Queue due IDs when %s", async (_caseName, omitDueItem) => {
     localStorage.clear();
     localStorage.setItem(DISPLAY_LANGUAGE_KEY, "zh-Hant");
+    persistSelectedBackendChild(1, "樂樂");
     window.history.replaceState({}, "", "/");
     const requestLog: Array<{ url: string; method: string; body?: string }> = [];
     let dueBState = "PENDING";
@@ -606,6 +714,7 @@ describe("child-first shell contracts", () => {
   ])("canonical REVIEW fails closed on %s instead of replaying a stale session task", async (_caseName, invalidQueue) => {
     localStorage.clear();
     localStorage.setItem(DISPLAY_LANGUAGE_KEY, "zh-Hant");
+    persistSelectedBackendChild(1, "樂樂");
     window.history.replaceState({}, "", "/");
     let reconcileCalls = 0;
     const curriculumTask = {
@@ -700,6 +809,7 @@ describe("child-first shell contracts", () => {
   it("clears REVIEW launch intent when browser history leaves the canonical lesson route", async () => {
     localStorage.clear();
     localStorage.setItem(DISPLAY_LANGUAGE_KEY, "zh-Hant");
+    persistSelectedBackendChild(1, "樂樂");
     window.history.replaceState({}, "", "/");
     let homeQueueMode: "due" | "normal" = "due";
     const queue = () => ({
@@ -843,6 +953,7 @@ describe("child-first shell contracts", () => {
   it("renders 你好 on the canonical home path for Book 1 placement", async () => {
     localStorage.clear();
     localStorage.setItem(DISPLAY_LANGUAGE_KEY, "zh-Hant");
+    persistSelectedBackendChild(1, "樂樂");
     window.history.replaceState({}, "", "/TongXuan-Chinese/");
     vi.stubGlobal("fetch", vi.fn(async (url: string) => {
       if (url.endsWith("/api/children")) {
@@ -901,6 +1012,7 @@ describe("child-first shell contracts", () => {
     for (const testCase of placements) {
       localStorage.clear();
       localStorage.setItem(DISPLAY_LANGUAGE_KEY, "zh-Hant");
+      persistSelectedBackendChild(1, "樂樂");
       window.history.replaceState({}, "", "/TongXuan-Chinese/");
 
       vi.stubGlobal("fetch", vi.fn(async (url: string) => {
@@ -1001,6 +1113,7 @@ describe("child-first shell contracts", () => {
   it("browsing or selecting Book 1 Lesson 2 in track keeps primary hero CTA launching book1-l01 and shows upcoming lesson card", async () => {
     localStorage.clear();
     localStorage.setItem(DISPLAY_LANGUAGE_KEY, "zh-Hant");
+    persistSelectedBackendChild(1, "樂樂");
     window.history.replaceState({}, "", "/TongXuan-Chinese/");
 
     let launchedLessonId = "";
@@ -1124,6 +1237,7 @@ describe("child-first shell contracts", () => {
   it("switching visible stage tab in track cannot silently change the lesson launched by the primary CTA", async () => {
     localStorage.clear();
     localStorage.setItem(DISPLAY_LANGUAGE_KEY, "zh-Hant");
+    persistSelectedBackendChild(1, "樂樂");
     window.history.replaceState({}, "", "/TongXuan-Chinese/");
 
     vi.stubGlobal("fetch", vi.fn(async (url: string) => {
@@ -1234,6 +1348,7 @@ describe("child-first shell contracts", () => {
   it("renders mastered state on home when Book 1 L1 is mastered: displays mastered banner, next lesson preview, does not restart L1 as new, and nests draft cards", async () => {
     localStorage.clear();
     localStorage.setItem(DISPLAY_LANGUAGE_KEY, "zh-Hant");
+    persistSelectedBackendChild(1, "樂樂");
     window.history.replaceState({}, "", "/TongXuan-Chinese/");
 
     vi.stubGlobal("fetch", vi.fn(async (url: string) => {

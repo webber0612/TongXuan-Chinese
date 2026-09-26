@@ -100,6 +100,7 @@ import {
   trackFeedbackClick
 } from "../lib/analytics";
 import { officialCoursePath, officialCourseSourceNote, type OfficialLesson } from "../data/officialCoursePath";
+import { isValidBackendChildId } from "../lib/profiles";
 
 const API = import.meta.env.VITE_API_BASE ?? "";
 
@@ -1839,10 +1840,10 @@ export function ChildPortalPage({
   onOpenCurriculum,
   onStartLearningSession
 }: {
-  activeChildId?: number | null;
+  activeChildId: number | null;
   activeChildName?: string;
   onOpenCurriculum: () => void;
-  onStartLearningSession?: (learnerName: string, targetLessonId: string | undefined, mode: "LEARN" | "REVIEW") => boolean;
+  onStartLearningSession?: (childId: number | null, targetLessonId: string | undefined, mode: "LEARN" | "REVIEW") => boolean;
 }) {
   // Learner Profiles Storage
   const [learners, setLearners] = useState<ChildLearner[]>(() => {
@@ -2024,6 +2025,15 @@ export function ChildPortalPage({
       : "starter-l01");
 
   const { stage: authoritativeStage, lesson: authoritativeLesson } = findLessonAndStage(authoritativeLessonId);
+  const sessionTargetLessonId = dailyQueue?.newLesson?.lessonId || dailyQueue?.completedLesson?.lessonId ||
+    (dailyQueue?.placementStart === "BOOK_1" ? "book1-l01" : dailyQueue?.placementStart === "BASIC" ? "basic-l01" : dailyQueue?.placementStart === "STARTER" ? "starter-l01" : undefined);
+  const startLearningSession = (mode: "LEARN" | "REVIEW") => {
+    if (!onStartLearningSession || !isValidBackendChildId(activeChildId) || dailyQueue?.childId !== activeChildId || !sessionTargetLessonId) {
+      setSessionProfileError(true);
+      return;
+    }
+    setSessionProfileError(!onStartLearningSession(activeChildId, sessionTargetLessonId, mode));
+  };
 
   const [selectedStageId, setSelectedStageId] = useState<string>("starter");
   const [selectedOfficialLessonId, setSelectedOfficialLessonId] = useState<string>("starter-l01");
@@ -2031,38 +2041,19 @@ export function ChildPortalPage({
   useEffect(() => {
     let cancelled = false;
     const targetChildId = activeChildId;
-    if (!targetChildId) {
-      fetch(`${API}/api/children`)
-        .then((res) => (res.ok ? res.json() : []))
-        .then((childrenList: Array<{ id: number; name: string }>) => {
-          if (cancelled || !Array.isArray(childrenList) || childrenList.length === 0) return;
-          const matchingChild = childrenList.find(
-            (c) => c.name.trim().toLowerCase() === activeLearner.name.trim().toLowerCase()
-          ) || childrenList[0];
-          if (matchingChild) {
-            return fetch(`${API}/api/children/${matchingChild.id}/learning-daily-queue`)
-              .then((r) => (r.ok ? r.json() : null))
-              .then((queueData) => {
-                if (!cancelled && queueData) {
-                  setDailyQueue(queueData);
-                  const authId = queueData.newLesson?.lessonId || queueData.completedLesson?.lessonId || (queueData.placementStart === "BOOK_1" ? "book1-l01" : queueData.placementStart === "BASIC" ? "basic-l01" : "starter-l01");
-                  const found = findLessonAndStage(authId);
-                  setSelectedStageId(found.stage.id);
-                  setSelectedOfficialLessonId(found.lesson.id);
-                }
-              });
-          }
-        })
-        .catch(() => {});
+    setDailyQueue(null);
+    if (!isValidBackendChildId(targetChildId)) {
       return () => { cancelled = true; };
     }
 
     fetch(`${API}/api/children/${targetChildId}/learning-daily-queue`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (!cancelled && data) {
-          setDailyQueue(data);
-          const authId = data.newLesson?.lessonId || data.completedLesson?.lessonId || (data.placementStart === "BOOK_1" ? "book1-l01" : data.placementStart === "BASIC" ? "basic-l01" : "starter-l01");
+      .then((res) => (res.ok ? res.json() as Promise<unknown> : null))
+      .then((data: unknown) => {
+        if (!cancelled && typeof data === "object" && data !== null &&
+            "childId" in data && data.childId === targetChildId) {
+          const queueData = data as ValidatedDailyQueue;
+          setDailyQueue(queueData);
+          const authId = queueData.newLesson?.lessonId || queueData.completedLesson?.lessonId || (queueData.placementStart === "BOOK_1" ? "book1-l01" : queueData.placementStart === "BASIC" ? "basic-l01" : "starter-l01");
           const found = findLessonAndStage(authId);
           setSelectedStageId(found.stage.id);
           setSelectedOfficialLessonId(found.lesson.id);
@@ -2073,7 +2064,7 @@ export function ChildPortalPage({
     return () => {
       cancelled = true;
     };
-  }, [activeChildId, activeLearner.name]);
+  }, [activeChildId]);
 
   const browsingStage = officialCoursePath.stages.find((s) => s.id === selectedStageId) || authoritativeStage;
   const browsingStageIndex = officialCoursePath.stages.findIndex((s) => s.id === browsingStage.id);
@@ -2625,7 +2616,7 @@ export function ChildPortalPage({
       <div className="child-portal-source-note" role="note">
         <span>{t("draftContentNotice")}</span>
         <button type="button" onClick={onOpenCurriculum}>{t("openVerifiedCurriculum")}</button>
-          {onStartLearningSession && <button type="button" className="validated-session-entry" onClick={() => setSessionProfileError(!onStartLearningSession(activeLearner.name, dailyQueue?.newLesson?.lessonId || (dailyQueue?.placementStart === "BOOK_1" ? "book1-l01" : dailyQueue?.placementStart === "BASIC" ? "basic-l01" : dailyQueue?.placementStart === "STARTER" ? "starter-l01" : undefined), "LEARN"))}>{t("startValidatedSession")}</button>}
+          {onStartLearningSession && <button type="button" className="validated-session-entry" onClick={() => startLearningSession("LEARN")}>{t("startValidatedSession")}</button>}
           {sessionProfileError && <span className="session-profile-error" role="alert">{t("sessionProfileMissing")}</span>}
       </div>
 
@@ -2811,11 +2802,7 @@ export function ChildPortalPage({
                     type="button"
                     className="launch-quiz-cta-btn validated-session-entry"
                     onClick={() => {
-                      if (onStartLearningSession) {
-                        const targetId = dailyQueue?.newLesson?.lessonId || (dailyQueue?.placementStart === "BOOK_1" ? "book1-l01" : dailyQueue?.placementStart === "BASIC" ? "basic-l01" : dailyQueue?.placementStart === "STARTER" ? "starter-l01" : undefined);
-                        const started = onStartLearningSession(activeLearner.name, targetId, "REVIEW");
-                        setSessionProfileError(!started);
-                      }
+                      startLearningSession("REVIEW");
                     }}
                   >
                     <Play size={20} fill="currentColor" />
@@ -2836,11 +2823,7 @@ export function ChildPortalPage({
                   type="button"
                   className="launch-quiz-cta-btn validated-session-entry"
                   onClick={() => {
-                    if (onStartLearningSession) {
-                      const targetId = dailyQueue?.newLesson?.lessonId || (dailyQueue?.placementStart === "BOOK_1" ? "book1-l01" : dailyQueue?.placementStart === "BASIC" ? "basic-l01" : dailyQueue?.placementStart === "STARTER" ? "starter-l01" : undefined);
-                      const started = onStartLearningSession(activeLearner.name, targetId, "LEARN");
-                      setSessionProfileError(!started);
-                    }
+                    startLearningSession("LEARN");
                   }}
                 >
                   <Play size={20} fill="currentColor" />
