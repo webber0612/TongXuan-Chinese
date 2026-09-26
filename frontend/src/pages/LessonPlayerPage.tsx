@@ -124,6 +124,8 @@ const copy = {
     scaffoldHidden: "隱藏翻譯",
     scaffoldLabel: "母語鷹架",
     sessionSummaryTitle: "今日課堂結算",
+    reviewCompletedTitle: "本輪複習完成",
+    reviewCompletedNotice: "到期項目已記錄。原本的課程進度會保留在今日學習中。",
     sessionCompletedLabel: "今天的練習完成：",
     lessonPracticedLabel: "本課已練習：",
     masteryStatusLabel: "本課是否達到目前精熟條件：",
@@ -184,6 +186,8 @@ const copy = {
     scaffoldHidden: "隐藏翻译",
     scaffoldLabel: "母语鹰架",
     sessionSummaryTitle: "今日课堂结算",
+    reviewCompletedTitle: "本轮复习完成",
+    reviewCompletedNotice: "到期项目已记录。原本的课程进度会保留在今日学习中。",
     sessionCompletedLabel: "今天的练习完成：",
     lessonPracticedLabel: "本课已练习：",
     masteryStatusLabel: "本课是否达到目前熟练条件：",
@@ -244,6 +248,8 @@ const copy = {
     scaffoldHidden: "Hidden",
     scaffoldLabel: "Scaffold",
     sessionSummaryTitle: "Session Summary & Settlement",
+    reviewCompletedTitle: "Review Complete",
+    reviewCompletedNotice: "Your due reviews are recorded. Your current lesson progress remains in Today's Learning.",
     sessionCompletedLabel: "Today's practice completed:",
     lessonPracticedLabel: "Lesson practiced:",
     masteryStatusLabel: "Mastery criteria met:",
@@ -304,6 +310,8 @@ const copy = {
     scaffoldHidden: "非表示",
     scaffoldLabel: "言語サポート",
     sessionSummaryTitle: "学習完了サマリー",
+    reviewCompletedTitle: "復習完了",
+    reviewCompletedNotice: "期限の来た項目を記録しました。今日の学習の続きは保持されています。",
     sessionCompletedLabel: "本日の練習完了：",
     lessonPracticedLabel: "練習したレッスン：",
     masteryStatusLabel: "習熟判定：",
@@ -364,6 +372,8 @@ const copy = {
     scaffoldHidden: "숨기기",
     scaffoldLabel: "언어 지원",
     sessionSummaryTitle: "오늘의 학습 결과",
+    reviewCompletedTitle: "복습 완료",
+    reviewCompletedNotice: "복습 항목을 기록했어요. 오늘 학습의 진행 상태는 그대로 유지됩니다.",
     sessionCompletedLabel: "오늘 연습 완료:",
     lessonPracticedLabel: "연습한 수업:",
     masteryStatusLabel: "숙달 기준 충족:",
@@ -424,6 +434,8 @@ const copy = {
     scaffoldHidden: "Oculto",
     scaffoldLabel: "Apoyo en tu idioma",
     sessionSummaryTitle: "Resumen de la lección",
+    reviewCompletedTitle: "Repaso completado",
+    reviewCompletedNotice: "Los repasos pendientes quedaron registrados. El progreso de la lección de hoy se conserva.",
     sessionCompletedLabel: "Práctica de hoy completada:",
     lessonPracticedLabel: "Lección practicada:",
     masteryStatusLabel: "Criterio de dominio alcanzado:",
@@ -553,6 +565,26 @@ export function LessonPlayerPage({
   }, [pkg, mode, weakDomains, authoritativeDueItems]);
 
   const currentStep = steps[currentStepIndex] ?? null;
+
+  const handleCompleteReview = () => {
+    if (!activeChildId) {
+      onBack();
+      return;
+    }
+    const currentSess = sessionRef.current;
+    const expectedIds = reviewSessionTasks.map((task) => task.id).filter((id): id is string => typeof id === "string" && id.length > 0);
+    if (!currentSess?.id || expectedIds.length === 0 || new Set(expectedIds).size !== expectedIds.length) {
+      setError(text.taskFailed);
+      return;
+    }
+    const exactTasks = currentSess.tasks?.filter((task) => expectedIds.includes(task.id)) ?? [];
+    // Reconciled REVIEW tasks are required and currently have no deferral policy; only exact authoritative COMPLETED tasks may end this round.
+    if (exactTasks.length !== expectedIds.length || exactTasks.some((task) => task.sourceQueue !== "REVIEW" || task.state !== "COMPLETED")) {
+      setError(text.taskFailed);
+      return;
+    }
+    onBack();
+  };
 
   // Authoritative session initialization
   const initSession = useCallback(async () => {
@@ -806,7 +838,8 @@ export function LessonPlayerPage({
 
   const submitBackendTaskEvidence = async (
     matcher: (t: { id: string; key: string; taskType: string; state: string; itemId?: string; taskData?: any; attemptCount?: number; failureCount?: number; completedAt?: string | null }) => boolean,
-    evidenceRef: string
+    evidenceRef: string,
+    durationMs?: number
   ): Promise<TaskWriteResult> => {
     const currentSess = sessionRef.current;
     if (!activeChildId || !currentSess?.id || !currentSess.tasks) {
@@ -849,6 +882,7 @@ export function LessonPlayerPage({
           method: "POST",
           body: JSON.stringify({
             evidence_ref: evidenceRef,
+            ...(durationMs === undefined ? {} : { duration_ms: durationMs }),
           }),
         }
       );
@@ -1422,7 +1456,8 @@ export function LessonPlayerPage({
     if (currentStepIndex < steps.length - 1) {
       setCurrentStepIndex((prev) => prev + 1);
     } else {
-      void handleCompleteSession();
+      if (mode === "REVIEW") handleCompleteReview();
+      else void handleCompleteSession();
     }
   };
 
@@ -1489,36 +1524,35 @@ export function LessonPlayerPage({
     if (recording) {
       setError(null);
       const ids = { ...activeSpeakingAttemptIdsRef.current };
+      const uncommittedIds = { ...ids };
       try {
         await recorder.stop();
+        if (!activeChildId || (!ids.speaking && !ids.pronunciation)) {
+          throw new Error(text.taskFailed);
+        }
         if (activeChildId) {
-          // Complete speaking attempt and attach evidence
+          // The learning-flow evidence operation atomically completes provider and curriculum evidence.
           if (ids.speaking) {
-            await api(`/api/reading-aloud/attempts/${ids.speaking}/complete?child_id=${activeChildId}`, {
-              method: "POST",
-              body: JSON.stringify({ duration_ms: 2000 }),
-            });
             const res = await submitBackendTaskEvidence(
               (t) => t.taskType === "SPEAKING_ATTEMPT" || t.key === "speaking",
-              ids.speaking
+              ids.speaking,
+              2000
             );
             if (!res.persisted || (res.taskState !== "COMPLETED" && res.taskState !== "DEFERRED")) {
               throw new Error(text.taskFailed);
             }
+            delete uncommittedIds.speaking;
           }
-          // Complete pronunciation attempt and attach evidence
           if (ids.pronunciation) {
-            await api(`/api/reading-aloud/attempts/${ids.pronunciation}/complete?child_id=${activeChildId}`, {
-              method: "POST",
-              body: JSON.stringify({ duration_ms: 2000 }),
-            });
             const res = await submitBackendTaskEvidence(
               (t) => t.taskType === "PRONUNCIATION_ATTEMPT" || t.key === "pronunciation",
-              ids.pronunciation
+              ids.pronunciation,
+              2000
             );
             if (!res.persisted || (res.taskState !== "COMPLETED" && res.taskState !== "DEFERRED")) {
               throw new Error(text.taskFailed);
             }
+            delete uncommittedIds.pronunciation;
           }
           recorder.delete();
           activeSpeakingAttemptIdsRef.current = {};
@@ -1530,7 +1564,7 @@ export function LessonPlayerPage({
         setRecording(false);
         setSpeakingAttempted(false);
         setError(err?.message || text.taskFailed);
-        await cleanupAndAbortSpeakingAttempts(ids);
+        await cleanupAndAbortSpeakingAttempts(uncommittedIds);
       }
     } else {
       setError(null);
@@ -2429,7 +2463,19 @@ export function LessonPlayerPage({
           )}
 
           {/* STEP 9: Wrap-up / Settlement */}
-          {currentStep.stepKey === "wrap_up" && (
+          {currentStep.stepKey === "wrap_up" && mode === "REVIEW" && (
+            <div className="step-body step-wrap-up-body">
+              <div className="session-settlement-card">
+                <div className="settlement-trophy-icon">
+                  <CheckCircle2 size={44} />
+                </div>
+                <h3 className="settlement-title">{text.reviewCompletedTitle}</h3>
+                <p>{text.reviewCompletedNotice}</p>
+              </div>
+            </div>
+          )}
+
+          {currentStep.stepKey === "wrap_up" && mode !== "REVIEW" && (
             <div className="step-body step-wrap-up-body">
               <div className="session-settlement-card">
                 <div className="settlement-trophy-icon">
@@ -2499,10 +2545,10 @@ export function LessonPlayerPage({
                 <button
                   type="button"
                   className="button button-primary finish-session-cta-btn"
-                  onClick={handleCompleteSession}
+                  onClick={mode === "REVIEW" ? handleCompleteReview : handleCompleteSession}
                 >
                   <CheckCircle2 size={18} />
-                  <span>{text.finishLesson}</span>
+                  <span>{mode === "REVIEW" ? text.backToToday : text.finishLesson}</span>
                 </button>
               )}
             </div>

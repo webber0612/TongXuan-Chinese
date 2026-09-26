@@ -953,8 +953,8 @@ def _validate_external_evidence(db: Any, child_id: int, row: Any, evidence_ref: 
         return "completed", False, "listening_attempt"
     if task_type in {"SPEAKING_ATTEMPT", "PRONUNCIATION_ATTEMPT"}:
         expected_domain = "speaking" if task_type == "SPEAKING_ATTEMPT" else "pronunciation"
-        attempt = db.execute("SELECT status,source_type,source_id,activity_domain,assisted,manual_review FROM reading_aloud_attempts WHERE id=? AND child_id=?", (evidence_ref, child_id)).fetchone()
-        if not attempt or attempt["status"] != "COMPLETED" or attempt["source_type"] != "CURRICULUM" or attempt["source_id"] != row["activity_item_id"] or attempt["activity_domain"] != expected_domain or attempt["assisted"] or attempt["manual_review"]:
+        attempt = db.execute("SELECT status,completed_at,aborted_at,source_type,source_id,activity_domain,assisted,manual_review FROM reading_aloud_attempts WHERE id=? AND child_id=?", (evidence_ref, child_id)).fetchone()
+        if not attempt or attempt["status"] != "STARTED" or attempt["completed_at"] is not None or attempt["aborted_at"] is not None or attempt["source_type"] != "CURRICULUM" or attempt["source_id"] != row["activity_item_id"] or attempt["activity_domain"] != expected_domain or attempt["assisted"] or attempt["manual_review"]:
             raise ValueError("reading_aloud_evidence_not_independent")
         return "completed", False, "reading_aloud_completed"
     if task_type.startswith("WRITING_"):
@@ -965,7 +965,26 @@ def _validate_external_evidence(db: Any, child_id: int, row: Any, evidence_ref: 
     raise ValueError("learning_task_evidence_type_invalid")
 
 
-def attach_learning_evidence(*, child_id: int, session_id: str, task_id: str, evidence_ref: str) -> dict[str, Any]:
+def _complete_speaking_provider_attempt_in_transaction(db: Any, *, child_id: int, evidence_ref: str, duration_ms: int | None) -> dict[str, Any]:
+    from .reading_aloud import complete_attempt_in_transaction
+
+    return complete_attempt_in_transaction(
+        db,
+        child_id=child_id,
+        attempt_id=evidence_ref,
+        duration_ms=duration_ms,
+        require_skill_gate=True,
+    )
+
+
+def _insert_learning_flow_task_attempt(db: Any, *, session_id: str, task_id: str, child_id: int, skill_domain: str | None, result: str, assisted: bool, evidence_ref: str, evidence_type: str, occurred_at: str) -> None:
+    db.execute(
+        "INSERT OR IGNORE INTO learning_flow_task_attempts(id,session_id,task_id,child_id,skill_domain,result,score,assisted,evidence_ref,scorer_version,occurred_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+        (uid("flow-attempt"), session_id, task_id, child_id, skill_domain, result, None, int(assisted), evidence_ref, evidence_type, occurred_at),
+    )
+
+
+def attach_learning_evidence(*, child_id: int, session_id: str, task_id: str, evidence_ref: str, duration_ms: int | None = None) -> dict[str, Any]:
     initialize_database()
     _enforce_session_time(child_id, session_id)
     with connect() as db:
@@ -978,6 +997,10 @@ def attach_learning_evidence(*, child_id: int, session_id: str, task_id: str, ev
         if row["state"] == "COMPLETED":
             return _session_payload(db, session)
         result, assisted, evidence_type = _validate_external_evidence(db, child_id, row, evidence_ref)
+        if row["task_type"] in {"SPEAKING_ATTEMPT", "PRONUNCIATION_ATTEMPT"}:
+            # Provider completion, the linked curriculum gate, and flow evidence share this transaction.
+            # Any downstream failure rolls back all three authoritative writes.
+            _complete_speaking_provider_attempt_in_transaction(db, child_id=child_id, evidence_ref=evidence_ref, duration_ms=duration_ms)
         data = json.loads(row["task_json"])
         required_repeat = int(data.get("taskData", {}).get("repeatCount", 1)) if row["task_type"].startswith("WRITING_") else 1
         if result == "incorrect":
@@ -997,7 +1020,7 @@ def attach_learning_evidence(*, child_id: int, session_id: str, task_id: str, ev
         start = _parse_stamp(row["started_at"]) or _parse_stamp(stamp)
         stamp_dt = _parse_stamp(stamp) or _utcnow_naive()
         duration = max(0, int((stamp_dt - start).total_seconds())) if start else 0
-        db.execute("INSERT OR IGNORE INTO learning_flow_task_attempts(id,session_id,task_id,child_id,skill_domain,result,score,assisted,evidence_ref,scorer_version,occurred_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)", (uid("flow-attempt"), session_id, task_id, child_id, row["skill_domain"], result, None, int(assisted), evidence_ref, evidence_type, stamp))
+        _insert_learning_flow_task_attempt(db, session_id=session_id, task_id=task_id, child_id=child_id, skill_domain=row["skill_domain"], result=result, assisted=assisted, evidence_ref=evidence_ref, evidence_type=evidence_type, occurred_at=stamp)
         db.execute("UPDATE learning_flow_tasks SET state=?,failure_count=?,attempt_count=attempt_count+1,completed_at=?,elapsed_seconds=elapsed_seconds+?,deferred_reason=?,evidence_ref=COALESCE(?,evidence_ref) WHERE id=? AND session_id=?", (state, failure_count, completed_at, duration, deferred_reason, evidence_ref, task_id, session_id))
         _log(db, session_id, child_id, "task_evidence_attached" if result != "incorrect" else "task_attempted", task_id, row["skill_domain"], {"taskType": row["task_type"], "result": result, "assisted": assisted, "durationSeconds": duration}, stamp)
         if row["task_type"] in {"SPEAKING_ATTEMPT", "PRONUNCIATION_ATTEMPT"} and result == "completed":

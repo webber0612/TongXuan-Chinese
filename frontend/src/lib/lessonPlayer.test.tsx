@@ -4043,10 +4043,12 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     vi.unstubAllGlobals();
   });
 
-  it("71. Regression E: 2 due items (Task A and Task B) -> each step strictly binds to its own task.id", async () => {
+  it("71. Regression E: exact due tasks complete, Review wrap-up returns to Today without completing the parent LEARN session", async () => {
     let taskStateA = "PENDING";
     let taskStateB = "PENDING";
     const answeredTaskIds: string[] = [];
+    let wholeSessionCompleteCalled = false;
+    let backCalled = false;
 
     vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
       if (url.includes("/learning-sessions/current")) {
@@ -4100,6 +4102,7 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
         }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
       if (url.includes("/learning-sessions/s-reg-e/complete") && init?.method === "POST") {
+        wholeSessionCompleteCalled = true;
         return new Response(JSON.stringify({ id: "s-reg-e", status: "COMPLETED" }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
       return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
@@ -4110,7 +4113,7 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     const root = createRoot(container);
 
     await act(async () => {
-      root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} initialMode="REVIEW" />);
+      root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => { backCalled = true; }} initialMode="REVIEW" />);
     });
 
     // STEP 1: Bound to task-A (你)
@@ -4135,6 +4138,13 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
 
     // Advances to wrap-up
     expect(container.querySelector("[data-step-key='wrap_up']")).toBeTruthy();
+    expect(container.querySelector(".settlement-metrics-grid")).toBeNull();
+    expect(container.textContent).toContain("Review Complete");
+    const finishReviewBtn = container.querySelector(".finish-session-cta-btn") as HTMLButtonElement;
+    expect(finishReviewBtn?.textContent).toContain("Back to Today's Learning");
+    await act(async () => { finishReviewBtn.click(); });
+    expect(backCalled).toBe(true);
+    expect(wholeSessionCompleteCalled).toBe(false);
 
     root.unmount();
     container.remove();
@@ -4336,7 +4346,7 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     vi.unstubAllGlobals();
   });
 
-  it("74. Speaking failure regression B: recorder.stop() succeeds -> evidence POST fails -> speakingAttempted=false -> task incomplete -> UI error -> Next blocked", async () => {
+  it("74. Speaking failure regression B: atomic evidence POST fails without provider finalize -> speakingAttempted=false -> task incomplete -> UI error -> Next blocked", async () => {
     const tasksState = [
       { id: "s-sp-b:listen", key: "listen", taskType: "LISTENING", state: "COMPLETED", itemId: "p-1" },
       { id: "s-sp-b:vocab", key: "vocabulary", taskType: "VOCABULARY", state: "COMPLETED", itemId: "v-1" },
@@ -4366,6 +4376,7 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
 
     let createdAttemptId: string | null = null;
     let completeCalled = false;
+    let evidenceCalled = false;
 
     vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
       if (url.includes("/learning-sessions/current")) {
@@ -4385,6 +4396,7 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
         return new Response(JSON.stringify({ id: "aloud-ok-1", status: "COMPLETED" }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
       if (url.includes("/tasks/s-sp-b:speaking/evidence")) {
+        evidenceCalled = true;
         // Evidence POST fails with 500 error
         return new Response(JSON.stringify({ error: "evidence_persistence_failed" }), { status: 500, headers: { "Content-Type": "application/json" } });
       }
@@ -4434,7 +4446,8 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
 
     // 2. Click Record button again -> stop recording -> evidence POST fails
     await act(async () => { recordBtn.click(); });
-    expect(completeCalled).toBe(true);
+    expect(evidenceCalled).toBe(true);
+    expect(completeCalled).toBe(false);
 
     // 3. Verify speakingAttempted is false
     const statusLabel = container.querySelector(".recording-status-label");
@@ -4460,6 +4473,4 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     vi.unstubAllGlobals();
   });
 });
-
-
 

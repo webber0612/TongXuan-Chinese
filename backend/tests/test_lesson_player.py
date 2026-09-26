@@ -301,9 +301,7 @@ def test_real_book1_l01_end_to_end_completion_flow(tmp_path):
                 })
                 assert sp_start.status_code == 200
                 attempt_id = sp_start.json()["id"]
-                sp_comp = client.post(f"/api/reading-aloud/attempts/{attempt_id}/complete?child_id={child_id}", json={"duration_ms": 2000})
-                assert sp_comp.status_code == 200
-                ev_resp = client.post(f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{task_id}/evidence", json={"evidence_ref": attempt_id})
+                ev_resp = client.post(f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{task_id}/evidence", json={"evidence_ref": attempt_id, "duration_ms": 2000})
                 assert ev_resp.status_code == 200
             elif task_type == "PRONUNCIATION_ATTEMPT":
                 pr_start = client.post(f"/api/reading-aloud/attempts/start?child_id={child_id}", json={
@@ -311,9 +309,7 @@ def test_real_book1_l01_end_to_end_completion_flow(tmp_path):
                 })
                 assert pr_start.status_code == 200
                 attempt_id = pr_start.json()["id"]
-                pr_comp = client.post(f"/api/reading-aloud/attempts/{attempt_id}/complete?child_id={child_id}", json={"duration_ms": 2000})
-                assert pr_comp.status_code == 200
-                ev_resp = client.post(f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{task_id}/evidence", json={"evidence_ref": attempt_id})
+                ev_resp = client.post(f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{task_id}/evidence", json={"evidence_ref": attempt_id, "duration_ms": 2000})
                 assert ev_resp.status_code == 200
             elif task_type.startswith("WRITING_"):
                 # Writing is optional in this flow, test skip
@@ -567,6 +563,7 @@ def test_review_authoritative_reconciliation_integration(tmp_path):
         assert start_resp.status_code == 200
         active_session = start_resp.json()
         session_id = active_session["id"]
+        pending_curriculum = next(t for t in active_session["tasks"] if t["sourceQueue"] == "CURRICULUM" and t["required"] and t["state"] == "PENDING")
 
         # 2. 此時 session 沒有 REVIEW task
         initial_review_tasks = [t for t in active_session["tasks"] if t["sourceQueue"] == "REVIEW"]
@@ -627,6 +624,11 @@ def test_review_authoritative_reconciliation_integration(tmp_path):
             json={"selected_option_id": "option-2"},
         )
         assert answer_resp.status_code == 200
+        answered_session = answer_resp.json()
+        answered_review_task = next(t for t in answered_session["tasks"] if t["id"] == review_task["id"])
+        assert answered_review_task["state"] == "COMPLETED"
+        assert answered_session["status"] == "IN_PROGRESS"
+        assert next(t for t in answered_session["tasks"] if t["id"] == pending_curriculum["id"])["state"] == "PENDING"
 
         # 9. 驗證 exact SRS row：
         #    - last_result 更新
@@ -652,6 +654,8 @@ def test_review_authoritative_reconciliation_integration(tmp_path):
         second_review_tasks = [t for t in second_session["tasks"] if t["sourceQueue"] == "REVIEW"]
         assert len(second_review_tasks) == 1
         assert second_review_tasks[0]["id"] == review_task["id"]
+        assert second_session["status"] == "IN_PROGRESS"
+        assert next(t for t in second_session["tasks"] if t["id"] == pending_curriculum["id"])["state"] == "PENDING"
 
 
 def test_review_paused_session_reconciliation_and_answer(tmp_path):
@@ -828,6 +832,4 @@ def test_review_cross_lesson_items_filtered(tmp_path):
         # 6. Daily Queue 仍保留 B
         dq_after = client.get(f"/api/children/{child_id}/learning-daily-queue?as_of={as_of_eval}").json()
         assert any(it["id"] == "item-b" and it["lessonId"] == "starter-l01" for it in dq_after["review"]["items"])
-
-
 
