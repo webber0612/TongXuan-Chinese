@@ -209,29 +209,33 @@ def link_lesson_item(*, child_id: int, lesson_id: str, skill_domain: str, item_i
         return {"childId": child_id, "lessonId": lesson_id, "skillDomain": skill_domain, "itemId": item_id}
 
 
-def record_lesson_progress(*, child_id: int, lesson_id: str, status: str) -> dict[str, Any]:
+def _record_lesson_progress_in_transaction(db: Any, *, child_id: int, lesson_id: str, status: str) -> dict[str, Any]:
     from .learning import ensure_child, now, uid
 
     if status not in PROGRESS_STATUSES:
         raise ValueError("invalid_progress_status")
+    ensure_child(db, child_id)
+    _resolve_access(db, child_id, lesson_id)
+    previous = _state_row(db, child_id, lesson_id)
+    next_status = "MASTERED" if previous and previous["status"] == "MASTERED" else status
+    updated_at = now()
+    db.execute(
+        "INSERT INTO curriculum_lesson_states(child_id,lesson_id,status,updated_at) VALUES(?,?,?,?) "
+        "ON CONFLICT(child_id,lesson_id) DO UPDATE SET status=excluded.status,updated_at=excluded.updated_at",
+        (child_id, lesson_id, next_status, updated_at),
+    )
+    event_id = uid("lesson-progress")
+    db.execute(
+        "INSERT INTO curriculum_lesson_events(id,child_id,lesson_id,event_type,status,details_json,created_at) VALUES(?,?,?,?,?,?,?)",
+        (event_id, child_id, lesson_id, "PROGRESS", next_status, json.dumps({"requestedStatus": status}, sort_keys=True), updated_at),
+    )
+    return {"id": event_id, "childId": child_id, "lessonId": lesson_id, "status": next_status, "mastered": next_status == "MASTERED", "unlockedNext": False, "updatedAt": updated_at}
+
+
+def record_lesson_progress(*, child_id: int, lesson_id: str, status: str) -> dict[str, Any]:
     initialize_database()
     with connect() as db:
-        ensure_child(db, child_id)
-        lesson, _ = _resolve_access(db, child_id, lesson_id)
-        previous = _state_row(db, child_id, lesson_id)
-        next_status = "MASTERED" if previous and previous["status"] == "MASTERED" else status
-        updated_at = now()
-        db.execute(
-            "INSERT INTO curriculum_lesson_states(child_id,lesson_id,status,updated_at) VALUES(?,?,?,?) "
-            "ON CONFLICT(child_id,lesson_id) DO UPDATE SET status=excluded.status,updated_at=excluded.updated_at",
-            (child_id, lesson_id, next_status, updated_at),
-        )
-        event_id = uid("lesson-progress")
-        db.execute(
-            "INSERT INTO curriculum_lesson_events(id,child_id,lesson_id,event_type,status,details_json,created_at) VALUES(?,?,?,?,?,?,?)",
-            (event_id, child_id, lesson_id, "PROGRESS", next_status, json.dumps({"requestedStatus": status}, sort_keys=True), updated_at),
-        )
-        return {"id": event_id, "childId": child_id, "lessonId": lesson_id, "status": next_status, "mastered": next_status == "MASTERED", "unlockedNext": False, "updatedAt": updated_at}
+        return _record_lesson_progress_in_transaction(db, child_id=child_id, lesson_id=lesson_id, status=status)
 
 
 def set_soft_unlock(*, child_id: int, lesson_id: str, unlocked: bool, actor_subject: str, actor_role: str) -> dict[str, Any]:
@@ -311,53 +315,57 @@ def _latest_linked_gates(db: Any, child_id: int, lesson_id: str, domain: str) ->
     return list(newest_by_item.values())
 
 
-def assess_lesson(*, child_id: int, lesson_id: str) -> dict[str, Any]:
+def _assess_lesson_in_transaction(db: Any, *, child_id: int, lesson_id: str) -> dict[str, Any]:
     from .learning import ensure_child, now, uid
 
-    initialize_database()
-    with connect() as db:
-        ensure_child(db, child_id)
-        lesson, _ = _resolve_access(db, child_id, lesson_id)
-        floors = {domain: DEFAULT_GATE_FLOOR for domain in lesson["domains"]}
-        scores: dict[str, float] = {}
-        gate_statuses: dict[str, str] = {}
-        gate_evidence_refs: dict[str, list[str]] = {}
-        failed: list[str] = []
-        missing: list[str] = []
-        evidence_refs: dict[str, list[str]] = {}
-        created_at = now()
-        for domain, floor in floors.items():
-            if domain in NON_SCORE_GATE_DOMAINS:
-                gates = _latest_linked_gates(db, child_id, lesson_id, domain)
-                if not gates:
-                    missing.append(domain)
-                    continue
-                gate_statuses[domain] = "PARENT_VERIFIED" if any(gate["gate_status"] == "PARENT_VERIFIED" for gate in gates) else "ATTEMPTED_INDEPENDENTLY"
-                gate_evidence_refs[domain] = [gate["evidence_ref"] for gate in gates]
-                continue
-            attempts = _latest_linked_attempts(db, child_id, lesson_id, domain)
-            if not attempts:
+    ensure_child(db, child_id)
+    lesson, _ = _resolve_access(db, child_id, lesson_id)
+    floors = {domain: DEFAULT_GATE_FLOOR for domain in lesson["domains"]}
+    scores: dict[str, float] = {}
+    gate_statuses: dict[str, str] = {}
+    gate_evidence_refs: dict[str, list[str]] = {}
+    failed: list[str] = []
+    missing: list[str] = []
+    evidence_refs: dict[str, list[str]] = {}
+    created_at = now()
+    for domain, floor in floors.items():
+        if domain in NON_SCORE_GATE_DOMAINS:
+            gates = _latest_linked_gates(db, child_id, lesson_id, domain)
+            if not gates:
                 missing.append(domain)
                 continue
-            independent_scores = [float(attempt["correct"]) for attempt in attempts if not attempt["assisted"]]
-            score = sum(independent_scores) / len(independent_scores) if independent_scores else 0.0
-            scores[domain] = score
-            evidence_refs[domain] = [attempt["evidence_ref"] for attempt in attempts]
-            if any(attempt["assisted"] for attempt in attempts) or score < floor:
-                failed.append(domain)
-        mastered = not missing and not failed
-        status = "MASTERED" if mastered else "NEEDS_REVIEW"
-        db.execute(
-            "INSERT INTO curriculum_lesson_states(child_id,lesson_id,status,updated_at) VALUES(?,?,?,?) "
-            "ON CONFLICT(child_id,lesson_id) DO UPDATE SET status=excluded.status,updated_at=excluded.updated_at",
-            (child_id, lesson_id, status, created_at),
-        )
-        event_id = uid("lesson-assessment")
-        db.execute(
-            "INSERT INTO curriculum_lesson_events(id,child_id,lesson_id,event_type,status,details_json,created_at) VALUES(?,?,?,?,?,?,?)",
-            (event_id, child_id, lesson_id, "ASSESSMENT", status, json.dumps({"scores": scores, "evidenceRefs": evidence_refs, "gateStatuses": gate_statuses, "gateEvidenceRefs": gate_evidence_refs, "missingDomains": sorted(missing), "failedDomains": sorted(failed), "domainFloors": {domain: floor for domain, floor in floors.items() if domain in SCORED_DOMAINS}}, sort_keys=True), created_at),
-        )
-        return {"id": event_id, "childId": child_id, "lessonId": lesson_id, "status": status, "mastered": mastered, "scores": scores, "evidenceRefs": evidence_refs, "gateStatuses": gate_statuses, "gateEvidenceRefs": gate_evidence_refs, "nonScoreDomains": sorted(NON_SCORE_GATE_DOMAINS.intersection(floors)), "missingDomains": sorted(missing), "failedDomains": sorted(failed), "domainFloors": {domain: floor for domain, floor in floors.items() if domain in SCORED_DOMAINS}, "updatedAt": created_at}
+            gate_statuses[domain] = "PARENT_VERIFIED" if any(gate["gate_status"] == "PARENT_VERIFIED" for gate in gates) else "ATTEMPTED_INDEPENDENTLY"
+            gate_evidence_refs[domain] = [gate["evidence_ref"] for gate in gates]
+            continue
+        attempts = _latest_linked_attempts(db, child_id, lesson_id, domain)
+        if not attempts:
+            missing.append(domain)
+            continue
+        independent_scores = [float(attempt["correct"]) for attempt in attempts if not attempt["assisted"]]
+        score = sum(independent_scores) / len(independent_scores) if independent_scores else 0.0
+        scores[domain] = score
+        evidence_refs[domain] = [attempt["evidence_ref"] for attempt in attempts]
+        if any(attempt["assisted"] for attempt in attempts) or score < floor:
+            failed.append(domain)
+    mastered = not missing and not failed
+    status = "MASTERED" if mastered else "NEEDS_REVIEW"
+    db.execute(
+        "INSERT INTO curriculum_lesson_states(child_id,lesson_id,status,updated_at) VALUES(?,?,?,?) "
+        "ON CONFLICT(child_id,lesson_id) DO UPDATE SET status=excluded.status,updated_at=excluded.updated_at",
+        (child_id, lesson_id, status, created_at),
+    )
+    event_id = uid("lesson-assessment")
+    db.execute(
+        "INSERT INTO curriculum_lesson_events(id,child_id,lesson_id,event_type,status,details_json,created_at) VALUES(?,?,?,?,?,?,?)",
+        (event_id, child_id, lesson_id, "ASSESSMENT", status, json.dumps({"scores": scores, "evidenceRefs": evidence_refs, "gateStatuses": gate_statuses, "gateEvidenceRefs": gate_evidence_refs, "missingDomains": sorted(missing), "failedDomains": sorted(failed), "domainFloors": {domain: floor for domain, floor in floors.items() if domain in SCORED_DOMAINS}}, sort_keys=True), created_at),
+    )
+    return {"id": event_id, "childId": child_id, "lessonId": lesson_id, "status": status, "mastered": mastered, "scores": scores, "evidenceRefs": evidence_refs, "gateStatuses": gate_statuses, "gateEvidenceRefs": gate_evidence_refs, "nonScoreDomains": sorted(NON_SCORE_GATE_DOMAINS.intersection(floors)), "missingDomains": sorted(missing), "failedDomains": sorted(failed), "domainFloors": {domain: floor for domain, floor in floors.items() if domain in SCORED_DOMAINS}, "updatedAt": created_at}
+
+
+def assess_lesson(*, child_id: int, lesson_id: str) -> dict[str, Any]:
+    initialize_database()
+    with connect() as db:
+        return _assess_lesson_in_transaction(db, child_id=child_id, lesson_id=lesson_id)
 
 
 def get_phonetic_support(*, child_id: int, script_mode: str) -> dict[str, Any]:
