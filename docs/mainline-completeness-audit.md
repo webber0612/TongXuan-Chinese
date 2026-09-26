@@ -2,7 +2,7 @@
 
 **Audit baseline:** main at 6b6c64e43f18a813d11c1f93c4032f557f631476 (squash merge of PR #42 / Issue #41)
 **Scope:** Issue #38 end-to-end learning journey, limited to executable code, tests, APIs, schema, and currently approved curriculum boundaries.
-**Result:** PR #40 closed the supported-lesson planner/runtime task-parity P0 for `starter-l01`, `basic-l01`, and `book1-l01`. PR #42 closed the canonical Home → REVIEW mode handoff and exact Daily Queue task-selection gap. No P0 remains in the validated Home→LEARN/REVIEW slice. Issue #43 is implemented on `codex/issue-43-fast-track-repair` and awaiting exact-head Architect review; main remains at the audit baseline until the PR passes and merges.
+**Result:** PR #40 closed the supported-lesson planner/runtime task-parity P0 for `starter-l01`, `basic-l01`, and `book1-l01`. PR #42 closed the canonical Home → REVIEW mode handoff and exact Daily Queue task-selection gap. No P0 remains in the validated Home→LEARN/REVIEW slice. Issue #43 is implemented in Draft PR #44 on `codex/issue-43-fast-track-repair` and awaiting exact-head Architect review; main remains at the audit baseline until the PR passes and merges.
 
 ## Current executable path
 
@@ -72,7 +72,7 @@ No open P0 remains in the validated Home→LEARN/REVIEW handoff slice. Issue #41
 
 ### P1
 
-1. **Issue #43 — FAST_TRACK failure→REPAIR lifecycle.** Main has the failure path described above. The implementation is in Draft PR #43; it is not counted as resolved until independent review passes and the PR merges. Acceptance covers exact same-session resume/evidence, no unsupported fallback, and no whole-session completion from partial repair.
+1. **Issue #43 — FAST_TRACK failure→REPAIR lifecycle.** Main has the failure path described above. The implementation is in Draft PR #44; it is not counted as resolved until independent review passes and the PR merges. Acceptance covers exact same-session resume/evidence, no unsupported fallback, and no whole-session completion from partial repair.
 2. **Cross-lesson Daily Queue review.** Daily Queue can return exact due IDs from multiple lessons, but reconciliation is limited to the active session lesson; canonical REVIEW now fails closed rather than replay stale or mismatched tasks. Support due IDs within the currently executable lesson packages without changing eligibility or dropping items.
 3. **Canonical backend child identity and usable placement flow.** Placement endpoints exist but are not wired into the current parent/profile experience.
 4. **Parent dashboard integration.** The authoritative learning-flow report is not surfaced by the production Parent Dashboard.
@@ -86,7 +86,7 @@ No open P0 remains in the validated Home→LEARN/REVIEW handoff slice. Issue #41
 
 ## Proposed autonomous issue sequence
 
-1. **Current: review Draft PR #43 for Issue #43, P1 FAST_TRACK failure→REPAIR lifecycle.** After exact-head PASS, merge and update this matrix to reflect authoritative same-session `IN_PROGRESS` before repair interaction and preserved LEARN work through repair wrap-up.
+1. **Current: review Draft PR #44 for Issue #43, P1 FAST_TRACK failure→REPAIR lifecycle.** After exact-head PASS, merge and update this matrix to reflect authoritative same-session `IN_PROGRESS` before repair interaction and preserved LEARN work through repair wrap-up.
 2. **Next: P1 cross-lesson Daily Queue review.** Reconcile and present each eligible due item from existing executable lesson packages by exact backend identity; preserve current due eligibility and fail closed for genuinely unavailable content.
 3. **P1 profile identity / placement integration.** Use stable backend child IDs end to end and expose the existing placement contract without changing its policy.
 4. **P1 parent report integration.** Display the existing child-scoped authoritative learning report on the Parent surface.
