@@ -8,6 +8,7 @@ import { ChildHomePage } from "../pages/ChildHomePage";
 import { canonicalRedirectPath, isCanonicalHomePath, resolveLearningSessionChildId, routeFromPath } from "../AppShell";
 import { AppShell } from "../AppShell";
 import { DISPLAY_LANGUAGE_KEY } from "./i18n";
+import { authoritativeSessionFixture } from "./testFixtures/learningFlow";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -134,6 +135,206 @@ describe("child-first shell contracts", () => {
     expect(document.querySelector('main[aria-label="課堂學習播放器"]')).toBeTruthy();
     expect(document.querySelector(".mode-badge.mode-learn")).toBeTruthy();
     await act(async () => { matchedRoot.unmount(); });
+    vi.unstubAllGlobals();
+  });
+
+  it("canonical Fast Track failure waits for same-session resume, repairs exact tasks, and returns Home without settlement", async () => {
+    localStorage.clear();
+    localStorage.setItem(DISPLAY_LANGUAGE_KEY, "zh-Hant");
+    window.history.replaceState({}, "", "/");
+    const session = authoritativeSessionFixture("book1-l01", "repair-session");
+    const requests: Array<{ url: string; method: string; body?: string }> = [];
+    const repairAnswerIds: string[] = [];
+    let completeCalls = 0;
+    let releaseResume: ((response: Response) => void) | null = null;
+    const resumeDeferred = new Promise<Response>((resolve) => { releaseResume = resolve; });
+
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+      requests.push({ url, method, body: typeof init?.body === "string" ? init.body : undefined });
+      if (url.endsWith("/api/children")) return new Response(JSON.stringify([{ id: 1, name: "樂樂" }]), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.includes("daily-queue")) return new Response(JSON.stringify([]), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.endsWith("/learning-sessions/current")) return new Response(JSON.stringify(session), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.endsWith("/book1-l01/fast-track") && method === "POST") {
+        const body = JSON.parse(String(init?.body));
+        expect(body.session_id).toBe(session.id);
+        session.status = "PAUSED";
+        return new Response(JSON.stringify({
+          childId: 1, sessionId: session.id, lessonId: "book1-l01", sessionStatus: "PAUSED",
+          terminationReason: "FAST_TRACK_FAILED", passed: false, weakDomains: ["recognition"],
+          nextMode: "REPAIR", masteryStatus: "IN_PROGRESS", nextReviewDueAt: null,
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.endsWith("/learning-sessions") && method === "POST") {
+        const body = JSON.parse(String(init?.body));
+        expect(body.expected_session_id).toBe(session.id);
+        return resumeDeferred;
+      }
+      const answerMatch = url.match(/\/tasks\/([^/]+)\/answer$/);
+      if (answerMatch && method === "POST") {
+        const taskId = decodeURIComponent(answerMatch[1]);
+        repairAnswerIds.push(taskId);
+        const task = session.tasks.find((candidate) => candidate.id === taskId);
+        if (task) task.state = "COMPLETED";
+        return new Response(JSON.stringify(session), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.endsWith("/complete") && method === "POST") completeCalls += 1;
+      return new Response(JSON.stringify({}), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    document.body.innerHTML = '<div id="root"></div>';
+    const root = createRoot(document.getElementById("root")!);
+    await act(async () => { root.render(React.createElement(AppShell)); await new Promise((resolve) => setTimeout(resolve, 40)); });
+    await import("../pages/LessonPlayerPage");
+    const normalCta = document.querySelector(".hero-primary-cta-row .launch-quiz-cta-btn") as HTMLButtonElement;
+    expect(normalCta).toBeTruthy();
+    await act(async () => { normalCta.click(); await new Promise((resolve) => setTimeout(resolve, 60)); });
+    expect(window.location.pathname).toBe("/TongXuan-Chinese/learning-session");
+    expect(document.querySelector(".mode-badge.mode-learn")).toBeTruthy();
+
+    await act(async () => { (document.querySelector(".fast-track-trigger-btn") as HTMLButtonElement).click(); });
+    const fastTrackCards = Array.from(document.querySelectorAll(".exit-ticket-item-card"));
+    expect(fastTrackCards.length).toBeGreaterThan(0);
+    for (const card of fastTrackCards) {
+      await act(async () => { (card.querySelector(".choice-card-btn") as HTMLButtonElement).click(); });
+    }
+    await act(async () => { (document.querySelector(".submit-exit-ticket-btn") as HTMLButtonElement).click(); await Promise.resolve(); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
+
+    // The REPAIR UI and all task actions stay absent while the authoritative resume is unresolved.
+    expect(document.querySelector(".mode-badge.mode-fast_track")).toBeTruthy();
+    expect(document.querySelector(".mode-badge.mode-repair")).toBeNull();
+    expect(document.querySelector(".lesson-step-card")).toBeNull();
+    expect(document.querySelector(".next-step-cta-btn")).toBeNull();
+    expect(repairAnswerIds).toEqual([]);
+    expect(requests.some((request) => request.url.includes("/fast-track") && request.method === "POST")).toBe(true);
+
+    await act(async () => {
+      session.status = "IN_PROGRESS";
+      releaseResume?.(new Response(JSON.stringify(session), { status: 200, headers: { "Content-Type": "application/json" } }));
+      await new Promise((resolve) => setTimeout(resolve, 70));
+    });
+    expect(document.querySelector(".mode-badge.mode-repair")).toBeTruthy();
+    const repairStepIds: string[] = [];
+    while (document.querySelector("[data-step-key='characters']")) {
+      const targetCharacter = document.querySelector(".large-char-display")?.textContent ?? "";
+      const correctChoice = Array.from(document.querySelectorAll(".char-choice-card"))
+        .find((button) => button.textContent?.includes(targetCharacter)) as HTMLButtonElement | undefined;
+      expect(correctChoice).toBeTruthy();
+      const currentTaskId = session.tasks.find((task) => task.skillDomain === "recognition" && task.state !== "COMPLETED")?.id;
+      expect(currentTaskId).toBeTruthy();
+      repairStepIds.push(currentTaskId!);
+      await act(async () => { correctChoice!.click(); await new Promise((resolve) => setTimeout(resolve, 20)); });
+      await act(async () => { (document.querySelector(".next-step-cta-btn") as HTMLButtonElement).click(); await new Promise((resolve) => setTimeout(resolve, 20)); });
+    }
+    expect(document.querySelector("[data-step-key='wrap_up']")).toBeTruthy();
+    expect(repairAnswerIds).toEqual(repairStepIds);
+    expect(repairAnswerIds).toEqual(session.tasks.filter((task) => task.skillDomain === "recognition").map((task) => task.id));
+    await act(async () => { (document.querySelector(".finish-session-cta-btn") as HTMLButtonElement).click(); await new Promise((resolve) => setTimeout(resolve, 30)); });
+    expect(window.location.pathname).toBe("/TongXuan-Chinese/");
+    expect(completeCalls).toBe(0);
+    expect(session.status).toBe("IN_PROGRESS");
+    expect(session.tasks.find((task) => task.key === "listen")?.state).toBe("PENDING");
+
+    const nextNormalCta = document.querySelector(".hero-primary-cta-row .launch-quiz-cta-btn") as HTMLButtonElement;
+    await act(async () => { nextNormalCta.click(); await new Promise((resolve) => setTimeout(resolve, 55)); });
+    expect(window.location.pathname).toBe("/TongXuan-Chinese/learning-session");
+    expect(document.querySelector(".mode-badge.mode-learn")).toBeTruthy();
+    expect(completeCalls).toBe(0);
+
+    await act(async () => { root.unmount(); });
+    vi.unstubAllGlobals();
+  });
+
+  it("canonical REPAIR fails closed on resume identity/API failure and unsupported domains, with exact-session retry", async () => {
+    localStorage.clear();
+    localStorage.setItem(DISPLAY_LANGUAGE_KEY, "zh-Hant");
+    window.history.replaceState({}, "", "/");
+    const session = authoritativeSessionFixture("book1-l01", "repair-unsupported-session");
+    const requests: Array<{ url: string; method: string; body?: string }> = [];
+    let resumeCalls = 0;
+    let answerCalls = 0;
+    let completeCalls = 0;
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+      const body = typeof init?.body === "string" ? init.body : undefined;
+      requests.push({ url, method, body });
+      if (url.endsWith("/api/children")) return new Response(JSON.stringify([{ id: 1, name: "樂樂" }]), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.includes("daily-queue")) return new Response(JSON.stringify([]), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.endsWith("/learning-sessions/current")) return new Response(JSON.stringify(session), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.endsWith("/book1-l01/fast-track") && method === "POST") {
+        expect(JSON.parse(body ?? "{}").session_id).toBe(session.id);
+        session.status = "PAUSED";
+        return new Response(JSON.stringify({
+          childId: 1, sessionId: session.id, lessonId: "book1-l01", sessionStatus: "PAUSED",
+          terminationReason: "FAST_TRACK_FAILED", passed: false, weakDomains: ["grammar"],
+          nextMode: "REPAIR", masteryStatus: "IN_PROGRESS", nextReviewDueAt: null,
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.endsWith("/learning-sessions") && method === "POST") {
+        expect(JSON.parse(body ?? "{}").expected_session_id).toBe(session.id);
+        resumeCalls += 1;
+        if (resumeCalls === 1) return new Response(JSON.stringify({ ...session, id: "different-session", sessionId: "different-session", status: "IN_PROGRESS" }), { status: 200, headers: { "Content-Type": "application/json" } });
+        if (resumeCalls === 2) return new Response(JSON.stringify({ detail: "resume unavailable" }), { status: 503, headers: { "Content-Type": "application/json" } });
+        if (resumeCalls === 3) return new Response(JSON.stringify({ ...session, childId: 2, status: "IN_PROGRESS" }), { status: 200, headers: { "Content-Type": "application/json" } });
+        session.status = "IN_PROGRESS";
+        return new Response(JSON.stringify(session), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/tasks/") && url.endsWith("/answer") && method === "POST") answerCalls += 1;
+      if (url.endsWith("/complete") && method === "POST") completeCalls += 1;
+      return new Response(JSON.stringify({}), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    document.body.innerHTML = '<div id="root"></div>';
+    const root = createRoot(document.getElementById("root")!);
+    await act(async () => { root.render(React.createElement(AppShell)); await new Promise((resolve) => setTimeout(resolve, 35)); });
+    await import("../pages/LessonPlayerPage");
+    await act(async () => { (document.querySelector(".hero-primary-cta-row .launch-quiz-cta-btn") as HTMLButtonElement).click(); await new Promise((resolve) => setTimeout(resolve, 55)); });
+    await act(async () => { (document.querySelector(".fast-track-trigger-btn") as HTMLButtonElement).click(); });
+    for (const card of Array.from(document.querySelectorAll(".exit-ticket-item-card"))) {
+      await act(async () => { (card.querySelector(".choice-card-btn") as HTMLButtonElement).click(); });
+    }
+    await act(async () => { (document.querySelector(".submit-exit-ticket-btn") as HTMLButtonElement).click(); await new Promise((resolve) => setTimeout(resolve, 35)); });
+
+    // Identity mismatch blocks all task UI. Retry is constrained to the same backend session ID.
+    expect(document.querySelector(".error-strip")).toBeTruthy();
+    expect(document.querySelector(".lesson-step-card")).toBeNull();
+    expect(document.querySelector(".next-step-cta-btn")).toBeNull();
+    expect(answerCalls).toBe(0);
+    await act(async () => { (document.querySelector(".error-strip button") as HTMLButtonElement).click(); await new Promise((resolve) => setTimeout(resolve, 35)); });
+    expect(resumeCalls).toBe(2);
+    expect(document.querySelector(".lesson-step-card")).toBeNull();
+    expect(document.querySelector(".next-step-cta-btn")).toBeNull();
+    expect(answerCalls).toBe(0);
+    await act(async () => { (document.querySelector(".error-strip button") as HTMLButtonElement).click(); await new Promise((resolve) => setTimeout(resolve, 70)); });
+    expect(resumeCalls).toBe(3);
+    expect(document.querySelector(".lesson-step-card")).toBeNull();
+    expect(document.querySelector(".next-step-cta-btn")).toBeNull();
+    expect(answerCalls).toBe(0);
+    await act(async () => { (document.querySelector(".error-strip button") as HTMLButtonElement).click(); await new Promise((resolve) => setTimeout(resolve, 70)); });
+
+    // Book 1 has no curriculum task whose skillDomain is grammar. No fake exit-ticket repair is shown.
+    expect(document.querySelector(".mode-badge.mode-repair")).toBeTruthy();
+    expect(document.querySelector(".error-strip")).toBeTruthy();
+    expect(document.querySelector(".lesson-step-card")).toBeNull();
+    expect(document.querySelector(".next-step-cta-btn")).toBeNull();
+    expect(document.querySelector(".exit-ticket-item-card")).toBeNull();
+    expect(answerCalls).toBe(0);
+    expect(completeCalls).toBe(0);
+    expect(resumeCalls).toBe(4);
+    expect(requests.filter((request) => request.url.endsWith("/learning-sessions") && request.method === "POST")
+      .every((request) => JSON.parse(request.body ?? "{}").expected_session_id === session.id)).toBe(true);
+
+    await act(async () => { (document.querySelector(".player-back-btn") as HTMLButtonElement).click(); await new Promise((resolve) => setTimeout(resolve, 45)); });
+    expect(window.location.pathname).toBe("/TongXuan-Chinese/");
+    await act(async () => { (document.querySelector(".hero-primary-cta-row .launch-quiz-cta-btn") as HTMLButtonElement).click(); await new Promise((resolve) => setTimeout(resolve, 55)); });
+    expect(window.location.pathname).toBe("/TongXuan-Chinese/learning-session");
+    expect(document.querySelector(".mode-badge.mode-learn")).toBeTruthy();
+    expect(completeCalls).toBe(0);
+
+    await act(async () => { root.unmount(); });
     vi.unstubAllGlobals();
   });
 

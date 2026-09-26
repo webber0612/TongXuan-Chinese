@@ -447,7 +447,7 @@ def _ensure_lesson_materials(db: Any, child_id: int, lesson: dict[str, Any]) -> 
     return ids
 
 
-def start_learning_session(*, child_id: int, as_of: str | None, target_minutes: int = DEFAULT_TARGET_MINUTES, script_mode: str = "TRADITIONAL", lesson_id: str | None = None) -> dict[str, Any]:
+def start_learning_session(*, child_id: int, as_of: str | None, target_minutes: int = DEFAULT_TARGET_MINUTES, script_mode: str = "TRADITIONAL", lesson_id: str | None = None, expected_session_id: str | None = None) -> dict[str, Any]:
     if not 15 <= target_minutes <= 25:
         raise ValueError("invalid_target_minutes")
     if script_mode not in {"TRADITIONAL", "SIMPLIFIED"}:
@@ -457,6 +457,11 @@ def start_learning_session(*, child_id: int, as_of: str | None, target_minutes: 
     with connect() as db:
         ensure_child(db, child_id)
         active = db.execute("SELECT * FROM learning_flow_sessions WHERE child_id=? AND status IN ('IN_PROGRESS','PAUSED')", (child_id,)).fetchone()
+        if expected_session_id is not None:
+            if active is None or active["id"] != expected_session_id:
+                raise ValueError("expected_learning_session_not_active")
+            if lesson_id is not None and active["lesson_id"] != lesson_id:
+                raise ValueError("expected_learning_session_lesson_mismatch")
         if active:
             if active["status"] == "PAUSED":
                 resumed_at = now()

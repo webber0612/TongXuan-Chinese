@@ -1,29 +1,34 @@
 # ChatGPT ↔ Codex Project Handoff
 
 
-> ## ACTIVE HANDOFF SNAPSHOT — 2026-09-26
+> ## ACTIVE HANDOFF SNAPSHOT — 2026-09-27
 >
-> **Read this section first. It supersedes stale “current state” wording lower in this file.**
+> **Read this section first. It is the authoritative handoff and supersedes the old Phase-based and manual-relay instructions below for Issue #38.**
 >
 > Repository: `webber0612/TongXuan-Chinese`
 >
-> ### Immediate GitHub state
+> ### Current autonomous mainline state
 >
-> **PR #34 — Issue #33 Lesson Player v1**
+> - Current `main`: `6b6c64e43f18a813d11c1f93c4032f557f631476`.
+> - PR #42 / Issue #41 passed independent Architect review on exact head `f87e95ad5f1ee7a5a6aa814c50ff61d5d9fc469f` and was squash-merged to `main` at `6b6c64e43f18a813d11c1f93c4032f557f631476`.
+> - Issue #43, `[P1 Mainline] Make FAST_TRACK failure → REPAIR lifecycle executable`, is implemented on `codex/issue-43-fast-track-repair`, from the current `main`, in [Draft PR #44](https://github.com/webber0612/TongXuan-Chinese/pull/44). It adds exact Fast Track session binding, authoritative same-session resume, task-backed REPAIR, and wrap-up that preserves the IN_PROGRESS parent LEARN session. Issue #43 remains open pending independent exact-head review and merge.
+> - Local validation on the Issue #43 branch: backend pytest **152 passed** (4 sqlite datetime adapter deprecation warnings); frontend Vitest **142 passed** across 13 files; production build passed (Vite reported the existing large-chunk advisory); `git diff --check 6b6c64e43f18a813d11c1f93c4032f557f631476` passed. No schema/persistence migration changed, so migration checks were not applicable.
+> - Issue #38 is the governing continuous program. See [the completeness audit](mainline-completeness-audit.md) for the executable matrix, priorities, UI/manual lanes, and audit limits.
 >
-> - PR #34 passed final Architect review at head `482487d3cf0c7677313cfca4ed8cfdfd4a75e3d0`.
-> - PR #34 was merged to `main` with merge commit `8917912e629158e0c87f917828611c05ddbeb011`.
-> - Issue #33 implementation is now part of `main`.
+> ### Program workflow and authority
 >
-> **PR #36 — Issue #35 Canonical Frontend Architecture**
+> Project Manager selects the next ranked issue and writes acceptance criteria → Implementer makes a branch and Draft PR → independent Architect reviews the exact head → findings return through GitHub → after PASS and required tests/build/migration checks, PM marks ready and merges → update the audit and continue to the next issue.
 >
-> - URL: https://github.com/webber0612/TongXuan-Chinese/pull/36
-> - Branch: `codex/issue-35-frontend-architecture`
-> - Base: `main`
-> - The original stacked head `9adadc0ba2b3de2f5fb380ce3dd0f8605bee2f41` passed Architect review before PR #34 merged.
-> - After PR #34 merged, PR #36 was retargeted to `main`; the stacked history conflicted because PR #34 gained a final authority-fix commit after PR #36 branched.
-> - This branch is therefore rebuilt directly on merge commit `8917912...`, preserving the final Lesson Player fixes while reapplying only Issue #35 canonical-frontend changes.
-> - Next gate: rerun frontend tests/build on the rebased head, verify no drift/conflict, then perform final Architect validation before merge.
+> No Product Owner message relay is required between Implementer and Architect. Issue #38 authorizes PM merge only after exact-head PASS, required tests/build and any migration checks pass, no unresolved P0/P1 remains, and scope is within the autonomous lane.
+>
+> Stop and mark `OWNER_DECISION_REQUIRED` only for approved UI design choices, major teaching policy, legal/licensing/commercial rights, irreversible data risk, paid external services, real-child/device validation, or core product scope changes.
+>
+> ### Scope and verification limits
+>
+> - Issues #37 and #30 remain in the UI/manual lane. Preserve the approved deployed UI direction; do not redesign it.
+> - Do not expand Books 2–10. Current runtime work stays within the existing validated lesson packages and backend contracts.
+> - No local or deployed learner database is configured in this worktree; deployed DB state is **NOT VERIFIED**.
+> - GitHub Actions status for the new Issue #43 PR is **NOT VERIFIED** until inspected after opening the Draft PR; local checks above are not CI evidence.
 >
 > ### Canonical frontend identity
 >
@@ -41,17 +46,14 @@
 > ```
 >
 > Historical preview React pages are not production surfaces. Legacy preview URLs are tombstones only.
-> After PR #36 merges, all UI work must follow `docs/frontend-architecture.md`.
+> All UI work must follow `docs/frontend-architecture.md` and the user-approved design direction.
 > If canonical branch/route/component/import-chain cannot be verified, stop with:
 >
 > `CANONICAL_FRONTEND_NOT_VERIFIED`
 >
 > ### Collaboration rule
 >
-> ChatGPT = Architect / Auditor. Codex = Implementer.
->
-> Codex may push and maintain Draft PRs but must not merge, mark Ready, bypass review, or silently expand scope.
-> ChatGPT must inspect actual GitHub state rather than trust a completion report.
+> Project Manager, Implementer, and independent Architect work as one autonomous loop. GitHub Issues, PR comments, and repository docs are the durable handoff. The Product Owner is not asked to copy review messages or authorize ordinary code fixes and integrations.
 
 
 ## Purpose
@@ -77,29 +79,9 @@ GitHub is the source of truth for project state.
 
 ---
 
-## ACTIVE HANDOFF SNAPSHOT — 2026-09-26
+## Historical handoff snapshot — superseded
 
-Active work is PR #34, `[Learning Path v2] Build Lesson Player v1 for Book 1 Lesson 1《你好》`,
-on branch `issue-33-lesson-player`. The Architect review of head `d554c6bc88ea3b71633a4139e3d313ebc2fe00ac`
-requested changes for two P0 findings. Both are fixed and pushed in the current PR head; PR #34
-remains Draft, open, and unmerged while awaiting Architect re-review.
-
-P0 fixes:
-- LEARN mode authoritatively resumes a PAUSED session through the existing learning-session POST
-  operation, verifies that the same session returns as `IN_PROGRESS`, and keeps all task UI and Next
-  unavailable until then.
-- Optional writing skip accepts only authoritative `COMPLETED` or `DEFERRED`; missing and unexpected
-  states resolve to `UNKNOWN` and block progression. No `SKIPPED` success path or truthy result-object
-  check remains.
-
-Validation on the current changes:
-- Frontend Vitest: 121/121 tests across 13 files (79 Lesson Player cases).
-- Backend pytest: 149 passed.
-- Frontend production build: passed.
-- No learning logic outside these two reviewed blockers was changed.
-
-Stop here after the pushed Draft PR update and wait for Architect re-review. Do not merge or begin a
-separate work order until the review gate is complete.
+The snapshot below this heading in earlier revisions described PR #34 / PR #36 and is obsolete. Use the ACTIVE HANDOFF SNAPSHOT at the top of this file and `docs/mainline-completeness-audit.md` for current GitHub state, work order, and merge authority.
 
 ---
 
@@ -107,102 +89,44 @@ separate work order until the review gate is complete.
 
 ## Product Owner
 
-Human owner.
+The Product Owner decides only at the `OWNER_DECISION_REQUIRED` gates listed in the ACTIVE HANDOFF SNAPSHOT and Issue #38. Ordinary architecture, bug fixes, persistence, API consistency, tests, and mainline integration remain autonomous. The Product Owner does not relay messages between agents.
 
-Responsibilities:
-- decide product direction;
-- approve requirement changes;
-- decide when to advance to the next Phase;
-- manually tell Codex to read the latest PR / GitHub changes;
-- manually tell ChatGPT to review the latest GitHub changes.
+## Project Manager / Architect
 
-The Product Owner is **not** expected to copy code, diffs, or long audit messages between agents.
+- inspect the actual `main` executable path, tests, APIs, schema, relevant docs, and open GitHub work;
+- maintain `docs/mainline-completeness-audit.md` and select the next highest-priority issue;
+- write concrete work orders and acceptance criteria on GitHub;
+- independently review each exact PR head, record PASS or CHANGES_REQUESTED on the PR, and verify required local tests/build/migrations;
+- after PASS and all Issue #38 merge conditions are satisfied, mark ready and merge, then update the baseline and continue.
 
-## Codex
+## Implementer
 
-Primary implementer.
+- create a branch from current `main` for the assigned issue;
+- implement only the accepted work order, add regression coverage, and run the required checks;
+- open/update a Draft PR and respond to Architect findings on GitHub until exact-head PASS.
 
-Responsibilities:
-- implement authorized scope;
-- update files, tests, docs, git;
-- push changes;
-- read ChatGPT review from GitHub;
-- fix findings;
-- stop at the requested Phase boundary.
-
-## ChatGPT
-
-Architect / Auditor.
-
-Responsibilities:
-- inspect GitHub directly;
-- review new commits / branches / PRs;
-- verify architecture, scope, tests, learning logic, licensing and privacy;
-- publish concise findings back to GitHub;
-- prepare the next implementation work order / PR instructions when needed.
-
-ChatGPT should avoid long status narration unless the Product Owner asks for it.
+The Project Manager and Implementer may be separate Codex agents. GitHub Issues, PR comments, and repository docs are the durable handoff; no Product Owner copy/paste step is part of the loop.
 
 ---
 
 ## Internal Agent Loop
 
-The Codex runtime launches an independent internal Implementer and Architect / Project Manager
-pair for each Work Order. The Architect reads the exact implementation, schema, migrations, tests,
-frontend, report, and handoff; it performs an adversarial audit and sends findings back to the
-Implementer for correction and fresh re-audit.
+The Implementer and independent Architect review every PR head. CHANGES_REQUESTED findings go on GitHub and return directly to the Implementer; the Product Owner is not a message relay. GitHub is the durable issue/branch/PR record. Local verification is reported separately from GitHub Actions; a missing workflow run is recorded as NOT VERIFIED.
 
-This loop has no GitHub Actions Codex workflow, no external API or repository secret dependency,
-and no timer-based progress check. GitHub remains the durable branch/Draft PR and merge-gate record.
-The pair never auto-merges, marks a PR Ready for review, or starts a later Phase without its
-explicit Work Order and boundary.
-
-# Normal Working Loop
-
-Use this simple loop:
+# Autonomous Mainline Working Loop
 
 ```text
-ChatGPT
-↓
-publish PR / work order / review on GitHub
-↓
-Product Owner tells Codex:
-"看最新 PR / GitHub"
-↓
-Codex implements and pushes
-↓
-Product Owner tells ChatGPT:
-"看新 Git"
-↓
-ChatGPT audits GitHub directly
-↓
-repeat
+Project Manager audits and selects issue
+→ Implementer branch / code / regression tests / Draft PR
+→ independent Architect reviews exact head
+→ fix and re-review until PASS
+→ verify tests, build, and migrations as applicable
+→ Project Manager marks ready and merges
+→ update completeness audit and main baseline
+→ start next highest-priority issue
 ```
 
-No browser automation, GitHub Actions, external API, or timer is required for the agent loop.
-The Codex runtime is the agent-to-agent handoff channel; repository documents preserve durable
-state.
-
-## Product Owner PR Authorization
-
-The Product Owner authorizes Codex to automatically create or update a **Draft Pull Request** after completing an explicitly assigned work order. This authorization does not include merging, marking a PR ready for review, or changing branch protection.
-
-## Continuous Development Authorization
-
-To accelerate development, the Product Owner has authorized continuous phase progression.
-
-Rules:
-- After a Phase passes ChatGPT Architect Audit and is merged to `main`, ChatGPT should immediately prepare/publish the next Phase work order without asking the Product Owner for separate authorization.
-- Codex may start the next Phase when an explicit ChatGPT work order for that Phase exists on GitHub; no additional Product Owner confirmation is required.
-- Codex must still stop at the end of each assigned Phase, open/update one Draft PR, and wait for ChatGPT Architect Audit.
-- Codex must not merge its own PR, mark it Ready for review, bypass audit, or skip ahead beyond the currently published work order.
-- A failed audit blocks phase progression until findings are resolved.
-- Manual iPad/NAS/real-child validation remains distinct from code-level audit and must not be falsely claimed as completed.
-
-The Implementer/Auditor automation may continue fixing the current Phase until Architect PASS;
-the merge gate and Phase boundary remain explicit human/work-order boundaries.
-
-This continuous authorization supersedes older handoff wording that required a separate Product Owner authorization before each next Phase.
+Issue #38 explicitly authorizes Project Manager merges after exact-head Architect PASS, required tests/build and migration checks pass, no P0/P1 finding remains, scope stays in the autonomous lane, and no owner decision is required. Do not carry old Phase stop rules or no-merge wording into this lane. Issues #37 and #30 remain manual UI work and do not block mainline progress.
 
 ---
 
@@ -284,7 +208,9 @@ ChatGPT reviews at least:
 
 ---
 
-# Current Project State
+# Historical Phase Record — superseded for current work
+
+The following phase log is retained for historical context only. It is not evidence of current feature completeness, does not define the active work order, and does not override Issue #38 or `docs/mainline-completeness-audit.md`.
 
 Project:
 ```text
@@ -338,12 +264,7 @@ The original automated GitHub-AI / Chrome-MCP idea was abandoned.
 
 Do not continue that automation design unless the Product Owner explicitly reopens it.
 
-The active collaboration model is manual trigger + GitHub handoff:
-- Product Owner tells Codex to read GitHub.
-- Product Owner tells ChatGPT to inspect new GitHub changes.
-
-Phases 11–19 are complete and merged. Phase 20 Final Product is the currently assigned
-Phase on `phase20/final-product` from `origin/main` `04e3f88`; do not start Phase 21.
+This historical phase status predates the Issue #38 autonomous mainline program. Read the ACTIVE HANDOFF SNAPSHOT and completeness audit for the current `main` baseline and work order.
 
 ---
 
@@ -581,5 +502,4 @@ Remaining validation:
 - Synology DS723+ deployment/persistence;
 - real-child usability / parent workflow trial.
 
-Continuous development authorization is active. Phase 20 is the current assigned Phase; do not
-start Phase 21.
+Issue #38 is the active continuous development authorization. Phase numbers below are historical and do not constrain the mainline issue sequence.

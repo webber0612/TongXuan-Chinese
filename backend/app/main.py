@@ -228,6 +228,7 @@ class LearningSessionRequest(BaseModel):
     target_minutes: int = Field(default=18, ge=15, le=25)
     script_mode: str = "TRADITIONAL"
     lesson_id: str | None = None
+    expected_session_id: str | None = None
 
 
 class LearningTaskAnswerRequest(BaseModel):
@@ -255,6 +256,7 @@ class AnswerRequest(BaseModel):
 
 class FastTrackRequest(BaseModel):
     model_config = {"extra": "forbid"}
+    session_id: str = Field(min_length=1)
     answers: dict[str, str] = Field(default_factory=dict)
     as_of: str | None = None
 
@@ -728,7 +730,7 @@ def post_learning_session_plan(child_id: int, request: LearningSessionRequest) -
 @app.post("/api/children/{child_id}/learning-sessions")
 def post_learning_session_start(child_id: int, request: LearningSessionRequest) -> dict[str, object]:
     try:
-        return start_learning_session(child_id=child_id, as_of=request.as_of, target_minutes=request.target_minutes, script_mode=request.script_mode, lesson_id=request.lesson_id)
+        return start_learning_session(child_id=child_id, as_of=request.as_of, target_minutes=request.target_minutes, script_mode=request.script_mode, lesson_id=request.lesson_id, expected_session_id=request.expected_session_id)
     except ValueError as error:
         raise _learning_flow_error(error) from error
 
@@ -1000,6 +1002,18 @@ def post_lesson_fast_track(child_id: int, lesson_id: str, request: FastTrackRequ
     initialize_database()
     with connect() as db:
         ensure_child(db, child_id)
+        active_session = db.execute(
+            "SELECT id, status, lesson_id FROM learning_flow_sessions WHERE child_id=? AND status IN ('IN_PROGRESS','PAUSED') ORDER BY started_at DESC LIMIT 1",
+            (child_id,),
+        ).fetchone()
+        if active_session is None:
+            raise HTTPException(status_code=409, detail="fast_track_active_session_required")
+        if active_session["id"] != request.session_id:
+            raise HTTPException(status_code=409, detail="fast_track_session_mismatch")
+        if active_session["lesson_id"] != lesson_id:
+            raise HTTPException(status_code=409, detail="fast_track_session_lesson_mismatch")
+        if active_session["status"] != "IN_PROGRESS":
+            raise HTTPException(status_code=409, detail="fast_track_session_not_in_progress")
         if not lesson_is_accessible(db, child_id, lesson_id):
             raise HTTPException(status_code=409, detail="prerequisite_not_mastered")
         
@@ -1049,23 +1063,21 @@ def post_lesson_fast_track(child_id: int, lesson_id: str, request: FastTrackRequ
                     latest_srs_due = srs_phrase.get("due_at") or latest_srs_due
 
             # Clean up / bypass active session with accurate audit semantics
-            active_session = db.execute(
-                "SELECT id, status FROM learning_flow_sessions WHERE child_id=? AND status IN ('IN_PROGRESS','PAUSED')",
-                (child_id,)
-            ).fetchone()
-            if active_session:
-                stamp = now()
-                db.execute(
-                    "UPDATE learning_flow_sessions SET status='COMPLETED', completed_at=?, termination_reason='FAST_TRACK_BYPASS', mastery_status='READY_FOR_CHECK' WHERE id=?",
-                    (stamp, active_session["id"])
-                )
-                db.execute(
-                    "UPDATE learning_flow_tasks SET state='DEFERRED', deferred_reason='FAST_TRACK_BYPASS' WHERE session_id=? AND state IN ('IN_PROGRESS','PENDING')",
-                    (active_session["id"],)
-                )
-                _log(db, active_session["id"], child_id, "session_fast_track_bypassed", None, None, {"lessonId": lesson_id}, stamp)
+            stamp = now()
+            db.execute(
+                "UPDATE learning_flow_sessions SET status='COMPLETED', completed_at=?, termination_reason='FAST_TRACK_BYPASS', mastery_status='READY_FOR_CHECK' WHERE id=? AND child_id=? AND lesson_id=? AND status='IN_PROGRESS'",
+                (stamp, active_session["id"], child_id, lesson_id)
+            )
+            db.execute(
+                "UPDATE learning_flow_tasks SET state='DEFERRED', deferred_reason='FAST_TRACK_BYPASS' WHERE session_id=? AND state IN ('IN_PROGRESS','PENDING')",
+                (active_session["id"],)
+            )
+            _log(db, active_session["id"], child_id, "session_fast_track_bypassed", None, None, {"lessonId": lesson_id}, stamp)
 
             return {
+                "childId": child_id,
+                "sessionId": active_session["id"],
+                "sessionStatus": "COMPLETED",
                 "lessonId": lesson_id,
                 "passed": True,
                 "scores": scores,
@@ -1078,19 +1090,18 @@ def post_lesson_fast_track(child_id: int, lesson_id: str, request: FastTrackRequ
             }
         else:
             # Sync active session on fast track failure
-            active_session = db.execute(
-                "SELECT id, status FROM learning_flow_sessions WHERE child_id=? AND status IN ('IN_PROGRESS','PAUSED')",
-                (child_id,)
-            ).fetchone()
-            if active_session:
-                stamp = now()
-                db.execute(
-                    "UPDATE learning_flow_sessions SET status='PAUSED', last_resumed_at=?, termination_reason='FAST_TRACK_FAILED' WHERE id=?",
-                    (stamp, active_session["id"])
-                )
-                _log(db, active_session["id"], child_id, "session_fast_track_failed", None, None, {"lessonId": lesson_id, "weakDomains": weak_domains}, stamp)
+            stamp = now()
+            db.execute(
+                "UPDATE learning_flow_sessions SET status='PAUSED', last_resumed_at=?, termination_reason='FAST_TRACK_FAILED' WHERE id=? AND child_id=? AND lesson_id=? AND status='IN_PROGRESS'",
+                (stamp, active_session["id"], child_id, lesson_id)
+            )
+            _log(db, active_session["id"], child_id, "session_fast_track_failed", None, None, {"lessonId": lesson_id, "weakDomains": weak_domains}, stamp)
 
             return {
+                "childId": child_id,
+                "sessionId": active_session["id"],
+                "sessionStatus": "PAUSED",
+                "terminationReason": "FAST_TRACK_FAILED",
                 "lessonId": lesson_id,
                 "passed": False,
                 "scores": scores,
