@@ -285,6 +285,7 @@ def validate_publishable_paths(
 
 
 def validate_publishable_pack(path: Path) -> list[str]:
+    """Validate a pack and require its tracked repository path to be cleared."""
     sys.path.insert(0, str(BACKEND_PATH))
     from app.open_curriculum_validator import validate_curriculum_pack
 
@@ -292,17 +293,59 @@ def validate_publishable_pack(path: Path) -> list[str]:
         pack = _read_json(path)
     except (OSError, json.JSONDecodeError) as error:
         return [f"PUBLISHABLE_PACK_INVALID: {error}"]
-    issues = validate_curriculum_pack(pack)
-    return [f"{issue.code}:{issue.path}:{issue.message}" for issue in issues]
+    errors = [f"{issue.code}:{issue.path}:{issue.message}" for issue in validate_curriculum_pack(pack)]
+    if not isinstance(pack, Mapping) or pack.get("publicationStatus") != "PUBLISHABLE":
+        errors.append("PUBLISHABLE_PACK_STATUS_REQUIRED: publicationStatus must be PUBLISHABLE.")
+    try:
+        relative_path = path.resolve().relative_to(ROOT.resolve()).as_posix()
+    except ValueError:
+        return sorted(set(errors + [f"PUBLIC_ARTIFACT_PATH_UNINVENTORIED: {path}"]))
+    if not _is_candidate(relative_path):
+        errors.append(f"PUBLIC_ARTIFACT_PATH_UNINVENTORIED: {relative_path}")
+    else:
+        errors.extend(validate_publishable_paths([relative_path], _read_json(AUDIT_PATH)))
+    return sorted(set(errors))
+
+
+def validate_tracked_open_curriculum_packs(audit: Mapping[str, Any]) -> list[str]:
+    """Validate every tracked Open Curriculum pack; publication also needs path clearance."""
+    sys.path.insert(0, str(BACKEND_PATH))
+    from app.open_curriculum_validator import validate_curriculum_pack
+
+    errors: list[str] = []
+    pack_paths = sorted(
+        path for path in _tracked_paths()
+        if path.startswith("shared/open-curriculum/packs/") and path.lower().endswith(".json")
+    )
+    for relative_path in pack_paths:
+        path = ROOT / Path(relative_path)
+        try:
+            pack = _read_json(path)
+        except (OSError, json.JSONDecodeError) as error:
+            errors.append(f"OPEN_CURRICULUM_PACK_INVALID: {relative_path}: {error}")
+            continue
+        if not isinstance(pack, Mapping):
+            errors.append(f"OPEN_CURRICULUM_PACK_INVALID: {relative_path}: document must be an object")
+            continue
+        publication_status = pack.get("publicationStatus")
+        if publication_status not in {"PROPOSED", "PUBLISHABLE"}:
+            errors.append(f"OPEN_CURRICULUM_PACK_STATUS_INVALID: {relative_path}")
+        errors.extend(
+            f"{relative_path}:{issue.code}:{issue.path}:{issue.message}"
+            for issue in validate_curriculum_pack(pack)
+        )
+        if publication_status == "PUBLISHABLE":
+            errors.extend(validate_publishable_paths([relative_path], audit))
+    return sorted(set(errors))
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--check", action="store_true", help="validate registry and tracked-path audit")
+    parser.add_argument("--check", action="store_true", help="validate registry, tracked-path audit, and all tracked Open Curriculum packs")
     parser.add_argument("--seed-inventory", action="store_true", help="write a blocked-by-default inventory template")
     parser.add_argument("--refresh-digests", action="store_true", help="refresh digest mode, SHA-256, and canonical size while preserving classifications")
     parser.add_argument("--publishable-path", action="append", default=[], help="repo-relative path proposed for a public curriculum artifact")
-    parser.add_argument("--publishable-pack", type=Path, help="validate a candidate curriculum pack for publication")
+    parser.add_argument("--publishable-pack", type=Path, help="validate a PUBLISHABLE pack and require tracked path clearance")
     args = parser.parse_args(argv)
 
     if args.seed_inventory:
@@ -327,6 +370,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.check:
         audit = _read_json(AUDIT_PATH)
         errors.extend(validate_inventory(audit))
+        errors.extend(validate_tracked_open_curriculum_packs(audit))
         sys.path.insert(0, str(BACKEND_PATH))
         from app.open_curriculum_validator import load_default_source_registry, validate_source_registry
 

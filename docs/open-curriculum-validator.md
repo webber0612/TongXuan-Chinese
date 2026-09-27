@@ -28,7 +28,7 @@ Structural failures use `SCHEMA_INVALID`. Semantic checks include `UNAPPROVED_TA
 
 Diagnostics are sorted and deduplicated so identical input yields stable output. Registry diagnostics include `RIGHTS_EVIDENCE_ID_DUPLICATE`, `RIGHTS_DECISION_EVIDENCE_UNRESOLVED`, `RIGHTS_STATUS_DECISION_MISMATCH`, `GREEN_RIGHTS_UNSUPPORTED`, `GREEN_RIGHTS_EVIDENCE_MISSING`, `GREEN_PERMISSION_EVIDENCE_MISSING`, `GREEN_ITEM_LEVEL_GUARD_MISSING`, and `VALIDATION_ONLY_SOURCE_NOT_PUBLISHABLE`. Pack diagnostics also include `ITEM_RIGHTS_EVIDENCE_MISSING` and `CONTENT_RIGHTS_EVIDENCE_REQUIRED`. Schema validation and semantic checks do not certify pedagogical quality or replace independent review.
 
-The tracked-path inventory and public-artifact guard are implemented in [`scripts/open_curriculum_rights_gate.py`](../scripts/open_curriculum_rights_gate.py). It verifies the machine-readable repository audit, required path coverage, content digests, source/evidence references, and that non-owned content is never placed under root MIT. Candidate packs can be checked with `--publishable-pack`; proposed raw paths can be checked with repeated `--publishable-path` arguments. Existing `RIGHTS_UNCLEAR` paths remain blocked from publishable artifacts.
+The tracked-path inventory and public-artifact guard are implemented in [`scripts/open_curriculum_rights_gate.py`](../scripts/open_curriculum_rights_gate.py). Its `--check` command verifies the machine-readable repository audit, required path coverage, content digests, source/evidence references, and that non-owned content is never placed under root MIT. It also discovers and validates every tracked JSON file under `shared/open-curriculum/packs/`; a pack marked `PUBLISHABLE` must have an individually cleared inventory path. `--publishable-pack` combines curriculum validation with path clearance, while repeated `--publishable-path` arguments validate proposed raw paths. Existing `RIGHTS_UNCLEAR` paths remain blocked from publishable artifacts.
 
 ## Verification results
 
@@ -41,4 +41,4 @@ python -m pytest tests/test_open_curriculum.py -q
 python ../scripts/open_curriculum_rights_gate.py --check
 ```
 
-The authority and rights regression suites pass **43 tests**. Full backend, frontend, production-build, and exact-head review results are recorded in the active project handoff snapshot and the Phase 1 PR metadata for Issue #88.
+The authority and rights regression suites pass **50 tests** on the current PR head. Full backend, frontend, production-build, and exact-head review results are recorded in the active project handoff snapshot and the Phase 1 PR metadata for Issue #88.

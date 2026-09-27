@@ -71,7 +71,7 @@ The node schemas live in [`shared/open-curriculum/schemas/`](../shared/open-curr
 
 ## Current audit references
 
-See [`docs/content-rights-audit.md`](content-rights-audit.md) and machine-readable [`shared/content-sources/public-repo-audit.json`](../shared/content-sources/public-repo-audit.json) for the current tracked-tree inventory and classification boundaries. [`scripts/open_curriculum_rights_gate.py`](../scripts/open_curriculum_rights_gate.py) verifies inventory coverage, evidence references, digest drift, root-MIT separation, and publishable pack/path rejection. See [`docs/open-curriculum-experiment-proposal.md`](open-curriculum-experiment-proposal.md) for the proposed five-slot experiment structure; it contains no selected official targets or executable lessons.
+See [`docs/content-rights-audit.md`](content-rights-audit.md) and machine-readable [`shared/content-sources/public-repo-audit.json`](../shared/content-sources/public-repo-audit.json) for the current tracked-tree inventory and classification boundaries. [`scripts/open_curriculum_rights_gate.py --check`](../scripts/open_curriculum_rights_gate.py) verifies inventory coverage, evidence references, digest drift, root-MIT separation, and automatically validates every tracked JSON pack under `shared/open-curriculum/packs/`; a `PUBLISHABLE` pack must also have an individually cleared inventory path. `--publishable-pack` combines curriculum validation with its tracked path clearance check. See [`docs/open-curriculum-experiment-proposal.md`](open-curriculum-experiment-proposal.md) for the proposed five-slot experiment structure; it contains no selected official targets or executable lessons.
 
 ## Official references checked on 2026-09-28
 

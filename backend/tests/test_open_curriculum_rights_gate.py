@@ -10,12 +10,15 @@ from app.open_curriculum_validator import load_default_source_registry, validate
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPOSITORY_ROOT))
 
+from scripts import open_curriculum_rights_gate as rights_gate
 from scripts.open_curriculum_rights_gate import (
     AUDIT_PATH,
     _content_snapshot,
     _is_candidate,
     validate_inventory,
     validate_publishable_paths,
+    validate_publishable_pack,
+    validate_tracked_open_curriculum_packs,
 )
 
 
@@ -51,6 +54,63 @@ def test_uninventoried_publishable_path_fails_closed():
     assert validate_publishable_paths(["shared/unreviewed-pack.json"], load_audit()) == [
         "PUBLIC_ARTIFACT_PATH_UNINVENTORIED: shared/unreviewed-pack.json"
     ]
+
+
+def test_publishable_pack_command_requires_inventory_clearance_for_its_path():
+    errors = validate_publishable_pack(REPOSITORY_ROOT / "shared/lesson-packages/book1-l01.json")
+    assert "PUBLIC_ARTIFACT_RESTRICTED_CONTENT: shared/lesson-packages/book1-l01.json" in errors
+    assert "PUBLISHABLE_PACK_STATUS_REQUIRED: publicationStatus must be PUBLISHABLE." in errors
+
+
+def test_check_discovers_and_validates_tracked_open_curriculum_packs(tmp_path, monkeypatch):
+    relative_path = "shared/open-curriculum/packs/candidate.json"
+    pack_path = tmp_path / Path(relative_path)
+    pack_path.parent.mkdir(parents=True)
+    pack_path.write_text('{"publicationStatus":"PROPOSED"}', encoding="utf-8")
+    monkeypatch.setattr(rights_gate, "ROOT", tmp_path)
+    monkeypatch.setattr(rights_gate, "_tracked_paths", lambda: [relative_path])
+
+    errors = validate_tracked_open_curriculum_packs(load_audit())
+    assert any(error.startswith(f"{relative_path}:") and "SCHEMA_INVALID" in error for error in errors)
+
+
+def test_check_rejects_publishable_pack_with_blocked_inventory_path(tmp_path, monkeypatch, capsys):
+    relative_path = "shared/open-curriculum/packs/candidate.json"
+    pack_path = tmp_path / Path(relative_path)
+    pack_path.parent.mkdir(parents=True)
+    pack_path.write_text('{"publicationStatus":"PUBLISHABLE"}', encoding="utf-8")
+    digest, size, digest_mode = rights_gate._content_snapshot(pack_path)
+    audit_path = tmp_path / "public-repo-audit.json"
+    audit_path.write_text(json.dumps({
+        "schemaVersion": "1.0",
+        "auditId": "test-audit",
+        "baselineCommit": "test-only",
+        "classificationVocabulary": sorted(rights_gate.CLASSIFICATIONS),
+        "scope": {
+            "candidatePrefixes": list(rights_gate.SCOPE_PREFIXES),
+            "candidateExactPaths": sorted(rights_gate.SCOPE_FILES),
+            "method": "synthetic test inventory",
+            "limitations": ["synthetic only"],
+        },
+        "entries": [{
+            "path": relative_path,
+            "classification": "RIGHTS_UNCLEAR",
+            "sourceIds": [],
+            "evidenceIds": [],
+            "rootMitApplies": False,
+            "publishableArtifactAllowed": False,
+            "reason": "synthetic blocked test path",
+            "digestMode": digest_mode,
+            "sha256": digest,
+            "sizeBytes": size,
+        }],
+    }), encoding="utf-8")
+    monkeypatch.setattr(rights_gate, "ROOT", tmp_path)
+    monkeypatch.setattr(rights_gate, "AUDIT_PATH", audit_path)
+    monkeypatch.setattr(rights_gate, "_tracked_paths", lambda: [relative_path])
+
+    assert rights_gate.main(["--check"]) == 1
+    assert "PUBLIC_ARTIFACT_RESTRICTED_CONTENT: shared/open-curriculum/packs/candidate.json" in capsys.readouterr().err
 
 
 def test_third_party_content_cannot_inherit_root_mit():
