@@ -121,6 +121,80 @@ def _item_id(child_id: int, lesson_id: str, kind: str, index: int | None = None)
     return f"lf_{child_id}_{lesson_id}_{kind}{suffix}"
 
 
+def _fast_track_listening_question(lesson_id: str, lesson: dict[str, Any]) -> dict[str, Any] | None:
+    """Resolve the unique package-authored Fast Track listening question for this lesson phrase."""
+    if lesson_id not in FLOW_LESSONS or lesson.get("id") != lesson_id:
+        return None
+    from .lesson_packages import get_lesson_package
+
+    package = get_lesson_package(lesson_id)
+    curriculum_source = package.get("curriculumSource") if isinstance(package, dict) else None
+    if (
+        not isinstance(package, dict) or package.get("lessonId") != lesson_id or
+        not isinstance(curriculum_source, dict) or curriculum_source.get("title") != lesson.get("title")
+    ):
+        return None
+    blueprint = package.get("taskBlueprint")
+    if not isinstance(blueprint, dict):
+        return None
+
+    steps = blueprint.get("fastTrackSteps")
+    if not isinstance(steps, list):
+        return None
+    exit_tickets = [step for step in steps if isinstance(step, dict) and step.get("stepKey") == "exit_ticket"]
+    questions: list[Any] = []
+    for step in exit_tickets:
+        data = step.get("data")
+        if isinstance(data, dict) and isinstance(data.get("questions"), list):
+            questions.extend(data["questions"])
+    matches = [
+        question for question in questions
+        if isinstance(question, dict) and question.get("domain") == "listening" and question.get("audioText") == lesson["title"]
+    ]
+    if len(matches) != 1:
+        return None
+    question = matches[0]
+    question_id = question.get("id")
+    prompt = question.get("prompt")
+    audio_text = question.get("audioText")
+    raw_choices = question.get("choices")
+    correct_choice_id = question.get("correctChoiceId")
+    if (
+        not isinstance(question_id, str) or not question_id.strip() or
+        sum(1 for item in questions if isinstance(item, dict) and item.get("id") == question_id) != 1 or
+        not isinstance(prompt, str) or not prompt.strip() or
+        not isinstance(audio_text, str) or audio_text != lesson["title"] or
+        not isinstance(correct_choice_id, str) or not correct_choice_id.strip() or
+        not isinstance(raw_choices, list) or len(raw_choices) != 2
+    ):
+        return None
+    choices: list[dict[str, str]] = []
+    for choice in raw_choices:
+        if (
+            not isinstance(choice, dict) or
+            not isinstance(choice.get("id"), str) or not choice["id"].strip() or
+            not isinstance(choice.get("label"), str) or not choice["label"].strip() or
+            ("isCorrect" in choice and not isinstance(choice["isCorrect"], bool))
+        ):
+            return None
+        choices.append({"id": choice["id"], "label": choice["label"]})
+    ids = [choice["id"] for choice in choices]
+    labels = [choice["label"] for choice in choices]
+    if len(set(ids)) != len(ids) or len(set(labels)) != len(labels) or correct_choice_id not in ids:
+        return None
+    if any("isCorrect" in choice for choice in raw_choices) and any(
+        choice.get("isCorrect") != (choice.get("id") == correct_choice_id) for choice in raw_choices
+    ):
+        return None
+    return {
+        "question_id": question_id,
+        "prompt": prompt,
+        "audio_text": audio_text,
+        "choices": choices,
+        "correct_choice_id": correct_choice_id,
+    }
+
+
 def _task(
     key: str,
     task_type: str,
@@ -292,6 +366,38 @@ def _due_review_items(db: Any, child_id: int, as_of_text: str) -> list[dict[str,
                 "prompt": vocabulary["taskData"]["prompt"], "choices": vocabulary["taskData"]["choices"],
             })
 
+    listening_rows = db.execute(
+        "SELECT item_id,due_at FROM srs_review_states WHERE child_id=? AND skill_domain='listening' AND due_at<=? ORDER BY due_at,item_id",
+        (child_id, as_of_text),
+    ).fetchall()
+    for srs in listening_rows:
+        item_id = srs["item_id"]
+        link = db.execute(
+            "SELECT lesson_id FROM curriculum_item_links WHERE child_id=? AND skill_domain='listening' AND item_id=?",
+            (child_id, item_id),
+        ).fetchone()
+        if link is None:
+            raise ValueError("learning_flow_review_listening_identity_unsupported")
+        lesson_id = link["lesson_id"]
+        lesson = lessons.get(lesson_id)
+        expected_item_id = _item_id(child_id, lesson_id, "phrase") if lesson_id in FLOW_LESSONS else None
+        material = db.execute(
+            "SELECT character FROM learning_items WHERE child_id=? AND id=?",
+            (child_id, item_id),
+        ).fetchone()
+        question = _fast_track_listening_question(lesson_id, lesson) if lesson else None
+        if (
+            lesson_id not in FLOW_LESSONS or not lesson or item_id != expected_item_id or
+            material is None or material["character"] != lesson["title"] or question is None
+        ):
+            raise ValueError("learning_flow_review_listening_identity_unsupported")
+        if not lesson_is_accessible(db, child_id, lesson_id):
+            raise ValueError("learning_flow_review_listening_lesson_not_accessible")
+        candidates.append({
+            "skill_domain": "listening", "item_id": item_id, "due_at": srs["due_at"],
+            "lesson_id": lesson_id, **question,
+        })
+
     candidates.sort(key=lambda item: (_parse_stamp(item["due_at"]) or datetime.max, item["skill_domain"], item["item_id"]))
     seen: set[tuple[str, str]] = set()
     result: list[dict[str, Any]] = []
@@ -334,6 +440,17 @@ def _review_task(due: dict[str, Any], key: str) -> dict[str, Any]:
             data={"prompt": due["prompt"], "choices": due["choices"], "word": due["word"], "dueAt": due["due_at"]},
             private={"_answerKey": "opt-hello", "_answerKind": "vocabulary"},
         )
+    if domain == "listening":
+        return _task(
+            key, "REVIEW_LISTENING", due["lesson_id"], skill="listening", item_id=due["item_id"],
+            source="REVIEW", is_new=False, minutes=3, evidence_type="fast_track_listening_choice",
+            mastery_impact="NONE",
+            data={
+                "questionId": due["question_id"], "prompt": due["prompt"],
+                "audioText": due["audio_text"], "choices": due["choices"], "dueAt": due["due_at"],
+            },
+            private={"_answerKey": due["correct_choice_id"], "_answerKind": "listening"},
+        )
     raise ValueError("learning_flow_review_domain_not_supported")
 
 
@@ -345,6 +462,7 @@ def _sync_review_task_due_at(db: Any, *, child_id: int, row: Any, task: dict[str
         "REVIEW_RECOGNITION": "recognition",
         "REVIEW_WRITING": "writing",
         "REVIEW_VOCABULARY": "word",
+        "REVIEW_LISTENING": "listening",
     }
     expected_domain = domain_by_task_type.get(row["task_type"])
     if expected_domain is None or row["skill_domain"] != expected_domain:
@@ -763,7 +881,7 @@ def reconcile_learning_session_reviews(*, child_id: int, session_id: str, as_of:
                 continue
             item_id = row["activity_item_id"]
             identity = (row["skill_domain"], item_id)
-            if row["skill_domain"] not in {"recognition", "writing", "word"} or not isinstance(item_id, str) or not item_id or identity in existing_review_by_item:
+            if row["skill_domain"] not in {"recognition", "writing", "word", "listening"} or not isinstance(item_id, str) or not item_id or identity in existing_review_by_item:
                 raise ValueError("learning_flow_review_task_identity_duplicate")
             task_data = json.loads(row["task_json"])
             task_key = task_data.get("key")
@@ -1040,7 +1158,7 @@ def submit_learning_answer(*, child_id: int, session_id: str, task_id: str, sele
         result = "completed"
         score: float | None = None
         scorer_version: str | None = None
-        if task_type in {"RECOGNITION", "REVIEW_RECOGNITION", "VOCABULARY", "REVIEW_VOCABULARY", "SENTENCE_PATTERN", "MINI_CHECK"}:
+        if task_type in {"RECOGNITION", "REVIEW_RECOGNITION", "VOCABULARY", "REVIEW_VOCABULARY", "REVIEW_LISTENING", "SENTENCE_PATTERN", "MINI_CHECK"}:
             if task.get("taskData", {}).get("mode") == "reflection":
                 choices = {item["id"] for item in task["taskData"].get("choices", [])}
                 if selected_option_id not in choices:
@@ -1048,30 +1166,41 @@ def submit_learning_answer(*, child_id: int, session_id: str, task_id: str, sele
                 result = "self_report_practiced" if selected_option_id == "practiced" else "self_report_more_practice"
                 return _update_task_attempt_in_transaction(db, child_id=child_id, session_id=session_id, task=task, result=result, correct=None, assisted=assisted, scorer_version="self_reflection-v1")
             choices = {item["id"] for item in task.get("taskData", {}).get("choices", [])}
-            alias_map = {
-                "greeting": ["opt-hello", "opt-correct-order", "greeting"],
-                "name": ["opt-eat", "name"],
-                "farewell": ["opt-wrong-order", "farewell"],
-                "option-1": ["opt-hao", "option-1"],
-                "option-2": ["opt-ni", "option-2"],
-                "opt-ni": ["option-2", "opt-ni"],
-                "opt-hao": ["option-1", "opt-hao"],
-                "opt-hello": ["greeting", "opt-hello"],
-                "opt-eat": ["name", "opt-eat"],
-                "opt-correct-order": ["greeting", "opt-correct-order"],
-                "opt-wrong-order": ["farewell", "opt-wrong-order"],
-            }
-            valid_choices = set(choices)
-            for c in choices:
-                if c in alias_map:
-                    valid_choices.update(alias_map[c])
-            if selected_option_id not in valid_choices:
-                raise ValueError("invalid_answer_choice")
             answer_key = task.get("_answerKey")
-            expected_keys = {answer_key}
-            if answer_key in alias_map:
-                expected_keys.update(alias_map[answer_key])
-            correct = selected_option_id in expected_keys
+            if task_type == "REVIEW_LISTENING":
+                if (
+                    row["source_queue"] != "REVIEW" or row["skill_domain"] != "listening" or
+                    row["mastery_impact"] != "NONE" or task.get("_answerKind") != "listening" or
+                    not isinstance(answer_key, str) or answer_key not in choices
+                ):
+                    raise ValueError("learning_flow_review_listening_identity_unsupported")
+                if selected_option_id not in choices:
+                    raise ValueError("invalid_answer_choice")
+                correct = selected_option_id == answer_key
+            else:
+                alias_map = {
+                    "greeting": ["opt-hello", "opt-correct-order", "greeting"],
+                    "name": ["opt-eat", "name"],
+                    "farewell": ["opt-wrong-order", "farewell"],
+                    "option-1": ["opt-hao", "option-1"],
+                    "option-2": ["opt-ni", "option-2"],
+                    "opt-ni": ["option-2", "opt-ni"],
+                    "opt-hao": ["option-1", "opt-hao"],
+                    "opt-hello": ["greeting", "opt-hello"],
+                    "opt-eat": ["name", "opt-eat"],
+                    "opt-correct-order": ["greeting", "opt-correct-order"],
+                    "opt-wrong-order": ["farewell", "opt-wrong-order"],
+                }
+                valid_choices = set(choices)
+                for choice_id in choices:
+                    if choice_id in alias_map:
+                        valid_choices.update(alias_map[choice_id])
+                if selected_option_id not in valid_choices:
+                    raise ValueError("invalid_answer_choice")
+                expected_keys = {answer_key}
+                if answer_key in alias_map:
+                    expected_keys.update(alias_map[answer_key])
+                correct = selected_option_id in expected_keys
             result = "correct" if correct else "incorrect"
             if task.get("_answerKind") == "recognition":
                 attempt = _record_attempt_in_transaction(db, child_id, session["recognition_session_id"], row["activity_item_id"], result, assisted, row["source_queue"])
@@ -1088,6 +1217,27 @@ def submit_learning_answer(*, child_id: int, session_id: str, task_id: str, sele
                 elif row["mastery_impact"] != "NONE":
                     raise ValueError("learning_task_mastery_impact_unsupported")
                 record_srs_review(db, child_id=child_id, skill_domain="word", item_id=row["activity_item_id"], result=result, assisted=assisted)
+            elif task.get("_answerKind") == "listening":
+                if (
+                    task_type != "REVIEW_LISTENING" or row["source_queue"] != "REVIEW" or
+                    row["skill_domain"] != "listening" or row["mastery_impact"] != "NONE" or
+                    task.get("sourceQueue") != "REVIEW" or task.get("skillDomain") != "listening" or
+                    task.get("itemId") != row["activity_item_id"]
+                ):
+                    raise ValueError("learning_flow_review_listening_identity_unsupported")
+                due_items = _due_review_items(db, child_id, _as_of(None)[1])
+                due = next((item for item in due_items if item["skill_domain"] == "listening" and item["item_id"] == row["activity_item_id"] and item["lesson_id"] == row["lesson_id"]), None)
+                expected = _review_task(due, task.get("key", "")) if due else None
+                if (
+                    expected is None or task.get("taskType") != expected["taskType"] or
+                    task.get("taskData") != expected["taskData"] or
+                    task.get("_answerKey") != expected.get("_answerKey")
+                ):
+                    raise ValueError("learning_flow_review_listening_identity_unsupported")
+                refs = [uid("session-listening-attempt")]
+                score = float(correct)
+                scorer_version = "fast-track-listening-choice-v1"
+                record_srs_review(db, child_id=child_id, skill_domain="listening", item_id=row["activity_item_id"], result=result, assisted=assisted)
             else:
                 refs = [uid("session-practice-attempt")]
                 score = float(correct)
@@ -1471,13 +1621,26 @@ def get_learning_daily_queue(*, child_id: int, as_of: str | None = None) -> dict
         state = db.execute("SELECT status FROM curriculum_lesson_states WHERE child_id=? AND lesson_id=?", (child_id, start_id)).fetchone()
         is_mastered = bool(state and state["status"] == "MASTERED")
         reviews = _due_review_items(db, child_id, stamp)
+        review_items = []
+        for item in reviews:
+            row = {
+                "id": item["item_id"], "skillDomain": item["skill_domain"],
+                "character": item.get("character"), "scriptMode": item.get("script_mode"),
+                "word": item.get("word"), "lessonId": item["lesson_id"], "dueAt": item["due_at"],
+            }
+            if item["skill_domain"] == "listening":
+                row.update({
+                    "questionId": item["question_id"], "prompt": item["prompt"],
+                    "audioText": item["audio_text"], "choices": item["choices"],
+                })
+            review_items.append(row)
         active = db.execute("SELECT id,status FROM learning_flow_sessions WHERE child_id=? AND status IN ('IN_PROGRESS','PAUSED') ORDER BY started_at DESC LIMIT 1", (child_id,)).fetchone()
         accessible_next = next((lesson for lesson in _ordered_lessons() if lesson["id"] not in FLOW_LESSONS and lesson_is_accessible(db, child_id, lesson["id"])), None)
         return {
             "childId": child_id,
             "asOf": stamp,
             "placementStart": placement["main_curriculum_start"] if placement else "STARTER",
-            "review": {"sourceQueue": "REVIEW", "dueCount": len(reviews), "items": [{"id": item["item_id"], "skillDomain": item["skill_domain"], "character": item.get("character"), "scriptMode": item.get("script_mode"), "word": item.get("word"), "lessonId": item["lesson_id"], "dueAt": item["due_at"]} for item in reviews]},
+            "review": {"sourceQueue": "REVIEW", "dueCount": len(reviews), "items": review_items},
             "newLesson": None if is_mastered else {"sourceQueue": "CURRICULUM", "lessonId": start_id, "title": current["title"], "domains": current["domains"], "status": state["status"] if state else "NOT_STARTED", "availableInLearningFlowV1": True},
             "completedLesson": {"sourceQueue": "CURRICULUM", "lessonId": start_id, "title": current["title"], "domains": current["domains"], "status": "MASTERED"} if is_mastered else None,
             "currentLessonComplete": is_mastered,

@@ -2838,6 +2838,17 @@ export function LessonPlayerPage({
 
           {currentStep.stepKey === "mini_check" && (
             <div className="step-body step-exit-ticket-body">
+              {typeof currentStep.data.audioText === "string" && (
+                <button
+                  type="button"
+                  className="button button-secondary q-audio-btn"
+                  onClick={() => playAudio(currentStep.data.audioText || "")}
+                  aria-label={`播放題目音檔「${currentStep.data.audioText}」`}
+                >
+                  <Volume2 size={16} />
+                  <span>聽題目音檔</span>
+                </button>
+              )}
               <p className="interaction-prompt">{currentStep.data.prompt}</p>
               <div className="choices-vertical-list">
                 {currentStep.data.choices?.map((choice: { id: string; label: string }) => {
@@ -2855,7 +2866,11 @@ export function LessonPlayerPage({
                         }
                         setSelectedChoices((previous) => ({ ...previous, [taskId]: choice.id }));
                         const result = await submitBackendTaskAnswer((task) => task.id === taskId, choice.id);
-                        if (result.taskState !== "COMPLETED" && result.taskState !== "DEFERRED") setError(text.taskFailed);
+                        if (result.taskState === "IN_PROGRESS" && mode === "REVIEW" && currentStep.domain === "listening") {
+                          setError(null);
+                        } else if (result.taskState !== "COMPLETED" && result.taskState !== "DEFERRED") {
+                          setError(text.taskFailed);
+                        }
                       }}
                     >
                       <span className="choice-label">{choice.label}</span>
@@ -2951,7 +2966,9 @@ export function LessonPlayerPage({
                   disabled={
                     !playerSessionReady ||
                     (currentStep.stepKey === "exit_ticket" && !exitTicketSubmitted) ||
-                    (currentStep.stepKey === "mini_check" && !selectedChoices[currentStep.data.taskId])
+                    (currentStep.stepKey === "mini_check" && !selectedChoices[currentStep.data.taskId]) ||
+                    (mode === "REVIEW" && currentStep.stepKey === "mini_check" && currentStep.domain === "listening" &&
+                      session?.tasks?.find((task) => task.id === currentStep.data.taskId)?.state !== "COMPLETED")
                   }
                 >
                   <span>{text.nextStep}</span>

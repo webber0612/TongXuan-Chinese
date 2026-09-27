@@ -3887,4 +3887,135 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     writerSpy.mockRestore(); root.unmount(); container.remove(); vi.unstubAllGlobals();
   });
 
+  it("80. Listening REVIEW validates the exact Fast Track question task and rejects malformed mappings", () => {
+    const pkg = getLessonPackage("book1-l01")!;
+    const dueAt = "2026-09-02T00:00:00Z";
+    const due = {
+      id: "lf_1_book1-l01_phrase", skillDomain: "listening", lessonId: "book1-l01", dueAt,
+      questionId: "ft-q1", prompt: "聽錄音，選出這句話的意思：", audioText: "你好",
+      choices: [{ id: "c1", label: "打招呼問好 (Hello)" }, { id: "c2", label: "感謝對方 (Thank you)" }],
+    };
+    const task = {
+      id: "listening-session:review-listening-1", sessionId: "listening-session", childId: 1,
+      key: "review-listening-1", taskType: "REVIEW_LISTENING", sourceQueue: "REVIEW", lessonId: "book1-l01",
+      skillDomain: "listening", evidenceType: "fast_track_listening_choice", masteryImpact: "NONE",
+      itemId: due.id, state: "PENDING", required: true,
+      taskData: { questionId: due.questionId, prompt: due.prompt, audioText: due.audioText, choices: due.choices, dueAt },
+    };
+
+    expect(validateReviewDueItems([due])).toBe(true);
+    const selected = selectReviewTasksAcrossPackages([task], [due], 1, "listening-session");
+    expect(selected?.map((row) => row.id)).toEqual([task.id]);
+    const steps = getStepsForMode(pkg, "REVIEW", [], selected ?? []);
+    expect(steps[0]).toMatchObject({
+      stepKey: "mini_check", domain: "listening",
+      data: { taskId: task.id, taskType: "REVIEW_LISTENING", questionId: due.questionId, audioText: "你好", choices: due.choices },
+    });
+    expect(steps.at(-1)?.stepKey).toBe("wrap_up");
+    expect(selectReviewTasksAcrossPackages([{ ...task, state: "IN_PROGRESS" }], [due], 1, "listening-session")).toHaveLength(1);
+    expect(selectReviewTasksAcrossPackages([task], [{ ...due, audioText: "你好嗎" }], 1, "listening-session")).toBeNull();
+    expect(selectReviewTasksAcrossPackages([task], [{ ...due, choices: [{ id: "same", label: "問好" }, { id: "same", label: "謝謝" }] }], 1, "listening-session")).toBeNull();
+    expect(selectReviewTasksAcrossPackages([{ ...task, itemId: "lf_2_book1-l01_phrase" }], [due], 1, "listening-session")).toBeNull();
+    expect(selectReviewTasksAcrossPackages([task], [{ ...due, id: "lf_2_book1-l01_phrase" }], 1, "listening-session")).toBeNull();
+    expect(selectReviewTasksAcrossPackages([task], [due], 2, "listening-session")).toBeNull();
+    expect(selectReviewTasksAcrossPackages([{ ...task, masteryImpact: "SCORED_DOMAIN_EVIDENCE" }], [due], 1, "listening-session")).toBeNull();
+    expect(validateReviewDueItems([{ ...due, correctChoiceId: "c1" }])).toBe(false);
+    expect(validateReviewDueItems([{
+      ...due,
+      choices: [{ ...due.choices[0], isCorrect: true }, due.choices[1]],
+    }])).toBe(false);
+
+    const originalBlueprint = pkg.taskBlueprint;
+    const originalSource = pkg.curriculumSource;
+    try {
+      const changedQuestionBlueprint = JSON.parse(JSON.stringify(originalBlueprint));
+      const listeningQuestion = changedQuestionBlueprint.fastTrackSteps
+        .find((step: any) => step.stepKey === "exit_ticket").data.questions[0];
+      listeningQuestion.prompt = "不同於執行課程的題目";
+      (pkg as any).taskBlueprint = changedQuestionBlueprint;
+      expect(validateReviewDueItems([due])).toBe(false);
+      expect(selectReviewTasksAcrossPackages([task], [due], 1, "listening-session")).toBeNull();
+
+      (pkg as any).taskBlueprint = { fastTrackSteps: "malformed" };
+      expect(validateReviewDueItems([due])).toBe(false);
+      (pkg as any).curriculumSource = null;
+      expect(validateReviewDueItems([due])).toBe(false);
+    } finally {
+      (pkg as any).taskBlueprint = originalBlueprint;
+      (pkg as any).curriculumSource = originalSource;
+    }
+  });
+
+  it("81. Canonical REVIEW submits exact listening task, blocks Next until authoritative completion, and returns Home without settling LEARN", async () => {
+    const dueAt = "2026-09-02T00:00:00Z";
+    const due = {
+      id: "lf_1_book1-l01_phrase", skillDomain: "listening", lessonId: "book1-l01", dueAt,
+      questionId: "ft-q1", prompt: "聽錄音，選出這句話的意思：", audioText: "你好",
+      choices: [{ id: "c1", label: "打招呼問好 (Hello)" }, { id: "c2", label: "感謝對方 (Thank you)" }],
+    };
+    const listeningTask: any = {
+      id: "s-listening-review:review-listening-1", sessionId: "s-listening-review", childId: 1,
+      key: "review-listening-1", taskType: "REVIEW_LISTENING", sourceQueue: "REVIEW", lessonId: "book1-l01",
+      skillDomain: "listening", evidenceType: "fast_track_listening_choice", masteryImpact: "NONE",
+      itemId: due.id, state: "PENDING", attemptCount: 0, required: true,
+      taskData: { questionId: due.questionId, prompt: due.prompt, audioText: due.audioText, choices: due.choices, dueAt },
+    };
+    const curriculumTask = {
+      id: "learn-required-listening", key: "listen", taskType: "LISTENING", sourceQueue: "CURRICULUM",
+      lessonId: "book1-l01", skillDomain: "listening", itemId: due.id, state: "PENDING", required: true,
+    };
+    const session: any = {
+      id: "s-listening-review", sessionId: "s-listening-review", childId: 1, status: "IN_PROGRESS",
+      lessonId: "book1-l01", tasks: [listeningTask, curriculumTask],
+    };
+    const requests: Array<{ url: string; method: string; body?: any }> = [];
+    const back = vi.fn();
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      const method = init?.method ?? "GET";
+      const body = init?.body ? JSON.parse(init.body as string) : undefined;
+      if (method === "POST") requests.push({ url, method, body });
+      if (url.includes("/learning-sessions/current")) return new Response(JSON.stringify(session), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.includes("/learning-daily-queue")) return new Response(JSON.stringify({
+        childId: 1, review: { sourceQueue: "REVIEW", dueCount: 1, items: [due] },
+      }), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.includes("/reconcile-reviews") && method === "POST") return new Response(JSON.stringify(session), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.endsWith(`/tasks/${listeningTask.id}/answer`) && method === "POST") {
+        listeningTask.state = body.selected_option_id === "c1" ? "COMPLETED" : "IN_PROGRESS";
+        listeningTask.attemptCount += 1;
+        return new Response(JSON.stringify(session), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.endsWith(`/learning-sessions/${session.id}/complete`) && method === "POST") {
+        session.status = "COMPLETED";
+        return new Response(JSON.stringify(session), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    const container = document.createElement("div"); document.body.appendChild(container); const root = createRoot(container);
+    await act(async () => { root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={back} initialMode="REVIEW" />); await new Promise((resolve) => setTimeout(resolve, 0)); });
+    expect(container.querySelector("[data-step-key='mini_check']")).toBeTruthy();
+    expect(container.querySelector(".interaction-prompt")?.textContent).toBe(due.prompt);
+    expect(container.querySelector(".q-audio-btn")?.getAttribute("aria-label")).toContain("你好");
+    expect(Array.from(container.querySelectorAll(".step-exit-ticket-body .choice-card-btn")).map((button) => button.textContent)).toEqual(due.choices.map((choice) => choice.label));
+
+    await act(async () => { (container.querySelector(".step-exit-ticket-body .choice-card-btn:last-child") as HTMLButtonElement).click(); await new Promise((resolve) => setTimeout(resolve, 0)); });
+    expect(listeningTask.state).toBe("IN_PROGRESS");
+    expect((container.querySelector(".next-step-cta-btn") as HTMLButtonElement).disabled).toBe(true);
+    await act(async () => { (container.querySelector(".step-exit-ticket-body .choice-card-btn:first-child") as HTMLButtonElement).click(); await new Promise((resolve) => setTimeout(resolve, 0)); });
+    expect(listeningTask.state).toBe("COMPLETED");
+    expect((container.querySelector(".next-step-cta-btn") as HTMLButtonElement).disabled).toBe(false);
+    expect(requests.filter((request) => request.url.endsWith(`/tasks/${listeningTask.id}/answer`)).map((request) => request.body)).toEqual([
+      { selected_option_id: "c2", answers: {}, assisted: false },
+      { selected_option_id: "c1", answers: {}, assisted: false },
+    ]);
+    await act(async () => { (container.querySelector(".next-step-cta-btn") as HTMLButtonElement).click(); });
+    expect(container.querySelector("[data-step-key='wrap_up']")).toBeTruthy();
+    await act(async () => { (container.querySelector(".finish-session-cta-btn") as HTMLButtonElement).click(); });
+    expect(back).toHaveBeenCalledTimes(1);
+    expect(requests.some((request) => request.url.endsWith(`/learning-sessions/${session.id}/complete`))).toBe(false);
+    expect(session.status).toBe("IN_PROGRESS");
+    expect(curriculumTask.state).toBe("PENDING");
+    root.unmount(); container.remove(); vi.unstubAllGlobals();
+  });
+
 });

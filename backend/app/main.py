@@ -1020,7 +1020,7 @@ def post_lesson_fast_track(child_id: int, lesson_id: str, request: FastTrackRequ
     pkg = get_lesson_package(lesson_id)
     if pkg is None:
         raise HTTPException(status_code=404, detail="lesson_package_not_found")
-    from .learning_flow import _lesson_map
+    from .learning_flow import _fast_track_listening_question, _lesson_map
     lesson = _lesson_map().get(lesson_id)
     if (
         not isinstance(lesson_id, str) or pkg.get("lessonId") != lesson_id or
@@ -1028,6 +1028,7 @@ def post_lesson_fast_track(child_id: int, lesson_id: str, request: FastTrackRequ
         not isinstance(lesson.get("title"), str) or not lesson["title"]
     ):
         raise HTTPException(status_code=409, detail="fast_track_srs_lesson_identity_unsupported")
+    listening_question = _fast_track_listening_question(lesson_id, lesson)
     
     initialize_database()
     with connect() as db:
@@ -1101,7 +1102,11 @@ def post_lesson_fast_track(child_id: int, lesson_id: str, request: FastTrackRequ
                 if domain == "recognition":
                     character = question.get("audioText")
                     item_id = character_ids.get(character) if isinstance(character, str) else None
-                elif domain == "listening" and question.get("audioText") == lesson["title"]:
+                elif (
+                    domain == "listening" and listening_question is not None and
+                    question.get("id") == listening_question["question_id"] and
+                    question.get("audioText") == listening_question["audio_text"]
+                ):
                     item_id = materials.get("phrase")
                 else:
                     # Vocabulary/grammar scores do not stand in for recognition
