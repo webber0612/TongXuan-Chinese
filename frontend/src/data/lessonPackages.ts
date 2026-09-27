@@ -32,19 +32,44 @@ function plannerCharacterSet(lessonId: string): Set<string> {
   return new Set(lesson?.official.title.match(/[\u3400-\u9fff]/g) ?? []);
 }
 
-/** Validate Daily Queue rows against the currently executable lesson slice. */
-export function validateReviewDueItems(dueItems: unknown): dueItems is Array<{ id: string; character: string; lessonId: string; dueAt: string }> {
+export type ReviewSkillDomain = "recognition" | "writing" | "word";
+export interface ReviewDueItem {
+  id: string;
+  skillDomain: ReviewSkillDomain;
+  lessonId: string;
+  dueAt: string;
+  character?: string;
+  scriptMode?: "TRADITIONAL" | "SIMPLIFIED";
+  word?: string;
+}
+
+function reviewIdentity(domain: string, itemId: string): string {
+  return JSON.stringify([domain, itemId]);
+}
+
+/** Validate Daily Queue rows against the exact supported backend domain contract. */
+export function validateReviewDueItems(dueItems: unknown): dueItems is ReviewDueItem[] {
   if (!Array.isArray(dueItems)) return false;
-  const ids = new Set<string>();
+  const identities = new Set<string>();
   return dueItems.every((item: any) => {
     if (
       !item || typeof item !== "object" ||
-      typeof item.id !== "string" || !item.id.trim() || ids.has(item.id) ||
+      typeof item.id !== "string" || !item.id.trim() ||
+      !["recognition", "writing", "word"].includes(item.skillDomain) ||
       typeof item.lessonId !== "string" || !getLessonPackage(item.lessonId) ||
-      typeof item.character !== "string" || !plannerCharacterSet(item.lessonId).has(item.character) ||
       typeof item.dueAt !== "string" || !Number.isFinite(Date.parse(item.dueAt))
     ) return false;
-    ids.add(item.id);
+    const domain = item.skillDomain as ReviewSkillDomain;
+    if (domain === "recognition") {
+      if (typeof item.character !== "string" || !plannerCharacterSet(item.lessonId).has(item.character)) return false;
+    } else if (domain === "writing") {
+      if (typeof item.character !== "string" || !plannerCharacterSet(item.lessonId).has(item.character) ||
+          !["TRADITIONAL", "SIMPLIFIED"].includes(item.scriptMode) ||
+          item.id !== `${String(item.scriptMode).toLowerCase()}::${item.character}`) return false;
+    } else if (item.word !== "你好" || !new RegExp(`^lf_\\d+_${item.lessonId}_vocabulary$`).test(item.id)) return false;
+    const identity = reviewIdentity(domain, item.id);
+    if (identities.has(identity)) return false;
+    identities.add(identity);
     return true;
   });
 }
@@ -59,37 +84,36 @@ export function buildReviewStepsFromDueItems(
   let stepNum = 1;
 
   for (const due of validatedTasks) {
-    const char = due.taskData!.audioText;
     const reviewPkg = getLessonPackage(due.lessonId!);
     if (!reviewPkg) return [];
-    const charObj = reviewPkg.characters.find((item) => item.char === char) ??
-      getAllLessonPackages().flatMap((lessonPackage) => lessonPackage.characters).find((item) => item.char === char);
-    if (!charObj?.pronunciation?.pinyin || !charObj.pronunciation.zhuyin) return [];
-    const packageRecognitionStep = reviewPkg.taskBlueprint.learnSteps.find(
-      (step) => step.stepKey === "characters" && step.domain === "recognition",
-    );
-
-    steps.push({
-      stepNumber: stepNum++,
-      stepKey: "characters",
-      domain: "recognition",
-      title: packageRecognitionStep?.title ?? "到期生字複習",
-      subtitle: `複習生字「${char}」`,
-      primaryAction: packageRecognitionStep?.primaryAction ?? "確認答案",
-      estimatedMinutes: 2,
-      required: true,
-      data: {
-        taskId: due.id,
-        dueItem: due,
-        dueCharacter: char,
-        charObj,
-        recognitionCheck: {
-          prompt: due.taskData!.prompt,
-          audioText: char,
-          choices: due.taskData!.choices,
-        },
-      },
-    });
+    if (due.taskType === "REVIEW_RECOGNITION") {
+      const char = due.taskData!.audioText;
+      const charObj = reviewPkg.characters.find((item) => item.char === char) ??
+        getAllLessonPackages().flatMap((lessonPackage) => lessonPackage.characters).find((item) => item.char === char);
+      if (!charObj?.pronunciation?.pinyin || !charObj.pronunciation.zhuyin) return [];
+      const packageRecognitionStep = reviewPkg.taskBlueprint.learnSteps.find(
+        (step) => step.stepKey === "characters" && step.domain === "recognition",
+      );
+      steps.push({
+        stepNumber: stepNum++, stepKey: "characters", domain: "recognition",
+        title: packageRecognitionStep?.title ?? "到期生字複習", subtitle: `複習生字「${char}」`,
+        primaryAction: packageRecognitionStep?.primaryAction ?? "確認答案", estimatedMinutes: 2, required: true,
+        data: { taskId: due.id, dueItem: due, dueCharacter: char, charObj,
+          recognitionCheck: { prompt: due.taskData!.prompt, audioText: char, choices: due.taskData!.choices } },
+      });
+    } else if (due.taskType === "REVIEW_WRITING") {
+      steps.push({
+        stepNumber: stepNum++, stepKey: "writing", domain: "writing", title: "到期書寫複習",
+        subtitle: `書寫「${due.taskData!.character}」`, primaryAction: "完成書寫", estimatedMinutes: 2, required: true,
+        data: { taskId: due.id, dueItem: due, character: due.taskData!.character, scriptMode: due.taskData!.scriptMode },
+      });
+    } else {
+      steps.push({
+        stepNumber: stepNum++, stepKey: "vocabulary", domain: "vocabulary", title: "到期詞語複習",
+        subtitle: `複習「${due.taskData!.word}」`, primaryAction: "確認答案", estimatedMinutes: 2, required: true,
+        data: { taskId: due.id, dueItem: due, word: due.taskData!.word, prompt: due.taskData!.prompt, choices: due.taskData!.choices },
+      });
+    }
   }
 
   if (steps.length > 0) {
@@ -124,9 +148,18 @@ export interface LearningFlowTaskContract {
   lessonId?: string;
   skillDomain?: string | null;
   state?: string;
+  attemptCount?: number;
   required?: boolean;
+  failureCount?: number;
+  deferredReason?: string | null;
   itemId?: string | null;
   taskData?: Record<string, any>;
+}
+
+export function isPolicyAllowedReviewDeferral(task: LearningFlowTaskContract): boolean {
+  return task.taskType === "REVIEW_WRITING" && task.sourceQueue === "REVIEW" && task.required === true &&
+    task.state === "DEFERRED" && task.deferredReason === "WRITING_RETRY_CAP" &&
+    typeof task.failureCount === "number" && Number.isInteger(task.failureCount) && task.failureCount >= 2;
 }
 
 function isReviewTaskCandidate(task: any): boolean {
@@ -141,35 +174,48 @@ function isValidReviewTask(task: any, pkg: LessonPackage, expectedLessonId?: str
   if (!isReviewTaskCandidate(task)) return false;
   if (
     typeof task.id !== "string" || !task.id.trim() ||
-    typeof task.key !== "string" || !/^review-recognition-\d+$/.test(task.key) ||
-    task.taskType !== "REVIEW_RECOGNITION" || task.sourceQueue !== "REVIEW" ||
-    task.skillDomain !== "recognition" || task.required !== true ||
+    typeof task.key !== "string" || !/^review-(recognition|writing|word)-\d+$/.test(task.key) ||
+    !["REVIEW_RECOGNITION", "REVIEW_WRITING", "REVIEW_VOCABULARY"].includes(task.taskType) || task.sourceQueue !== "REVIEW" ||
+    task.required !== true ||
     typeof task.lessonId !== "string" || !task.lessonId.trim() ||
     task.lessonId !== pkg.lessonId ||
     (expectedLessonId !== undefined && task.lessonId !== expectedLessonId) ||
     typeof task.itemId !== "string" || !task.itemId.trim() ||
-    (task.state !== "PENDING" && task.state !== "IN_PROGRESS" && task.state !== "COMPLETED")
+    (task.state !== "PENDING" && task.state !== "IN_PROGRESS" && task.state !== "COMPLETED" && !isPolicyAllowedReviewDeferral(task))
   ) return false;
 
   const data = task.taskData;
-  if (
-    !data || typeof data !== "object" ||
-    typeof data.prompt !== "string" || !data.prompt.trim() ||
-    typeof data.audioText !== "string" || !data.audioText.trim() ||
-    !plannerCharacterSet(pkg.lessonId).has(data.audioText) ||
-    typeof data.dueAt !== "string" || !Number.isFinite(Date.parse(data.dueAt)) ||
-    !Array.isArray(data.choices) || data.choices.length !== 2
-  ) return false;
+  if (!data || typeof data !== "object" || typeof data.dueAt !== "string" || !Number.isFinite(Date.parse(data.dueAt))) return false;
+  if (task.taskType === "REVIEW_RECOGNITION") {
+    return /^review-recognition-\d+$/.test(task.key) && task.skillDomain === "recognition" &&
+      typeof data.prompt === "string" && Boolean(data.prompt.trim()) &&
+      typeof data.audioText === "string" && plannerCharacterSet(pkg.lessonId).has(data.audioText) &&
+      validReviewChoices(data.choices, data.audioText);
+  }
+  if (task.taskType === "REVIEW_WRITING") {
+    const character = data.character;
+    const scriptMode = data.scriptMode;
+    return /^review-writing-\d+$/.test(task.key) && task.skillDomain === "writing" &&
+      data.phase === "independent" && data.repeatCount === 1 &&
+      typeof character === "string" && plannerCharacterSet(pkg.lessonId).has(character) &&
+      ["TRADITIONAL", "SIMPLIFIED"].includes(scriptMode) &&
+      task.itemId === `${String(scriptMode).toLowerCase()}::${character}`;
+  }
+  return /^review-word-\d+$/.test(task.key) && task.skillDomain === "word" && data.word === "你好" &&
+    typeof data.prompt === "string" && Boolean(data.prompt.trim()) &&
+    task.childId !== undefined && task.itemId === `lf_${task.childId}_${pkg.lessonId}_vocabulary` &&
+    validReviewChoices(data.choices, "opt-hello", true);
+}
 
-  const choices = data.choices;
+function validReviewChoices(choices: unknown, expected: string, expectedIsChoiceId = false): boolean {
+  if (!Array.isArray(choices) || choices.length !== 2) return false;
   const ids = choices.map((choice: any) => choice?.id);
   const labels = choices.map((choice: any) => choice?.label);
-  return choices.every((choice: any) =>
-    choice && typeof choice === "object" &&
-    typeof choice.id === "string" && choice.id.trim() &&
-    typeof choice.label === "string" && choice.label.trim()
-  ) && new Set(ids).size === choices.length && new Set(labels).size === choices.length &&
-    labels.includes(data.audioText) && labels.some((label: string) => label !== data.audioText);
+  return choices.every((choice: any) => choice && typeof choice === "object" &&
+    typeof choice.id === "string" && Boolean(choice.id.trim()) &&
+    typeof choice.label === "string" && Boolean(choice.label.trim())) &&
+    new Set(ids).size === choices.length && new Set(labels).size === choices.length &&
+    (expectedIsChoiceId ? ids.includes(expected) : labels.includes(expected) && labels.some((label: string) => label !== expected));
 }
 
 /** REVIEW steps only exist for complete, unique backend planner task rows. */
@@ -184,8 +230,8 @@ export function getAuthoritativeReviewTasks(
 
   const ids = candidates.map((task: any) => task.id);
   const keys = candidates.map((task: any) => task.key);
-  const itemIds = candidates.map((task: any) => task.itemId);
-  if (new Set(ids).size !== ids.length || new Set(keys).size !== keys.length || new Set(itemIds).size !== itemIds.length) return null;
+  const identities = candidates.map((task: any) => reviewIdentity(task.skillDomain, task.itemId));
+  if (new Set(ids).size !== ids.length || new Set(keys).size !== keys.length || new Set(identities).size !== identities.length) return null;
   return candidates as LearningFlowTaskContract[];
 }
 
@@ -203,8 +249,8 @@ export function getAuthoritativeReviewTasksAcrossPackages(
   })) return null;
   const ids = candidates.map((task: any) => task.id);
   const keys = candidates.map((task: any) => task.key);
-  const itemIds = candidates.map((task: any) => task.itemId);
-  if (new Set(ids).size !== ids.length || new Set(keys).size !== keys.length || new Set(itemIds).size !== itemIds.length) return null;
+  const identities = candidates.map((task: any) => reviewIdentity(task.skillDomain, task.itemId));
+  if (new Set(ids).size !== ids.length || new Set(keys).size !== keys.length || new Set(identities).size !== identities.length) return null;
   return candidates as LearningFlowTaskContract[];
 }
 
@@ -214,23 +260,18 @@ export function selectReviewTasksForDueItems(
   pkg: LessonPackage,
   expectedLessonId: string,
 ): LearningFlowTaskContract[] | null {
-  if (!Array.isArray(dueItems)) return null;
+  if (!validateReviewDueItems(dueItems)) return null;
   const authoritativeTasks = getAuthoritativeReviewTasks(tasks, pkg, expectedLessonId);
   if (!authoritativeTasks) return null;
 
   const dueIds = new Set<string>();
   const selected: LearningFlowTaskContract[] = [];
   for (const item of dueItems) {
-    if (
-      !item || typeof item !== "object" ||
-      typeof item.id !== "string" || !item.id.trim() || dueIds.has(item.id) ||
-      typeof item.character !== "string" || !plannerCharacterSet(expectedLessonId).has(item.character) ||
-      typeof item.lessonId !== "string" || item.lessonId !== expectedLessonId ||
-      typeof item.dueAt !== "string" || !Number.isFinite(Date.parse(item.dueAt))
-    ) return null;
-    dueIds.add(item.id);
-    const exactTask = authoritativeTasks.find((task) => task.itemId === item.id);
-    if (!exactTask || exactTask.lessonId !== item.lessonId || exactTask.taskData?.audioText !== item.character) return null;
+    const identity = reviewIdentity(item.skillDomain, item.id);
+    if (dueIds.has(identity) || item.lessonId !== expectedLessonId) return null;
+    dueIds.add(identity);
+    const exactTask = authoritativeTasks.find((task) => reviewIdentity(String(task.skillDomain), String(task.itemId)) === identity);
+    if (!exactTask || !reviewTaskMatchesDueItem(exactTask, item)) return null;
     selected.push(exactTask);
   }
   return selected;
@@ -247,23 +288,35 @@ export function selectReviewTasksAcrossPackages(
   const authoritativeTasks = getAuthoritativeReviewTasksAcrossPackages(tasks, expectedSessionId);
   if (!authoritativeTasks) return null;
   if (authoritativeTasks.some((task) => task.childId !== expectedChildId || task.sessionId !== expectedSessionId)) return null;
-  const byItemId = new Map(authoritativeTasks.map((task) => [task.itemId!, task]));
-  if (byItemId.size !== authoritativeTasks.length) return null;
-  const dueIds = new Set(dueItems.map((item) => item.id));
+  const byIdentity = new Map(authoritativeTasks.map((task) => [reviewIdentity(String(task.skillDomain), String(task.itemId)), task]));
+  if (byIdentity.size !== authoritativeTasks.length) return null;
+  const dueIds = new Set(dueItems.map((item) => reviewIdentity(item.skillDomain, item.id)));
   // A completed row can remain in a mixed session after its SRS item advances.
   // It is historical evidence, not part of today's exact actionable due set.
-  if (authoritativeTasks.some((task) => !dueIds.has(task.itemId!) && task.state !== "COMPLETED")) return null;
+  if (authoritativeTasks.some((task) => !dueIds.has(reviewIdentity(String(task.skillDomain), String(task.itemId))) && task.state !== "COMPLETED")) return null;
   const selected: LearningFlowTaskContract[] = [];
   for (const item of dueItems) {
-    const exactTask = byItemId.get(item.id);
-    if (
-      !exactTask || exactTask.lessonId !== item.lessonId ||
-      exactTask.taskData?.audioText !== item.character ||
-      exactTask.taskData?.dueAt !== item.dueAt
-    ) return null;
+    const exactTask = byIdentity.get(reviewIdentity(item.skillDomain, item.id));
+    if (!exactTask || !reviewTaskMatchesDueItem(exactTask, item)) return null;
     selected.push(exactTask);
   }
   return selected;
+}
+
+function reviewTaskMatchesDueItem(task: LearningFlowTaskContract, item: ReviewDueItem): boolean {
+  if (task.lessonId !== item.lessonId || task.itemId !== item.id) return false;
+  if (task.taskData?.dueAt !== item.dueAt) {
+    const hasAttempted = typeof task.attemptCount === "number" && Number.isInteger(task.attemptCount) && task.attemptCount > 0;
+    if (!hasAttempted || typeof task.taskData?.dueAt !== "string" || !Number.isFinite(Date.parse(task.taskData.dueAt))) return false;
+  }
+  if (item.skillDomain === "recognition") {
+    return task.taskType === "REVIEW_RECOGNITION" && task.skillDomain === "recognition" && task.taskData?.audioText === item.character;
+  }
+  if (item.skillDomain === "writing") {
+    return task.taskType === "REVIEW_WRITING" && task.skillDomain === "writing" &&
+      task.taskData?.character === item.character && task.taskData?.scriptMode === item.scriptMode;
+  }
+  return task.taskType === "REVIEW_VOCABULARY" && task.skillDomain === "word" && task.taskData?.word === item.word;
 }
 
 export interface AuthoritativeLearnStepPlan {

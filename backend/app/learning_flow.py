@@ -198,10 +198,168 @@ def _due_recognition(db: Any, child_id: int, as_of_text: str) -> list[dict[str, 
              FROM srs_review_states s JOIN learning_items i ON i.id=s.item_id AND i.child_id=s.child_id
              JOIN curriculum_item_links l ON l.child_id=s.child_id AND l.item_id=s.item_id AND l.skill_domain='recognition'
             WHERE s.child_id=? AND s.skill_domain='recognition' AND s.due_at<=?
-            ORDER BY s.due_at,s.item_id LIMIT ?""",
-        (child_id, as_of_text, MAX_DUE_REVIEWS),
+            ORDER BY s.due_at,s.item_id""",
+        (child_id, as_of_text),
     ).fetchall()
     return [dict(row) for row in rows if lesson_is_accessible(db, child_id, row["lesson_id"])]
+
+
+def _vocabulary_task(child_id: int, lesson: dict[str, Any]) -> dict[str, Any] | None:
+    """Return the authored vocabulary task whose word SRS row uses its exact item id."""
+    if "vocabulary" not in lesson["domains"]:
+        return None
+    choices = [
+        {"id": "opt-hello", "label": "打招呼問好 (Hello)"},
+        {"id": "opt-eat", "label": "問對方吃飽沒 (Eat meal)"},
+    ]
+    return _task(
+        "vocabulary", "VOCABULARY", lesson["id"], skill="vocabulary",
+        item_id=_item_id(child_id, lesson["id"], "vocabulary"), minutes=3,
+        evidence_type="learning_session_vocabulary_choice", mastery_impact="SCORED_DOMAIN_EVIDENCE",
+        data={"prompt": "「你好」是一句常用的問候語。選出它的意思：", "choices": choices, "wordText": "你好", "authorship": "TONGXUAN_AUTHORED_PRACTICE"},
+        private={"_answerKey": "opt-hello", "_answerKind": "vocabulary"},
+    )
+
+
+def _due_review_items(db: Any, child_id: int, as_of_text: str) -> list[dict[str, Any]]:
+    """Resolve only due SRS rows with exact provenance and an executable current task contract."""
+    lessons = _lesson_rows()
+    candidates: list[dict[str, Any]] = []
+
+    # Preserve the existing recognition selector and its child/lesson binding.
+    for row in _due_recognition(db, child_id, as_of_text):
+        lesson = lessons.get(row["lesson_id"])
+        if row["lesson_id"] not in FLOW_LESSONS:
+            raise ValueError("learning_flow_review_lesson_not_supported")
+        if not lesson or row["character"] not in _characters(lesson):
+            raise ValueError("learning_flow_review_recognition_identity_unsupported")
+        candidates.append({"skill_domain": "recognition", **row})
+
+    writing_rows = db.execute(
+        "SELECT item_id,due_at FROM srs_review_states WHERE child_id=? AND skill_domain='writing' AND due_at<=? ORDER BY due_at,item_id",
+        (child_id, as_of_text),
+    ).fetchall()
+    for srs in writing_rows:
+        match = re.fullmatch(r"(traditional|simplified)::(.+)", srs["item_id"])
+        if not match:
+            continue
+        script_prefix, character = match.groups()
+        link = db.execute(
+            "SELECT lesson_id FROM curriculum_item_links WHERE child_id=? AND skill_domain='writing' AND item_id=?",
+            (child_id, character),
+        ).fetchone()
+        if link is None:
+            continue  # Standalone writing has no curriculum lesson identity.
+        lesson_id = link["lesson_id"]
+        lesson = lessons.get(lesson_id)
+        if lesson_id not in FLOW_LESSONS or not lesson or character not in _characters(lesson):
+            raise ValueError("learning_flow_review_writing_identity_unsupported")
+        script_mode = "TRADITIONAL" if script_prefix == "traditional" else "SIMPLIFIED"
+        provider_evidence = db.execute(
+            "SELECT 1 FROM writing_attempts WHERE child_id=? AND character=? AND script_mode=? AND provider='HANZI_WRITER' LIMIT 1",
+            (child_id, character, script_mode),
+        ).fetchone()
+        if not provider_evidence or not lesson_is_accessible(db, child_id, lesson_id):
+            continue
+        candidates.append({
+            "skill_domain": "writing", "item_id": srs["item_id"], "due_at": srs["due_at"],
+            "lesson_id": lesson_id, "character": character, "script_mode": script_mode,
+        })
+
+    # The flow's scored vocabulary task persists its SRS row in the distinct
+    # `word` domain while the exact item-to-lesson link remains `vocabulary`.
+    word_rows = db.execute(
+        """SELECT s.item_id,s.due_at,l.lesson_id
+             FROM srs_review_states s
+             JOIN curriculum_item_links l ON l.child_id=s.child_id AND l.skill_domain='vocabulary' AND l.item_id=s.item_id
+            WHERE s.child_id=? AND s.skill_domain='word' AND s.due_at<=?
+            ORDER BY s.due_at,s.item_id""",
+        (child_id, as_of_text),
+    ).fetchall()
+    for srs in word_rows:
+        lesson = lessons.get(srs["lesson_id"])
+        if (
+            not lesson or srs["lesson_id"] not in FLOW_LESSONS or
+            srs["item_id"] != _item_id(child_id, srs["lesson_id"], "vocabulary") or
+            _vocabulary_task(child_id, lesson) is None
+        ):
+            raise ValueError("learning_flow_review_word_identity_unsupported")
+        if lesson_is_accessible(db, child_id, srs["lesson_id"]):
+            vocabulary = _vocabulary_task(child_id, lesson)
+            candidates.append({
+                "skill_domain": "word", "item_id": srs["item_id"], "due_at": srs["due_at"],
+                "lesson_id": srs["lesson_id"], "word": vocabulary["taskData"]["wordText"],
+                "prompt": vocabulary["taskData"]["prompt"], "choices": vocabulary["taskData"]["choices"],
+            })
+
+    candidates.sort(key=lambda item: (_parse_stamp(item["due_at"]) or datetime.max, item["skill_domain"], item["item_id"]))
+    seen: set[tuple[str, str]] = set()
+    result: list[dict[str, Any]] = []
+    for item in candidates:
+        identity = (item["skill_domain"], item["item_id"])
+        if identity in seen:
+            raise ValueError("learning_flow_review_due_item_duplicate")
+        seen.add(identity)
+        if len(result) < MAX_DUE_REVIEWS:
+            result.append(item)
+    return result
+
+
+def _review_task(due: dict[str, Any], key: str) -> dict[str, Any]:
+    domain = due["skill_domain"]
+    if domain == "recognition":
+        lesson = _lesson_rows()[due["lesson_id"]]
+        distractor = next((value for value in _characters(lesson) if value != due["character"]), None)
+        if distractor is None:
+            raise ValueError("learning_flow_review_distractor_not_supported")
+        return _task(
+            key, "REVIEW_RECOGNITION", due["lesson_id"], skill="recognition", item_id=due["item_id"],
+            source="REVIEW", is_new=False, minutes=3, evidence_type="recognition_attempt",
+            mastery_impact="SCORED_DOMAIN_EVIDENCE",
+            data={"prompt": "聽完今天的問候語，選出剛才出現的字。", "audioText": due["character"], "choices": [{"id": "option-1", "label": distractor}, {"id": "option-2", "label": due["character"]}], "dueAt": due["due_at"]},
+            private={"_answerKey": "option-2", "_answerKind": "recognition"},
+        )
+    if domain == "writing":
+        return _task(
+            key, "REVIEW_WRITING", due["lesson_id"], skill="writing", item_id=due["item_id"],
+            source="REVIEW", is_new=False, minutes=3, evidence_type="writing_provider_attempt",
+            mastery_impact="NONE",
+            data={"character": due["character"], "phase": "independent", "scriptMode": due["script_mode"], "repeatCount": 1, "dueAt": due["due_at"]},
+        )
+    if domain == "word":
+        return _task(
+            key, "REVIEW_VOCABULARY", due["lesson_id"], skill="word", item_id=due["item_id"],
+            source="REVIEW", is_new=False, minutes=3, evidence_type="learning_session_vocabulary_choice",
+            mastery_impact="NONE",
+            data={"prompt": due["prompt"], "choices": due["choices"], "word": due["word"], "dueAt": due["due_at"]},
+            private={"_answerKey": "opt-hello", "_answerKind": "vocabulary"},
+        )
+    raise ValueError("learning_flow_review_domain_not_supported")
+
+
+def _sync_review_task_due_at(db: Any, *, child_id: int, row: Any, task: dict[str, Any]) -> str | None:
+    """Keep a retryable REVIEW row's due timestamp aligned with its exact SRS state."""
+    if row["source_queue"] != "REVIEW":
+        return None
+    domain_by_task_type = {
+        "REVIEW_RECOGNITION": "recognition",
+        "REVIEW_WRITING": "writing",
+        "REVIEW_VOCABULARY": "word",
+    }
+    expected_domain = domain_by_task_type.get(row["task_type"])
+    if expected_domain is None or row["skill_domain"] != expected_domain:
+        raise ValueError("learning_flow_review_task_identity_mismatch")
+    state = db.execute(
+        "SELECT due_at FROM srs_review_states WHERE child_id=? AND skill_domain=? AND item_id=?",
+        (child_id, expected_domain, row["activity_item_id"]),
+    ).fetchone()
+    if state is None or not isinstance(state["due_at"], str) or _parse_stamp(state["due_at"]) is None:
+        raise ValueError("learning_flow_review_srs_state_missing")
+    task_data = task.get("taskData")
+    if not isinstance(task_data, dict) or not isinstance(task_data.get("dueAt"), str):
+        raise ValueError("learning_flow_review_task_identity_mismatch")
+    task_data["dueAt"] = state["due_at"]
+    return json.dumps(task, ensure_ascii=False, sort_keys=True)
 
 
 def _session_plan(db: Any, child_id: int, as_of_text: str, lesson: dict[str, Any], stage_start: str, target_minutes: int, script_mode: str) -> dict[str, Any]:
@@ -211,24 +369,18 @@ def _session_plan(db: Any, child_id: int, as_of_text: str, lesson: dict[str, Any
         raise ValueError("learning_flow_lesson_has_no_character_targets")
     phrase_id = _item_id(child_id, lesson_id, "phrase")
     char_ids = [_item_id(child_id, lesson_id, "char", index + 1) for index in range(len(chars))]
-    vocab_id = _item_id(child_id, lesson_id, "vocabulary")
     lesson_state = db.execute("SELECT status FROM curriculum_lesson_states WHERE child_id=? AND lesson_id=?", (child_id, lesson_id)).fetchone()
     already_mastered = bool(lesson_state and lesson_state["status"] == "MASTERED")
     required_domains = list(lesson["domains"])
     tasks: list[dict[str, Any]] = []
 
-    # Review is deliberately curriculum/SRS-only here; School Queue remains its own queue.
-    for index, due in enumerate([due for due in _due_recognition(db, child_id, as_of_text) if due["lesson_id"] == lesson_id]):
-        distractor = next((value for value in chars if value != due["character"]), lesson["title"])
-        correct_id = "option-2"
-        choices = [{"id": "option-1", "label": distractor}, {"id": correct_id, "label": due["character"]}]
-        tasks.append(_task(
-            f"review-recognition-{index + 1}", "REVIEW_RECOGNITION", due["lesson_id"],
-            skill="recognition", item_id=due["item_id"], source="REVIEW", is_new=False,
-            minutes=3, evidence_type="recognition_attempt", mastery_impact="SCORED_DOMAIN_EVIDENCE",
-            data={"prompt": "聽完今天的問候語，選出剛才出現的字。", "audioText": due["character"], "choices": choices, "dueAt": due["due_at"]},
-            private={"_answerKey": correct_id, "_answerKind": "recognition"},
-        ))
+    # Review is curriculum/SRS-only and exact across supported lessons/domains;
+    # School Queue remains a separate product flow.
+    review_numbers: dict[str, int] = {}
+    for due in _due_review_items(db, child_id, as_of_text):
+        review_numbers[due["skill_domain"]] = review_numbers.get(due["skill_domain"], 0) + 1
+        key = f"review-{due['skill_domain']}-{review_numbers[due['skill_domain']]}"
+        tasks.append(_review_task(due, key))
 
     if not already_mastered:
         domains = set(required_domains)
@@ -259,17 +411,9 @@ def _session_plan(db: Any, child_id: int, as_of_text: str, lesson: dict[str, Any
                     private={"_answerKey": correct_id, "_answerKind": "recognition"},
                 ))
 
-        if "vocabulary" in domains:
-            vocab_choices = [
-                {"id": "opt-hello", "label": "打招呼問好 (Hello)"},
-                {"id": "opt-eat", "label": "問對方吃飽沒 (Eat meal)"}
-            ]
-            tasks.append(_task(
-                "vocabulary", "VOCABULARY", lesson_id, skill="vocabulary", item_id=vocab_id,
-                minutes=3, evidence_type="learning_session_vocabulary_choice", mastery_impact="SCORED_DOMAIN_EVIDENCE",
-                data={"prompt": "「你好」是一句常用的問候語。選出它的意思：", "choices": vocab_choices, "authorship": "TONGXUAN_AUTHORED_PRACTICE"},
-                private={"_answerKey": "opt-hello", "_answerKind": "vocabulary"},
-            ))
+        vocabulary_task = _vocabulary_task(child_id, lesson)
+        if vocabulary_task:
+            tasks.append(vocabulary_task)
 
         # A small, deterministic meaning-in-use check completes the Book 1
         # golden path without pretending the official lesson requires grammar.
@@ -566,24 +710,6 @@ def get_current_learning_session(*, child_id: int) -> dict[str, Any] | None:
         return _session_payload(db, session)
 
 
-def _review_context_for_due_item(due: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
-    lesson_id = due.get("lesson_id")
-    if not isinstance(lesson_id, str) or lesson_id not in FLOW_LESSONS:
-        raise ValueError("learning_flow_review_lesson_not_supported")
-    lesson = _lesson_rows().get(lesson_id)
-    if lesson is None:
-        raise ValueError("learning_flow_review_lesson_not_supported")
-    chars = _characters(lesson)
-    if (
-        not isinstance(due.get("item_id"), str) or not due["item_id"] or
-        not isinstance(due.get("character"), str) or due["character"] not in chars or
-        not isinstance(due.get("due_at"), str) or _parse_stamp(due["due_at"]) is None or
-        len({character for character in chars if character != due["character"]}) == 0
-    ):
-        raise ValueError("learning_flow_review_due_item_malformed")
-    return lesson, chars
-
-
 def reconcile_learning_session_reviews(*, child_id: int, session_id: str, as_of: str | None = None) -> dict[str, Any]:
     initialize_database()
     as_of_text, stamp = _as_of(as_of)
@@ -609,15 +735,8 @@ def reconcile_learning_session_reviews(*, child_id: int, session_id: str, as_of:
         flow_id = session["id"]
         lesson_id = session["lesson_id"]
 
-        due_items = _due_recognition(db, child_id, as_of_text)
-        due_contexts: list[tuple[dict[str, Any], dict[str, Any], list[str]]] = []
-        due_item_ids: set[str] = set()
-        for due in due_items:
-            if due["item_id"] in due_item_ids:
-                raise ValueError("learning_flow_review_due_item_duplicate")
-            due_item_ids.add(due["item_id"])
-            lesson, chars = _review_context_for_due_item(due)
-            due_contexts.append((due, lesson, chars))
+        due_items = _due_review_items(db, child_id, as_of_text)
+        due_identities = {(due["skill_domain"], due["item_id"]) for due in due_items}
 
         if session["status"] == "PAUSED":
             resumed_at = now()
@@ -636,71 +755,57 @@ def reconcile_learning_session_reviews(*, child_id: int, session_id: str, as_of:
             (flow_id,),
         ).fetchall()
 
-        existing_review_by_item: dict[str, Any] = {}
+        existing_review_by_item: dict[tuple[str, str], Any] = {}
         existing_review_keys: set[str] = set()
-        next_review_number = 0
+        next_review_number: dict[str, int] = {}
         for row in existing_tasks:
             if row["source_queue"] != "REVIEW":
                 continue
             item_id = row["activity_item_id"]
-            if not isinstance(item_id, str) or not item_id or item_id in existing_review_by_item:
+            identity = (row["skill_domain"], item_id)
+            if row["skill_domain"] not in {"recognition", "writing", "word"} or not isinstance(item_id, str) or not item_id or identity in existing_review_by_item:
                 raise ValueError("learning_flow_review_task_identity_duplicate")
             task_data = json.loads(row["task_json"])
             task_key = task_data.get("key")
             if isinstance(task_key, str):
                 existing_review_keys.add(task_key)
-                match = re.fullmatch(r"review-recognition-(\d+)", task_key)
+                match = re.fullmatch(rf"review-{re.escape(row['skill_domain'])}-(\d+)", task_key)
                 if match:
-                    next_review_number = max(next_review_number, int(match.group(1)))
-            existing_review_by_item[item_id] = (row, task_data)
+                    next_review_number[row["skill_domain"]] = max(next_review_number.get(row["skill_domain"], 0), int(match.group(1)))
+            existing_review_by_item[identity] = (row, task_data)
         max_position = max((row["position"] for row in existing_tasks), default=-1)
 
+        for identity, (row, _) in existing_review_by_item.items():
+            # Completed rows remain historical after their exact SRS row advances.
+            if identity not in due_identities and row["state"] != "COMPLETED":
+                raise ValueError("learning_flow_review_task_not_due")
+
         new_tasks_count = 0
-        for due, review_lesson, chars in due_contexts:
-            existing = existing_review_by_item.get(due["item_id"])
+        for due in due_items:
+            identity = (due["skill_domain"], due["item_id"])
+            existing = existing_review_by_item.get(identity)
             if existing:
                 row, existing_task = existing
-                existing_payload = existing_task.get("taskData") or {}
+                expected = _review_task(due, existing_task.get("key", ""))
                 if (
                     row["child_id"] != child_id or row["session_id"] != flow_id or
-                    row["lesson_id"] != due["lesson_id"] or row["task_type"] != "REVIEW_RECOGNITION" or
-                    row["skill_domain"] != "recognition" or existing_task.get("id") != row["id"] or
+                    row["lesson_id"] != due["lesson_id"] or row["task_type"] != expected["taskType"] or
+                    row["skill_domain"] != due["skill_domain"] or existing_task.get("id") != row["id"] or
                     existing_task.get("lessonId") != due["lesson_id"] or existing_task.get("itemId") != due["item_id"] or
-                    existing_task.get("sourceQueue") != "REVIEW" or existing_task.get("taskType") != "REVIEW_RECOGNITION" or
-                    existing_payload.get("audioText") != due["character"] or existing_payload.get("dueAt") != due["due_at"]
+                    existing_task.get("sourceQueue") != "REVIEW" or existing_task.get("taskType") != expected["taskType"] or
+                    existing_task.get("taskData") != expected["taskData"] or
+                    any(existing_task.get(key) != expected.get(key) for key in ("_answerKey", "_answerKind") if key in expected)
                 ):
                     raise ValueError("learning_flow_review_task_identity_mismatch")
                 continue
 
-            distractor = next((value for value in chars if value != due["character"]), None)
-            if distractor is None:
-                raise ValueError("learning_flow_review_distractor_not_supported")
-            correct_id = "option-2"
-            choices = [{"id": "option-1", "label": distractor}, {"id": correct_id, "label": due["character"]}]
-            next_review_number += 1
-            review_key = f"review-recognition-{next_review_number}"
+            domain = due["skill_domain"]
+            next_review_number[domain] = next_review_number.get(domain, 0) + 1
+            review_key = f"review-{domain}-{next_review_number[domain]}"
             while review_key in existing_review_keys:
-                next_review_number += 1
-                review_key = f"review-recognition-{next_review_number}"
-            task = _task(
-                review_key,
-                "REVIEW_RECOGNITION",
-                due["lesson_id"],
-                skill="recognition",
-                item_id=due["item_id"],
-                source="REVIEW",
-                is_new=False,
-                minutes=3,
-                evidence_type="recognition_attempt",
-                mastery_impact="SCORED_DOMAIN_EVIDENCE",
-                data={
-                    "prompt": "聽完今天的問候語，選出剛才出現的字。",
-                    "audioText": due["character"],
-                    "choices": choices,
-                    "dueAt": due["due_at"],
-                },
-                private={"_answerKey": correct_id, "_answerKind": "recognition"},
-            )
+                next_review_number[domain] += 1
+                review_key = f"review-{domain}-{next_review_number[domain]}"
+            task = _review_task(due, review_key)
 
             task_id = f"{flow_id}:{review_key}"
             task["id"] = task_id
@@ -731,7 +836,7 @@ def reconcile_learning_session_reviews(*, child_id: int, session_id: str, as_of:
                     json.dumps(task, ensure_ascii=False, sort_keys=True),
                 ),
             )
-            existing_review_by_item[due["item_id"]] = (None, task)
+            existing_review_by_item[identity] = (None, task)
             existing_review_keys.add(review_key)
             new_tasks_count += 1
 
@@ -862,7 +967,8 @@ def _update_task_attempt_in_transaction(db: Any, *, child_id: int, session_id: s
         failure_count = int(row["failure_count"]) + (0 if correct is None else int(not correct))
         next_state = "COMPLETED" if success else "IN_PROGRESS"
         completed_at = stamp if success else None
-    if row["task_type"].startswith("WRITING_") and correct is False:
+    is_writing_task = row["task_type"].startswith("WRITING_") or row["task_type"] == "REVIEW_WRITING"
+    if is_writing_task and correct is False:
         failure_count = int(row["failure_count"]) + 1
         if failure_count >= 2:
             next_state = "DEFERRED"
@@ -870,7 +976,7 @@ def _update_task_attempt_in_transaction(db: Any, *, child_id: int, session_id: s
     started = _parse_stamp(row["started_at"]) or _parse_stamp(stamp)
     stamp_dt = _parse_stamp(stamp) or _utcnow_naive()
     duration = max(0, int((stamp_dt - started).total_seconds())) if started else 0
-    if row["task_type"].startswith("WRITING_") and correct is True:
+    if is_writing_task and correct is True:
         repeat_count = int(task.get("taskData", {}).get("repeatCount", 1))
         prior_successes = int(db.execute("""SELECT COUNT(*) FROM learning_flow_task_attempts a
             JOIN writing_attempts w ON w.id=a.evidence_ref
@@ -878,9 +984,10 @@ def _update_task_attempt_in_transaction(db: Any, *, child_id: int, session_id: s
         next_state = "COMPLETED" if prior_successes + len(evidence_refs) >= repeat_count else "IN_PROGRESS"
         completed_at = stamp if next_state == "COMPLETED" else None
     primary_ref = evidence_refs[-1] if evidence_refs else row["evidence_ref"]
+    synchronized_task_json = _sync_review_task_due_at(db, child_id=child_id, row=row, task=task)
     db.execute(
-        "UPDATE learning_flow_tasks SET state=?,attempt_count=attempt_count+?,failure_count=?,completed_at=?,elapsed_seconds=elapsed_seconds+?,evidence_ref=COALESCE(?,evidence_ref) WHERE id=? AND session_id=?",
-        (next_state, total_attempts, failure_count, completed_at, duration, primary_ref, task["id"], session_id),
+        "UPDATE learning_flow_tasks SET state=?,attempt_count=attempt_count+?,failure_count=?,completed_at=?,elapsed_seconds=elapsed_seconds+?,evidence_ref=COALESCE(?,evidence_ref),task_json=COALESCE(?,task_json) WHERE id=? AND session_id=?",
+        (next_state, total_attempts, failure_count, completed_at, duration, primary_ref, synchronized_task_json, task["id"], session_id),
     )
     _log(db, session_id, child_id, "task_attempted", task["id"], row["skill_domain"], {"taskType": row["task_type"], "result": result, "correct": correct, "assisted": assisted, "attemptCount": previous_attempts + total_attempts, "durationSeconds": duration}, stamp)
     if assisted:
@@ -892,13 +999,13 @@ def _update_task_attempt_in_transaction(db: Any, *, child_id: int, session_id: s
         _log(db, session_id, child_id, "review_result", task["id"], row["skill_domain"], review_details, stamp)
         if due_age_days is not None and due_age_days >= 6:
             _log(db, session_id, child_id, "seven_day_review_result", task["id"], row["skill_domain"], review_details, stamp)
-    if row["task_type"].startswith("WRITING_"):
+    if is_writing_task:
         _log(db, session_id, child_id, "writing_retry" if result == "incorrect" else "writing_progressed", task["id"], row["skill_domain"], {"phase": task.get("taskData", {}).get("phase"), "result": result, "attemptCount": previous_attempts + total_attempts}, stamp)
     if correct is False and failure_count >= MAX_FAILURES_PER_TASK:
         current_session = db.execute("SELECT * FROM learning_flow_sessions WHERE id=?", (session_id,)).fetchone()
         _log(db, session_id, child_id, "repeated_failures", task["id"], row["skill_domain"], {"failureCount": failure_count, "limit": MAX_FAILURES_PER_TASK}, stamp)
         _pause(db, current_session, "REPEATED_FAILURES", task["id"], stamp)
-    if row["task_type"].startswith("WRITING_") and next_state == "DEFERRED":
+    if is_writing_task and next_state == "DEFERRED":
         _log(db, session_id, child_id, "task_deferred", task["id"], row["skill_domain"], {"reason": "WRITING_RETRY_CAP"}, stamp)
     updated = db.execute("SELECT * FROM learning_flow_sessions WHERE id=?", (session_id,)).fetchone()
     return _session_payload(db, updated)
@@ -933,7 +1040,7 @@ def submit_learning_answer(*, child_id: int, session_id: str, task_id: str, sele
         result = "completed"
         score: float | None = None
         scorer_version: str | None = None
-        if task_type in {"RECOGNITION", "REVIEW_RECOGNITION", "VOCABULARY", "SENTENCE_PATTERN", "MINI_CHECK"}:
+        if task_type in {"RECOGNITION", "REVIEW_RECOGNITION", "VOCABULARY", "REVIEW_VOCABULARY", "SENTENCE_PATTERN", "MINI_CHECK"}:
             if task.get("taskData", {}).get("mode") == "reflection":
                 choices = {item["id"] for item in task["taskData"].get("choices", [])}
                 if selected_option_id not in choices:
@@ -976,7 +1083,10 @@ def submit_learning_answer(*, child_id: int, session_id: str, task_id: str, sele
                 refs = [uid("session-vocabulary-attempt")]
                 score = float(correct)
                 scorer_version = "session-vocabulary-choice-v1"
-                record_linked_score_evidence(db, child_id=child_id, skill_domain="vocabulary", item_id=row["activity_item_id"], score=score, assisted=assisted, evidence_ref=refs[0], evidence_type="learning_session_vocabulary_choice")
+                if row["mastery_impact"] == "SCORED_DOMAIN_EVIDENCE":
+                    record_linked_score_evidence(db, child_id=child_id, skill_domain="vocabulary", item_id=row["activity_item_id"], score=score, assisted=assisted, evidence_ref=refs[0], evidence_type="learning_session_vocabulary_choice")
+                elif row["mastery_impact"] != "NONE":
+                    raise ValueError("learning_task_mastery_impact_unsupported")
                 record_srs_review(db, child_id=child_id, skill_domain="word", item_id=row["activity_item_id"], result=result, assisted=assisted)
             else:
                 refs = [uid("session-practice-attempt")]
@@ -1041,16 +1151,20 @@ def _ensure_flow_writing_provenance_link(db: Any, *, child_id: int, row: Any) ->
     This also covers sessions persisted before the atomic writing operation existed.
     Lesson mastery still considers only the official domains in the lesson manifest.
     """
+    task = json.loads(row["task_json"])
+    character = (task.get("taskData") or {}).get("character") if row["task_type"] == "REVIEW_WRITING" else row["activity_item_id"]
+    if not isinstance(character, str) or not character:
+        raise ValueError("writing_task_identity_mismatch")
     existing = db.execute(
         "SELECT lesson_id FROM curriculum_item_links WHERE child_id=? AND skill_domain='writing' AND item_id=?",
-        (child_id, row["activity_item_id"]),
+        (child_id, character),
     ).fetchone()
     if existing and existing["lesson_id"] != row["lesson_id"]:
         raise ValueError("writing_task_identity_mismatch")
     if existing is None:
         db.execute(
             "INSERT INTO curriculum_item_links(child_id,skill_domain,item_id,lesson_id) VALUES(?,'writing',?,?)",
-            (child_id, row["activity_item_id"], row["lesson_id"]),
+            (child_id, character, row["lesson_id"]),
         )
 
 
@@ -1071,13 +1185,17 @@ def _validate_flow_writing_submission(
     """Validate exact task/provider identity and recognize safe replay by stable attempt ID."""
     data = json.loads(row["task_json"])
     writing_data = data.get("taskData") or {}
-    character = row["activity_item_id"]
+    is_review = row["task_type"] == "REVIEW_WRITING"
+    character = writing_data.get("character") if is_review else row["activity_item_id"]
+    expected_source = "REVIEW" if is_review else "CURRICULUM"
     if (
-        not row["task_type"].startswith("WRITING_") or row["skill_domain"] != "writing" or
-        row["source_queue"] != "CURRICULUM" or row["lesson_id"] != session["lesson_id"] or
+        not (row["task_type"].startswith("WRITING_") or is_review) or row["skill_domain"] != "writing" or
+        row["source_queue"] != expected_source or
+        (not is_review and row["lesson_id"] != session["lesson_id"]) or
         data.get("id") != row["id"] or data.get("lessonId") != row["lesson_id"] or
-        data.get("itemId") != character or data.get("taskType") != row["task_type"] or
-        data.get("sourceQueue") != row["source_queue"] or writing_data.get("character") != character
+        data.get("itemId") != row["activity_item_id"] or row["activity_item_id"] != (f"{str(writing_data.get('scriptMode', '')).lower()}::{character}" if is_review else character) or
+        data.get("taskType") != row["task_type"] or data.get("sourceQueue") != row["source_queue"] or
+        not isinstance(character, str) or not character
     ):
         raise ValueError("writing_task_identity_mismatch")
     if trace_result is None or assisted is None or provider is None or phase is None or script_mode is None or attempt_index is None:
@@ -1163,7 +1281,8 @@ def attach_learning_evidence(
         if session["status"] != "IN_PROGRESS":
             raise ValueError("learning_session_not_in_progress")
         data = json.loads(row["task_json"])
-        is_writing = row["task_type"].startswith("WRITING_")
+        is_writing = row["task_type"].startswith("WRITING_") or row["task_type"] == "REVIEW_WRITING"
+        synchronized_task_json: str | None = None
         if is_writing:
             result, assisted, evidence_type, evidence_ref, replayed = _validate_flow_writing_submission(
                 db,
@@ -1199,14 +1318,16 @@ def attach_learning_evidence(
             _practice_writing_in_transaction(
                 db,
                 child_id=child_id,
-                character=row["activity_item_id"],
+                character=(data.get("taskData") or {}).get("character") if row["task_type"] == "REVIEW_WRITING" else row["activity_item_id"],
                 trace_result=result,
                 assisted=assisted,
                 provider=writing_provider or "",
                 phase=writing_phase or "",
                 script_mode=writing_script_mode,
                 attempt_id=evidence_ref,
+                record_mastery_gate=row["task_type"] != "REVIEW_WRITING",
             )
+            synchronized_task_json = _sync_review_task_due_at(db, child_id=child_id, row=row, task=data)
         if row["task_type"] == "LISTENING":
             # The final evidence operation owns provider completion, the linked gate,
             # and flow settlement. A failed write below rolls all of them back.
@@ -1226,10 +1347,11 @@ def attach_learning_evidence(
             # Provider completion, the linked curriculum gate, and flow evidence share this transaction.
             # Any downstream failure rolls back all three authoritative writes.
             _complete_speaking_provider_attempt_in_transaction(db, child_id=child_id, evidence_ref=evidence_ref, duration_ms=duration_ms)
-        required_repeat = int(data.get("taskData", {}).get("repeatCount", 1)) if row["task_type"].startswith("WRITING_") else 1
+        is_flow_writing = row["task_type"].startswith("WRITING_") or row["task_type"] == "REVIEW_WRITING"
+        required_repeat = int(data.get("taskData", {}).get("repeatCount", 1)) if is_flow_writing else 1
         if result == "incorrect":
             failure_count = row["failure_count"] + 1
-            state = "DEFERRED" if row["task_type"].startswith("WRITING_") and failure_count >= 2 else "IN_PROGRESS"
+            state = "DEFERRED" if is_flow_writing and failure_count >= 2 else "IN_PROGRESS"
             deferred_reason = "WRITING_RETRY_CAP" if state == "DEFERRED" else None
             completed_at = None
         else:
@@ -1245,11 +1367,11 @@ def attach_learning_evidence(
         stamp_dt = _parse_stamp(stamp) or _utcnow_naive()
         duration = max(0, int((stamp_dt - start).total_seconds())) if start else 0
         _insert_learning_flow_task_attempt(db, session_id=session_id, task_id=task_id, child_id=child_id, skill_domain=row["skill_domain"], result=result, assisted=assisted, evidence_ref=evidence_ref, evidence_type=evidence_type, occurred_at=stamp)
-        db.execute("UPDATE learning_flow_tasks SET state=?,failure_count=?,attempt_count=attempt_count+1,completed_at=?,elapsed_seconds=elapsed_seconds+?,deferred_reason=?,evidence_ref=COALESCE(?,evidence_ref) WHERE id=? AND session_id=?", (state, failure_count, completed_at, duration, deferred_reason, evidence_ref, task_id, session_id))
+        db.execute("UPDATE learning_flow_tasks SET state=?,failure_count=?,attempt_count=attempt_count+1,completed_at=?,elapsed_seconds=elapsed_seconds+?,deferred_reason=?,evidence_ref=COALESCE(?,evidence_ref),task_json=COALESCE(?,task_json) WHERE id=? AND session_id=?", (state, failure_count, completed_at, duration, deferred_reason, evidence_ref, synchronized_task_json, task_id, session_id))
         _log(db, session_id, child_id, "task_evidence_attached" if result != "incorrect" else "task_attempted", task_id, row["skill_domain"], {"taskType": row["task_type"], "result": result, "assisted": assisted, "durationSeconds": duration}, stamp)
         if row["task_type"] in {"SPEAKING_ATTEMPT", "PRONUNCIATION_ATTEMPT"} and result == "completed":
             _log(db, session_id, child_id, "speaking_attempted", task_id, row["skill_domain"], {"taskType": row["task_type"], "completed": True, "qualityScore": None}, stamp)
-        if row["task_type"].startswith("WRITING_"):
+        if is_flow_writing:
             _log(db, session_id, child_id, "writing_retry" if result == "incorrect" else "writing_progressed", task_id, row["skill_domain"], {"phase": data["taskData"]["phase"], "attemptCount": row["attempt_count"] + 1, "result": result}, stamp)
         updated = db.execute("SELECT * FROM learning_flow_sessions WHERE id=?", (session_id,)).fetchone()
         return _session_payload(db, updated)
@@ -1348,14 +1470,14 @@ def get_learning_daily_queue(*, child_id: int, as_of: str | None = None) -> dict
         current = lessons[start_id]
         state = db.execute("SELECT status FROM curriculum_lesson_states WHERE child_id=? AND lesson_id=?", (child_id, start_id)).fetchone()
         is_mastered = bool(state and state["status"] == "MASTERED")
-        reviews = _due_recognition(db, child_id, stamp)
+        reviews = _due_review_items(db, child_id, stamp)
         active = db.execute("SELECT id,status FROM learning_flow_sessions WHERE child_id=? AND status IN ('IN_PROGRESS','PAUSED') ORDER BY started_at DESC LIMIT 1", (child_id,)).fetchone()
         accessible_next = next((lesson for lesson in _ordered_lessons() if lesson["id"] not in FLOW_LESSONS and lesson_is_accessible(db, child_id, lesson["id"])), None)
         return {
             "childId": child_id,
             "asOf": stamp,
             "placementStart": placement["main_curriculum_start"] if placement else "STARTER",
-            "review": {"sourceQueue": "REVIEW", "dueCount": len(reviews), "items": [{"id": item["item_id"], "character": item["character"], "lessonId": item["lesson_id"], "dueAt": item["due_at"]} for item in reviews]},
+            "review": {"sourceQueue": "REVIEW", "dueCount": len(reviews), "items": [{"id": item["item_id"], "skillDomain": item["skill_domain"], "character": item.get("character"), "scriptMode": item.get("script_mode"), "word": item.get("word"), "lessonId": item["lesson_id"], "dueAt": item["due_at"]} for item in reviews]},
             "newLesson": None if is_mastered else {"sourceQueue": "CURRICULUM", "lessonId": start_id, "title": current["title"], "domains": current["domains"], "status": state["status"] if state else "NOT_STARTED", "availableInLearningFlowV1": True},
             "completedLesson": {"sourceQueue": "CURRICULUM", "lessonId": start_id, "title": current["title"], "domains": current["domains"], "status": "MASTERED"} if is_mastered else None,
             "currentLessonComplete": is_mastered,

@@ -361,7 +361,7 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     expect(getStepsForMode(pkg, "REVIEW", [], [{ ...dueItem, taskData: { ...dueItem.taskData, choices: [{ id: "same", label: "你" }, { id: "same", label: "好" }] } }])).toEqual([]);
     const retryableSteps = getStepsForMode(pkg, "REVIEW", [], [{ ...dueItem, state: "IN_PROGRESS" }]);
     expect(retryableSteps[0].data?.taskId).toBe(dueItem.id);
-    const queueDueItem = { id: "item-ni", character: "你", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" };
+    const queueDueItem = { id: "item-ni", skillDomain: "recognition", character: "你", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" };
     expect(selectReviewTasksForDueItems([dueItem], [queueDueItem], pkg, "book1-l01")).toEqual([dueItem]);
     expect(selectReviewTasksForDueItems([dueItem], [queueDueItem, queueDueItem], pkg, "book1-l01")).toBeNull();
     expect(selectReviewTasksForDueItems([dueItem], [{ ...queueDueItem, lessonId: "basic-l01" }], pkg, "book1-l01")).toBeNull();
@@ -421,9 +421,9 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
   it("14c. mixed-lesson REVIEW rows map by their own package and stay outside the parent LEARN plan", () => {
     const book1Pkg = getLessonPackage("book1-l01")!;
     const dueItems = [
-      { id: "item-ni", character: "你", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" },
-      { id: "item-hao", character: "好", lessonId: "basic-l01", dueAt: "2026-09-02T00:00:00Z" },
-      { id: "item-starter-hao", character: "好", lessonId: "starter-l01", dueAt: "2026-09-02T00:00:00Z" },
+      { id: "item-ni", skillDomain: "recognition", character: "你", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" },
+      { id: "item-hao", skillDomain: "recognition", character: "好", lessonId: "basic-l01", dueAt: "2026-09-02T00:00:00Z" },
+      { id: "item-starter-hao", skillDomain: "recognition", character: "好", lessonId: "starter-l01", dueAt: "2026-09-02T00:00:00Z" },
     ];
     const reviewTasks = [
       {
@@ -468,6 +468,45 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     expect(learnPlan.valid).toBe(true);
     expect(learnPlan.steps.flatMap((step) => step.data.taskIds ?? [step.data.taskId])).toEqual(curriculumTasks.map((task) => task.id));
     expect(learnPlan.steps.some((step) => step.data.taskId === reviewTasks[1].id)).toBe(false);
+    const fullMixedLearnPlan = buildAuthoritativeLearnSteps(book1Pkg, [...curriculumTasks, ...reviewTasks]);
+    expect(fullMixedLearnPlan.valid).toBe(true);
+    expect(fullMixedLearnPlan.steps.flatMap((step) => step.data.taskIds ?? [step.data.taskId])).toEqual(curriculumTasks.map((task) => task.id));
+  });
+
+  it("14d. domain REVIEW maps exact writing script identity and vocabulary word task without changing LEARN mapping", () => {
+    const pkg = getLessonPackage("basic-l01")!;
+    const dueAt = "2026-09-02T00:00:00Z";
+    const dueItems = [
+      { id: "lf_1_basic-l01_vocabulary", skillDomain: "word", word: "你好", lessonId: "basic-l01", dueAt },
+      { id: "traditional::你", skillDomain: "writing", character: "你", scriptMode: "TRADITIONAL", lessonId: "basic-l01", dueAt },
+    ];
+    const tasks = [
+      {
+        id: "domain-session:review-word-1", sessionId: "domain-session", childId: 1, key: "review-word-1",
+        taskType: "REVIEW_VOCABULARY", sourceQueue: "REVIEW", lessonId: "basic-l01", skillDomain: "word",
+        itemId: "lf_1_basic-l01_vocabulary", state: "PENDING", required: true,
+        taskData: { word: "你好", prompt: "選出問候語意思", choices: [{ id: "opt-hello", label: "打招呼" }, { id: "opt-eat", label: "問候用餐" }], dueAt },
+      },
+      {
+        id: "domain-session:review-writing-1", sessionId: "domain-session", childId: 1, key: "review-writing-1",
+        taskType: "REVIEW_WRITING", sourceQueue: "REVIEW", lessonId: "basic-l01", skillDomain: "writing",
+        itemId: "traditional::你", state: "IN_PROGRESS", required: true,
+        taskData: { character: "你", phase: "independent", scriptMode: "TRADITIONAL", repeatCount: 1, dueAt },
+      },
+    ];
+    const selected = selectReviewTasksAcrossPackages(tasks, dueItems, 1, "domain-session");
+    expect(selected?.map((task) => task.id)).toEqual(["domain-session:review-word-1", "domain-session:review-writing-1"]);
+    const steps = getStepsForMode(pkg, "REVIEW", [], selected ?? []);
+    expect(steps.map((step) => step.stepKey)).toEqual(["vocabulary", "writing", "wrap_up"]);
+    expect(steps[0].data.taskId).toBe(tasks[0].id);
+    expect(steps[0].data.word).toBe("你好");
+    expect(steps[1].data.taskId).toBe(tasks[1].id);
+    expect(steps[1].data.character).toBe("你");
+    expect(steps[1].data.scriptMode).toBe("TRADITIONAL");
+    expect(selectReviewTasksAcrossPackages(tasks, [{ ...dueItems[1], scriptMode: "SIMPLIFIED" }, dueItems[0]], 1, "domain-session")).toBeNull();
+    expect(selectReviewTasksAcrossPackages(tasks, dueItems.slice(1), 1, "domain-session")).toBeNull();
+    expect(validateReviewDueItems([{ ...dueItems[1], id: "你" }])).toBe(false);
+    expect(validateReviewDueItems([{ ...dueItems[0], id: "unknown-word-item" }])).toBe(false);
   });
 
   it("14b. The shared partial-recognition contract maps only the planner's single first-character MINI_CHECK", () => {
@@ -2745,7 +2784,7 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
       if (url.includes("/learning-daily-queue")) {
         return new Response(JSON.stringify({ childId: 1, review: {
           sourceQueue: "REVIEW", dueCount: 1,
-          items: [{ id: "item-ni", character: "你", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" }],
+          items: [{ id: "item-ni", skillDomain: "recognition", character: "你", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" }],
         } }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
       if (url.includes("/reconcile-reviews")) {
@@ -2808,7 +2847,7 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
         }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
       if (url.includes("/learning-daily-queue")) {
-        return new Response(JSON.stringify({ childId: 1, review: { sourceQueue: "REVIEW", dueCount: 1, items: [{ id: "item-ni", character: "你", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" }] } }), { status: 200, headers: { "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ childId: 1, review: { sourceQueue: "REVIEW", dueCount: 1, items: [{ id: "item-ni", skillDomain: "recognition", character: "你", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" }] } }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
       return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
     }));
@@ -2871,7 +2910,7 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
         }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
       if (url.includes("/learning-daily-queue")) {
-        return new Response(JSON.stringify({ childId: 1, review: { sourceQueue: "REVIEW", dueCount: 1, items: [{ id: "item-hao", character: "好", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" }] } }), { status: 200, headers: { "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ childId: 1, review: { sourceQueue: "REVIEW", dueCount: 1, items: [{ id: "item-hao", skillDomain: "recognition", character: "好", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" }] } }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
       return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
     }));
@@ -3001,7 +3040,7 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
         }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
       if (url.includes("/learning-daily-queue")) {
-        return new Response(JSON.stringify({ childId: 1, review: { sourceQueue: "REVIEW", dueCount: 1, items: [{ id: "item-ni", character: "你", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" }] } }), { status: 200, headers: { "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ childId: 1, review: { sourceQueue: "REVIEW", dueCount: 1, items: [{ id: "item-ni", skillDomain: "recognition", character: "你", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" }] } }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
       return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
     }));
@@ -3177,7 +3216,7 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
           review: {
             sourceQueue: "REVIEW",
             dueCount: 1,
-            items: [{ id: "due-item-ni", character: "你", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" }]
+            items: [{ id: "due-item-ni", skillDomain: "recognition", character: "你", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" }]
           }
         }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
@@ -3299,8 +3338,8 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
       }
       if (url.includes("/learning-daily-queue")) {
         return new Response(JSON.stringify({ childId: 1, review: { sourceQueue: "REVIEW", dueCount: 2, items: [
-          { id: "item-ni", character: "你", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" },
-          { id: "item-hao", character: "好", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" },
+          { id: "item-ni", skillDomain: "recognition", character: "你", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" },
+          { id: "item-hao", skillDomain: "recognition", character: "好", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" },
         ] } }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
       return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
@@ -3409,8 +3448,8 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
       }
       if (url.includes("/learning-daily-queue")) {
         return new Response(JSON.stringify({ childId: 1, review: { sourceQueue: "REVIEW", dueCount: 2, items: [
-          { id: "item-ni", character: "你", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" },
-          { id: "item-hao", character: "好", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" },
+          { id: "item-ni", skillDomain: "recognition", character: "你", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" },
+          { id: "item-hao", skillDomain: "recognition", character: "好", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" },
         ] } }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
       return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
@@ -3708,6 +3747,144 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
       expect(container.querySelector(".error-strip")).toBeTruthy();
     }
     root.unmount(); container.remove(); vi.unstubAllGlobals();
+  });
+
+  it("78. Canonical REVIEW renders exact word/writing tasks, blocks writing skip, and submits exact script evidence", async () => {
+    const dueAt = "2026-09-02T00:00:00Z";
+    const wordTask = {
+      id: "s-domain-review:review-word-1", sessionId: "s-domain-review", childId: 1, key: "review-word-1",
+      taskType: "REVIEW_VOCABULARY", sourceQueue: "REVIEW", lessonId: "basic-l01", skillDomain: "word",
+      itemId: "lf_1_basic-l01_vocabulary", state: "PENDING", required: true,
+      taskData: { word: "你好", prompt: "從官方詞語任務選擇意思", choices: [{ id: "opt-hello", label: "打招呼問好" }, { id: "opt-eat", label: "詢問用餐" }], dueAt },
+    };
+    const writingTask = {
+      id: "s-domain-review:review-writing-1", sessionId: "s-domain-review", childId: 1, key: "review-writing-1",
+      taskType: "REVIEW_WRITING", sourceQueue: "REVIEW", lessonId: "basic-l01", skillDomain: "writing",
+      itemId: "traditional::你", state: "PENDING", attemptCount: 0, required: true,
+      taskData: { character: "你", phase: "independent", scriptMode: "TRADITIONAL", repeatCount: 1, dueAt },
+    };
+    const curriculumTask = { id: "learn-pending", key: "recognition-1", taskType: "MINI_CHECK", sourceQueue: "CURRICULUM", lessonId: "basic-l01", skillDomain: "recognition", itemId: "char1", state: "PENDING", required: true };
+    const session: any = { id: "s-domain-review", sessionId: "s-domain-review", childId: 1, status: "IN_PROGRESS", lessonId: "basic-l01", tasks: [wordTask, writingTask, curriculumTask] };
+    const requests: Array<{ url: string; body?: any }> = [];
+    const dueItems = [
+      { id: "lf_1_basic-l01_vocabulary", skillDomain: "word", word: "你好", lessonId: "basic-l01", dueAt },
+      { id: "traditional::你", skillDomain: "writing", character: "你", scriptMode: "TRADITIONAL", lessonId: "basic-l01", dueAt },
+    ];
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      const body = init?.body ? JSON.parse(init.body as string) : undefined;
+      if (init?.method === "POST") requests.push({ url, body });
+      if (url.includes("/learning-sessions/current")) return new Response(JSON.stringify(session), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.includes("/learning-daily-queue")) return new Response(JSON.stringify({ childId: 1, review: { sourceQueue: "REVIEW", dueCount: 2, items: dueItems } }), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.endsWith("/tasks/" + wordTask.id + "/answer") && init?.method === "POST") { wordTask.state = body.selected_option_id === "opt-hello" ? "COMPLETED" : "IN_PROGRESS"; return new Response(JSON.stringify(session), { status: 200, headers: { "Content-Type": "application/json" } }); }
+      if (url.endsWith("/tasks/" + writingTask.id + "/start") && init?.method === "POST") { writingTask.state = "IN_PROGRESS"; return new Response(JSON.stringify(session), { status: 200, headers: { "Content-Type": "application/json" } }); }
+      if (url.endsWith("/tasks/" + writingTask.id + "/evidence") && init?.method === "POST") { writingTask.state = "COMPLETED"; writingTask.attemptCount = 1; return new Response(JSON.stringify(session), { status: 200, headers: { "Content-Type": "application/json" } }); }
+      if (url.endsWith("/tasks/" + writingTask.id + "/skip") && init?.method === "POST") { return new Response(JSON.stringify({ detail: "learning_task_not_skippable" }), { status: 409, headers: { "Content-Type": "application/json" } }); }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+    let traceComplete: (() => void) | undefined;
+    const writerSpy = vi.spyOn(HanziWriter, "create").mockImplementation(((_target: any, _character: string, _options: any) => ({
+      quiz: (options: { onComplete: () => void }) => { traceComplete = options.onComplete; },
+      animateCharacter: vi.fn(),
+    })) as any);
+    const back = vi.fn();
+    const container = document.createElement("div"); document.body.appendChild(container); const root = createRoot(container);
+    await act(async () => { root.render(<LessonPlayerPage lessonId="basic-l01" activeChildId={1} onBack={back} initialMode="REVIEW" />); await new Promise((resolve) => setTimeout(resolve, 0)); });
+    expect(container.querySelector(".vocab-hanzi")?.textContent).toBe("你好");
+    expect(container.querySelector(".interaction-prompt")?.textContent).toContain("從官方詞語任務");
+    await act(async () => { (container.querySelector(".step-vocab-body .choice-card-btn") as HTMLButtonElement).click(); await new Promise((resolve) => setTimeout(resolve, 0)); });
+    expect(wordTask.state).toBe("COMPLETED");
+    await act(async () => { (container.querySelector(".next-step-cta-btn") as HTMLButtonElement).click(); });
+    expect(container.querySelector("[data-step-key='writing']")).toBeTruthy();
+    const skip = container.querySelector(".skip-writing-btn") as HTMLButtonElement;
+    expect(skip.disabled).toBe(true);
+    await act(async () => { skip.click(); (container.querySelector(".next-step-cta-btn") as HTMLButtonElement).click(); });
+    expect(requests.some((request) => request.url.endsWith("/tasks/" + writingTask.id + "/skip"))).toBe(false);
+    expect(container.querySelector("[data-step-key='writing']")).toBeTruthy();
+    expect(traceComplete).toBeTypeOf("function");
+    await act(async () => { traceComplete?.(); await new Promise((resolve) => setTimeout(resolve, 0)); });
+    const startRequest = requests.find((request) => request.url.endsWith("/tasks/" + writingTask.id + "/start"));
+    const evidenceRequest = requests.find((request) => request.url.endsWith("/tasks/" + writingTask.id + "/evidence"));
+    expect(startRequest).toBeTruthy();
+    expect(evidenceRequest?.body).toMatchObject({
+      evidence_ref: "flow-writing:s-domain-review:s-domain-review:review-writing-1:0",
+      trace_result: "correct", assisted: false, provider: "HANZI_WRITER", phase: "independent", script_mode: "TRADITIONAL", attempt_index: 0,
+    });
+    expect(writingTask.state).toBe("COMPLETED");
+    expect(curriculumTask.state).toBe("PENDING");
+    await act(async () => { (container.querySelector(".next-step-cta-btn") as HTMLButtonElement).click(); });
+    expect(container.querySelector("[data-step-key='wrap_up']")).toBeTruthy();
+    await act(async () => { (container.querySelector(".finish-session-cta-btn") as HTMLButtonElement).click(); });
+    expect(back).toHaveBeenCalledTimes(1);
+    expect(requests.some((request) => request.url.endsWith("/learning-sessions/s-domain-review/complete"))).toBe(false);
+    expect(session.status).toBe("IN_PROGRESS");
+    expect(curriculumTask.state).toBe("PENDING");
+    writerSpy.mockRestore(); root.unmount(); container.remove(); vi.unstubAllGlobals();
+  });
+
+  it("79. Exact REVIEW_WRITING retry-cap deferral survives due-date refresh and allows REVIEW-only wrap-up", async () => {
+    const initialDueAt = "2026-09-02T00:00:00Z";
+    const task = {
+      id: "s-review-cap:review-writing-1", sessionId: "s-review-cap", childId: 1, key: "review-writing-1",
+      taskType: "REVIEW_WRITING", sourceQueue: "REVIEW", lessonId: "basic-l01", skillDomain: "writing",
+      itemId: "traditional::你", state: "PENDING", attemptCount: 0, failureCount: 0, deferredReason: null as string | null, required: true,
+      taskData: { character: "你", phase: "independent", scriptMode: "TRADITIONAL", repeatCount: 1, dueAt: initialDueAt },
+    };
+    const curriculumTask = { id: "learn-pending", key: "recognition-1", taskType: "MINI_CHECK", sourceQueue: "CURRICULUM", lessonId: "basic-l01", skillDomain: "recognition", itemId: "char1", state: "PENDING", required: true };
+    const session: any = { id: "s-review-cap", sessionId: "s-review-cap", childId: 1, status: "IN_PROGRESS", lessonId: "basic-l01", tasks: [task, curriculumTask] };
+    const requests: Array<{ url: string; method: string; body?: any }> = [];
+    const dueItems = [{ id: task.itemId, skillDomain: "writing", character: "你", scriptMode: "TRADITIONAL", lessonId: "basic-l01", dueAt: initialDueAt }];
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      const method = init?.method ?? "GET";
+      const body = init?.body ? JSON.parse(init.body as string) : undefined;
+      requests.push({ url, method, body });
+      if (url.includes("/learning-sessions/current")) return new Response(JSON.stringify(session), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.includes("/learning-daily-queue")) return new Response(JSON.stringify({ childId: 1, review: { sourceQueue: "REVIEW", dueCount: 1, items: dueItems } }), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.endsWith(`/tasks/${task.id}/start`) && method === "POST") {
+        task.state = "IN_PROGRESS";
+        return new Response(JSON.stringify(session), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.endsWith(`/tasks/${task.id}/evidence`) && method === "POST") {
+        const index = body.attempt_index as number;
+        task.attemptCount = index + 1;
+        task.failureCount = index + 1;
+        task.state = index === 1 ? "DEFERRED" : "IN_PROGRESS";
+        task.deferredReason = index === 1 ? "WRITING_RETRY_CAP" : null;
+        task.taskData.dueAt = index === 1 ? "2026-09-05T00:00:03Z" : "2026-09-05T00:00:01Z";
+        return new Response(JSON.stringify(session), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify({}), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+    let traceMistake: (() => void) | undefined;
+    const writerSpy = vi.spyOn(HanziWriter, "create").mockImplementation(((_target: any, _character: string, _options: any) => ({
+      quiz: (options: { onMistake: () => void }) => { traceMistake = options.onMistake; },
+      animateCharacter: vi.fn(),
+    })) as any);
+    const back = vi.fn();
+    const container = document.createElement("div"); document.body.appendChild(container); const root = createRoot(container);
+    await act(async () => { root.render(<LessonPlayerPage lessonId="basic-l01" activeChildId={1} onBack={back} initialMode="REVIEW" />); await new Promise((resolve) => setTimeout(resolve, 0)); });
+    expect(container.querySelector("[data-step-key='writing']")).toBeTruthy();
+    expect((container.querySelector(".skip-writing-btn") as HTMLButtonElement).disabled).toBe(true);
+
+    await act(async () => { traceMistake?.(); await new Promise((resolve) => setTimeout(resolve, 0)); });
+    expect(task.state).toBe("IN_PROGRESS");
+    expect(task.attemptCount).toBe(1);
+    await act(async () => { (container.querySelector(".next-step-cta-btn") as HTMLButtonElement).click(); });
+    expect(container.querySelector("[data-step-key='writing']")).toBeTruthy();
+    expect(container.querySelector("[data-step-key='wrap_up']")).toBeNull();
+
+    await act(async () => { traceMistake?.(); await new Promise((resolve) => setTimeout(resolve, 0)); });
+    expect(task.state).toBe("DEFERRED");
+    expect(task.failureCount).toBe(2);
+    expect(task.deferredReason).toBe("WRITING_RETRY_CAP");
+    await act(async () => { (container.querySelector(".next-step-cta-btn") as HTMLButtonElement).click(); });
+    expect(container.querySelector("[data-step-key='wrap_up']")).toBeTruthy();
+    await act(async () => { (container.querySelector(".finish-session-cta-btn") as HTMLButtonElement).click(); });
+    expect(back).toHaveBeenCalledTimes(1);
+    expect(requests.filter((request) => request.url.endsWith(`/tasks/${task.id}/evidence`)).map((request) => request.body.attempt_index)).toEqual([0, 1]);
+    expect(requests.some((request) => request.url.endsWith(`/learning-sessions/${session.id}/complete`))).toBe(false);
+    expect(session.status).toBe("IN_PROGRESS");
+    expect(curriculumTask.state).toBe("PENDING");
+    writerSpy.mockRestore(); root.unmount(); container.remove(); vi.unstubAllGlobals();
   });
 
 });

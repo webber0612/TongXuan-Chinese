@@ -345,8 +345,12 @@ def test_fast_track_endpoint_pass_and_fail(tmp_path):
         from app.database import connect
         with connect() as db:
             srs_rows = db.execute("SELECT * FROM srs_review_states WHERE child_id=?", (child_id,)).fetchall()
-            assert len(srs_rows) >= 1
-            assert any(r["due_at"] is not None for r in srs_rows)
+            assert {(row["skill_domain"], row["item_id"]) for row in srs_rows} == {
+                ("listening", f"lf_{child_id}_book1-l01_phrase"),
+                ("recognition", f"lf_{child_id}_book1-l01_char_1"),
+            }
+            assert all(row["due_at"] is not None for row in srs_rows)
+            assert db.execute("SELECT COUNT(*) FROM srs_review_events WHERE child_id=?", (child_id,)).fetchone()[0] == 2
 
         # 2. Test failing one domain (e.g. recognition ft-q2)
         fail_answers = {
@@ -370,6 +374,89 @@ def test_fast_track_endpoint_pass_and_fail(tmp_path):
         assert "recognition" in data_fail["weakDomains"]
         assert data_fail["nextMode"] == "REPAIR"
         assert data_fail["nextReviewDueAt"] is None
+        with connect() as db:
+            after_failed_attempt_states = db.execute(
+                "SELECT skill_domain,item_id,stage FROM srs_review_states WHERE child_id=? ORDER BY skill_domain,item_id",
+                (child_id,),
+            ).fetchall()
+            after_failed_attempt_events = db.execute(
+                "SELECT skill_domain,item_id,result FROM srs_review_events WHERE child_id=? ORDER BY occurred_at,id",
+                (child_id,),
+            ).fetchall()
+        assert {(row["skill_domain"], row["item_id"], row["stage"]) for row in after_failed_attempt_states} == {
+            ("listening", f"lf_{child_id}_book1-l01_phrase", 1),
+            ("recognition", f"lf_{child_id}_book1-l01_char_1", 1),
+        }
+        assert len(after_failed_attempt_events) == 2
+        assert all(row["result"] == "correct" for row in after_failed_attempt_events)
+
+
+def test_fast_track_unknown_question_material_mapping_does_not_write_srs(tmp_path, monkeypatch):
+    from copy import deepcopy
+    from app.auth import issue_session
+    from app.database import connect
+    from app import lesson_packages
+
+    original_get_package = lesson_packages.get_lesson_package
+    package = deepcopy(original_get_package("book1-l01"))
+    assert package is not None
+    questions = [
+        question
+        for step in package["taskBlueprint"]["fastTrackSteps"]
+        if step.get("stepKey") == "exit_ticket"
+        for question in step.get("data", {}).get("questions", [])
+    ]
+    assert {question["id"] for question in questions} >= {"ft-q1", "ft-q2"}
+    for question in questions:
+        if question["id"] in {"ft-q1", "ft-q2"}:
+            # The answer remains correct, but this score cannot be bound to the
+            # lesson's exact listening phrase or recognition character.
+            question["audioText"] = "unmapped-material"
+
+    monkeypatch.setattr(
+        lesson_packages,
+        "get_lesson_package",
+        lambda lesson_id: deepcopy(package) if lesson_id == "book1-l01" else original_get_package(lesson_id),
+    )
+
+    with make_client(tmp_path) as client:
+        child_resp = client.post("/api/children", json={"name": "Fast Track Mapping"})
+        assert child_resp.status_code == 200, child_resp.text
+        child_id = child_resp.json()["id"]
+        parent_token = issue_session(subject="parent", role="parent", child_ids=[child_id])
+        placement = client.put(
+            f"/api/children/{child_id}/placement-profile",
+            headers={"Authorization": f"Bearer {parent_token}"},
+            json={"domain_levels": {"listening": "BOOK_1", "recognition": "BOOK_1", "speaking": "BOOK_1", "writing": "STARTER"}},
+        )
+        assert placement.status_code == 200, placement.text
+        started = client.post(
+            f"/api/children/{child_id}/learning-sessions",
+            json={"target_minutes": 18, "lesson_id": "book1-l01"},
+        )
+        assert started.status_code == 200, started.text
+
+        response = client.post(
+            f"/api/children/{child_id}/lesson-packages/book1-l01/fast-track",
+            json={
+                "session_id": started.json()["id"],
+                "answers": {"ft-q1": "c1", "ft-q2": "c1", "ft-q3": "c1", "ft-q4": "c1"},
+            },
+        )
+        assert response.status_code == 200, response.text
+        assert response.json()["passed"] is True
+
+        with connect() as db:
+            states = db.execute(
+                "SELECT skill_domain,item_id FROM srs_review_states WHERE child_id=?",
+                (child_id,),
+            ).fetchall()
+            events = db.execute(
+                "SELECT skill_domain,item_id FROM srs_review_events WHERE child_id=?",
+                (child_id,),
+            ).fetchall()
+        assert states == []
+        assert events == []
 
 
 def test_fast_track_cleans_up_stale_active_session(tmp_path):
@@ -982,6 +1069,178 @@ def test_review_authoritative_reconciliation_integration(tmp_path):
         assert next(t for t in second_session["tasks"] if t["id"] == pending_curriculum["id"])["state"] == "PENDING"
 
 
+def test_review_writing_and_word_srs_use_exact_flow_tasks_and_replay_once(tmp_path):
+    from app.auth import issue_session
+    from app.database import connect
+
+    with make_client(tmp_path) as client:
+        child = client.post("/api/children", json={"name": "Review Domains"})
+        assert child.status_code == 200, child.text
+        child_id = child.json()["id"]
+        parent_token = issue_session(subject="parent", role="parent", child_ids=[child_id])
+        placement = client.put(
+            f"/api/children/{child_id}/placement-profile",
+            headers={"Authorization": f"Bearer {parent_token}"},
+            json={"domain_levels": {"recognition": "BASIC", "reading": "BASIC", "listening": "BASIC", "speaking": "BASIC", "writing": "BASIC"}},
+        )
+        assert placement.status_code == 200, placement.text
+
+        # Seed a genuine prior HANZI_WRITER attempt and exact curriculum provenance.
+        with connect() as db:
+            db.execute(
+                "INSERT INTO curriculum_item_links(child_id,skill_domain,item_id,lesson_id) VALUES(?,'writing','你','basic-l01')",
+                (child_id,),
+            )
+        prior_writing = client.post(
+            f"/api/sprint-b/writing/attempts?child_id={child_id}&character=%E4%BD%A0",
+            json={"trace_result": "correct", "assisted": False, "provider": "HANZI_WRITER", "phase": "independent", "script_mode": "TRADITIONAL"},
+        )
+        assert prior_writing.status_code == 200, prior_writing.text
+
+        # Start with no due REVIEW, then create the word SRS through the real scored task.
+        started = client.post(
+            f"/api/children/{child_id}/learning-sessions",
+            json={"target_minutes": 18, "lesson_id": "basic-l01", "as_of": "2026-09-01T00:00:00Z"},
+        )
+        assert started.status_code == 200, started.text
+        session = started.json()
+        session_id = session["id"]
+        pending_curriculum = next(t for t in session["tasks"] if t["sourceQueue"] == "CURRICULUM" and t["required"] and t["state"] == "PENDING")
+        vocabulary = next(t for t in session["tasks"] if t["taskType"] == "VOCABULARY")
+        answer = client.post(
+            f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{vocabulary['id']}/answer",
+            json={"selected_option_id": "opt-hello"},
+        )
+        assert answer.status_code == 200, answer.text
+        with connect() as db:
+            vocabulary_evidence_count_before_review = db.execute(
+                "SELECT COUNT(*) FROM curriculum_skill_evidence WHERE child_id=? AND skill_domain='vocabulary'",
+                (child_id,),
+            ).fetchone()[0]
+            vocabulary_gate_count_before_review = db.execute(
+                "SELECT COUNT(*) FROM curriculum_skill_gates WHERE child_id=? AND skill_domain='vocabulary'",
+                (child_id,),
+            ).fetchone()[0]
+
+        writing_item_id = "traditional::你"
+        word_item_id = vocabulary["itemId"]
+        with connect() as db:
+            db.execute(
+                "UPDATE srs_review_states SET due_at='2026-09-02T00:00:00Z' WHERE child_id=? AND skill_domain='writing' AND item_id=?",
+                (child_id, writing_item_id),
+            )
+            db.execute(
+                "UPDATE srs_review_states SET due_at='2026-09-02T00:00:00Z' WHERE child_id=? AND skill_domain='word' AND item_id=?",
+                (child_id, word_item_id),
+            )
+
+        as_of = "2026-09-05T00:00:00Z"
+        queue = client.get(f"/api/children/{child_id}/learning-daily-queue?as_of={as_of}")
+        assert queue.status_code == 200, queue.text
+        due = queue.json()["review"]["items"]
+        assert {(item["skillDomain"], item["id"], item["lessonId"]) for item in due} == {
+            ("writing", writing_item_id, "basic-l01"),
+            ("word", word_item_id, "basic-l01"),
+        }
+
+        reconciled = client.post(
+            f"/api/children/{child_id}/learning-sessions/{session_id}/reconcile-reviews?as_of={as_of}"
+        )
+        assert reconciled.status_code == 200, reconciled.text
+        review_tasks = [t for t in reconciled.json()["tasks"] if t["sourceQueue"] == "REVIEW"]
+        assert {(t["taskType"], t["skillDomain"], t["itemId"], t["lessonId"]) for t in review_tasks} == {
+            ("REVIEW_WRITING", "writing", writing_item_id, "basic-l01"),
+            ("REVIEW_VOCABULARY", "word", word_item_id, "basic-l01"),
+        }
+        review_by_type = {task["taskType"]: task for task in review_tasks}
+        writing_task = review_by_type["REVIEW_WRITING"]
+        word_task = review_by_type["REVIEW_VOCABULARY"]
+        assert writing_task["taskData"]["character"] == "你"
+        assert writing_task["taskData"]["scriptMode"] == "TRADITIONAL"
+        assert word_task["taskData"]["word"] == "你好"
+
+        generic_write = client.post(
+            f"/api/sprint-b/writing/attempts?child_id={child_id}&character=%E4%BD%A0",
+            json={"trace_result": "correct", "assisted": False, "provider": "HANZI_WRITER", "phase": "independent", "script_mode": "TRADITIONAL"},
+        )
+        assert generic_write.status_code == 400
+        assert generic_write.json()["detail"] == "writing_flow_evidence_required"
+
+        started_writing = client.post(f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{writing_task['id']}/start")
+        assert started_writing.status_code == 200, started_writing.text
+        writing_attempt_id = f"flow-writing:{session_id}:{writing_task['id']}:0"
+        evidence_body = {
+            "evidence_ref": writing_attempt_id,
+            "trace_result": "correct",
+            "assisted": False,
+            "provider": "HANZI_WRITER",
+            "phase": "independent",
+            "script_mode": "TRADITIONAL",
+            "attempt_index": 0,
+        }
+        writing_done = client.post(
+            f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{writing_task['id']}/evidence",
+            json=evidence_body,
+        )
+        assert writing_done.status_code == 200, writing_done.text
+        assert next(t for t in writing_done.json()["tasks"] if t["id"] == writing_task["id"])["state"] == "COMPLETED"
+
+        word_done = client.post(
+            f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{word_task['id']}/answer",
+            json={"selected_option_id": "opt-hello"},
+        )
+        assert word_done.status_code == 200, word_done.text
+        assert next(t for t in word_done.json()["tasks"] if t["id"] == word_task["id"])["state"] == "COMPLETED"
+        assert word_done.json()["status"] == "IN_PROGRESS"
+        assert next(t for t in word_done.json()["tasks"] if t["id"] == pending_curriculum["id"])["state"] == "PENDING"
+
+        # Exact write/answer replay and reconciliation do not create duplicate SRS or flow evidence.
+        writing_replay = client.post(
+            f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{writing_task['id']}/evidence",
+            json=evidence_body,
+        )
+        word_replay = client.post(
+            f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{word_task['id']}/answer",
+            json={"selected_option_id": "opt-hello"},
+        )
+        reconcile_replay = client.post(
+            f"/api/children/{child_id}/learning-sessions/{session_id}/reconcile-reviews?as_of={as_of}"
+        )
+        assert writing_replay.status_code == word_replay.status_code == reconcile_replay.status_code == 200
+        assert {(t["taskType"], t["id"]) for t in reconcile_replay.json()["tasks"] if t["sourceQueue"] == "REVIEW"} == {
+            ("REVIEW_WRITING", writing_task["id"]),
+            ("REVIEW_VOCABULARY", word_task["id"]),
+        }
+        assert reconcile_replay.json()["status"] == "IN_PROGRESS"
+        assert next(t for t in reconcile_replay.json()["tasks"] if t["id"] == pending_curriculum["id"])["state"] == "PENDING"
+
+        with connect() as db:
+            for domain, item_id in (("writing", writing_item_id), ("word", word_item_id)):
+                srs = db.execute(
+                    "SELECT stage,due_at,last_result FROM srs_review_states WHERE child_id=? AND skill_domain=? AND item_id=?",
+                    (child_id, domain, item_id),
+                ).fetchone()
+                assert srs is not None and srs["stage"] == 2 and srs["last_result"] == "correct"
+                assert srs["due_at"] > as_of
+                assert db.execute(
+                    "SELECT COUNT(*) FROM srs_review_events WHERE child_id=? AND skill_domain=? AND item_id=?",
+                    (child_id, domain, item_id),
+                ).fetchone()[0] == 2  # one original scored event + one exact REVIEW event
+            assert db.execute("SELECT COUNT(*) FROM writing_attempts WHERE id=?", (writing_attempt_id,)).fetchone()[0] == 1
+            assert db.execute("SELECT COUNT(*) FROM learning_flow_task_attempts WHERE task_id=?", (writing_task["id"],)).fetchone()[0] == 1
+            assert db.execute("SELECT COUNT(*) FROM learning_flow_task_attempts WHERE task_id=?", (word_task["id"],)).fetchone()[0] == 1
+            assert db.execute("SELECT COUNT(*) FROM curriculum_skill_gates WHERE child_id=? AND skill_domain='writing' AND evidence_ref=?", (child_id, writing_attempt_id)).fetchone()[0] == 0
+            assert db.execute(
+                "SELECT COUNT(*) FROM curriculum_skill_evidence WHERE child_id=? AND skill_domain='vocabulary'",
+                (child_id,),
+            ).fetchone()[0] == vocabulary_evidence_count_before_review
+            assert db.execute(
+                "SELECT COUNT(*) FROM curriculum_skill_gates WHERE child_id=? AND skill_domain='vocabulary'",
+                (child_id,),
+            ).fetchone()[0] == vocabulary_gate_count_before_review
+            assert db.execute("SELECT status FROM learning_flow_sessions WHERE id=?", (session_id,)).fetchone()[0] == "IN_PROGRESS"
+
+
 def test_review_paused_session_reconciliation_and_answer(tmp_path):
     from app.auth import issue_session
     from app.database import connect
@@ -1284,6 +1543,12 @@ def test_review_unsupported_due_item_fails_before_partial_reconciliation(tmp_pat
             )
             db.execute("INSERT INTO curriculum_lesson_states(child_id,lesson_id,soft_unlocked) VALUES(?, 'book1-l02', 1)", (child_id,))
 
+        queue_response = client.get(
+            f"/api/children/{child_id}/learning-daily-queue?as_of=2026-09-05T00:00:00Z"
+        )
+        assert queue_response.status_code == 400
+        assert queue_response.json()["detail"] == "learning_flow_review_lesson_not_supported"
+
         response = client.post(
             f"/api/children/{child_id}/learning-sessions/{session_id}/reconcile-reviews?as_of=2026-09-05T00:00:00Z"
         )
@@ -1293,4 +1558,217 @@ def test_review_unsupported_due_item_fails_before_partial_reconciliation(tmp_pat
             assert db.execute("SELECT COUNT(*) AS count FROM learning_flow_tasks WHERE session_id=? AND source_queue='REVIEW'", (session_id,)).fetchone()["count"] == 0
             assert db.execute("SELECT status FROM learning_flow_sessions WHERE id=?", (session_id,)).fetchone()["status"] == "IN_PROGRESS"
             assert db.execute("SELECT state FROM learning_flow_tasks WHERE id=?", (pending_curriculum["id"],)).fetchone()["state"] == "PENDING"
+
+
+def test_review_wrong_answers_sync_due_at_and_reconcile_same_recognition_and_word_tasks(tmp_path):
+    from app.auth import issue_session
+    from app.database import connect
+    from app.learning_flow import _characters, _lesson_map
+
+    with make_client(tmp_path) as client:
+        child = client.post("/api/children", json={"name": "Review Retry Identity"})
+        assert child.status_code == 200, child.text
+        child_id = child.json()["id"]
+        parent_token = issue_session(subject="parent", role="parent", child_ids=[child_id])
+        placement = client.put(
+            f"/api/children/{child_id}/placement-profile",
+            headers={"Authorization": f"Bearer {parent_token}"},
+            json={"domain_levels": {"recognition": "BASIC", "reading": "BASIC", "listening": "BASIC", "speaking": "BASIC", "writing": "BASIC"}},
+        )
+        assert placement.status_code == 200, placement.text
+        started = client.post(
+            f"/api/children/{child_id}/learning-sessions",
+            json={"target_minutes": 18, "lesson_id": "basic-l01", "as_of": "2026-09-01T00:00:00Z"},
+        )
+        assert started.status_code == 200, started.text
+        session = started.json()
+        session_id = session["id"]
+        pending_curriculum = next(task for task in session["tasks"] if task["sourceQueue"] == "CURRICULUM" and task["required"] and task["state"] == "PENDING")
+        recognition_character = _characters(_lesson_map()["basic-l01"])[0]
+        vocabulary = next(task for task in session["tasks"] if task["taskType"] == "VOCABULARY")
+        word_item_id = vocabulary["itemId"]
+        with connect() as db:
+            db.execute(
+                "INSERT INTO learning_items(id,child_id,character,curriculum_source,provenance_status,created_at) VALUES(?,?,?,?,?,?)",
+                ("item-review-retry", child_id, recognition_character, "OFFICIAL_OCAC", "VERIFIED_OFFICIAL_TITLE", "2026-09-01T00:00:00Z"),
+            )
+            db.execute(
+                "INSERT INTO curriculum_item_links(child_id,skill_domain,item_id,lesson_id) VALUES(?,'recognition','item-review-retry','basic-l01')",
+                (child_id,),
+            )
+            db.execute(
+                "INSERT INTO srs_review_states(child_id,skill_domain,item_id,stage,due_at,last_result,last_assisted,updated_at) VALUES "
+                "(?,'recognition','item-review-retry',1,'2026-09-02T00:00:00Z','correct',0,'2026-09-01T00:00:00Z'),"
+                "(?,'word',?,1,'2026-09-02T00:00:00Z','correct',0,'2026-09-01T00:00:00Z')",
+                (child_id, child_id, word_item_id),
+            )
+
+        as_of = "2099-09-05T00:00:00Z"
+        queue = client.get(f"/api/children/{child_id}/learning-daily-queue?as_of={as_of}")
+        assert queue.status_code == 200, queue.text
+        assert {(item["skillDomain"], item["id"]) for item in queue.json()["review"]["items"]} == {
+            ("recognition", "item-review-retry"), ("word", word_item_id),
+        }
+        reconciled = client.post(f"/api/children/{child_id}/learning-sessions/{session_id}/reconcile-reviews?as_of={as_of}")
+        assert reconciled.status_code == 200, reconciled.text
+        review_tasks = [task for task in reconciled.json()["tasks"] if task["sourceQueue"] == "REVIEW"]
+        task_by_domain = {task["skillDomain"]: task for task in review_tasks}
+        assert set(task_by_domain) == {"recognition", "word"}
+
+        wrong_recognition = client.post(
+            f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{task_by_domain['recognition']['id']}/answer",
+            json={"selected_option_id": "option-1"},
+        )
+        assert wrong_recognition.status_code == 200, wrong_recognition.text
+        wrong_word = client.post(
+            f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{task_by_domain['word']['id']}/answer",
+            json={"selected_option_id": "opt-eat"},
+        )
+        assert wrong_word.status_code == 200, wrong_word.text
+        assert wrong_recognition.json()["status"] == wrong_word.json()["status"] == "IN_PROGRESS"
+
+        refreshed_queue = client.get(f"/api/children/{child_id}/learning-daily-queue?as_of={as_of}")
+        assert refreshed_queue.status_code == 200, refreshed_queue.text
+        refreshed_due = {(item["skillDomain"], item["id"]): item for item in refreshed_queue.json()["review"]["items"]}
+        assert set(refreshed_due) == {("recognition", "item-review-retry"), ("word", word_item_id)}
+        retried_reconcile = client.post(f"/api/children/{child_id}/learning-sessions/{session_id}/reconcile-reviews?as_of={as_of}")
+        assert retried_reconcile.status_code == 200, retried_reconcile.text
+        retried_tasks = [task for task in retried_reconcile.json()["tasks"] if task["sourceQueue"] == "REVIEW"]
+        assert {task["skillDomain"]: task["id"] for task in retried_tasks} == {
+            domain: task["id"] for domain, task in task_by_domain.items()
+        }
+        for task in retried_tasks:
+            assert task["state"] == "IN_PROGRESS"
+            assert task["attemptCount"] == 1
+            assert task["taskData"]["dueAt"] == refreshed_due[(task["skillDomain"], task["itemId"])]["dueAt"]
+        assert retried_reconcile.json()["status"] == "IN_PROGRESS"
+        assert next(task for task in retried_reconcile.json()["tasks"] if task["id"] == pending_curriculum["id"])["state"] == "PENDING"
+
+        assisted_word = client.post(
+            f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{task_by_domain['word']['id']}/answer",
+            json={"selected_option_id": "opt-hello", "assisted": True},
+        )
+        assert assisted_word.status_code == 200, assisted_word.text
+        assisted_task = next(task for task in assisted_word.json()["tasks"] if task["id"] == task_by_domain["word"]["id"])
+        assert assisted_task["state"] == "COMPLETED"
+        assert assisted_word.json()["status"] == "IN_PROGRESS"
+        assert next(task for task in assisted_word.json()["tasks"] if task["id"] == pending_curriculum["id"])["state"] == "PENDING"
+        with connect() as db:
+            assisted_srs = db.execute(
+                "SELECT stage,last_result,last_assisted FROM srs_review_states WHERE child_id=? AND skill_domain='word' AND item_id=?",
+                (child_id, word_item_id),
+            ).fetchone()
+            assert assisted_srs is not None
+            assert (assisted_srs["stage"], assisted_srs["last_result"], assisted_srs["last_assisted"]) == (0, "correct", 1)
+            assert db.execute(
+                "SELECT COUNT(*) FROM srs_review_events WHERE child_id=? AND skill_domain='word' AND item_id=?",
+                (child_id, word_item_id),
+            ).fetchone()[0] == 2
+
+        assisted_queue = client.get(f"/api/children/{child_id}/learning-daily-queue?as_of={as_of}")
+        assert assisted_queue.status_code == 200, assisted_queue.text
+        assisted_due = {(item["skillDomain"], item["id"]): item for item in assisted_queue.json()["review"]["items"]}
+        assert ("word", word_item_id) in assisted_due
+        assisted_reconcile = client.post(f"/api/children/{child_id}/learning-sessions/{session_id}/reconcile-reviews?as_of={as_of}")
+        assert assisted_reconcile.status_code == 200, assisted_reconcile.text
+        final_word = next(task for task in assisted_reconcile.json()["tasks"] if task["sourceQueue"] == "REVIEW" and task["skillDomain"] == "word")
+        assert final_word["id"] == task_by_domain["word"]["id"]
+        assert final_word["state"] == "COMPLETED"
+        assert final_word["attemptCount"] == 2
+        assert final_word["taskData"]["dueAt"] == assisted_due[("word", word_item_id)]["dueAt"]
+        assert assisted_reconcile.json()["status"] == "IN_PROGRESS"
+        assert next(task for task in assisted_reconcile.json()["tasks"] if task["id"] == pending_curriculum["id"])["state"] == "PENDING"
+
+
+def test_review_writing_retry_cap_deferred_reconciles_exactly_and_keeps_parent_active(tmp_path):
+    from app.auth import issue_session
+    from app.database import connect
+
+    with make_client(tmp_path) as client:
+        child = client.post("/api/children", json={"name": "Review Writing Retry Cap"})
+        assert child.status_code == 200, child.text
+        child_id = child.json()["id"]
+        parent_token = issue_session(subject="parent", role="parent", child_ids=[child_id])
+        placement = client.put(
+            f"/api/children/{child_id}/placement-profile",
+            headers={"Authorization": f"Bearer {parent_token}"},
+            json={"domain_levels": {"recognition": "BASIC", "reading": "BASIC", "listening": "BASIC", "speaking": "BASIC", "writing": "BASIC"}},
+        )
+        assert placement.status_code == 200, placement.text
+        with connect() as db:
+            db.execute(
+                "INSERT INTO curriculum_item_links(child_id,skill_domain,item_id,lesson_id) VALUES(?,'writing','你','basic-l01')",
+                (child_id,),
+            )
+        prior_writing = client.post(
+            f"/api/sprint-b/writing/attempts?child_id={child_id}&character=%E4%BD%A0",
+            json={"trace_result": "correct", "assisted": False, "provider": "HANZI_WRITER", "phase": "independent", "script_mode": "TRADITIONAL"},
+        )
+        assert prior_writing.status_code == 200, prior_writing.text
+        started = client.post(
+            f"/api/children/{child_id}/learning-sessions",
+            json={"target_minutes": 18, "lesson_id": "basic-l01", "as_of": "2026-09-01T00:00:00Z"},
+        )
+        assert started.status_code == 200, started.text
+        session_id = started.json()["id"]
+        pending_curriculum = next(task for task in started.json()["tasks"] if task["sourceQueue"] == "CURRICULUM" and task["required"] and task["state"] == "PENDING")
+        with connect() as db:
+            db.execute(
+                "UPDATE srs_review_states SET due_at='2026-09-02T00:00:00Z' WHERE child_id=? AND skill_domain='writing' AND item_id='traditional::你'",
+                (child_id,),
+            )
+
+        as_of = "2099-09-05T00:00:00Z"
+        queue = client.get(f"/api/children/{child_id}/learning-daily-queue?as_of={as_of}")
+        assert queue.status_code == 200, queue.text
+        assert queue.json()["review"]["items"] == [{
+            "id": "traditional::你", "skillDomain": "writing", "character": "你", "scriptMode": "TRADITIONAL",
+            "word": None, "lessonId": "basic-l01", "dueAt": "2026-09-02T00:00:00Z",
+        }]
+        reconciled = client.post(f"/api/children/{child_id}/learning-sessions/{session_id}/reconcile-reviews?as_of={as_of}")
+        assert reconciled.status_code == 200, reconciled.text
+        task = next(item for item in reconciled.json()["tasks"] if item["taskType"] == "REVIEW_WRITING")
+        assert task["required"] is True
+        started_task = client.post(f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{task['id']}/start")
+        assert started_task.status_code == 200, started_task.text
+
+        def evidence(index: int) -> dict[str, object]:
+            return {
+                "evidence_ref": f"flow-writing:{session_id}:{task['id']}:{index}",
+                "trace_result": "incorrect", "assisted": False, "provider": "HANZI_WRITER",
+                "phase": "independent", "script_mode": "TRADITIONAL", "attempt_index": index,
+            }
+
+        first = client.post(
+            f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{task['id']}/evidence",
+            json=evidence(0),
+        )
+        assert first.status_code == 200, first.text
+        first_task = next(item for item in first.json()["tasks"] if item["id"] == task["id"])
+        assert (first_task["state"], first_task["failureCount"], first_task["deferredReason"]) == ("IN_PROGRESS", 1, None)
+        second = client.post(
+            f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{task['id']}/evidence",
+            json=evidence(1),
+        )
+        assert second.status_code == 200, second.text
+        deferred_task = next(item for item in second.json()["tasks"] if item["id"] == task["id"])
+        assert (deferred_task["state"], deferred_task["failureCount"], deferred_task["deferredReason"]) == ("DEFERRED", 2, "WRITING_RETRY_CAP")
+        assert deferred_task["required"] is True
+
+        refreshed_queue = client.get(f"/api/children/{child_id}/learning-daily-queue?as_of={as_of}")
+        assert refreshed_queue.status_code == 200, refreshed_queue.text
+        writing_due = refreshed_queue.json()["review"]["items"][0]
+        assert writing_due["id"] == deferred_task["itemId"]
+        assert deferred_task["taskData"]["dueAt"] == writing_due["dueAt"]
+        retried = client.post(f"/api/children/{child_id}/learning-sessions/{session_id}/reconcile-reviews?as_of={as_of}")
+        assert retried.status_code == 200, retried.text
+        retried_task = next(item for item in retried.json()["tasks"] if item["id"] == task["id"])
+        assert retried_task["state"] == "DEFERRED"
+        assert retried_task["deferredReason"] == "WRITING_RETRY_CAP"
+        assert retried.json()["status"] == "IN_PROGRESS"
+        assert next(item for item in retried.json()["tasks"] if item["id"] == pending_curriculum["id"])["state"] == "PENDING"
+        with connect() as db:
+            assert db.execute("SELECT COUNT(*) FROM learning_flow_tasks WHERE session_id=? AND source_queue='REVIEW'", (session_id,)).fetchone()[0] == 1
+            assert db.execute("SELECT COUNT(*) FROM learning_flow_task_attempts WHERE task_id=?", (task["id"],)).fetchone()[0] == 2
+            assert db.execute("SELECT COUNT(*) FROM curriculum_skill_gates WHERE child_id=? AND skill_domain='writing' AND evidence_ref LIKE ?", (child_id, f"flow-writing:{session_id}:{task['id']}:%")).fetchone()[0] == 0
 
