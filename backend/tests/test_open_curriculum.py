@@ -1041,6 +1041,45 @@ def test_non_add_proposal_nodes_match_the_affected_target_identity_and_type():
     assert "PROPOSAL_TARGET_TYPE_MISMATCH" in issue_codes
 
 
+def test_proposed_node_relationship_references_resolve_and_match_types():
+    pack = make_pack()
+    node = pack["curriculumChangeProposals"][0]["proposedNodes"][0]
+    node["prerequisites"] = ["missing-target"]
+    node["targetVocabulary"] = ["grammar-demo"]
+
+    issue_codes = codes(validate_curriculum_pack(pack))
+    assert "PROPOSAL_GRAPH_REFERENCE_NOT_REGISTERED" in issue_codes
+    assert "PROPOSAL_GRAPH_REFERENCE_TYPE_MISMATCH" in issue_codes
+
+    node["prerequisites"] = ["recognition"]
+    node["targetVocabulary"] = ["vocab-demo"]
+    assert validate_curriculum_pack(pack) == []
+
+
+def test_proposed_node_self_prerequisite_and_duplicate_node_ids_fail_closed():
+    pack = make_pack()
+    proposal = pack["curriculumChangeProposals"][0]
+    proposal["proposedNodes"][0]["prerequisites"] = ["proposal-skill"]
+    duplicate = deepcopy(proposal["proposedNodes"][0])
+    proposal["proposedNodes"].append(duplicate)
+
+    issue_codes = codes(validate_curriculum_pack(pack))
+    assert "PROPOSAL_SELF_PREREQUISITE" in issue_codes
+    assert "DUPLICATE_PROPOSED_NODE_ID" in issue_codes
+
+
+def test_proposed_node_prerequisite_cycle_with_existing_graph_fails_closed():
+    pack = make_pack()
+    proposal = pack["curriculumChangeProposals"][0]
+    proposal["changeType"] = "MODIFY_TARGET"
+    proposal["affectedTargetIds"] = ["skill-recognition"]
+    proposal["proposedNodes"][0]["id"] = "skill-recognition"
+    proposal["proposedNodes"][0]["skillId"] = "recognition"
+    proposal["proposedNodes"][0]["prerequisites"] = ["writing"]
+
+    assert "PROPOSAL_GRAPH_PREREQUISITE_CYCLE" in codes(validate_curriculum_pack(pack))
+
+
 def test_remove_target_proposal_identifies_target_without_replacement_node():
     pack = make_pack()
     proposal = pack["curriculumChangeProposals"][0]

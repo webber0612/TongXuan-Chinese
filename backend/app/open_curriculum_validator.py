@@ -568,6 +568,168 @@ def _validate_graph_relationships(
     return sorted(set(issues))
 
 
+def _validate_proposed_node_relationships(
+    proposed_nodes: list[Any],
+    proposal_path: str,
+    nodes: Mapping[str, Mapping[str, Any]],
+    skill_aliases: Mapping[str, Mapping[str, Any]],
+    ambiguous_skill_aliases: set[str],
+) -> list[ValidationIssue]:
+    """Resolve candidate-node edges against this proposal plus the approved graph."""
+    issues: list[ValidationIssue] = []
+
+    def add(code: str, path: str, message: str) -> None:
+        issues.append(ValidationIssue(code, path, message))
+
+    candidate_nodes: dict[str, Mapping[str, Any]] = {}
+    candidate_paths: dict[str, str] = {}
+    candidate_skill_aliases: dict[str, Mapping[str, Any]] = {}
+    ambiguous_candidate_aliases: set[str] = set()
+    for index, node in enumerate(proposed_nodes):
+        if not isinstance(node, Mapping):
+            continue
+        node_id = node.get("id")
+        node_path = _path(proposal_path, "proposedNodes", index)
+        if not isinstance(node_id, str) or not node_id:
+            continue
+        if node_id in candidate_nodes:
+            add("DUPLICATE_PROPOSED_NODE_ID", _path(node_path, "id"), f"Proposed node ID {node_id!r} is duplicated in this proposal.")
+            continue
+        candidate_nodes[node_id] = node
+        candidate_paths[node_id] = node_path
+        if node.get("targetType") != "SKILL":
+            continue
+        for alias in (node_id, node.get("skillId")):
+            if not isinstance(alias, str) or not alias:
+                continue
+            previous = candidate_skill_aliases.get(alias)
+            registered = skill_aliases.get(alias)
+            registered_id = registered.get("id") if isinstance(registered, Mapping) else None
+            if previous is not None and previous.get("id") != node_id:
+                ambiguous_candidate_aliases.add(alias)
+            elif registered is not None and registered_id != node_id:
+                ambiguous_candidate_aliases.add(alias)
+            else:
+                candidate_skill_aliases[alias] = node
+            if alias in ambiguous_candidate_aliases:
+                add("PROPOSAL_SKILL_ALIAS_COLLISION", _path(node_path, "skillId"), f"Proposed skill alias {alias!r} collides with another registered skill.")
+
+    combined_nodes = dict(nodes)
+    combined_nodes.update(candidate_nodes)
+    combined_aliases = dict(skill_aliases)
+    for alias, node in candidate_skill_aliases.items():
+        if alias not in ambiguous_candidate_aliases:
+            combined_aliases[alias] = node
+    combined_ambiguous_aliases = set(ambiguous_skill_aliases) | ambiguous_candidate_aliases
+
+    def resolve(
+        reference: Any,
+        path: str,
+        *,
+        expected_types: set[str] | None = None,
+        allow_skill_alias: bool = False,
+    ) -> str | None:
+        if not isinstance(reference, str) or not reference:
+            add("PROPOSAL_GRAPH_REFERENCE_NOT_REGISTERED", path, f"Proposed-node reference {reference!r} must resolve to a graph target or skill.")
+            return None
+        target = None
+        if allow_skill_alias and reference in combined_ambiguous_aliases:
+            add("PROPOSAL_GRAPH_REFERENCE_AMBIGUOUS", path, f"Proposed-node skill reference {reference!r} is ambiguous.")
+            return None
+        if allow_skill_alias and reference in combined_aliases:
+            alias_node = combined_aliases[reference]
+            alias_id = alias_node.get("id")
+            target = combined_nodes.get(alias_id) if isinstance(alias_id, str) else alias_node
+        if target is None:
+            target = combined_nodes.get(reference)
+        if target is None:
+            add("PROPOSAL_GRAPH_REFERENCE_NOT_REGISTERED", path, f"Proposed-node reference {reference!r} is not registered in this proposal or the graph.")
+            return None
+        actual_type = target.get("targetType")
+        if expected_types is not None and actual_type not in expected_types:
+            add("PROPOSAL_GRAPH_REFERENCE_TYPE_MISMATCH", path, f"Proposed-node reference {reference!r} resolves to {actual_type!r}; expected {', '.join(sorted(expected_types))}.")
+            return None
+        target_id = target.get("id")
+        return target_id if isinstance(target_id, str) and target_id else None
+
+    dependency_edges: dict[str, set[str]] = {node_id: set() for node_id in combined_nodes}
+
+    def check_refs(
+        source_id: str,
+        source_node: Mapping[str, Any],
+        source_path: str,
+        field: str,
+        *,
+        expected_types: set[str] | None,
+        allow_skill_alias: bool,
+        dependency: bool,
+    ) -> None:
+        references = source_node.get(field, [])
+        if not isinstance(references, list):
+            return
+        is_candidate = source_id in candidate_nodes and candidate_nodes[source_id] is source_node
+        for ref_index, reference in enumerate(references):
+            ref_path = _path(source_path, field, ref_index)
+            if is_candidate:
+                target_id = resolve(reference, ref_path, expected_types=expected_types, allow_skill_alias=allow_skill_alias)
+            else:
+                if not isinstance(reference, str) or not reference:
+                    continue
+                target = None
+                if allow_skill_alias and reference in combined_ambiguous_aliases:
+                    continue
+                if allow_skill_alias and reference in combined_aliases:
+                    alias_node = combined_aliases[reference]
+                    alias_id = alias_node.get("id")
+                    target = combined_nodes.get(alias_id) if isinstance(alias_id, str) else alias_node
+                if target is None and isinstance(reference, str):
+                    target = combined_nodes.get(reference)
+                if target is None or (expected_types is not None and target.get("targetType") not in expected_types):
+                    continue
+                target_id = target.get("id") if isinstance(target.get("id"), str) else None
+            if dependency and target_id is not None:
+                if target_id == source_id and is_candidate:
+                    add("PROPOSAL_SELF_PREREQUISITE", ref_path, f"Proposed node {source_id!r} cannot require itself.")
+                dependency_edges.setdefault(source_id, set()).add(target_id)
+
+    for source_id, source_node in combined_nodes.items():
+        source_path = candidate_paths.get(source_id, "/graph")
+        target_type = source_node.get("targetType")
+        if target_type == "SKILL":
+            check_refs(source_id, source_node, source_path, "targetVocabulary", expected_types={"VOCABULARY"}, allow_skill_alias=False, dependency=False)
+            check_refs(source_id, source_node, source_path, "targetGrammar", expected_types={"GRAMMAR"}, allow_skill_alias=False, dependency=False)
+            check_refs(source_id, source_node, source_path, "targetCharacters", expected_types={"CHARACTER"}, allow_skill_alias=False, dependency=False)
+            check_refs(source_id, source_node, source_path, "prerequisites", expected_types={"SKILL"}, allow_skill_alias=True, dependency=True)
+        elif target_type == "VOCABULARY":
+            if source_id in candidate_nodes and candidate_nodes[source_id] is source_node:
+                resolve(source_node.get("introducedBySkill"), _path(source_path, "introducedBySkill"), expected_types={"SKILL"}, allow_skill_alias=True)
+            check_refs(source_id, source_node, source_path, "prerequisites", expected_types=None, allow_skill_alias=True, dependency=True)
+        elif target_type == "GRAMMAR":
+            check_refs(source_id, source_node, source_path, "prerequisites", expected_types=None, allow_skill_alias=True, dependency=True)
+        elif target_type == "CHARACTER":
+            check_refs(source_id, source_node, source_path, "prerequisiteSkills", expected_types={"SKILL"}, allow_skill_alias=True, dependency=True)
+
+    in_degree = {node_id: 0 for node_id in combined_nodes}
+    for dependencies in dependency_edges.values():
+        for dependency_id in dependencies:
+            if dependency_id in in_degree:
+                in_degree[dependency_id] += 1
+    ready = [node_id for node_id, degree in in_degree.items() if degree == 0]
+    while ready:
+        source_id = ready.pop()
+        for dependency_id in dependency_edges.get(source_id, set()):
+            if dependency_id not in in_degree:
+                continue
+            in_degree[dependency_id] -= 1
+            if in_degree[dependency_id] == 0:
+                ready.append(dependency_id)
+    for node_id, degree in in_degree.items():
+        if degree > 0 and node_id in candidate_paths:
+            add("PROPOSAL_GRAPH_PREREQUISITE_CYCLE", candidate_paths[node_id], f"Proposed node {node_id!r} participates in a prerequisite cycle.")
+
+    return sorted(set(issues))
+
+
 def validate_curriculum_pack(
     pack: Mapping[str, Any],
     source_registry: Mapping[str, Any] | None = None,
@@ -745,6 +907,16 @@ def validate_curriculum_pack(
                         add("DUPLICATE_PROPOSED_TARGET_ID", _path(node_path, "id"), f"New target {node_id!r} is already proposed by {proposal_target_ids[node_id]!r}.")
                     else:
                         proposal_target_ids[node_id] = proposal_id if isinstance(proposal_id, str) else proposal_path
+
+            issues.extend(
+                _validate_proposed_node_relationships(
+                    proposed_nodes,
+                    proposal_path,
+                    nodes,
+                    skill_aliases,
+                    ambiguous_skill_aliases,
+                )
+            )
 
             affected_ids = proposal.get("affectedTargetIds", [])
             if not isinstance(affected_ids, list):
