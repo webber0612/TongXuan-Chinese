@@ -20,6 +20,7 @@ def make_production_client(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("TONGXUAN_AUTH_SECRET", "production-test-secret-0123456789012345")
     monkeypatch.setenv("TONGXUAN_PARENT_PASSWORD", "production-test-parent-password")
     monkeypatch.setenv("TONGXUAN_ALLOWED_ORIGINS", "https://family.example")
+    monkeypatch.setenv("GOOGLE_CLIENT_ID", "family-web-client.apps.googleusercontent.com")
     from app.main import app
     return TestClient(app)
 
@@ -33,7 +34,7 @@ def test_health_and_readiness_are_deterministic_and_schema_versioned(tmp_path):
         assert body["status"] == "READY"
         assert body["checks"]["config"]["status"] == "PASS"
         assert body["checks"]["database"]["status"] == "PASS"
-        assert body["schema_version"] == 4
+        assert body["schema_version"] == 5
         assert body["privacy"] == {"raw_request_bodies_logged": False, "secrets_exposed": False}
         assert result.headers["x-request-id"]
 
@@ -46,7 +47,7 @@ def test_production_config_fails_closed_without_secrets_or_wildcard_cors(monkeyp
     monkeypatch.delenv("TONGXUAN_AUTH_SECRET", raising=False)
     monkeypatch.setenv("TONGXUAN_ALLOWED_ORIGINS", "*")
     errors = validate_settings(load_settings())
-    assert {"production_db_path_must_be_absolute", "production_backup_dir_required", "production_auth_secret_required", "production_cors_origins_required"} <= set(errors)
+    assert {"production_db_path_must_be_absolute", "production_backup_dir_required", "production_auth_secret_required", "production_google_client_id_required", "production_cors_origins_required"} <= set(errors)
 
 
 def test_backup_and_restore_are_non_destructive_and_integrity_checked(tmp_path):

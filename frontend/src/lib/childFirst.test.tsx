@@ -890,8 +890,8 @@ describe("child-first shell contracts", () => {
     await act(async () => { root.render(React.createElement(AppShell)); await Promise.resolve(); await Promise.resolve(); });
     await act(async () => { await new Promise((resolve) => setTimeout(resolve, 25)); });
     expect(document.querySelector(".neo-curriculum")).toBeTruthy();
-    await act(async () => { (document.querySelector(".profile-trigger") as HTMLButtonElement).click(); });
-    await act(async () => { (Array.from(document.querySelectorAll("button")).find((button) => button.textContent?.includes("新增學習者")) as HTMLButtonElement).click(); });
+    await act(async () => { (Array.from(document.querySelectorAll(".app-tab")).find((button) => button.textContent?.trim() === "我的") as HTMLButtonElement).click(); });
+    await act(async () => { (Array.from(document.querySelectorAll("button")).find((button) => button.textContent?.includes("新增孩子資料")) as HTMLButtonElement).click(); });
     const input = document.querySelector("#new-profile-name") as HTMLInputElement;
     const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
     await act(async () => { setter?.call(input, "Bob"); input.dispatchEvent(new Event("input", { bubbles: true })); });

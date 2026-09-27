@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import HanziWriter from "hanzi-writer";
 import { browserCapabilities, DiagnosticResult } from "../lib/diagnostics";
+import { apiFetch } from "../lib/apiFetch";
 
 const API = import.meta.env.VITE_API_BASE ?? "";
 export const HANZI_CHARACTERS = ["學", "学", "國", "国"] as const;
@@ -27,9 +28,9 @@ export function DiagnosticsPage() {
 
   async function runBackend() {
     try {
-      const health = await fetch(`${API}/api/health`).then((r) => r.json());
-      const sqlite = await fetch(`${API}/api/diagnostics/sqlite`, { method: "POST" }).then((r) => r.json());
-      const converted = await fetch(`${API}/api/tools/convert`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: "学校环境保护", direction: "s2tw" }) }).then((r) => r.json());
+      const health = await apiFetch(`${API}/api/health`).then((r) => r.json());
+      const sqlite = await apiFetch(`${API}/api/diagnostics/sqlite`, { method: "POST" }).then((r) => r.json());
+      const converted = await apiFetch(`${API}/api/tools/convert`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: "学校环境保护", direction: "s2tw" }) }).then((r) => r.json());
       setConversion(converted.text ?? "FAIL");
       setResults((current) => ({ ...current, Backend: { status: health.status === "ok" ? "PASS" : "FAIL", detail: JSON.stringify(health) }, SQLite: { status: sqlite.status === "ok" && Object.values(sqlite.operations).every(Boolean) ? "PASS" : "FAIL", detail: "CRUD persistence diagnostic" }, OpenCC: { status: converted.text === "學校環境保護" ? "PASS" : "FAIL", detail: converted.text ?? "No result" } }));
     } catch (error) {

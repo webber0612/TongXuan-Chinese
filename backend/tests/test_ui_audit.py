@@ -35,9 +35,12 @@ def test_production_redemption_requires_parent_or_privileged_session_and_passwor
     monkeypatch.setenv("TONGXUAN_BACKUP_DIR", str(tmp_path / "backups"))
     monkeypatch.setenv("TONGXUAN_AUTH_SECRET", "production-ui-audit-secret-01234567890123456789")
     monkeypatch.setenv("TONGXUAN_PARENT_PASSWORD", "production-parent-password")
+    monkeypatch.setenv("GOOGLE_CLIENT_ID", "family-web-client.apps.googleusercontent.com")
     monkeypatch.setenv("TONGXUAN_ALLOWED_ORIGINS", "https://family.example")
     from app.auth import issue_session
     from app.main import app
+    from app.database import connect
+    from app.parent_accounts import upsert_google_parent
     with TestClient(app) as api:
         admin = {"Authorization": f"Bearer {issue_session(subject='admin', role='admin')}"}
         child = api.post("/api/children", headers=admin, json={"name": "Alice"}).json()
@@ -45,7 +48,10 @@ def test_production_redemption_requires_parent_or_privileged_session_and_passwor
         reward = api.get("/api/points", headers=admin, params={"child_id": child_id}).json()["rewards"][0]
         unauthenticated = api.post(f"/api/points/redeem/{reward['id']}", params={"child_id": child_id}, json={"parent_password": "production-parent-password"})
         assert unauthenticated.status_code == 401
-        parent = {"Authorization": f"Bearer {issue_session(subject='parent', role='parent', child_ids=[child_id])}"}
+        parent_account = upsert_google_parent(google_sub="ui-audit-parent", email="parent@example.com", display_name="Parent")
+        with connect() as db:
+            db.execute("UPDATE children SET parent_id=? WHERE id=?", (parent_account["id"], child_id))
+        parent = {"Authorization": f"Bearer {issue_session(subject='parent', role='parent', parent_id=parent_account['id'])}"}
         wrong = api.post(f"/api/points/redeem/{reward['id']}", headers=parent, params={"child_id": child_id}, json={"parent_password": "wrong-password"})
         assert wrong.status_code == 403
         ok = api.post(f"/api/points/redeem/{reward['id']}", headers=parent, params={"child_id": child_id}, json={"parent_password": "production-parent-password"})

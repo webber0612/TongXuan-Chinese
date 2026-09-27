@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { buildTutorPath, TUTOR_MODES, TutorMode, tutorModeLabel } from "../lib/tutor";
+import { apiFetch } from "../lib/apiFetch";
 
 const API = import.meta.env.VITE_API_BASE ?? "";
 type Child = { id: number; name: string };
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API}${path}`, init);
+  const response = await apiFetch(`${API}${path}`, init);
   if (!response.ok) throw new Error((await response.json()).detail ?? "Request failed");
   return response.json();
 }

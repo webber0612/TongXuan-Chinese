@@ -4,15 +4,17 @@ import sqlite3
 import logging
 import hmac
 import re
+import secrets
 import time
 import uuid
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
+from . import auth as auth_module
 from .database import connect, initialize_database
 from .providers import OpenCCProvider
 from .tts import prepare_tts
@@ -43,10 +45,11 @@ from .curriculum import get_curriculum, record_progress, seed_catalog
 from .curriculum_policy import assess_lesson, get_phonetic_support, get_validated_curriculum, link_lesson_item, record_lesson_progress, set_soft_unlock
 from .tutor import tutor_response
 from .commercialization import audit_registry
-from .auth import authenticate, require_commercialization_admin, require_parent_or_admin_child_access
+from .auth import authenticate, issue_session, require_commercialization_admin, require_parent_or_admin_child_access
 from .auth import require_child_access, require_production_session, require_reward_redemption_access
 from .config import load_settings, validate_settings
 from .production import readiness, structured_error
+from .parent_accounts import create_owned_child, get_parent, list_owned_children, upsert_google_parent
 from .learning import (
     add_school_item, create_child, create_weekly_test, finish_session,
     list_children, list_daily_queue, next_recognition_item, points_summary,
@@ -77,7 +80,7 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(title="TongXuan Chinese API", version="0.1.0", lifespan=lifespan)
 opencc_provider = OpenCCProvider()
-app.add_middleware(CORSMiddleware, allow_origins=list(load_settings().allowed_origins), allow_credentials=True, allow_methods=["GET", "POST", "OPTIONS"], allow_headers=["Authorization", "Content-Type", "X-Request-ID"])
+app.add_middleware(CORSMiddleware, allow_origins=list(load_settings().allowed_origins), allow_credentials=True, allow_methods=["GET", "POST", "OPTIONS"], allow_headers=["Authorization", "Content-Type", "X-CSRF-Token", "X-Request-ID"])
 production_logger = logging.getLogger("tongxuan.production")
 if not production_logger.handlers:
     from .production import JsonLogFormatter
@@ -94,18 +97,35 @@ async def production_security_boundary(request: Request, call_next):
     status_code = 500
     try:
         settings = load_settings()
-        if settings.environment == "production" and request.url.path.startswith("/api/"):
+        is_cors_preflight = request.method == "OPTIONS" and bool(request.headers.get("access-control-request-method"))
+        if settings.environment == "production" and request.url.path.startswith("/api/") and not is_cors_preflight:
             match = re.search(r"/children/(\d+)(?:/|$)", request.url.path)
             child_text = request.query_params.get("child_id") or (match.group(1) if match else None)
+            public_auth_route = request.url.path in {"/api/auth/google/csrf", "/api/auth/google", "/api/auth/logout"}
             session = None
-            if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+            if request.url.path == "/api/auth/logout" and request.method == "POST":
+                origin = request.headers.get("origin", "")
+                if not origin or origin not in settings.allowed_origins:
+                    raise HTTPException(status_code=403, detail="auth_origin_invalid")
+            if not public_auth_route and request.method in {"POST", "PUT", "PATCH", "DELETE"}:
                 session = authenticate(request)
-                privileged = request.url.path in {"/api/diagnostics/sqlite", "/api/curriculum/catalog", "/api/tools/convert", "/api/children"}
+                bearer_session = request.headers.get("authorization", "").startswith("Bearer ")
+                if not bearer_session:
+                    origin = request.headers.get("origin", "")
+                    if not origin or origin not in settings.allowed_origins:
+                        raise HTTPException(status_code=403, detail="auth_origin_invalid")
+                    csrf_cookie = request.cookies.get("tongxuan_csrf", "")
+                    csrf_header = request.headers.get("X-CSRF-Token", "")
+                    if not csrf_cookie or not csrf_header or not hmac.compare_digest(csrf_cookie, csrf_header):
+                        raise HTTPException(status_code=403, detail="csrf_validation_failed")
+                privileged = request.url.path in {"/api/diagnostics/sqlite", "/api/curriculum/catalog", "/api/tools/convert"}
                 if privileged and session.role not in {"developer", "admin"}:
                     raise HTTPException(status_code=403, detail="developer_admin_required")
-                if child_text is None and session.role == "parent":
+                if request.url.path == "/api/children" and request.method == "POST" and session.role == "parent" and session.parent_id is None:
+                    raise HTTPException(status_code=403, detail="parent_account_required")
+                if child_text is None and session.role == "parent" and request.url.path not in {"/api/children", "/api/tts/speak"}:
                     raise HTTPException(status_code=403, detail="child_scope_required")
-            if child_text is not None:
+            if not public_auth_route and child_text is not None:
                 require_child_access(request, int(child_text))
         response = await call_next(request)
         status_code = response.status_code
@@ -177,7 +197,14 @@ def sqlite_diagnostic() -> dict[str, object]:
 
 
 class ChildRequest(BaseModel):
+    model_config = {"extra": "forbid"}
     name: str = Field(min_length=1)
+
+
+class GoogleParentLoginRequest(BaseModel):
+    model_config = {"extra": "forbid"}
+    credential: str = Field(min_length=1, max_length=20_000)
+    g_csrf_token: str = Field(min_length=16, max_length=256)
 
 
 class SeedRequest(BaseModel):
@@ -424,13 +451,107 @@ class RewardRedemptionRequest(BaseModel):
 
 @app.get("/api/children")
 def get_children(_session=Depends(require_production_session)) -> list[dict[str, object]]:
-    child_ids = _session.child_ids if _session is not None and _session.role == "parent" else None
+    if _session is not None and _session.role == "parent":
+        if _session.parent_id is None:
+            raise HTTPException(status_code=403, detail="parent_account_required")
+        return list_owned_children(_session.parent_id)
+    child_ids = None
     return list_children(child_ids)
 
 
 @app.post("/api/children")
-def post_child(request: ChildRequest) -> dict[str, object]:
+def post_child(request: ChildRequest, http_request: Request) -> dict[str, object]:
+    session = require_production_session(http_request)
+    if session is not None:
+        if session.role == "parent":
+            if session.parent_id is None:
+                raise HTTPException(status_code=403, detail="parent_account_required")
+            return create_owned_child(parent_id=session.parent_id, name=request.name)
+        if session.role not in {"developer", "admin"}:
+            raise HTTPException(status_code=403, detail="parent_or_admin_required")
     return create_child(request.name)
+
+
+@app.get("/api/auth/google/csrf")
+def get_google_csrf(response: Response) -> dict[str, str]:
+    settings = load_settings()
+    if not settings.google_client_id:
+        raise HTTPException(status_code=503, detail="google_sign_in_unavailable")
+    token = secrets.token_urlsafe(32)
+    secure = settings.environment in {"staging", "production"}
+    response.set_cookie(
+        "tongxuan_google_csrf", token, max_age=600, httponly=True,
+        secure=secure, samesite="none" if secure else "lax", path="/api/auth/google",
+    )
+    return {"csrfToken": token, "clientId": settings.google_client_id}
+
+
+@app.post("/api/auth/google")
+def google_parent_login(request: GoogleParentLoginRequest, http_request: Request) -> JSONResponse:
+    settings = load_settings()
+    origin = http_request.headers.get("origin", "")
+    csrf_cookie = http_request.cookies.get("tongxuan_google_csrf", "")
+    if not settings.google_client_id:
+        raise HTTPException(status_code=503, detail="google_sign_in_unavailable")
+    if not origin or origin not in settings.allowed_origins:
+        raise HTTPException(status_code=403, detail="auth_origin_invalid")
+    if not csrf_cookie or not hmac.compare_digest(csrf_cookie, request.g_csrf_token):
+        raise HTTPException(status_code=403, detail="csrf_validation_failed")
+    try:
+        claims = auth_module.verify_google_id_token(request.credential, settings.google_client_id)
+    except ValueError as error:
+        raise HTTPException(status_code=401, detail="google_credential_invalid") from error
+    parent = upsert_google_parent(google_sub=claims["sub"], email=claims["email"], display_name=claims["name"])
+    ttl_seconds = 3600
+    token = issue_session(subject=f"parent-account:{parent['id']}", role="parent", ttl_seconds=ttl_seconds, parent_id=parent["id"])
+    response = JSONResponse({
+        "authenticated": True,
+        "parent": {"id": parent["id"], "email": parent["email"], "displayName": parent["display_name"]},
+        "expiresIn": ttl_seconds,
+    })
+    secure = settings.environment in {"staging", "production"}
+    response.set_cookie(
+        "tongxuan_session", token, max_age=ttl_seconds, httponly=True,
+        secure=secure, samesite="none" if secure else "lax", path="/api",
+    )
+    response.delete_cookie("tongxuan_google_csrf", path="/api/auth/google", secure=secure, httponly=True, samesite="none" if secure else "lax")
+    return response
+
+
+@app.get("/api/auth/session")
+def get_auth_session(http_request: Request, response: Response) -> dict[str, object]:
+    settings = load_settings()
+    auth_required = settings.environment == "production"
+    try:
+        session = authenticate(http_request)
+    except HTTPException:
+        return {"authRequired": auth_required, "authenticated": False, "role": None, "parent": None}
+    if session.role == "parent":
+        parent = get_parent(session.parent_id) if session.parent_id is not None else None
+        if parent is None:
+            return {"authRequired": auth_required, "authenticated": False, "role": None, "parent": None}
+        identity = {"id": parent["id"], "email": parent["email"], "displayName": parent["display_name"]}
+    else:
+        identity = None
+    csrf_token = http_request.cookies.get("tongxuan_csrf") or secrets.token_urlsafe(32)
+    secure = settings.environment in {"staging", "production"}
+    if not http_request.cookies.get("tongxuan_csrf"):
+        response.set_cookie(
+            "tongxuan_csrf", csrf_token, max_age=3600, httponly=True,
+            secure=secure, samesite="none" if secure else "lax", path="/api",
+        )
+    return {"authRequired": auth_required, "authenticated": True, "role": session.role, "parent": identity, "csrfToken": csrf_token}
+
+
+@app.post("/api/auth/logout")
+def logout_parent() -> JSONResponse:
+    settings = load_settings()
+    secure = settings.environment in {"staging", "production"}
+    response = JSONResponse({"authenticated": False})
+    response.delete_cookie("tongxuan_session", path="/api", secure=secure, httponly=True, samesite="none" if secure else "lax")
+    response.delete_cookie("tongxuan_csrf", path="/api", secure=secure, httponly=True, samesite="none" if secure else "lax")
+    response.delete_cookie("tongxuan_google_csrf", path="/api/auth/google", secure=secure, httponly=True, samesite="none" if secure else "lax")
+    return response
 
 
 @app.post("/api/children/{child_id}/learning-items/seed")
@@ -559,7 +680,9 @@ def get_commercialization_readiness(build_target: str = "family", _session=Depen
 
 
 @app.post("/api/tts/speak")
-def post_tts(request: TTSRequest) -> dict[str, object]:
+def post_tts(request: TTSRequest, http_request: Request) -> dict[str, object]:
+    if request.child_id is not None:
+        require_child_access(http_request, request.child_id)
     try:
         return prepare_tts(
             text=request.text,

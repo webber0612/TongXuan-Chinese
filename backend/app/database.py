@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 DEFAULT_DB_PATH = Path(__file__).resolve().parents[2] / "data" / "tongxuan.sqlite3"
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 SQLITE_BUSY_TIMEOUT_MS = 5000
 
 
@@ -34,6 +34,14 @@ def initialize_database() -> None:
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE IF NOT EXISTS google_parents (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                google_sub TEXT NOT NULL UNIQUE,
+                email TEXT NOT NULL DEFAULT '',
+                display_name TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
             CREATE TABLE IF NOT EXISTS schema_migrations (
                 version INTEGER PRIMARY KEY,
@@ -581,6 +589,8 @@ def initialize_database() -> None:
             ],
             "placement_profiles": [("age_hint_years", "INTEGER")],
             "ocr_imports": [("confirmed_at", "TEXT")],
+            # Nullable owner preserves all existing learner rows as unclaimed.
+            "children": [("parent_id", "INTEGER REFERENCES google_parents(id)")],
         }
         for table, columns in migrations.items():
             existing = {row[1] for row in connection.execute(f"PRAGMA table_info({table})")}
@@ -591,5 +601,6 @@ def initialize_database() -> None:
         if current_version > SCHEMA_VERSION:
             raise RuntimeError("database_schema_newer_than_application")
         if current_version < SCHEMA_VERSION:
-            connection.execute("INSERT OR IGNORE INTO schema_migrations(version, description) VALUES (?, ?)", (SCHEMA_VERSION, "resumable learning sessions, task evidence, and privacy-safe telemetry"))
+            connection.execute("CREATE INDEX IF NOT EXISTS children_parent_id ON children(parent_id, id)")
+            connection.execute("INSERT OR IGNORE INTO schema_migrations(version, description) VALUES (?, ?)", (SCHEMA_VERSION, "Google parent identity and nullable child ownership"))
             connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
