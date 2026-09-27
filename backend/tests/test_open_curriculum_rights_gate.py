@@ -21,6 +21,48 @@ from scripts.open_curriculum_rights_gate import (
     validate_tracked_open_curriculum_packs,
 )
 
+NEW_CURRICULUM_CONTENT_PATHS = (
+    "backend/app/learning_flow.py",
+    "backend/tests/test_learning_flow.py",
+    "backend/tests/test_lesson_player.py",
+    "backend/tests/test_validated_curriculum_policy.py",
+    "docs/archive/ui/issue-28-frontend-review.md",
+    "docs/assessment-blueprints.md",
+    "docs/curriculum-audit-v1.md",
+    "docs/frontend-rebuild-plan.md",
+    "docs/learning-path-v2.md",
+    "docs/learning-session-policy-v1.md",
+    "frontend/src/pages/ChildPortalPage.tsx",
+    "frontend/src/pages/CourseZeroPage.tsx",
+    "frontend/src/pages/FirstLessonPage.tsx",
+    "frontend/src/pages/LearningPage.tsx",
+    "frontend/src/components/PlacementStatus.tsx",
+    "frontend/src/lib/childFirst.test.tsx",
+    "frontend/src/lib/lessonPlayer.test.tsx",
+    "frontend/src/lib/testFixtures/learningFlow.ts",
+    "frontend/src/lib/curriculum.test.ts",
+    "frontend/src/lib/learning.test.ts",
+    "frontend/src/lib/adaptiveWriting.test.ts",
+)
+OCAC_SOURCE_LINKED_CONTENT_PATHS = frozenset({
+    "backend/app/learning_flow.py",
+    "backend/tests/test_learning_flow.py",
+    "backend/tests/test_lesson_player.py",
+    "backend/tests/test_validated_curriculum_policy.py",
+    "docs/archive/ui/issue-28-frontend-review.md",
+    "docs/assessment-blueprints.md",
+    "docs/curriculum-audit-v1.md",
+    "docs/frontend-rebuild-plan.md",
+    "docs/learning-path-v2.md",
+    "docs/learning-session-policy-v1.md",
+    "frontend/src/pages/ChildPortalPage.tsx",
+    "frontend/src/pages/FirstLessonPage.tsx",
+    "frontend/src/lib/childFirst.test.tsx",
+    "frontend/src/lib/lessonPlayer.test.tsx",
+    "frontend/src/lib/testFixtures/learningFlow.ts",
+    "frontend/src/components/PlacementStatus.tsx",
+})
+
 
 def load_audit():
     return json.loads(AUDIT_PATH.read_text(encoding="utf-8"))
@@ -33,10 +75,61 @@ def test_machine_inventory_covers_current_tracked_content_sensitive_paths():
     assert all(entry["sha256"] and entry["sizeBytes"] >= 0 for entry in audit["entries"])
 
 
-def test_future_pack_and_raw_import_paths_enter_the_audit_scope():
+def test_future_pack_raw_import_and_discovered_content_paths_enter_the_audit_scope():
     assert _is_candidate("shared/open-curriculum/packs/candidate.json")
     assert _is_candidate("shared/content-sources/imports/corpus.csv")
     assert _is_candidate("shared/content-sources/raw/audio.zip")
+    assert all(_is_candidate(path) for path in NEW_CURRICULUM_CONTENT_PATHS)
+
+
+def test_embedded_curriculum_and_reference_paths_are_inventoried_and_blocked():
+    audit = load_audit()
+    paths = NEW_CURRICULUM_CONTENT_PATHS
+    entries = {entry["path"]: entry for entry in audit["entries"]}
+    for path in paths:
+        entry = entries[path]
+        assert entry["classification"] == "RIGHTS_UNCLEAR"
+        assert entry["publishableArtifactAllowed"] is False
+        assert entry["rootMitApplies"] is False
+        if path in OCAC_SOURCE_LINKED_CONTENT_PATHS:
+            assert entry["sourceIds"] == ["ocac-learn-mandarin-children"]
+            assert entry["evidenceIds"] == ["evidence-ocac-learn-mandarin-children-series-page"]
+        else:
+            assert entry["sourceIds"] == []
+            assert entry["evidenceIds"] == []
+    errors = validate_publishable_paths(paths, audit)
+    assert {error.split(": ", 1)[-1] for error in errors if error.startswith("PUBLIC_ARTIFACT_RESTRICTED_CONTENT:")} == set(paths)
+
+
+def test_embedded_curriculum_inventory_omission_and_digest_drift_fail_closed():
+    audit = load_audit()
+    audit["entries"] = [entry for entry in audit["entries"] if entry["path"] != "backend/app/learning_flow.py"]
+    assert "AUDIT_PATH_UNREGISTERED: backend/app/learning_flow.py" in validate_inventory(audit)
+
+    audit = load_audit()
+    entry = next(item for item in audit["entries"] if item["path"] == "backend/app/learning_flow.py")
+    entry["sha256"] = "0" * 64
+    assert "AUDIT_CONTENT_DIGEST_MISMATCH: backend/app/learning_flow.py" in validate_inventory(audit)
+
+
+def test_newly_discovered_content_cannot_be_cleared_by_status_flip_without_rights_evidence():
+    for path in NEW_CURRICULUM_CONTENT_PATHS:
+        audit = load_audit()
+        entry = next(item for item in audit["entries"] if item["path"] == path)
+        entry["classification"] = "OWNED"
+        entry["publishableArtifactAllowed"] = True
+
+        errors = validate_inventory(audit)
+        if path not in OCAC_SOURCE_LINKED_CONTENT_PATHS:
+            assert f"AUDIT_CLEARANCE_UNSUPPORTED: {path}" in errors
+        else:
+            assert f"AUDIT_SOURCE_NOT_GREEN: {path}:ocac-learn-mandarin-children" in errors
+
+
+def test_rights_workflow_runs_when_embedded_curriculum_sources_change():
+    workflow = (REPOSITORY_ROOT / ".github/workflows/open-curriculum-rights-gate.yml").read_text(encoding="utf-8")
+    for path in NEW_CURRICULUM_CONTENT_PATHS:
+        assert workflow.count(f'"{path}"') == 2
 
 
 def test_unknown_and_reference_only_content_cannot_enter_publishable_artifact():

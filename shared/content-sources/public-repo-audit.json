@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0",
   "auditId": "tongxuan-public-repo-content-audit-v1",
-  "baselineCommit": "e4532a70ea03e54ce6ce797757f597259190409d",
+  "baselineCommit": "6ebfe71c7830bc97f9e77c91703ba15aa5fba948",
   "classificationVocabulary": [
     "OPEN_LICENSED",
     "OWNED",
@@ -23,15 +23,38 @@
     "candidateExactPaths": [
       "backend/app/curriculum.py",
       "backend/app/learning.py",
+      "backend/app/learning_flow.py",
       "backend/app/sprint_b.py",
+      "backend/tests/test_learning_flow.py",
+      "backend/tests/test_lesson_player.py",
+      "backend/tests/test_validated_curriculum_policy.py",
+      "docs/archive/ui/issue-28-frontend-review.md",
+      "docs/assessment-blueprints.md",
+      "docs/curriculum-audit-v1.md",
+      "docs/frontend-rebuild-plan.md",
+      "docs/learning-path-v2.md",
+      "docs/learning-session-policy-v1.md",
+      "frontend/src/components/PlacementStatus.tsx",
+      "frontend/src/lib/adaptiveWriting.test.ts",
+      "frontend/src/lib/childFirst.test.tsx",
+      "frontend/src/lib/curriculum.test.ts",
+      "frontend/src/lib/learning.test.ts",
+      "frontend/src/lib/lessonPlayer.test.tsx",
+      "frontend/src/lib/testFixtures/learningFlow.ts",
+      "frontend/src/pages/ChildPortalPage.tsx",
+      "frontend/src/pages/CourseZeroPage.tsx",
+      "frontend/src/pages/FirstLessonPage.tsx",
+      "frontend/src/pages/LearningPage.tsx",
       "shared/validated-curriculum-slice.json"
     ],
-    "method": "Enumerate tracked data, curriculum, media, and known embedded-content modules; record path, size, and SHA-256 only. No source corpus is downloaded.",
+    "method": "Enumerate tracked curriculum packages, source imports, media, known embedded-content modules, curriculum regression fixtures, and curriculum reference documents; record path, classification, source/evidence links where supported, canonical size, digest mode, and SHA-256 only. No source corpus is downloaded.",
     "limitations": [
       "Path and digest inventory does not detect paraphrase, copying, embedded data, or authorship.",
       "A source link or public availability is not a reuse grant.",
       "RIGHTS_UNCLEAR is blocked for publishable artifacts; it is not a legal finding.",
-      "An empty THIRD_PARTY_RESTRICTED set would not prove the tree contains no such material."
+      "An empty THIRD_PARTY_RESTRICTED set would not prove the tree contains no such material.",
+      "A file-level inventory is a coverage gate, not an item-by-item source comparison or legal decision; its hashes detect drift but do not establish authorship or license terms.",
+      "Curriculum-bearing code, regression fixtures, and reference documents are tracked because they are public repository text, but their inclusion does not make them publishable lessons or rights-cleared content."
     ]
   },
   "entries": [
@@ -64,6 +87,25 @@
       "digestMode": "TEXT_LF_NORMALIZED"
     },
     {
+      "path": "backend/app/learning_flow.py",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [
+        "ocac-learn-mandarin-children"
+      ],
+      "evidenceIds": [
+        "evidence-ocac-learn-mandarin-children-series-page"
+      ],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Existing public code, test, or documentation file contains lesson-specific titles, sequence metadata, paraphrases, or child-visible examples. Item-level authorship/source/rights evidence is incomplete; this fail-closed path classification is not a finding of copying or infringement.",
+      "sha256": "882a36a1cd49361d8542d6df9c7399e15df65bf4fd6875fab7f4cba63418f378",
+      "sizeBytes": 149835,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "EMBEDDED_CURRICULUM_OR_TASK_DATA",
+      "sourceRelationship": "The path references the OCAC course sequence/titles or stores task/examples mapped to those lessons. The linked source-description evidence establishes source identity only; it does not establish the origin or reuse rights of this path's text.",
+      "digestMode": "TEXT_LF_NORMALIZED"
+    },
+    {
       "path": "backend/app/sprint_b.py",
       "classification": "RIGHTS_UNCLEAR",
       "sourceIds": [],
@@ -75,6 +117,63 @@
       "sizeBytes": 27120,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "EMBEDDED_CURRICULUM_OR_SEED_DATA",
+      "digestMode": "TEXT_LF_NORMALIZED"
+    },
+    {
+      "path": "backend/tests/test_learning_flow.py",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [
+        "ocac-learn-mandarin-children"
+      ],
+      "evidenceIds": [
+        "evidence-ocac-learn-mandarin-children-series-page"
+      ],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Existing public code, test, or documentation file contains lesson-specific titles, sequence metadata, paraphrases, or child-visible examples. Item-level authorship/source/rights evidence is incomplete; this fail-closed path classification is not a finding of copying or infringement.",
+      "sha256": "0f2d492df10f6818d552332b66808157930825fe41e1c89e7b0f9c55fbaed713",
+      "sizeBytes": 128639,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "CURRICULUM_REGRESSION_FIXTURES",
+      "sourceRelationship": "The path references the OCAC course sequence/titles or stores task/examples mapped to those lessons. The linked source-description evidence establishes source identity only; it does not establish the origin or reuse rights of this path's text.",
+      "digestMode": "TEXT_LF_NORMALIZED"
+    },
+    {
+      "path": "backend/tests/test_lesson_player.py",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [
+        "ocac-learn-mandarin-children"
+      ],
+      "evidenceIds": [
+        "evidence-ocac-learn-mandarin-children-series-page"
+      ],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Existing public code, test, or documentation file contains lesson-specific titles, sequence metadata, paraphrases, or child-visible examples. Item-level authorship/source/rights evidence is incomplete; this fail-closed path classification is not a finding of copying or infringement.",
+      "sha256": "28a1142c0b5aabd94c03f9b4098db22889122775c56fa1e9dcaca4c1f8ce85f4",
+      "sizeBytes": 121908,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "CURRICULUM_REGRESSION_FIXTURES",
+      "sourceRelationship": "The path references the OCAC course sequence/titles or stores task/examples mapped to those lessons. The linked source-description evidence establishes source identity only; it does not establish the origin or reuse rights of this path's text.",
+      "digestMode": "TEXT_LF_NORMALIZED"
+    },
+    {
+      "path": "backend/tests/test_validated_curriculum_policy.py",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [
+        "ocac-learn-mandarin-children"
+      ],
+      "evidenceIds": [
+        "evidence-ocac-learn-mandarin-children-series-page"
+      ],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Existing public code, test, or documentation file contains lesson-specific titles, sequence metadata, paraphrases, or child-visible examples. Item-level authorship/source/rights evidence is incomplete; this fail-closed path classification is not a finding of copying or infringement.",
+      "sha256": "6a6f7d6817c176b80ca4b998951ae4855b7bc0444ed61b17bd46842c0a3bc2b7",
+      "sizeBytes": 33425,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "CURRICULUM_METADATA_REGRESSION_FIXTURES",
+      "sourceRelationship": "The path references the OCAC course sequence/titles or stores task/examples mapped to those lessons. The linked source-description evidence establishes source identity only; it does not establish the origin or reuse rights of this path's text.",
       "digestMode": "TEXT_LF_NORMALIZED"
     },
     {
@@ -103,6 +202,120 @@
       "sizeBytes": 18389,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "RIGHTS_POLICY_OR_LICENSE_REFERENCE",
+      "digestMode": "TEXT_LF_NORMALIZED"
+    },
+    {
+      "path": "docs/archive/ui/issue-28-frontend-review.md",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [
+        "ocac-learn-mandarin-children"
+      ],
+      "evidenceIds": [
+        "evidence-ocac-learn-mandarin-children-series-page"
+      ],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Existing public code, test, or documentation file contains lesson-specific titles, sequence metadata, paraphrases, or child-visible examples. Item-level authorship/source/rights evidence is incomplete; this fail-closed path classification is not a finding of copying or infringement.",
+      "sha256": "9db237c87e7c8b2b24e31f2d49994062d75013614c48df48091e0bd64ae6ddaf",
+      "sizeBytes": 5216,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "CURRICULUM_REFERENCE_DOCUMENT",
+      "sourceRelationship": "The path references the OCAC course sequence/titles or stores task/examples mapped to those lessons. The linked source-description evidence establishes source identity only; it does not establish the origin or reuse rights of this path's text.",
+      "digestMode": "TEXT_LF_NORMALIZED"
+    },
+    {
+      "path": "docs/assessment-blueprints.md",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [
+        "ocac-learn-mandarin-children"
+      ],
+      "evidenceIds": [
+        "evidence-ocac-learn-mandarin-children-series-page"
+      ],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Existing public code, test, or documentation file contains lesson-specific titles, sequence metadata, paraphrases, or child-visible examples. Item-level authorship/source/rights evidence is incomplete; this fail-closed path classification is not a finding of copying or infringement.",
+      "sha256": "9f4e8223869c52d2aadce273ac2e56ece35b0e5391c6a00692565e7a098e58f4",
+      "sizeBytes": 4607,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "CURRICULUM_REFERENCE_DOCUMENT",
+      "sourceRelationship": "The path references the OCAC course sequence/titles or stores task/examples mapped to those lessons. The linked source-description evidence establishes source identity only; it does not establish the origin or reuse rights of this path's text.",
+      "digestMode": "TEXT_LF_NORMALIZED"
+    },
+    {
+      "path": "docs/curriculum-audit-v1.md",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [
+        "ocac-learn-mandarin-children"
+      ],
+      "evidenceIds": [
+        "evidence-ocac-learn-mandarin-children-series-page"
+      ],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Existing public code, test, or documentation file contains lesson-specific titles, sequence metadata, paraphrases, or child-visible examples. Item-level authorship/source/rights evidence is incomplete; this fail-closed path classification is not a finding of copying or infringement.",
+      "sha256": "0c2a61255c0cf7647d6ba1be81882dfa2afab4357fdd53f4c76edbdbab4db7cd",
+      "sizeBytes": 4402,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "CURRICULUM_TEXT_OR_SOURCE_METADATA",
+      "sourceRelationship": "The path references the OCAC course sequence/titles or stores task/examples mapped to those lessons. The linked source-description evidence establishes source identity only; it does not establish the origin or reuse rights of this path's text.",
+      "digestMode": "TEXT_LF_NORMALIZED"
+    },
+    {
+      "path": "docs/frontend-rebuild-plan.md",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [
+        "ocac-learn-mandarin-children"
+      ],
+      "evidenceIds": [
+        "evidence-ocac-learn-mandarin-children-series-page"
+      ],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Existing public code, test, or documentation file contains lesson-specific titles, sequence metadata, paraphrases, or child-visible examples. Item-level authorship/source/rights evidence is incomplete; this fail-closed path classification is not a finding of copying or infringement.",
+      "sha256": "7d1813d6b12feeef6648456d71ee2a1eb50fe5c404c68975e7b906e8c3cd5ce4",
+      "sizeBytes": 3638,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "CURRICULUM_REFERENCE_DOCUMENT",
+      "sourceRelationship": "The path references the OCAC course sequence/titles or stores task/examples mapped to those lessons. The linked source-description evidence establishes source identity only; it does not establish the origin or reuse rights of this path's text.",
+      "digestMode": "TEXT_LF_NORMALIZED"
+    },
+    {
+      "path": "docs/learning-path-v2.md",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [
+        "ocac-learn-mandarin-children"
+      ],
+      "evidenceIds": [
+        "evidence-ocac-learn-mandarin-children-series-page"
+      ],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Existing public code, test, or documentation file contains lesson-specific titles, sequence metadata, paraphrases, or child-visible examples. Item-level authorship/source/rights evidence is incomplete; this fail-closed path classification is not a finding of copying or infringement.",
+      "sha256": "722951c5cf7bb9043821f825431ae133e82fe339f600c86ea303867c4d99d5c2",
+      "sizeBytes": 9875,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "CURRICULUM_TEXT_OR_SOURCE_METADATA",
+      "sourceRelationship": "The path references the OCAC course sequence/titles or stores task/examples mapped to those lessons. The linked source-description evidence establishes source identity only; it does not establish the origin or reuse rights of this path's text.",
+      "digestMode": "TEXT_LF_NORMALIZED"
+    },
+    {
+      "path": "docs/learning-session-policy-v1.md",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [
+        "ocac-learn-mandarin-children"
+      ],
+      "evidenceIds": [
+        "evidence-ocac-learn-mandarin-children-series-page"
+      ],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Existing public code, test, or documentation file contains lesson-specific titles, sequence metadata, paraphrases, or child-visible examples. Item-level authorship/source/rights evidence is incomplete; this fail-closed path classification is not a finding of copying or infringement.",
+      "sha256": "5f2ed235ec016024142bac01d5803b0abee5e9a596229394acd3ce9c8a518964",
+      "sizeBytes": 6549,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "CURRICULUM_REFERENCE_DOCUMENT",
+      "sourceRelationship": "The path references the OCAC course sequence/titles or stores task/examples mapped to those lessons. The linked source-description evidence establishes source identity only; it does not establish the origin or reuse rights of this path's text.",
       "digestMode": "TEXT_LF_NORMALIZED"
     },
     {
@@ -316,6 +529,25 @@
       "digestMode": "BINARY_RAW"
     },
     {
+      "path": "frontend/src/components/PlacementStatus.tsx",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [
+        "ocac-learn-mandarin-children"
+      ],
+      "evidenceIds": [
+        "evidence-ocac-learn-mandarin-children-series-page"
+      ],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Existing public frontend code or regression fixture contains fixed Chinese task targets, examples, lesson-mapped data, or curriculum level labels without complete item-level authorship/source/rights evidence. This fail-closed path classification is not a finding of copying or infringement.",
+      "sha256": "cb1cddfa96978054827783f5a3c109a3953475fe43e9ba9a6594bba846462027",
+      "sizeBytes": 8918,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "CURRICULUM_PLACEMENT_LABELS",
+      "digestMode": "TEXT_LF_NORMALIZED",
+      "sourceRelationship": "The file maps interface or test data to the named OCAC course sequence. Linked source-description evidence establishes course identity only; it does not establish item authorship or reuse rights."
+    },
+    {
       "path": "frontend/src/data/hanzi5000Database.ts",
       "classification": "RIGHTS_UNCLEAR",
       "sourceIds": [],
@@ -412,6 +644,172 @@
       "sizeBytes": 11226,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "LEGACY_CURRICULUM_OR_LEARNING_DATA",
+      "digestMode": "TEXT_LF_NORMALIZED"
+    },
+    {
+      "path": "frontend/src/lib/adaptiveWriting.test.ts",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Existing public frontend code or regression fixture contains fixed Chinese task targets, examples, lesson-mapped data, or curriculum level labels without complete item-level authorship/source/rights evidence. This fail-closed path classification is not a finding of copying or infringement.",
+      "sha256": "8d7982c47e881e8761b930d8a9d72f71a7ebbb1e0f5958fac8e914712728c6aa",
+      "sizeBytes": 2057,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "WRITING_SCRIPT_VARIANT_TEST_FIXTURE",
+      "digestMode": "TEXT_LF_NORMALIZED"
+    },
+    {
+      "path": "frontend/src/lib/childFirst.test.tsx",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [
+        "ocac-learn-mandarin-children"
+      ],
+      "evidenceIds": [
+        "evidence-ocac-learn-mandarin-children-series-page"
+      ],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Existing public UI/test source contains curriculum-mapped text, assessment data, course metadata, or instructional examples without complete item-level authorship/source/rights evidence. This fail-closed path classification is not a finding of copying or infringement.",
+      "sha256": "d39921c8084384f19751bca37ad9f1a9ed70b3e9fc94d1678087eb8401fd7248",
+      "sizeBytes": 104549,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "CURRICULUM_REGRESSION_FIXTURES",
+      "sourceRelationship": "The component/fixture references the OCAC sequence, lesson titles, or package-backed tasks. The linked source-description evidence establishes source identity only; it does not establish the origin or reuse rights of embedded text.",
+      "digestMode": "TEXT_LF_NORMALIZED"
+    },
+    {
+      "path": "frontend/src/lib/curriculum.test.ts",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Existing public frontend code or regression fixture contains fixed Chinese task targets, examples, lesson-mapped data, or curriculum level labels without complete item-level authorship/source/rights evidence. This fail-closed path classification is not a finding of copying or infringement.",
+      "sha256": "584948d67a0ebf72f46a8fd100f855a9e853e7c07410d42cd2bb871abca44751",
+      "sizeBytes": 5052,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "CURRICULUM_READ_MODEL_TEST_FIXTURE",
+      "digestMode": "TEXT_LF_NORMALIZED"
+    },
+    {
+      "path": "frontend/src/lib/learning.test.ts",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Existing public frontend code or regression fixture contains fixed Chinese task targets, examples, lesson-mapped data, or curriculum level labels without complete item-level authorship/source/rights evidence. This fail-closed path classification is not a finding of copying or infringement.",
+      "sha256": "fe9e67f32c11a6dac21bd123f64f2c261beac863fb0a34124956d9f001ea4cf2",
+      "sizeBytes": 561,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "SAMPLE_RECOGNITION_TEST_FIXTURE",
+      "digestMode": "TEXT_LF_NORMALIZED"
+    },
+    {
+      "path": "frontend/src/lib/lessonPlayer.test.tsx",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [
+        "ocac-learn-mandarin-children"
+      ],
+      "evidenceIds": [
+        "evidence-ocac-learn-mandarin-children-series-page"
+      ],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Existing public UI/test source contains curriculum-mapped text, assessment data, course metadata, or instructional examples without complete item-level authorship/source/rights evidence. This fail-closed path classification is not a finding of copying or infringement.",
+      "sha256": "fabcd371d645ba7f995443cea8712506d0e9c7b32e6b8debcbbdafdb2383b7a1",
+      "sizeBytes": 248124,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "CURRICULUM_REGRESSION_FIXTURES",
+      "sourceRelationship": "The component/fixture references the OCAC sequence, lesson titles, or package-backed tasks. The linked source-description evidence establishes source identity only; it does not establish the origin or reuse rights of embedded text.",
+      "digestMode": "TEXT_LF_NORMALIZED"
+    },
+    {
+      "path": "frontend/src/lib/testFixtures/learningFlow.ts",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [
+        "ocac-learn-mandarin-children"
+      ],
+      "evidenceIds": [
+        "evidence-ocac-learn-mandarin-children-series-page"
+      ],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Existing public frontend code or regression fixture contains fixed Chinese task targets, examples, lesson-mapped data, or curriculum level labels without complete item-level authorship/source/rights evidence. This fail-closed path classification is not a finding of copying or infringement.",
+      "sha256": "b11fa6d55d5fbfb44dbe3f4e612428c18f058a4cd4bd8e34dbac53fed2cb0fbf",
+      "sizeBytes": 14906,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "LEARNING_FLOW_CURRICULUM_REGRESSION_FIXTURES",
+      "digestMode": "TEXT_LF_NORMALIZED",
+      "sourceRelationship": "The file maps interface or test data to the named OCAC course sequence. Linked source-description evidence establishes course identity only; it does not establish item authorship or reuse rights."
+    },
+    {
+      "path": "frontend/src/pages/ChildPortalPage.tsx",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [
+        "ocac-learn-mandarin-children"
+      ],
+      "evidenceIds": [
+        "evidence-ocac-learn-mandarin-children-series-page"
+      ],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Existing public UI/test source contains curriculum-mapped text, assessment data, course metadata, or instructional examples without complete item-level authorship/source/rights evidence. This fail-closed path classification is not a finding of copying or infringement.",
+      "sha256": "045a4176c0c55a0624f70b2980f01f317da1cf56b4aa969d25b2ff4301b358f3",
+      "sizeBytes": 344128,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "EMBEDDED_CURRICULUM_AND_ASSESSMENT_DATA",
+      "sourceRelationship": "The component/fixture references the OCAC sequence, lesson titles, or package-backed tasks. The linked source-description evidence establishes source identity only; it does not establish the origin or reuse rights of embedded text.",
+      "digestMode": "TEXT_LF_NORMALIZED"
+    },
+    {
+      "path": "frontend/src/pages/CourseZeroPage.tsx",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Existing public UI/test source contains curriculum-mapped text, assessment data, course metadata, or instructional examples without complete item-level authorship/source/rights evidence. This fail-closed path classification is not a finding of copying or infringement.",
+      "sha256": "e7664c2d1f6ea60e305b2f348542517a9ab3d3d6cf26f649e3e9bdef16409a7e",
+      "sizeBytes": 3535,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "ORIGINAL_INSTRUCTIONAL_STEPS",
+      "sourceRelationship": "Contains instructional copy and examples; no source or item-level authorship evidence is recorded in this component.",
+      "digestMode": "TEXT_LF_NORMALIZED"
+    },
+    {
+      "path": "frontend/src/pages/FirstLessonPage.tsx",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [
+        "ocac-learn-mandarin-children"
+      ],
+      "evidenceIds": [
+        "evidence-ocac-learn-mandarin-children-series-page"
+      ],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Existing public UI/test source contains curriculum-mapped text, assessment data, course metadata, or instructional examples without complete item-level authorship/source/rights evidence. This fail-closed path classification is not a finding of copying or infringement.",
+      "sha256": "ca60e5990cd9b7fb8c21b362dcd34df11be9dd29bb10ddd7933bdec2809cb75c",
+      "sizeBytes": 2074,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "CURRICULUM_METADATA_RENDERER",
+      "sourceRelationship": "The component/fixture references the OCAC sequence, lesson titles, or package-backed tasks. The linked source-description evidence establishes source identity only; it does not establish the origin or reuse rights of embedded text.",
+      "digestMode": "TEXT_LF_NORMALIZED"
+    },
+    {
+      "path": "frontend/src/pages/LearningPage.tsx",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Existing public frontend code or regression fixture contains fixed Chinese task targets, examples, lesson-mapped data, or curriculum level labels without complete item-level authorship/source/rights evidence. This fail-closed path classification is not a finding of copying or infringement.",
+      "sha256": "56607337615b184bc532859a4b545c8c31db1456932a3a81b55e2e93db4c2757",
+      "sizeBytes": 23491,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "LEGACY_SAMPLE_LEARNING_AND_PRACTICE_DATA",
       "digestMode": "TEXT_LF_NORMALIZED"
     },
     {
