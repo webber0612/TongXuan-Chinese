@@ -173,6 +173,51 @@ def test_google_auth_identity_csrf_and_parent_owned_child_lifecycle(tmp_path, mo
         assert api.get("/api/children").status_code == 401
 
 
+def test_parent_learning_report_returns_authoritative_sessions_and_denies_other_parent(tmp_path, monkeypatch):
+    from app import auth
+
+    monkeypatch.setattr(auth, "verify_google_id_token", lambda credential, client_id: {
+        "sub": "google-sub-parent-a" if credential == "parent-a-token" else "google-sub-parent-b",
+        "email": "parent@example.com",
+        "name": "Parent",
+    })
+    with production_client(tmp_path, monkeypatch) as api:
+        sign_in(api, "parent-a-token")
+        write_headers = cookie_write_headers(api)
+        created = api.post("/api/children", headers=write_headers, json={"name": "Learner A"})
+        assert created.status_code == 200, created.text
+        child_id = created.json()["id"]
+
+        placement = api.put(
+            f"/api/children/{child_id}/placement-profile",
+            headers=write_headers,
+            json={"domain_levels": {"recognition": "STARTER", "reading": "STARTER", "vocabulary": "STARTER", "grammar": "STARTER"}},
+        )
+        assert placement.status_code == 200, placement.text
+        started = api.post(
+            f"/api/children/{child_id}/learning-sessions",
+            headers=write_headers,
+            json={"target_minutes": 18, "script_mode": "TRADITIONAL"},
+        )
+        assert started.status_code == 200, started.text
+        session_id = started.json()["id"]
+
+        report = api.get(f"/api/children/{child_id}/learning-sessions/report")
+        assert report.status_code == 200, report.text
+        body = report.json()
+        assert body["childId"] == child_id
+        assert any(session["sessionId"] == session_id and session["status"] == "IN_PROGRESS" for session in body["sessions"])
+        assert body["taskCounts"]
+        assert body["privacy"] == {"rawAudioStored": False, "learnerAnswersStored": False, "identifyingTelemetry": False}
+
+        assert api.post("/api/auth/logout", headers={"Origin": "https://family.example"}).status_code == 200
+        sign_in(api, "parent-b-token")
+        denied = api.get(f"/api/children/{child_id}/learning-sessions/report")
+        assert denied.status_code == 403
+        api.post("/api/auth/logout", headers={"Origin": "https://family.example"})
+        assert api.get(f"/api/children/{child_id}/learning-sessions/report").status_code == 401
+
+
 def test_google_login_rejects_invalid_token_and_untrusted_origin_without_persisting_parent(tmp_path, monkeypatch):
     from app import auth
     from app.database import connect

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { buildDashboardPath, DASHBOARD_SKILLS, dashboardWindowLabel, DashboardWindow } from "../lib/dashboard";
+import { buildDashboardPath, buildLearningFlowReportPath, DASHBOARD_SKILLS, dashboardRange, dashboardWindowLabel, DashboardWindow, LearningFlowReport } from "../lib/dashboard";
 import { apiFetch } from "../lib/apiFetch";
 
 const API = import.meta.env.VITE_API_BASE ?? "";
@@ -11,12 +11,22 @@ async function api<T>(path: string): Promise<T> {
   return response.json();
 }
 
+function errorMessage(value: unknown, fallback: string) {
+  return value instanceof Error ? value.message : fallback;
+}
+
+function displayLabel(value: string) {
+  return value.toLowerCase().replace(/[_-]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
 export function DashboardPage() {
   const [children, setChildren] = useState<Child[]>([]);
   const [childId, setChildId] = useState<number | null>(null);
   const [window, setWindow] = useState<DashboardWindow>("7d");
   const [dashboard, setDashboard] = useState<any>(null);
+  const [learningReport, setLearningReport] = useState<LearningFlowReport | null>(null);
   const [error, setError] = useState("");
+  const [learningFlowError, setLearningFlowError] = useState("");
   const [childrenLoading, setChildrenLoading] = useState(true);
   const [childrenError, setChildrenError] = useState("");
   const [reportLoading, setReportLoading] = useState(false);
@@ -25,12 +35,18 @@ export function DashboardPage() {
   async function refresh(id = childId, selectedWindow = window) {
     if (!id) return;
     const serial = ++requestSerial.current;
-    setReportLoading(true); setError(""); setDashboard(null);
-    try {
-      const next = await api<any>(buildDashboardPath(id, selectedWindow));
-      if (serial === requestSerial.current) setDashboard(next);
-    } catch (value) { if (serial === requestSerial.current) setError(value instanceof Error ? value.message : "dashboard_failed"); }
-    finally { if (serial === requestSerial.current) setReportLoading(false); }
+    const { fromAt, toAt } = dashboardRange(selectedWindow);
+    setReportLoading(true); setError(""); setLearningFlowError(""); setDashboard(null); setLearningReport(null);
+    const [activityResult, flowResult] = await Promise.allSettled([
+      api<any>(buildDashboardPath(id, selectedWindow, fromAt, toAt)),
+      api<LearningFlowReport>(buildLearningFlowReportPath(id, fromAt, toAt)),
+    ]);
+    if (serial !== requestSerial.current) return;
+    if (activityResult.status === "fulfilled") setDashboard(activityResult.value);
+    else { setDashboard(null); setError(errorMessage(activityResult.reason, "dashboard_failed")); }
+    if (flowResult.status === "fulfilled") setLearningReport(flowResult.value);
+    else { setLearningReport(null); setLearningFlowError(errorMessage(flowResult.reason, "learning_report_failed")); }
+    setReportLoading(false);
   }
   async function loadChildren() {
     setChildrenLoading(true); setChildrenError("");
@@ -55,5 +71,31 @@ export function DashboardPage() {
       <section className="card"><h2>OCR Imports</h2><p>{dashboard.ocr.candidates} candidates · {dashboard.ocr.confirmed} confirmed</p><ul>{dashboard.ocr.items.map((item: any) => <li key={item.id}>{item.source_label} · {item.locale}/{item.script} · {item.review_status} · commercial_ready={String(Boolean(item.commercial_ready))}</li>)}</ul></section>
       <section className="card"><h2>Adaptive Learning</h2><p>Read-only on-demand plan at {dashboard.activity.adaptive.as_of}</p><ol>{dashboard.activity.adaptive.items.map((item: any) => <li key={`${item.source}-${item.source_id}`}>{item.text} · {item.source} · {item.skill} · score {item.ranking_score} · {item.reasons.join(", ")}</li>)}</ol></section>
     </>}
+    {learningReport && <section className="card" aria-labelledby="learning-progress-title">
+      <h2 id="learning-progress-title">Learning progress</h2>
+      <p>Authoritative learning-flow report through {learningReport.to}.</p>
+      <div className="grid">
+        <div className="result"><strong>Learning sessions</strong><span>{learningReport.sessions.length}</span></div>
+        <div className="result"><strong>Mastery states</strong><span>{learningReport.masteryChanges.length}</span></div>
+        <div className="result"><strong>Due reviews</strong><span>{Object.values(learningReport.reviewDueCounts).reduce((total, count) => total + count, 0)}</span></div>
+      </div>
+      <h3>Recent learning sessions</h3>
+      {learningReport.sessions.length === 0 ? <p role="status">No learning sessions in this period.</p> : <>
+        {learningReport.sessions.length > 10 && <small>Showing the 10 most recent sessions.</small>}
+        <ul>{learningReport.sessions.slice(-10).reverse().map((session) => <li key={session.sessionId}>
+          <strong>{displayLabel(session.lessonId)}</strong> · {displayLabel(session.status)} · {session.durationSeconds}s · {session.taskCount} tasks · {session.deferredCount} deferred
+          <small>Mastery gate: {session.masteryStatus ? displayLabel(session.masteryStatus) : "Not reached"}</small>
+        </li>)}</ul>
+      </>}
+      <h3>Tasks by type</h3>
+      {Object.keys(learningReport.taskCounts).length === 0 ? <p>No learning-flow tasks in this period.</p> : <ul>{Object.entries(learningReport.taskCounts).map(([task, count]) => <li key={task}>{displayLabel(task)} · {count}</li>)}</ul>}
+      <h3>Needs practice</h3>
+      {Object.keys(learningReport.weakDomains).length === 0 && Object.keys(learningReport.deferredTasks).length === 0 ? <p>No missed or deferred learning-flow tasks in this period.</p> : <ul>
+        {Object.entries(learningReport.weakDomains).map(([domain, count]) => <li key={`weak-${domain}`}>{displayLabel(domain)} · {count} incorrect attempts</li>)}
+        {Object.entries(learningReport.deferredTasks).map(([reason, count]) => <li key={`deferred-${reason}`}>{displayLabel(reason)} · {count} deferred tasks</li>)}
+      </ul>}
+      {learningReport.privacy.rawAudioStored === false && <small>Raw audio is not stored.</small>}
+    </section>}
+    {learningFlowError && <section className="card" aria-labelledby="learning-progress-error-title"><h2 id="learning-progress-error-title">Learning progress</h2><p role="alert">{learningFlowError}</p><button onClick={() => void refresh()} disabled={reportLoading}>Retry learning progress</button></section>}
   </main>;
 }
