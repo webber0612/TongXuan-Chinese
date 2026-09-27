@@ -1,6 +1,7 @@
 # Mainline Completeness Audit
 
-**Audit baseline:** `origin/main` at `598f22db7a2795fa618eef03ce03b5964567fb83` (PR #62 / Issue #61 merged)
+**Repository snapshot:** `origin/main` at `6c4605d41eec164a89fa4b10109b04cf97168355` (PR #63 merged; documentation-only).
+**Executable audit baseline:** `598f22db7a2795fa618eef03ce03b5964567fb83` (PR #62 / Issue #61; no executable changes since).
 **Scope:** Issue #38 end-to-end learning journey, limited to executable code, tests, APIs, schema, and currently approved curriculum boundaries.
 **Result:** PR #40 closed the supported-lesson planner/runtime task-parity P0 for `starter-l01`, `basic-l01`, and `book1-l01`. PR #42 closed the canonical Home → REVIEW handoff and same-lesson task-selection gap. PR #44 closed the supported FAST_TRACK failure→REPAIR lifecycle. PR #46 / Issue #45 completed cross-lesson REVIEW. PR #48 / Issue #47 merged selected numeric child identity through Home and removed display-name/first-child fallbacks. PR #50 / Issue #49 merged failure-atomic LEARN session settlement. PR #54 / Issue #53 merged failure-atomic supported scored LEARN evidence and SRS. PR #56 / Issue #55 merged failure-atomic listening provider completion, gate, task settlement, and telemetry. PR #58 / Issue #57 merged flow-owned writing provider attempt, exact lesson provenance, applicable gate, writing state/SRS, task settlement, and telemetry in one transaction. PR #60 / Issue #59 merged exact supported recognition, writing, and word SRS REVIEW adapters, retry synchronization, Fast Track question identity checks, and REVIEW mastery isolation. PR #62 / Issue #61 merged exact Fast Track listening SRS retrieval into scored, child-scoped REVIEW, with atomic SRS/task settlement, literal choice IDs, and no mastery evidence. Mainline status rows describe merged main unless marked as active branch work. The next P1 is Issue #51, which remains `OWNER_DECISION_REQUIRED` because parent-authenticated access and parent UI placement need an owner choice. Fresh/unresolved backend profile selection remains separately gated: the child-visible Home switcher is local prototype state; exposing backend siblings without a signed parent session would cross the child authorization boundary. No P0 remains in the validated Home→LEARN/REVIEW/REPAIR slice.
 
@@ -65,7 +66,7 @@ Issue #45 / PR #46 adds a true backend cross-lesson reconciliation integration c
 
 ### P0
 
-No open P0 remains in the validated Home→LEARN/REVIEW/REPAIR slice. Issue #41 / PR #42 closed the Home→REVIEW selection gap and stale due-task mismatch; Issue #43 / PR #44 closed the supported FAST_TRACK failure→REPAIR lifecycle; PR #46 / Issue #45 completed cross-lesson REVIEW; PR #48 / Issue #47 closed selected-child identity continuity. Current main is `598f22db7a2795fa618eef03ce03b5964567fb83`.
+No open P0 remains in the validated Home→LEARN/REVIEW/REPAIR slice. Issue #41 / PR #42 closed the Home→REVIEW selection gap and stale due-task mismatch; Issue #43 / PR #44 closed the supported FAST_TRACK failure→REPAIR lifecycle; PR #46 / Issue #45 completed cross-lesson REVIEW; PR #48 / Issue #47 closed selected-child identity continuity. Executable audit baseline: `598f22db7a2795fa618eef03ce03b5964567fb83`; current main including the documentation-only PR #63 is `6c4605d41eec164a89fa4b10109b04cf97168355`.
 
 ### Resolved P0
 
