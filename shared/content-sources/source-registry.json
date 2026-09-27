@@ -388,8 +388,7 @@
           "supportsClaims": [
             "ATTRIBUTION",
             "ITEM_LEVEL_LICENSE",
-            "AUDIO_LICENSE_SCOPE",
-            "SOURCE_DESCRIPTION"
+            "AUDIO_LICENSE_SCOPE"
           ]
         }
       ],
@@ -454,7 +453,7 @@
           "responseSha256": "746d2c8506a1438cd73e2e8c133a14c803c0907d6343cb496a18f0923b08561c",
           "responseBytes": 10336,
           "supportsClaims": [
-            "SOURCE_DESCRIPTION"
+            "SOURCE_ACCESS_STATUS"
           ]
         }
       ],

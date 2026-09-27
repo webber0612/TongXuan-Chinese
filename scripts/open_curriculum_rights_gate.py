@@ -71,12 +71,27 @@ def _is_candidate(path: str) -> bool:
     return path in SCOPE_FILES or path.startswith(SCOPE_PREFIXES)
 
 
-def _sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as stream:
-        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+def _content_snapshot(path: Path) -> tuple[str, int, str]:
+    """Return a platform-stable digest, canonical byte count, and locked mode.
+
+    Git checkouts may materialize text with LF or CRLF depending on platform.
+    Normalize text line endings before hashing so the inventory detects content
+    drift without treating checkout configuration as a rights change. Binary
+    files are hashed byte-for-byte.
+    """
+    content = path.read_bytes()
+    if b"\x00" in content:
+        mode = "BINARY_RAW"
+    else:
+        try:
+            content.decode("utf-8")
+        except UnicodeDecodeError:
+            mode = "BINARY_RAW"
+        else:
+            mode = "TEXT_LF_NORMALIZED"
+    if mode == "TEXT_LF_NORMALIZED":
+        content = content.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+    return hashlib.sha256(content).hexdigest(), len(content), mode
 
 
 def seed_inventory_template() -> dict[str, Any]:
@@ -84,6 +99,7 @@ def seed_inventory_template() -> dict[str, Any]:
     entries = []
     for relative in sorted(path for path in _tracked_paths() if _is_candidate(path)):
         source_path = ROOT / Path(relative)
+        digest, size, digest_mode = _content_snapshot(source_path)
         entries.append(
             {
                 "path": relative,
@@ -93,8 +109,9 @@ def seed_inventory_template() -> dict[str, Any]:
                 "rootMitApplies": False,
                 "publishableArtifactAllowed": False,
                 "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
-                "sha256": _sha256(source_path),
-                "sizeBytes": source_path.stat().st_size,
+                "digestMode": digest_mode,
+                "sha256": digest,
+                "sizeBytes": size,
             }
         )
     return {
@@ -105,7 +122,7 @@ def seed_inventory_template() -> dict[str, Any]:
         "scope": {
             "candidatePrefixes": list(SCOPE_PREFIXES),
             "candidateExactPaths": sorted(SCOPE_FILES),
-            "method": "Enumerate tracked data, curriculum, media, and known embedded-content modules; record path, size, and SHA-256 only. No source corpus is downloaded.",
+            "method": "Enumerate tracked data, curriculum, media, and known embedded-content modules; record path, canonical size, digest mode, and SHA-256 only. Text uses UTF-8 with LF-normalized line endings; binary is hashed byte-for-byte. No source corpus is downloaded.",
             "limitations": [
                 "Path and digest inventory does not detect paraphrase, copying, embedded data, or authorship.",
                 "A source link or public availability is not a reuse grant.",
@@ -145,6 +162,14 @@ def validate_inventory(audit: Mapping[str, Any]) -> list[str]:
         for item in registry.get("sources", [])
         if isinstance(item, Mapping) and isinstance(item.get("sourceId"), str)
     }
+    evidence_source_by_id: dict[str, str] = {}
+    for source_id, source in sources.items():
+        evidence_records = source.get("rightsEvidence", [])
+        if not isinstance(evidence_records, list):
+            continue
+        for evidence in evidence_records:
+            if isinstance(evidence, Mapping) and isinstance(evidence.get("evidenceId"), str):
+                evidence_source_by_id[evidence["evidenceId"]] = source_id
 
     for index, entry in enumerate(entries):
         if not isinstance(entry, Mapping):
@@ -176,18 +201,15 @@ def validate_inventory(audit: Mapping[str, Any]) -> list[str]:
         if source_ids and (not isinstance(entry.get("sourceRelationship"), str) or not entry["sourceRelationship"].strip()):
             errors.append(f"AUDIT_SOURCE_RELATIONSHIP_MISSING: {path}")
         evidence_ids = entry.get("evidenceIds")
-        evidence_ids_valid = isinstance(evidence_ids, list) and all(
-            isinstance(evidence_id, str)
-            and any(
-                isinstance(evidence, Mapping) and evidence.get("evidenceId") == evidence_id
-                for source in sources.values()
-                for evidence in source.get("rightsEvidence", [])
-            )
-            for evidence_id in evidence_ids
-        )
-        if not evidence_ids_valid:
+        if not isinstance(evidence_ids, list):
             errors.append(f"AUDIT_EVIDENCE_UNRESOLVED: {path}")
             evidence_ids = []
+        else:
+            for evidence_id in evidence_ids:
+                if not isinstance(evidence_id, str) or evidence_id not in evidence_source_by_id:
+                    errors.append(f"AUDIT_EVIDENCE_UNRESOLVED: {path}")
+                elif evidence_source_by_id[evidence_id] not in source_ids:
+                    errors.append(f"AUDIT_EVIDENCE_SOURCE_MISMATCH: {path}:{evidence_id}")
         if isinstance(classification, str) and classification in {"OWNED", "OPEN_LICENSED"}:
             if entry.get("publishableArtifactAllowed") is not True or not evidence_ids:
                 errors.append(f"AUDIT_CLEARANCE_UNSUPPORTED: {path}")
@@ -200,10 +222,15 @@ def validate_inventory(audit: Mapping[str, Any]) -> list[str]:
             errors.append(f"BLOCKED_AUDIT_ENTRY_MARKED_PUBLISHABLE: {path}")
 
         source_path = ROOT / Path(path)
-        actual_digest = _sha256(source_path)
+        actual_digest, actual_size, actual_mode = _content_snapshot(source_path)
+        digest_mode = entry.get("digestMode")
+        if not isinstance(digest_mode, str) or digest_mode not in {"TEXT_LF_NORMALIZED", "BINARY_RAW"}:
+            errors.append(f"AUDIT_DIGEST_MODE_INVALID: {path}")
+        elif digest_mode != actual_mode:
+            errors.append(f"AUDIT_DIGEST_MODE_MISMATCH: {path}")
         if entry.get("sha256") != actual_digest:
             errors.append(f"AUDIT_CONTENT_DIGEST_MISMATCH: {path}")
-        if entry.get("sizeBytes") != source_path.stat().st_size:
+        if entry.get("sizeBytes") != actual_size:
             errors.append(f"AUDIT_CONTENT_SIZE_MISMATCH: {path}")
 
     for path in sorted(tracked - declared):
@@ -273,6 +300,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true", help="validate registry and tracked-path audit")
     parser.add_argument("--seed-inventory", action="store_true", help="write a blocked-by-default inventory template")
+    parser.add_argument("--refresh-digests", action="store_true", help="refresh digest mode, SHA-256, and canonical size while preserving classifications")
     parser.add_argument("--publishable-path", action="append", default=[], help="repo-relative path proposed for a public curriculum artifact")
     parser.add_argument("--publishable-pack", type=Path, help="validate a candidate curriculum pack for publication")
     args = parser.parse_args(argv)
@@ -280,6 +308,19 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.seed_inventory:
         AUDIT_PATH.write_text(json.dumps(seed_inventory_template(), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         print(f"Wrote blocked-by-default inventory template: {AUDIT_PATH.relative_to(ROOT)}")
+        return 0
+
+    if args.refresh_digests:
+        audit = _read_json(AUDIT_PATH)
+        for entry in audit.get("entries", []):
+            if not isinstance(entry, dict) or not isinstance(entry.get("path"), str):
+                raise ValueError("Cannot refresh a malformed inventory entry")
+            digest, size, digest_mode = _content_snapshot(ROOT / Path(entry["path"]))
+            entry["digestMode"] = digest_mode
+            entry["sha256"] = digest
+            entry["sizeBytes"] = size
+        AUDIT_PATH.write_text(json.dumps(audit, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        print(f"Refreshed canonical inventory digests: {AUDIT_PATH.relative_to(ROOT)}")
         return 0
 
     errors: list[str] = []

@@ -23,6 +23,37 @@ SCHEMA_DIR = ROOT / "shared" / "open-curriculum" / "schemas"
 PACK_SCHEMA_PATH = SCHEMA_DIR / "open-curriculum.schema.json"
 SOURCE_SCHEMA_PATH = SCHEMA_DIR / "source-registry.schema.json"
 SOURCE_REGISTRY_PATH = ROOT / "shared" / "content-sources" / "source-registry.json"
+EVIDENCE_KIND_ALLOWED_CLAIMS = {
+    "LICENSE_NOTICE": {
+        "LICENSE_IDENTITY",
+        "COMMERCIAL_USE",
+        "MODIFICATION",
+        "REDISTRIBUTION",
+        "ATTRIBUTION",
+        "SHARE_ALIKE",
+        "RAW_INGESTION",
+        "PUBLIC_REPOSITORY",
+        "DERIVATIVE_USE",
+        "ITEM_LEVEL_LICENSE",
+        "AUDIO_LICENSE_SCOPE",
+    },
+    "TERMS_OF_USE": {
+        "LICENSE_IDENTITY",
+        "COMMERCIAL_USE",
+        "MODIFICATION",
+        "REDISTRIBUTION",
+        "ATTRIBUTION",
+        "SHARE_ALIKE",
+        "RAW_INGESTION",
+        "PUBLIC_REPOSITORY",
+        "DERIVATIVE_USE",
+        "ITEM_LEVEL_LICENSE",
+        "AUDIO_LICENSE_SCOPE",
+    },
+    "SOURCE_DESCRIPTION": {"SOURCE_DESCRIPTION"},
+    "PROJECT_POLICY": {"PROJECT_POLICY", "CONTENT_LICENSE_SEPARATION"},
+    "INACCESSIBLE_PRIMARY_SOURCE": {"SOURCE_ACCESS_STATUS"},
+}
 
 
 @dataclass(frozen=True, order=True)
@@ -110,6 +141,18 @@ def validate_source_registry(source_registry: Mapping[str, Any]) -> list[Validat
                             issues.append(ValidationIssue("RIGHTS_EVIDENCE_ID_DUPLICATE", evidence_path, f"Evidence ID {evidence_id!r} must be globally unique."))
                         global_evidence_ids.add(evidence_id)
                         source_evidence_ids.add(evidence_id)
+                        evidence_kind = evidence.get("evidenceKind")
+                        allowed_claims = EVIDENCE_KIND_ALLOWED_CLAIMS.get(evidence_kind, set()) if isinstance(evidence_kind, str) else set()
+                        claims = evidence.get("supportsClaims", [])
+                        if isinstance(claims, list) and any(
+                            not isinstance(claim, str) or claim not in allowed_claims
+                            for claim in claims
+                        ):
+                            issues.append(ValidationIssue(
+                                "RIGHTS_EVIDENCE_CLAIM_KIND_MISMATCH",
+                                f"/sources/{index}/rightsEvidence/{evidence_index}/supportsClaims",
+                                "A claim type must be supported by the recorded evidence kind; inaccessible pages cannot support permission claims.",
+                            ))
                 if isinstance(source_id, str) and source_id:
                     evidence_by_source[source_id] = source_evidence_ids
 
@@ -180,7 +223,12 @@ def validate_source_registry(source_registry: Mapping[str, Any]) -> list[Validat
                                 continue
                             claims = evidence.get("supportsClaims", [])
                             if isinstance(claims, list):
-                                linked_claims.update(claim for claim in claims if isinstance(claim, str))
+                                evidence_kind = evidence.get("evidenceKind")
+                                allowed_claims = EVIDENCE_KIND_ALLOWED_CLAIMS.get(evidence_kind, set()) if isinstance(evidence_kind, str) else set()
+                                linked_claims.update(
+                                    claim for claim in claims
+                                    if isinstance(claim, str) and claim in allowed_claims
+                                )
                     missing_claims = {
                         claim
                         for field, claim in claim_by_permission.items()

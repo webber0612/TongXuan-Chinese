@@ -12,6 +12,7 @@ sys.path.insert(0, str(REPOSITORY_ROOT))
 
 from scripts.open_curriculum_rights_gate import (
     AUDIT_PATH,
+    _content_snapshot,
     _is_candidate,
     validate_inventory,
     validate_publishable_paths,
@@ -74,11 +75,43 @@ def test_inventory_digest_drift_requires_reaudit():
     assert any(error.startswith("AUDIT_CONTENT_DIGEST_MISMATCH:") for error in errors)
 
 
+def test_text_inventory_digest_is_stable_across_checkout_line_endings(tmp_path):
+    path = tmp_path / "text.json"
+    path.write_bytes(b'{"lesson": 1}\r\n')
+    windows_snapshot = _content_snapshot(path)
+    path.write_bytes(b'{"lesson": 1}\n')
+    linux_snapshot = _content_snapshot(path)
+    assert windows_snapshot == linux_snapshot
+    assert windows_snapshot[2] == "TEXT_LF_NORMALIZED"
+
+
+def test_binary_inventory_digest_remains_byte_exact(tmp_path):
+    path = tmp_path / "image.bin"
+    path.write_bytes(b"\x89PNG\r\n\x00\x1a")
+    first = _content_snapshot(path)
+    path.write_bytes(b"\x89PNG\n\x00\x1a")
+    second = _content_snapshot(path)
+    assert first[2] == second[2] == "BINARY_RAW"
+    assert first[0] != second[0]
+
+
 def test_source_ids_require_explicit_relationship_role():
     audit = load_audit()
     entry = next(item for item in audit["entries"] if item.get("sourceIds"))
     entry.pop("sourceRelationship", None)
     assert f"AUDIT_SOURCE_RELATIONSHIP_MISSING: {entry['path']}" in validate_inventory(audit)
+
+
+def test_inventory_evidence_must_belong_to_a_declared_source():
+    audit = load_audit()
+    entry = next(item for item in audit["entries"] if len(item.get("sourceIds", [])) == 1 and item.get("evidenceIds"))
+    declared_source_id = entry["sourceIds"][0]
+    other_source = next(
+        source for source in load_default_source_registry()["sources"]
+        if source["sourceId"] != declared_source_id and source.get("rightsEvidence")
+    )
+    entry["evidenceIds"] = [other_source["rightsEvidence"][0]["evidenceId"]]
+    assert f"AUDIT_EVIDENCE_SOURCE_MISMATCH: {entry['path']}:{entry['evidenceIds'][0]}" in validate_inventory(audit)
 
 
 def test_missing_green_source_evidence_and_unknown_permissions_fail_closed():
@@ -145,10 +178,32 @@ def test_green_permission_claims_must_resolve_to_linked_evidence():
     }
 
 
+def test_evidence_kind_must_be_capable_of_supporting_declared_rights_claims():
+    registry = load_default_source_registry()
+    source = next(item for item in registry["sources"] if item["sourceId"] == "cc-cedict")
+    for evidence in source["rightsEvidence"]:
+        evidence["evidenceKind"] = "SOURCE_DESCRIPTION"
+    codes = {issue.code for issue in validate_source_registry(registry)}
+    assert "RIGHTS_EVIDENCE_CLAIM_KIND_MISMATCH" in codes
+    assert "GREEN_RIGHTS_EVIDENCE_MISSING" in codes
+    assert "GREEN_PERMISSION_EVIDENCE_MISSING" in codes
+
+    registry = load_default_source_registry()
+    source = next(item for item in registry["sources"] if item["sourceId"] == "mozilla-common-voice")
+    source["rightsEvidence"][0]["supportsClaims"] = ["PUBLIC_REPOSITORY"]
+    assert "RIGHTS_EVIDENCE_CLAIM_KIND_MISMATCH" in {
+        issue.code for issue in validate_source_registry(registry)
+    }
+
+
 def test_malformed_inventory_entry_fails_closed_without_crashing():
     audit = load_audit()
     audit["entries"][0]["classification"] = {"unexpected": "object"}
     assert validate_inventory(audit)
+
+    audit = load_audit()
+    audit["entries"][0]["digestMode"] = ["unexpected"]
+    assert any(error.startswith("AUDIT_DIGEST_MODE_INVALID:") for error in validate_inventory(audit))
 
 
 def test_root_license_does_not_claim_content_rights():

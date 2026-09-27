@@ -23,6 +23,8 @@ AUTHORITATIVE FRAMEWORK / LEGALLY USABLE SOURCES
 
 [`shared/content-sources/source-registry.json`](../shared/content-sources/source-registry.json) is the source-of-truth registry for curriculum sources. Each source record contains source/authority identity, ownership, license scope, commercial/modification/redistribution/attribution/share-alike/raw-ingestion/public-repository/derivative permissions, validation-only and item-level flags, evidence records, a policy decision, verification date, and constraints. Every rights decision links its evidence IDs to records containing the evidence URL, locator, observation date, capture method, supported claim types, a SHA-256 of the UTF-8 response-text representation when captured, and a concise claim summary. Evidence records store no third-party corpus rows or substantial source excerpts.
 
+The validator enforces claim-kind compatibility: only `LICENSE_NOTICE` / `TERMS_OF_USE` evidence can support license and permission claims; `SOURCE_DESCRIPTION`, `PROJECT_POLICY`, and `INACCESSIBLE_PRIMARY_SOURCE` evidence are limited to their corresponding descriptive, project-policy, or access-status claims. Unsupported claim-kind pairs cannot satisfy a GREEN rights decision. Public-repository inventory evidence IDs must also belong to one of the source IDs declared by that exact inventory entry; a globally valid ID from another source is insufficient.
+
 The registry's `rightsDecision` joins the evidence to the project's operational decision. Its outcome must match `legalStatus` exactly:
 
 | Status | Pipeline behavior |
