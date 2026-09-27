@@ -687,11 +687,14 @@ def validate_curriculum_pack(
             if not provenance:
                 add("MISSING_PROVENANCE", _path(object_path, "sourceProvenance"), "Every publishable target or authored example requires source provenance.")
     evidence_ids: set[str] = set()
+    evidence_records: dict[str, Mapping[str, Any]] = {}
     for object_path, value in _walk(pack):
         evidence_id = value.get("evidenceId")
         if isinstance(evidence_id, str) and evidence_id:
             if evidence_id in evidence_ids:
                 add("DUPLICATE_EVIDENCE_ID", _path(object_path, "evidenceId"), f"Evidence ID {evidence_id!r} is duplicated.")
+            else:
+                evidence_records[evidence_id] = value
             evidence_ids.add(evidence_id)
     for object_path, value in _walk(pack):
         refs = value.get("evidenceIds")
@@ -727,6 +730,133 @@ def validate_curriculum_pack(
                     add("SOURCE_REDISTRIBUTION_NOT_CLEARED", _path(object_path, "sourceId"), "Publishable content requires explicit YES for public-repository use.")
                 if raw_included and (not raw_ingestion_cleared or not public_repo_cleared):
                     add("UNLICENSED_RAW_CONTENT", _path(object_path, "rawContentIncluded"), "Raw content requires explicit YES for ingestion and public-repository use.")
+
+    # Vocabulary and grammar claims must point to reviewed evidence attached to
+    # that same graph node. Global existence alone is not a provenance link.
+    claimable_types = {"VOCABULARY", "GRAMMAR"}
+    for target_type, group in node_groups.items():
+        if target_type not in claimable_types or not isinstance(group, list):
+            continue
+        for index, node in enumerate(group):
+            if not isinstance(node, Mapping):
+                continue
+            node_path = _path("/graph", graph_paths[target_type], index)
+            local_evidence_ids = {
+                value.get("evidenceId")
+                for _, value in _walk(node)
+                if isinstance(value, Mapping)
+                and isinstance(value.get("evidenceId"), str)
+            }
+
+            def validate_claim_references(field_path: str, refs: Any, expected_claim: str) -> None:
+                if not isinstance(refs, list):
+                    return
+                for ref_index, evidence_id in enumerate(refs):
+                    ref_path = _path(field_path, ref_index)
+                    if not isinstance(evidence_id, str) or evidence_id not in evidence_ids:
+                        continue  # The shared reference pass emitted EVIDENCE_NOT_REGISTERED.
+                    if evidence_id not in local_evidence_ids:
+                        add(
+                            "CROSS_NODE_GRAPH_EVIDENCE",
+                            ref_path,
+                            f"Evidence {evidence_id!r} must be attached to the same graph node as this claim.",
+                        )
+                        continue
+                    evidence_record = evidence_records.get(evidence_id)
+                    claims = evidence_record.get("supportsClaims", []) if isinstance(evidence_record, Mapping) else []
+                    if not isinstance(claims, list) or expected_claim not in claims:
+                        add(
+                            "GRAPH_EVIDENCE_CLAIM_MISMATCH",
+                            ref_path,
+                            f"Evidence {evidence_id!r} does not declare support for {expected_claim}.",
+                        )
+                    if (
+                        publishable
+                        and isinstance(evidence_record, Mapping)
+                        and evidence_record.get("reviewStatus") not in {"EVIDENCE_CHECKED", "ARCHITECT_APPROVED"}
+                    ):
+                        add(
+                            "GRAPH_CLAIM_EVIDENCE_UNVERIFIED",
+                            ref_path,
+                            f"Publishable graph claims require checked evidence; {evidence_id!r} is {evidence_record.get('reviewStatus')!r}.",
+                        )
+
+            for difficulty_field in ("difficultyEvidence", "levelEvidence"):
+                difficulty = node.get(difficulty_field)
+                if isinstance(difficulty, Mapping):
+                    validate_claim_references(
+                        _path(node_path, difficulty_field, "evidenceIds"),
+                        difficulty.get("evidenceIds"),
+                        "TARGET_DIFFICULTY",
+                    )
+            for field, expected_claim in (
+                ("receptiveRequirement", "RECEPTIVE_REQUIREMENT"),
+                ("productiveRequirement", "PRODUCTIVE_REQUIREMENT"),
+            ):
+                requirement = node.get(field)
+                if isinstance(requirement, Mapping):
+                    validate_claim_references(
+                        _path(node_path, field, "evidenceIds"),
+                        requirement.get("evidenceIds"),
+                        expected_claim,
+                    )
+
+            if target_type == "VOCABULARY":
+                frequency_evidence = node.get("frequencyEvidence", [])
+                if isinstance(frequency_evidence, list):
+                    for evidence_index, evidence_record in enumerate(frequency_evidence):
+                        if not isinstance(evidence_record, Mapping):
+                            continue
+                        evidence_path = _path(node_path, "frequencyEvidence", evidence_index)
+                        claims = evidence_record.get("supportsClaims", [])
+                        if not isinstance(claims, list) or "VOCABULARY_FREQUENCY" not in claims:
+                            add(
+                                "GRAPH_EVIDENCE_CLAIM_MISMATCH",
+                                _path(evidence_path, "supportsClaims"),
+                                "Frequency evidence must declare VOCABULARY_FREQUENCY support.",
+                            )
+                        if (
+                            publishable
+                            and evidence_record.get("reviewStatus") not in {"EVIDENCE_CHECKED", "ARCHITECT_APPROVED"}
+                        ):
+                            add(
+                                "GRAPH_CLAIM_EVIDENCE_UNVERIFIED",
+                                _path(evidence_path, "reviewStatus"),
+                                "Publishable frequency claims require checked evidence.",
+                            )
+            else:
+                sequence_policy = node.get("receptiveProductivePolicy")
+                receptive = node.get("receptiveRequirement", {})
+                productive = node.get("productiveRequirement", {})
+                receptive_required = isinstance(receptive, Mapping) and receptive.get("required") is True
+                productive_required = isinstance(productive, Mapping) and productive.get("required") is True
+                if sequence_policy == "RECEPTIVE_BEFORE_PRODUCTIVE" and not (receptive_required and productive_required):
+                    add(
+                        "GRAMMAR_SEQUENCE_POLICY_INCONSISTENT",
+                        _path(node_path, "receptiveProductivePolicy"),
+                        "RECEPTIVE_BEFORE_PRODUCTIVE requires both receptive and productive requirements.",
+                    )
+                elif sequence_policy == "NOT_APPLICABLE" and productive_required:
+                    add(
+                        "GRAMMAR_SEQUENCE_POLICY_INCONSISTENT",
+                        _path(node_path, "receptiveProductivePolicy"),
+                        "NOT_APPLICABLE requires productive learning to be explicitly not required.",
+                    )
+                policy_evidence_ids = node.get("receptiveProductivePolicyEvidenceIds", [])
+                policy_path = _path(node_path, "receptiveProductivePolicyEvidenceIds")
+                if sequence_policy != "UNRESOLVED" and not policy_evidence_ids:
+                    add("GRAMMAR_SEQUENCE_POLICY_EVIDENCE_REQUIRED", policy_path, "A resolved grammar sequencing policy requires supporting evidence.")
+                validate_claim_references(
+                    policy_path,
+                    policy_evidence_ids,
+                    "RECEPTIVE_PRODUCTIVE_POLICY",
+                )
+                if sequence_policy == "UNRESOLVED" and (publishable or node.get("approvalStatus") == "ARCHITECT_APPROVED"):
+                    add(
+                        "UNRESOLVED_GRAMMAR_SEQUENCE_POLICY",
+                        _path(node_path, "receptiveProductivePolicy"),
+                        "An unresolved grammar sequencing policy cannot be approved or published.",
+                    )
 
     if publishable:
         for object_path, value in _walk(pack):
