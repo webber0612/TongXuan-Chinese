@@ -1,0 +1,259 @@
+{
+  "schemaVersion": "v2.0",
+  "lessonId": "starter-l02",
+  "stageId": "starter",
+  "lessonNumber": 2,
+  "curriculumSource": {
+    "kind": "OFFICIAL_OCAC",
+    "series": "學華語向前走",
+    "book": "入門冊 A",
+    "lesson": "第2課",
+    "title": "我七歲",
+    "url": "https://www.huayuworld.org/Ebook/ebookDetail?EID=623",
+    "provenanceStatus": "VERIFIED_OFFICIAL_TITLE",
+    "licenseStatus": "PERMISSION_REQUIRED",
+    "commercialReady": false
+  },
+  "objectives": [
+    "原創練習：辨認「我」與「七」的注音、拼音。",
+    "原創練習：聆聽並練習說出年齡句。",
+    "原創練習：選出表示七歲的句子。"
+  ],
+  "textBlocks": [
+    {
+      "id": "starter-l02-authored-age-example",
+      "text": "我今年七歲。",
+      "pinyin": "wǒ jīn nián qī suì",
+      "zhuyin": "ㄨㄛˇ ㄐㄧㄣ ㄋㄧㄢˊ ㄑㄧ ㄙㄨㄟˋ",
+      "authorship": "TONGXUAN_AUTHORED_PRACTICE"
+    }
+  ],
+  "vocabulary": [
+    {
+      "id": "starter-l02-authored-age-word",
+      "written": "七歲",
+      "pronunciation": { "pinyin": "qī suì", "zhuyin": "ㄑㄧ ㄙㄨㄟˋ" },
+      "meaning": { "zh": "年齡是七歲", "en": "seven years old" },
+      "usage": ["我今年七歲。"],
+      "learningRole": "ACTIVE",
+      "reviewStatus": "REVIEWED",
+      "authorship": "TONGXUAN_AUTHORED"
+    }
+  ],
+  "characters": [
+    {
+      "char": "我",
+      "pronunciation": { "pinyin": "wǒ", "zhuyin": "ㄨㄛˇ" },
+      "meaning": { "zh": "自己", "en": "I; me" },
+      "writingRequired": false,
+      "learningRole": "RECOGNIZE",
+      "strokeCount": 7,
+      "radical": "戈",
+      "authorship": "TONGXUAN_AUTHORED"
+    },
+    {
+      "char": "七",
+      "pronunciation": { "pinyin": "qī", "zhuyin": "ㄑㄧ" },
+      "meaning": { "zh": "數字七", "en": "seven" },
+      "writingRequired": false,
+      "learningRole": "RECOGNIZE",
+      "strokeCount": 2,
+      "radical": "一",
+      "authorship": "TONGXUAN_AUTHORED"
+    }
+  ],
+  "sentencePatterns": [],
+  "nativeLanguageSupport": {
+    "defaultLanguage": "en",
+    "mode": "FULL",
+    "entries": {
+      "age_example": {
+        "naturalMeaning": "I am seven years old.",
+        "notes": "TongXuan-authored example sentence; not quoted from the course source.",
+        "reviewStatus": "REVIEWED"
+      }
+    }
+  },
+  "culturalNotes": [],
+  "taskBlueprint": {
+    "learnSteps": [
+      {
+        "stepNumber": 1,
+        "stepKey": "context",
+        "domain": "listening",
+        "title": "聽聽年齡句",
+        "subtitle": "聆聽一個原創年齡例句",
+        "primaryAction": "聆聽",
+        "estimatedMinutes": 2,
+        "required": true,
+        "data": {
+          "prompt": "聽一聽原創練習句。",
+          "audioText": "我今年七歲。",
+          "sceneLabel": "情境：練習表達自己的年齡",
+          "scaffoldKey": "age_example",
+          "authorship": "TONGXUAN_AUTHORED_PRACTICE"
+        }
+      },
+      {
+        "stepNumber": 2,
+        "stepKey": "vocabulary",
+        "domain": "vocabulary",
+        "title": "年齡表達",
+        "subtitle": "辨認表示七歲的句子",
+        "primaryAction": "選出句子",
+        "estimatedMinutes": 3,
+        "required": true,
+        "data": {
+          "prompt": "哪一句表示七歲？",
+          "word": "七歲",
+          "pinyin": "qī suì",
+          "zhuyin": "ㄑㄧ ㄙㄨㄟˋ",
+          "exampleSentence": "我今年七歲。",
+          "scaffoldKey": "age_example",
+          "choices": [
+            { "id": "age-seven", "label": "我今年七歲。" },
+            { "id": "age-eight", "label": "我今年八歲。" }
+          ],
+          "correctChoiceId": "age-seven",
+          "authorship": "TONGXUAN_AUTHORED_PRACTICE"
+        }
+      },
+      {
+        "stepNumber": 3,
+        "stepKey": "exit_ticket",
+        "domain": "phonetics",
+        "title": "注音與拼音",
+        "subtitle": "認讀本課標題中的字音",
+        "primaryAction": "選擇字音",
+        "estimatedMinutes": 5,
+        "required": true,
+        "data": {
+          "prompt": "選出與目標字相符的注音或拼音。",
+          "questions": [
+            {
+              "id": "traditional-1",
+              "character": "我",
+              "script": "TRADITIONAL",
+              "choices": [
+                { "id": "choice-a", "label": "ㄨㄛˇ" },
+                { "id": "choice-b", "label": "ㄨㄛˋ" }
+              ],
+              "correctChoiceId": "choice-a",
+              "authorship": "TONGXUAN_AUTHORED_PRACTICE"
+            },
+            {
+              "id": "simplified-1",
+              "character": "我",
+              "script": "SIMPLIFIED",
+              "choices": [
+                { "id": "choice-a", "label": "wǒ" },
+                { "id": "choice-b", "label": "wò" }
+              ],
+              "correctChoiceId": "choice-a",
+              "authorship": "TONGXUAN_AUTHORED_PRACTICE"
+            },
+            {
+              "id": "traditional-2",
+              "character": "七",
+              "script": "TRADITIONAL",
+              "choices": [
+                { "id": "choice-a", "label": "ㄑㄧˇ" },
+                { "id": "choice-b", "label": "ㄑㄧ" }
+              ],
+              "correctChoiceId": "choice-b",
+              "authorship": "TONGXUAN_AUTHORED_PRACTICE"
+            },
+            {
+              "id": "simplified-2",
+              "character": "七",
+              "script": "SIMPLIFIED",
+              "choices": [
+                { "id": "choice-a", "label": "qí" },
+                { "id": "choice-b", "label": "qī" }
+              ],
+              "correctChoiceId": "choice-b",
+              "authorship": "TONGXUAN_AUTHORED_PRACTICE"
+            }
+          ],
+          "authorship": "TONGXUAN_AUTHORED_PRACTICE"
+        }
+      },
+      {
+        "stepNumber": 4,
+        "stepKey": "speaking",
+        "domain": "speaking",
+        "title": "說說年齡",
+        "subtitle": "用一句原創例句練習口說",
+        "primaryAction": "開始錄音",
+        "estimatedMinutes": 3,
+        "required": true,
+        "data": {
+          "speakingPrompt": {
+            "instruction": "請跟著原創例句練習說出年齡。",
+            "expectedText": "我今年七歲。",
+            "audioPolicy": "LOCAL_ONLY"
+          },
+          "authorship": "TONGXUAN_AUTHORED_PRACTICE"
+        }
+      },
+      {
+        "stepNumber": 5,
+        "stepKey": "mini_check",
+        "domain": null,
+        "title": "練習回顧",
+        "subtitle": "回想今天做過的練習",
+        "primaryAction": "繼續",
+        "estimatedMinutes": 1,
+        "required": true,
+        "data": {
+          "mode": "reflection",
+          "authorship": "TONGXUAN_AUTHORED_PRACTICE"
+        }
+      },
+      {
+        "stepNumber": 6,
+        "stepKey": "wrap_up",
+        "domain": null,
+        "title": "今日練習完成",
+        "subtitle": "TongXuan 原創練習完成",
+        "primaryAction": "結束練習",
+        "estimatedMinutes": 1,
+        "required": true,
+        "data": {
+          "wrapUpSummary": {
+            "completionText": "入門冊第二課原創練習完成。",
+            "masteryNotice": "課程授權仍須另行確認；精熟度依有效證據判定。"
+          },
+          "authorship": "TONGXUAN_AUTHORED_PRACTICE"
+        }
+      }
+    ],
+    "fastTrackSteps": [],
+    "reviewSteps": [],
+    "repairStepsByDomain": {}
+  },
+  "masteryPolicy": {
+    "domainRequirements": {
+      "listening": { "gateType": "NON_SCORE_GATE" },
+      "speaking": { "gateType": "NON_SCORE_GATE" },
+      "recognition": { "gateType": "SCORED", "passScore": 0.75 },
+      "writing": { "gateType": "NON_SCORE_GATE" },
+      "reading": { "gateType": "SCORED", "passScore": 0.75 },
+      "phonetics": { "gateType": "SCORED", "passScore": 0.75 },
+      "pronunciation": { "gateType": "NON_SCORE_GATE" },
+      "vocabulary": { "gateType": "SCORED", "passScore": 0.75 },
+      "grammar": { "gateType": "SCORED", "passScore": 0.75 }
+    },
+    "fastTrackPassThreshold": 1.0,
+    "srsIntervalsMinutes": [10, 1440, 4320, 10080]
+  },
+  "difficultyProfile": {
+    "pacing": "GENTLE",
+    "targetMinutes": { "learn": 15, "fastTrack": 3, "review": 2, "repair": 4 }
+  },
+  "provenance": {
+    "authorship": "TONGXUAN_PEDAGOGY_WRAPPER",
+    "curriculumSourceProvenance": "VERIFIED_OFFICIAL_TITLE",
+    "licenseNote": "Only verified official title/source metadata is included. All tasks and examples are TongXuan-authored; OCAC permission is still required."
+  }
+}

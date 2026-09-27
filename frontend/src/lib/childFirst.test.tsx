@@ -181,6 +181,86 @@ describe("child-first shell contracts", () => {
     vi.unstubAllGlobals();
   });
 
+  it("launches unlocked starter-l02 from canonical Home into the exact Lesson Player task plan", async () => {
+    localStorage.clear();
+    localStorage.setItem(DISPLAY_LANGUAGE_KEY, "zh-Hant");
+    persistSelectedBackendChild(31, "L2 Learner");
+    window.history.replaceState({}, "", "/");
+    const requestLog: Array<{ url: string; method: string; body?: any }> = [];
+    const session = authoritativeSessionFixture("starter-l02", "home-l2-session", {}, {}, false, false, 31);
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+      const body = init?.body ? JSON.parse(init.body as string) : undefined;
+      requestLog.push({ url, method, body });
+      if (url.endsWith("/api/children")) return new Response(JSON.stringify([{ id: 31, name: "L2 Learner" }]), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.endsWith("/api/children/31/learning-daily-queue")) return new Response(JSON.stringify({
+        childId: 31, asOf: "2026-09-25T08:00:00Z", placementStart: "STARTER",
+        review: { sourceQueue: "REVIEW", dueCount: 0, items: [] },
+        newLesson: { sourceQueue: "CURRICULUM", lessonId: "starter-l02", title: "我七歲", domains: ["listening", "vocabulary", "phonetics", "speaking"], status: "AVAILABLE", availableInLearningFlowV1: true },
+        completedLesson: { sourceQueue: "CURRICULUM", lessonId: "starter-l01", title: "你好", domains: ["listening", "recognition", "speaking", "writing"], status: "MASTERED" },
+        currentLessonComplete: false, nextLessonComingSoon: false, nextAccessibleLesson: null, activeSession: null,
+        schoolQueueSeparate: true, targetMinutes: 18,
+      }), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.endsWith("/api/children/31/learning-sessions/current")) return new Response("null", { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.endsWith("/api/children/31/learning-sessions") && method === "POST") return new Response(JSON.stringify(session), { status: 200, headers: { "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({}), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    document.body.innerHTML = '<div id="root"></div>';
+    const root = createRoot(document.getElementById("root")!);
+    await act(async () => { root.render(React.createElement(AppShell)); await new Promise((resolve) => setTimeout(resolve, 45)); });
+    const cta = document.querySelector(".hero-primary-cta-row .launch-quiz-cta-btn") as HTMLButtonElement;
+    expect(cta).toBeTruthy();
+    await import("../pages/LessonPlayerPage");
+    await act(async () => { cta.click(); await new Promise((resolve) => setTimeout(resolve, 60)); });
+
+    expect(window.location.pathname).toBe("/TongXuan-Chinese/learning-session");
+    expect(document.querySelector("main.lesson-player-container")).toBeTruthy();
+    expect(document.querySelector(".mode-badge.mode-learn")).toBeTruthy();
+    expect(document.querySelector(".player-lesson-title")?.textContent).toBe("我七歲");
+    expect(document.querySelector('.lesson-step-card[data-step-key="context"]')).toBeTruthy();
+    const startRequest = requestLog.find((entry) => entry.url.endsWith("/api/children/31/learning-sessions") && entry.method === "POST");
+    expect(startRequest?.body).toMatchObject({ lesson_id: "starter-l02" });
+    expect(session.tasks.map((task) => task.id)).toContain("home-l2-session:vocabulary");
+    expect(requestLog.some((entry) => entry.url.includes("/api/children/1/learning-sessions"))).toBe(false);
+
+    await act(async () => { root.unmount(); });
+    vi.unstubAllGlobals();
+  });
+
+  it("keeps the normal canonical Home CTA in LEARN and does not retarget the existing starter lesson", async () => {
+    localStorage.clear();
+    localStorage.setItem(DISPLAY_LANGUAGE_KEY, "zh-Hant");
+    persistSelectedBackendChild(32, "Starter Learner");
+    window.history.replaceState({}, "", "/");
+    const requestLog: Array<{ url: string; method: string; body?: any }> = [];
+    const session = authoritativeSessionFixture("starter-l01", "home-l1-session", {}, {}, false, false, 32);
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+      const body = init?.body ? JSON.parse(init.body as string) : undefined;
+      requestLog.push({ url, method, body });
+      if (url.endsWith("/api/children")) return new Response(JSON.stringify([{ id: 32, name: "Starter Learner" }]), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.endsWith("/api/children/32/learning-daily-queue")) return new Response(JSON.stringify(noDueQueue(32, "starter-l01")), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.endsWith("/api/children/32/learning-sessions/current")) return new Response("null", { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.endsWith("/api/children/32/learning-sessions") && method === "POST") return new Response(JSON.stringify(session), { status: 200, headers: { "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({}), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    document.body.innerHTML = '<div id="root"></div>';
+    const root = createRoot(document.getElementById("root")!);
+    await act(async () => { root.render(React.createElement(AppShell)); await new Promise((resolve) => setTimeout(resolve, 45)); });
+    await import("../pages/LessonPlayerPage");
+    await act(async () => { (document.querySelector(".hero-primary-cta-row .launch-quiz-cta-btn") as HTMLButtonElement).click(); await new Promise((resolve) => setTimeout(resolve, 60)); });
+    expect(window.location.pathname).toBe("/TongXuan-Chinese/learning-session");
+    expect(document.querySelector(".mode-badge.mode-learn")).toBeTruthy();
+    expect(document.querySelector(".player-lesson-title")?.textContent).toBe("你好");
+    expect(requestLog.find((entry) => entry.url.endsWith("/api/children/32/learning-sessions") && entry.method === "POST")?.body).toMatchObject({ lesson_id: "starter-l01" });
+    await act(async () => { root.unmount(); });
+    vi.unstubAllGlobals();
+  });
+
   it.each([
     ["unresolved selected key", "child-999", [{ key: "child-999", name: "樂樂", role: "child", childId: 999, color: "mint" }]],
     ["invalid selected ID", "child-0", [{ key: "child-0", name: "樂樂", role: "child", childId: 0, color: "mint" }]],

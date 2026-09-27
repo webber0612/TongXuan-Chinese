@@ -156,8 +156,10 @@ const copy = {
     masteredInProgress: "練習中（需累積更多有效領域證據）",
     nextReviewTomorrow: "明天 (SRS 間隔複習)",
     sessionNotice: "注意：課堂完成代表已完成今日練習，精熟度將依各領域客觀作答證據另行獨立判定。",
-    reviewStatusApproved: "內容已審核",
+    reviewStatusApproved: "內容已核准",
+    reviewStatusReviewed: "內容已審閱",
     reviewStatusDraft: "自動生成草稿（待審核）",
+    reviewStatusRejected: "內容未通過審核",
     activeRole: "活躍使用詞彙 (Active)",
     receptiveRole: "理解辨識詞彙 (Receptive)",
     exitTicketScore: "小挑戰得分",
@@ -218,8 +220,10 @@ const copy = {
     masteredInProgress: "练习中（需累积更多有效领域证据）",
     nextReviewTomorrow: "明天 (SRS 间隔复习)",
     sessionNotice: "注意：课堂完成代表已完成今日练习，熟练度将依各领域客观作答证据另行独立判定。",
-    reviewStatusApproved: "内容已审核",
+    reviewStatusApproved: "内容已核准",
+    reviewStatusReviewed: "内容已审阅",
     reviewStatusDraft: "自动生成草稿（待审核）",
+    reviewStatusRejected: "内容未通过审核",
     activeRole: "活跃使用词汇 (Active)",
     receptiveRole: "理解辨识词汇 (Receptive)",
     exitTicketScore: "小挑战得分",
@@ -280,8 +284,10 @@ const copy = {
     masteredInProgress: "In Progress (Domain evidence accumulating)",
     nextReviewTomorrow: "Tomorrow (SRS Interval)",
     sessionNotice: "Note: Session completion marks daily practice. Domain mastery is independently evaluated from valid attempt evidence.",
-    reviewStatusApproved: "TongXuan-reviewed",
+    reviewStatusApproved: "Approved",
+    reviewStatusReviewed: "Reviewed",
     reviewStatusDraft: "Generated draft (pending review)",
+    reviewStatusRejected: "Rejected",
     activeRole: "Active Vocabulary",
     receptiveRole: "Receptive Vocabulary",
     exitTicketScore: "Exit Ticket Score",
@@ -342,8 +348,10 @@ const copy = {
     masteredInProgress: "練習中（領域別の証拠を蓄積中）",
     nextReviewTomorrow: "明日 (SRS復習)",
     sessionNotice: "注：完了と習熟は別個に評価されます。",
-    reviewStatusApproved: "確認済みコンテンツ",
+    reviewStatusApproved: "承認済みコンテンツ",
+    reviewStatusReviewed: "確認済みコンテンツ",
     reviewStatusDraft: "ドラフト",
+    reviewStatusRejected: "却下されたコンテンツ",
     activeRole: "重要語彙 (Active)",
     receptiveRole: "理解語彙 (Receptive)",
     exitTicketScore: "テストスコア",
@@ -404,8 +412,10 @@ const copy = {
     masteredInProgress: "연습 중 (영역별 평가 진행 중)",
     nextReviewTomorrow: "내일 (SRS 간격 복습)",
     sessionNotice: "참고: 수업 완료와 숙달 달성은 별도로 평가됩니다.",
-    reviewStatusApproved: "검토 완료 콘텐츠",
+    reviewStatusApproved: "승인된 콘텐츠",
+    reviewStatusReviewed: "검토된 콘텐츠",
     reviewStatusDraft: "초안",
+    reviewStatusRejected: "검토에서 거부된 콘텐츠",
     activeRole: "핵심 어휘 (Active)",
     receptiveRole: "수용 어휘 (Receptive)",
     exitTicketScore: "도전 점수",
@@ -466,8 +476,10 @@ const copy = {
     masteredInProgress: "En progreso (Acumulando evidencia)",
     nextReviewTomorrow: "Mañana (Repaso SRS)",
     sessionNotice: "Nota: Completar la sesión registra la práctica; el dominio se evalúa por separado.",
-    reviewStatusApproved: "Contenido revisado",
+    reviewStatusApproved: "Contenido aprobado",
+    reviewStatusReviewed: "Contenido revisado",
     reviewStatusDraft: "Borrador generado",
+    reviewStatusRejected: "Contenido rechazado",
     activeRole: "Vocabulario activo",
     receptiveRole: "Vocabulario receptivo",
     exitTicketScore: "Puntaje del desafío",
@@ -1875,7 +1887,7 @@ export function LessonPlayerPage({
                 text: speakingTask.taskData?.text || pkg?.curriculumSource.title || "你好",
                 text_kind: speakingTask.taskData?.textKind || "character",
                 locale: speakingTask.taskData?.locale || (locale === "zh-CN" ? "zh-CN" : "zh-TW"),
-                source_type: "CURRICULUM",
+                source_type: speakingTask.taskData?.sourceType || "CURRICULUM",
                 source_id: speakingTask.itemId,
                 activity_domain: "speaking",
               }),
@@ -2182,8 +2194,14 @@ export function LessonPlayerPage({
   }
 
   // Helper to render scaffold translation
+  const scaffoldStatusLabels: Record<ContentReviewStatus, string> = {
+    GENERATED_DRAFT: text.reviewStatusDraft,
+    REVIEWED: text.reviewStatusReviewed,
+    APPROVED: text.reviewStatusApproved,
+    REJECTED: text.reviewStatusRejected,
+  };
   const renderScaffold = (scaffoldKey?: string) => {
-    if (!scaffoldKey) return null;
+    if (!scaffoldKey || !Object.prototype.hasOwnProperty.call(pkg.nativeLanguageSupport.entries, scaffoldKey)) return null;
     const info = getScaffoldText(pkg, scaffoldKey, scaffoldMode);
     if (!info.visibleText && scaffoldMode === "HIDDEN") return null;
 
@@ -2205,13 +2223,21 @@ export function LessonPlayerPage({
           <div className="scaffold-content">
             <span className="scaffold-text">{info.visibleText}</span>
             {info.notes && <span className="scaffold-notes">({info.notes})</span>}
-            <span className="scaffold-status-pill" title={info.reviewStatus === "APPROVED" ? text.reviewStatusApproved : text.reviewStatusDraft}>
-              {info.reviewStatus === "APPROVED" ? text.reviewStatusApproved : text.reviewStatusDraft}
+            <span className="scaffold-status-pill" title={scaffoldStatusLabels[info.reviewStatus]}>
+              {scaffoldStatusLabels[info.reviewStatus]}
             </span>
           </div>
         )}
       </div>
     );
+  };
+  const renderStepScaffold = (scaffoldKey?: string) => {
+    // Preserve a legacy scaffold only when the active package actually owns
+    // that entry. Lesson-specific keys from the package always take priority.
+    const packageDefaultKey = Object.prototype.hasOwnProperty.call(pkg.nativeLanguageSupport.entries, "greeting")
+      ? "greeting"
+      : undefined;
+    return renderScaffold(scaffoldKey ?? packageDefaultKey);
   };
 
   return (
@@ -2354,7 +2380,9 @@ export function LessonPlayerPage({
             <div className="step-body step-context-body">
               <div className="context-illustration-box">
                 <div className="context-visual-scene">
-                  <span className="scene-tag">☀️ 情境：早晨遇見朋友</span>
+                  {typeof currentStep.data.sceneLabel === "string" && currentStep.data.sceneLabel.trim() && (
+                    <span className="scene-tag">{currentStep.data.sceneLabel}</span>
+                  )}
                   <button
                     type="button"
                     className="audio-play-large-btn"
@@ -2367,7 +2395,7 @@ export function LessonPlayerPage({
                 </div>
               </div>
 
-              {renderScaffold("greeting")}
+              {renderStepScaffold(currentStep.data.scaffoldKey)}
 
               <p className="interaction-prompt">{currentStep.data.prompt}</p>
 
@@ -2443,8 +2471,8 @@ export function LessonPlayerPage({
                     <span className="vocab-role-pill">{text.activeRole}</span>
                   </div>
                   <div className="vocab-phonetics-row">
-                    <span className="pinyin-tag">nǐ hǎo</span>
-                    <span className="zhuyin-tag">ㄋㄧˇ ㄏㄠˇ</span>
+                    <span className="pinyin-tag">{currentStep.data.pinyin || "nǐ hǎo"}</span>
+                    <span className="zhuyin-tag">{currentStep.data.zhuyin || "ㄋㄧˇ ㄏㄠˇ"}</span>
                     <button
                       type="button"
                       className="button button-icon-subtle"
@@ -2455,9 +2483,9 @@ export function LessonPlayerPage({
                     </button>
                   </div>
                   <div className="vocab-example-sentence">
-                    <p><strong>例句：</strong> 你好！我叫大衛。</p>
+                    <p><strong>例句：</strong> {currentStep.data.exampleSentence || "你好！我叫大衛。"}</p>
                   </div>
-                  {renderScaffold("greeting")}
+                  {renderStepScaffold(currentStep.data.scaffoldKey)}
                 </div>
 
                 <p className="interaction-prompt">{prompt}</p>
@@ -2466,7 +2494,7 @@ export function LessonPlayerPage({
                   {choices?.map((choice: { id: string; label: string; isCorrect?: boolean }) => {
                     const vocabularyChoiceKey = currentStep.data.taskId ? `vocab-${currentStep.data.taskId}` : "vocab";
                     const isSelected = selectedChoices[vocabularyChoiceKey] === choice.id;
-                    const isCorrect = choice.id === "opt-hello" || choice.id === "greeting" || choice.isCorrect;
+                    const isCorrect = choice.id === currentStep.data.correctChoiceId || choice.id === "opt-hello" || choice.id === "greeting" || choice.isCorrect;
                     return (
                       <button
                         key={choice.id}

@@ -62,6 +62,7 @@ export interface VocabularyItem {
   usage: string[];
   learningRole: "ACTIVE" | "RECEPTIVE";
   reviewStatus: ContentReviewStatus;
+  authorship?: "TONGXUAN_AUTHORED" | "TONGXUAN_AUTHORED_PRACTICE";
 }
 
 export interface CharacterItem {
@@ -79,6 +80,7 @@ export interface CharacterItem {
   strokeCount: number;
   radical: string;
   strokeOrderSteps?: string[];
+  authorship?: "TONGXUAN_AUTHORED" | "TONGXUAN_AUTHORED_PRACTICE";
 }
 
 export interface SentencePatternItem {
@@ -105,6 +107,7 @@ export interface TextBlockItem {
   zhuyin?: string;
   audioKey?: string;
   scaffoldKey?: string;
+  authorship?: "TONGXUAN_AUTHORED" | "TONGXUAN_AUTHORED_PRACTICE";
 }
 
 export interface CulturalNoteItem {
