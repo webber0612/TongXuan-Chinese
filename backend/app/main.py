@@ -97,7 +97,8 @@ async def production_security_boundary(request: Request, call_next):
     status_code = 500
     try:
         settings = load_settings()
-        if settings.environment == "production" and request.url.path.startswith("/api/"):
+        is_cors_preflight = request.method == "OPTIONS" and bool(request.headers.get("access-control-request-method"))
+        if settings.environment == "production" and request.url.path.startswith("/api/") and not is_cors_preflight:
             match = re.search(r"/children/(\d+)(?:/|$)", request.url.path)
             child_text = request.query_params.get("child_id") or (match.group(1) if match else None)
             public_auth_route = request.url.path in {"/api/auth/google/csrf", "/api/auth/google", "/api/auth/logout"}

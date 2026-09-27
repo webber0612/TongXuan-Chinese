@@ -66,6 +66,27 @@ def test_google_auth_identity_csrf_and_parent_owned_child_lifecycle(tmp_path, mo
         assert preflight.status_code == 200
         assert "x-csrf-token" in preflight.headers.get("access-control-allow-headers", "").lower()
 
+        child_route_preflight = api.options(
+            "/api/children/123/learning-sessions",
+            headers={
+                "Origin": "https://family.example",
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "content-type,x-csrf-token",
+            },
+        )
+        assert child_route_preflight.status_code == 200, child_route_preflight.text
+        assert child_route_preflight.headers.get("access-control-allow-origin") == "https://family.example"
+        assert child_route_preflight.headers.get("access-control-allow-credentials") == "true"
+        rejected_preflight = api.options(
+            "/api/children/123/learning-sessions",
+            headers={
+                "Origin": "https://attacker.example",
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "content-type,x-csrf-token",
+            },
+        )
+        assert rejected_preflight.status_code == 400
+
         # A pre-migration learner remains present but is intentionally unowned.
         with connect() as db:
             legacy_id = int(db.execute("INSERT INTO children(name) VALUES('Legacy learner')").lastrowid)
@@ -233,7 +254,9 @@ def test_schema_v5_migration_keeps_legacy_children_unowned(tmp_path, monkeypatch
     path = tmp_path / "legacy-v4.sqlite3"
     with sqlite3.connect(path) as db:
         db.execute("CREATE TABLE children(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT NOT NULL,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)")
+        db.execute("CREATE TABLE learning_sessions(id TEXT PRIMARY KEY,child_id INTEGER NOT NULL REFERENCES children(id),started_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,ended_at TEXT)")
         db.execute("INSERT INTO children(name) VALUES('Unclaimed child')")
+        db.execute("INSERT INTO learning_sessions(id,child_id) VALUES('legacy-session-1',1)")
         db.execute("PRAGMA user_version=4")
     monkeypatch.setenv("TONGXUAN_DB_PATH", str(path))
     from app.database import connect, initialize_database
@@ -242,6 +265,8 @@ def test_schema_v5_migration_keeps_legacy_children_unowned(tmp_path, monkeypatch
     with connect() as db:
         row = db.execute("SELECT id,name,parent_id FROM children").fetchone()
         assert tuple(row) == (1, "Unclaimed child", None)
+        session = db.execute("SELECT id,child_id FROM learning_sessions WHERE id='legacy-session-1'").fetchone()
+        assert tuple(session) == ("legacy-session-1", 1)
         assert db.execute("PRAGMA user_version").fetchone()[0] == 5
         assert db.execute("SELECT COUNT(*) FROM google_parents").fetchone()[0] == 0
         assert db.execute("SELECT description FROM schema_migrations WHERE version=5").fetchone()[0] == "Google parent identity and nullable child ownership"
