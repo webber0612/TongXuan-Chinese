@@ -130,6 +130,7 @@ def _practice_writing_in_transaction(
     phase: str = "independent",
     script_mode: str | None = None,
     attempt_id: str | None = None,
+    record_mastery_gate: bool = True,
 ) -> dict[str, Any]:
     """Persist a writing provider result using the caller's transaction."""
     trace_result = provider_for(provider).validate(trace_result)
@@ -148,7 +149,7 @@ def _practice_writing_in_transaction(
         evidence_ref=attempt_id,
         evidence_type="writing_provider_attempt",
         assisted=assisted,
-    )
+    ) if record_mastery_gate else None
     db.execute("""INSERT INTO writing_states VALUES (?,?,?,?,?) ON CONFLICT(child_id,character) DO UPDATE SET independent_success_count=independent_success_count+excluded.independent_success_count,assisted_count=assisted_count+excluded.assisted_count,updated_at=excluded.updated_at""", (child_id, character, int(trace_result == "correct" and not assisted), int(assisted), now()))
     srs_item_id = f"{script_mode.lower()}::{character}" if script_mode else character
     srs = record_srs_review(db, child_id=child_id, skill_domain="writing", item_id=srs_item_id, result=trace_result, assisted=assisted)
@@ -160,11 +161,12 @@ def practice_writing(child_id: int, character: str, trace_result: str, assisted:
         flow_binding = db.execute(
             """SELECT 1 FROM learning_flow_tasks t
                JOIN learning_flow_sessions s ON s.id=t.session_id AND s.child_id=t.child_id
-               WHERE t.child_id=? AND t.skill_domain='writing' AND t.activity_item_id=?
-                 AND t.task_type LIKE 'WRITING_%'
+               WHERE t.child_id=? AND t.skill_domain='writing'
+                 AND (t.activity_item_id=? OR t.activity_item_id IN ('traditional::' || ?, 'simplified::' || ?))
+                 AND (t.task_type LIKE 'WRITING_%' OR t.task_type='REVIEW_WRITING')
                  AND (t.state IN ('PENDING','IN_PROGRESS') OR (t.state='DEFERRED' AND t.deferred_reason<>'OPTIONAL_SKIPPED'))
                  AND s.status IN ('IN_PROGRESS','PAUSED') LIMIT 1""",
-            (child_id, character),
+            (child_id, character, character, character),
         ).fetchone()
         if flow_binding:
             raise ValueError("writing_flow_evidence_required")

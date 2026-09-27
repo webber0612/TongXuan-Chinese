@@ -27,10 +27,12 @@ import {
   getLessonPackage,
   getStepsForMode,
   getScaffoldText,
+  isPolicyAllowedReviewDeferral,
   selectReviewTasksAcrossPackages,
   validateReviewDueItems,
   type LessonPackage,
   type LessonStepDefinition,
+  type ReviewDueItem,
   type PedagogyMode,
   type ScaffoldVisibilityMode,
   type CurriculumDomain,
@@ -645,8 +647,12 @@ export function LessonPlayerPage({
       return;
     }
     const exactTasks = currentSess.tasks?.filter((task) => expectedIds.includes(task.id)) ?? [];
-    // Reconciled REVIEW tasks are required and currently have no deferral policy; only exact authoritative COMPLETED tasks may end this round.
-    if (exactTasks.length !== expectedIds.length || exactTasks.some((task) => task.sourceQueue !== "REVIEW" || task.state !== "COMPLETED")) {
+    // Only exact required writing reviews may end at the established retry cap;
+    // all other REVIEW tasks must be authoritatively completed.
+    if (exactTasks.length !== expectedIds.length || exactTasks.some((task) =>
+      task.sourceQueue !== "REVIEW" ||
+      (task.state !== "COMPLETED" && !isPolicyAllowedReviewDeferral(task))
+    )) {
       setError(text.taskFailed);
       return;
     }
@@ -826,7 +832,7 @@ export function LessonPlayerPage({
             review?: {
               sourceQueue?: string;
               dueCount?: number;
-              items?: Array<{ id: string; character: string; lessonId: string; dueAt: string }>;
+              items?: ReviewDueItem[];
             };
           }>(`/api/children/${activeChildId}/learning-daily-queue`);
 
@@ -1316,19 +1322,46 @@ export function LessonPlayerPage({
     if (!activeChildId) return;
     const currentSess = sessionRef.current;
     const exactTaskId = currentStep?.data.taskId;
-    const writingTask = currentSess?.tasks?.find((task) => task.id === exactTaskId);
+    let writingTask = currentSess?.tasks?.find((task) => task.id === exactTaskId);
+    if (currentSess?.id && writingTask?.state === "PENDING") {
+      try {
+        const started = await api<typeof session>(
+          `/api/children/${activeChildId}/learning-sessions/${currentSess.id}/tasks/${writingTask.id}/start`,
+          { method: "POST" },
+        );
+        const startedTask = started?.tasks?.find((task) => task.id === writingTask?.id);
+        if (!started || started.id !== currentSess.id || started.childId !== activeChildId || started.status !== "IN_PROGRESS" || startedTask?.state !== "IN_PROGRESS") {
+          setError(text.taskFailed);
+          return;
+        }
+        sessionRef.current = started;
+        setSession(started);
+        writingTask = startedTask as typeof writingTask;
+      } catch (err: any) {
+        setError(err?.message || text.taskFailed);
+        return;
+      }
+    }
     const character = currentStep?.data.character;
     const phase = writingTask?.taskData?.phase;
     const scriptMode = writingTask?.taskData?.scriptMode;
     const attemptIndex = writingTask?.attemptCount;
     if (
-      !currentSess?.id || typeof exactTaskId !== "string" || !writingTask ||
-      !writingTask.taskType.startsWith("WRITING_") || writingTask.state !== "IN_PROGRESS" ||
-      typeof character !== "string" || character !== writingTask.itemId || writingTask.taskData?.character !== character ||
+      !currentSess?.id || typeof exactTaskId !== "string" || !writingTask || writingTask.state !== "IN_PROGRESS" ||
+      typeof character !== "string" || writingTask.taskData?.character !== character ||
       !["guided", "reduced_hint", "independent"].includes(phase) ||
       !["TRADITIONAL", "SIMPLIFIED"].includes(scriptMode) ||
       typeof attemptIndex !== "number" || !Number.isInteger(attemptIndex) || attemptIndex < 0
     ) {
+      setError(text.taskFailed);
+      return;
+    }
+    const exactCurriculumWriting = writingTask.taskType.startsWith("WRITING_") &&
+      writingTask.sourceQueue === "CURRICULUM" && writingTask.itemId === character;
+    const exactReviewWriting = writingTask.taskType === "REVIEW_WRITING" &&
+      writingTask.sourceQueue === "REVIEW" && writingTask.skillDomain === "writing" &&
+      writingTask.required === true && writingTask.itemId === `${String(scriptMode).toLowerCase()}::${character}`;
+    if (!exactCurriculumWriting && !exactReviewWriting) {
       setError(text.taskFailed);
       return;
     }
@@ -1447,7 +1480,8 @@ export function LessonPlayerPage({
 
     // 2. Vocabulary step: ensure vocabulary choice was made and task is COMPLETED / DEFERRED
     if (currentStep.stepKey === "vocabulary") {
-      const selected = selectedChoices["vocab"];
+      const vocabularyChoiceKey = currentStep.data.taskId ? `vocab-${currentStep.data.taskId}` : "vocab";
+      const selected = selectedChoices[vocabularyChoiceKey];
       if (!selected) {
         setError(text.pleaseAnswerQuestion);
         return;
@@ -1625,6 +1659,10 @@ export function LessonPlayerPage({
         ? t.id === currentStep.data.taskId
         : t.taskType.startsWith("WRITING_")) && t.state !== "COMPLETED" && t.state !== "DEFERRED");
       if (writingTask) {
+        if (writingTask.required) {
+          setError(text.taskFailed);
+          return;
+        }
         const skipRes = await skipBackendTask((t) => t.id === writingTask.id);
         if (!skipRes.persisted || (skipRes.taskState !== "COMPLETED" && skipRes.taskState !== "DEFERRED")) {
           setError(text.taskFailed);
@@ -2400,7 +2438,7 @@ export function LessonPlayerPage({
               <div className="step-body step-vocab-body">
                 <div className="vocab-highlight-card">
                   <div className="vocab-word-large">
-                    <span className="vocab-hanzi">你好</span>
+                    <span className="vocab-hanzi">{currentStep.data.word || "你好"}</span>
                     <span className="vocab-role-pill">{text.activeRole}</span>
                   </div>
                   <div className="vocab-phonetics-row">
@@ -2409,7 +2447,7 @@ export function LessonPlayerPage({
                     <button
                       type="button"
                       className="button button-icon-subtle"
-                      onClick={() => playAudio("你好")}
+                      onClick={() => playAudio(currentStep.data.word || "你好")}
                       aria-label="播放生詞發音"
                     >
                       <Volume2 size={20} />
@@ -2425,7 +2463,8 @@ export function LessonPlayerPage({
 
                 <div className="choices-vertical-list">
                   {choices?.map((choice: { id: string; label: string; isCorrect?: boolean }) => {
-                    const isSelected = selectedChoices["vocab"] === choice.id;
+                    const vocabularyChoiceKey = currentStep.data.taskId ? `vocab-${currentStep.data.taskId}` : "vocab";
+                    const isSelected = selectedChoices[vocabularyChoiceKey] === choice.id;
                     const isCorrect = choice.id === "opt-hello" || choice.id === "greeting" || choice.isCorrect;
                     return (
                       <button
@@ -2433,7 +2472,7 @@ export function LessonPlayerPage({
                         type="button"
                         className={`choice-card-btn ${isSelected ? "selected" : ""}`}
                         onClick={async () => {
-                          setSelectedChoices((prev) => ({ ...prev, vocab: choice.id }));
+                          setSelectedChoices((prev) => ({ ...prev, [vocabularyChoiceKey]: choice.id }));
                           await submitBackendTaskAnswer((t) => currentStep.data.taskId
                             ? t.id === currentStep.data.taskId
                             : t.taskType === "VOCABULARY" || t.key === "vocabulary", choice.id);
@@ -2695,6 +2734,11 @@ export function LessonPlayerPage({
                     type="button"
                     className="button button-text skip-writing-btn"
                     onClick={async () => {
+                      const exactWritingTask = session?.tasks?.find((task) => task.id === currentStep.data.taskId);
+                      if (exactWritingTask?.required) {
+                        setWritingSkipped(false);
+                        return;
+                      }
                       const result = await skipBackendTask((t) => currentStep.data.taskId
                         ? t.id === currentStep.data.taskId
                         : t.taskType.startsWith("WRITING_") || t.key.startsWith("writing"));
@@ -2705,6 +2749,7 @@ export function LessonPlayerPage({
                         setWritingSkipped(false);
                       }
                     }}
+                    disabled={session?.tasks?.find((task) => task.id === currentStep.data.taskId)?.required === true}
                   >
                     {text.skipWriting}
                   </button>

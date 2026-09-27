@@ -1020,6 +1020,14 @@ def post_lesson_fast_track(child_id: int, lesson_id: str, request: FastTrackRequ
     pkg = get_lesson_package(lesson_id)
     if pkg is None:
         raise HTTPException(status_code=404, detail="lesson_package_not_found")
+    from .learning_flow import _lesson_map
+    lesson = _lesson_map().get(lesson_id)
+    if (
+        not isinstance(lesson_id, str) or pkg.get("lessonId") != lesson_id or
+        not lesson or lesson.get("id") != lesson_id or
+        not isinstance(lesson.get("title"), str) or not lesson["title"]
+    ):
+        raise HTTPException(status_code=409, detail="fast_track_srs_lesson_identity_unsupported")
     
     initialize_database()
     with connect() as db:
@@ -1051,12 +1059,19 @@ def post_lesson_fast_track(child_id: int, lesson_id: str, request: FastTrackRequ
                     questions.extend(step.get("data", {}).get("questions", []))
         
         domain_results: dict[str, list[bool]] = {}
+        scored_questions: list[tuple[dict[str, object], bool]] = []
         for q in questions:
-            domain = q.get("domain", "general")
-            selected = request.answers.get(q.get("id"))
-            correct_id = q.get("correctChoiceId")
-            is_correct = bool(selected and selected == correct_id)
+            if not isinstance(q, dict):
+                raise HTTPException(status_code=409, detail="fast_track_srs_question_identity_unsupported")
+            domain = q.get("domain")
+            question_id = q.get("id")
+            correct_choice_id = q.get("correctChoiceId")
+            if not isinstance(domain, str) or not domain or not isinstance(question_id, str) or not question_id or not isinstance(correct_choice_id, str) or not correct_choice_id:
+                raise HTTPException(status_code=409, detail="fast_track_srs_question_identity_unsupported")
+            selected = request.answers.get(question_id)
+            is_correct = bool(selected and selected == correct_choice_id)
             domain_results.setdefault(domain, []).append(is_correct)
+            scored_questions.append((q, is_correct))
         
         weak_domains: list[str] = []
         scores: dict[str, float] = {}
@@ -1070,19 +1085,39 @@ def post_lesson_fast_track(child_id: int, lesson_id: str, request: FastTrackRequ
         
         if passed:
             record_lesson_progress(child_id=child_id, lesson_id=lesson_id, status="READY_FOR_CHECK")
-            from .learning_flow import _ensure_lesson_materials, _lesson_map
+            from .learning_flow import _ensure_lesson_materials
             from .curriculum_policy import record_srs_review
 
-            lesson = _lesson_map().get(lesson_id)
             latest_srs_due = None
-            if lesson:
-                materials = _ensure_lesson_materials(db, child_id, lesson)
-                for char_id in materials.get("characters", []):
-                    srs = record_srs_review(db, child_id=child_id, skill_domain="recognition", item_id=char_id, result="correct", assisted=False)
-                    latest_srs_due = srs.get("due_at")
-                if materials.get("phrase"):
-                    srs_phrase = record_srs_review(db, child_id=child_id, skill_domain="listening", item_id=materials["phrase"], result="correct", assisted=False)
-                    latest_srs_due = srs_phrase.get("due_at") or latest_srs_due
+            materials = _ensure_lesson_materials(db, child_id, lesson)
+            from .learning_flow import _characters
+
+            character_ids = dict(zip(_characters(lesson), materials.get("characters", [])))
+            recorded_srs: set[tuple[str, str]] = set()
+            for question, is_correct in scored_questions:
+                domain = question.get("domain")
+                if not is_correct:
+                    continue
+                if domain == "recognition":
+                    character = question.get("audioText")
+                    item_id = character_ids.get(character) if isinstance(character, str) else None
+                elif domain == "listening" and question.get("audioText") == lesson["title"]:
+                    item_id = materials.get("phrase")
+                else:
+                    # Vocabulary/grammar scores do not stand in for recognition
+                    # or listening evidence, even when the whole challenge passes.
+                    continue
+                if not isinstance(item_id, str) or not item_id or (domain, item_id) in recorded_srs:
+                    continue
+                link = db.execute(
+                    "SELECT lesson_id FROM curriculum_item_links WHERE child_id=? AND skill_domain=? AND item_id=?",
+                    (child_id, domain, item_id),
+                ).fetchone()
+                if not link or link["lesson_id"] != lesson_id:
+                    continue
+                srs = record_srs_review(db, child_id=child_id, skill_domain=domain, item_id=item_id, result="correct", assisted=False)
+                latest_srs_due = srs.get("due_at") or latest_srs_due
+                recorded_srs.add((domain, item_id))
 
             # Clean up / bypass active session with accurate audit semantics
             stamp = now()

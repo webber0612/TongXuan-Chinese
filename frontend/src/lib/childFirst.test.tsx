@@ -492,8 +492,8 @@ describe("child-first shell contracts", () => {
       asOf: "2026-09-05T00:00:00Z",
       placementStart: "BOOK_1",
       review: { sourceQueue: "REVIEW", dueCount: 2, items: [
-        { id: "item-ni", character: "你", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" },
-        { id: "item-hao", character: "好", lessonId: "basic-l01", dueAt: "2026-09-02T00:00:00Z" },
+        { id: "item-ni", skillDomain: "recognition", character: "你", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" },
+        { id: "item-hao", skillDomain: "recognition", character: "好", lessonId: "basic-l01", dueAt: "2026-09-02T00:00:00Z" },
       ] },
       newLesson: null,
       completedLesson: { sourceQueue: "CURRICULUM", lessonId: "book1-l01", title: "日月星辰", domains: ["recognition"], status: "COMPLETED" },
@@ -640,7 +640,7 @@ describe("child-first shell contracts", () => {
     });
     const dueQueue = {
       childId: 1, asOf: "2026-09-05T00:00:00Z", placementStart: "BOOK_1",
-      review: { sourceQueue: "REVIEW", dueCount: 1, items: [{ id: "item-hao", character: "好", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" }] },
+      review: { sourceQueue: "REVIEW", dueCount: 1, items: [{ id: "item-hao", skillDomain: "recognition", character: "好", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" }] },
       newLesson: null, completedLesson: { sourceQueue: "CURRICULUM", lessonId: "book1-l01", title: "你好", domains: ["recognition"], status: "COMPLETED" },
       currentLessonComplete: true, nextLessonComingSoon: true, nextAccessibleLesson: null,
       activeSession: { id: "learn-session", status: "IN_PROGRESS" }, schoolQueueSeparate: true, targetMinutes: 18,
@@ -735,7 +735,7 @@ describe("child-first shell contracts", () => {
     };
     const dueQueue = {
       childId: 1, asOf: "2026-09-05T00:00:00Z", placementStart: "BOOK_1",
-      review: { sourceQueue: "REVIEW", dueCount: 1, items: [{ id: "item-hao", character: "好", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" }] },
+      review: { sourceQueue: "REVIEW", dueCount: 1, items: [{ id: "item-hao", skillDomain: "recognition", character: "好", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" }] },
       newLesson: null, completedLesson: { sourceQueue: "CURRICULUM", lessonId: "book1-l01", title: "你好", domains: ["recognition"], status: "COMPLETED" },
       currentLessonComplete: true, nextLessonComingSoon: true, nextAccessibleLesson: null,
       activeSession: { id: "learn-session", status: "IN_PROGRESS" }, schoolQueueSeparate: true, targetMinutes: 18,
@@ -743,13 +743,13 @@ describe("child-first shell contracts", () => {
     const invalidReview = invalidQueue === "count-mismatch"
       ? { ...dueQueue.review, dueCount: 2 }
       : invalidQueue === "malformed-id"
-        ? { ...dueQueue.review, items: [{ character: "好", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" }] }
+        ? { ...dueQueue.review, items: [{ skillDomain: "recognition", character: "好", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" }] }
       : invalidQueue === "duplicate-id"
         ? { ...dueQueue.review, dueCount: 2, items: [dueQueue.review.items[0], dueQueue.review.items[0]] }
       : invalidQueue === "cross-lesson"
           ? { ...dueQueue.review, items: [{ ...dueQueue.review.items[0], lessonId: "basic-l01" }] }
         : invalidQueue === "unsupported-package"
-          ? { ...dueQueue.review, items: [{ id: "item-unsupported", character: "好", lessonId: "book1-l02", dueAt: "2026-09-02T00:00:00Z" }] }
+          ? { ...dueQueue.review, items: [{ id: "item-unsupported", skillDomain: "recognition", character: "好", lessonId: "book1-l02", dueAt: "2026-09-02T00:00:00Z" }] }
         : dueQueue.review;
     const requestLog: Array<{ url: string; method: string }> = [];
     vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -817,7 +817,7 @@ describe("child-first shell contracts", () => {
       asOf: "2026-09-05T00:00:00Z",
       placementStart: "BOOK_1" as const,
       review: homeQueueMode === "due"
-        ? { sourceQueue: "REVIEW" as const, dueCount: 1, items: [{ id: "item-ni", character: "你", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" }] }
+        ? { sourceQueue: "REVIEW" as const, dueCount: 1, items: [{ id: "item-ni", skillDomain: "recognition" as const, character: "你", lessonId: "book1-l01", dueAt: "2026-09-02T00:00:00Z" }] }
         : { sourceQueue: "REVIEW" as const, dueCount: 0, items: [] },
       newLesson: homeQueueMode === "normal" ? { sourceQueue: "CURRICULUM" as const, lessonId: "book1-l01", title: "日月星辰", domains: ["recognition"], status: "AVAILABLE", availableInLearningFlowV1: true } : null,
       completedLesson: homeQueueMode === "due" ? { sourceQueue: "CURRICULUM" as const, lessonId: "book1-l01", title: "日月星辰", domains: ["recognition"], status: "COMPLETED" } : null,
