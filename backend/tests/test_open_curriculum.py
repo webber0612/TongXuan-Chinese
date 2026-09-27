@@ -204,6 +204,7 @@ def make_pack():
         "skillIds": ["recognition", "writing"],
         "availableSkillIds": ["recognition", "writing"],
         "priorKnowledgeSkillIds": ["recognition"],
+        "priorRecognizedCharacterIds": [],
         "targetVocabularyIds": ["vocab-demo"],
         "targetGrammarIds": ["grammar-demo"],
         "targetCharacterIds": ["char-demo"],
@@ -237,7 +238,7 @@ def make_pack():
         "approvalStatus": "ARCHITECT_APPROVED",
     }
     return {
-        "schemaVersion": "1.1",
+        "schemaVersion": "1.2",
         "documentType": "CURRICULUM_PACK",
         "packId": "synthetic-pack",
         "publicationStatus": "PUBLISHABLE",
@@ -305,11 +306,28 @@ def test_synthetic_publishable_pack_passes_composed_graph_schemas():
     assert validate_curriculum_pack(make_pack()) == []
 
 
-def test_skill_capability_is_required_by_graph_schema_v1_1():
+def test_skill_capability_is_required_by_graph_schema_v1_2():
     pack = make_pack()
     del pack["graph"]["skills"][0]["capability"]
 
     assert "SCHEMA_INVALID" in codes(validate_curriculum_pack(pack))
+
+
+def test_lesson_schema_requires_explicit_prior_character_recognition_state():
+    pack = make_pack()
+    del pack["lessons"][0]["priorRecognizedCharacterIds"]
+
+    assert "SCHEMA_INVALID" in codes(validate_curriculum_pack(pack))
+
+
+def test_prior_recognition_declaration_fails_closed_for_wrong_or_not_yet_known_targets():
+    pack = make_pack()
+    pack["lessons"][0]["priorRecognizedCharacterIds"] = ["vocab-demo"]
+    assert "UNSUPPORTED_PRIOR_RECOGNITION" in codes(validate_curriculum_pack(pack))
+
+    pack = make_pack()
+    pack["lessons"][0]["priorRecognizedCharacterIds"] = ["char-demo"]
+    assert "PRIOR_RECOGNITION_NOT_KNOWN" in codes(validate_curriculum_pack(pack))
 
 
 def test_publishable_pack_rejects_unapproved_target_and_policy():
@@ -458,6 +476,23 @@ def test_exposure_only_character_does_not_require_or_infer_later_stages():
     assert "WRITING_LEVEL_UNSUPPORTED" in codes(validate_curriculum_pack(pack))
 
 
+def test_exposure_activity_uses_its_own_level_not_the_later_recognition_level():
+    pack = make_pack()
+    character = pack["graph"]["characters"][0]
+    character["exposureLevel"] = 1
+    character["recognitionLevel"] = 2
+    character["readingLevel"] = None
+    character["writingLevel"] = 2
+    pack["lessons"][0]["activities"] = [{
+        "activityId": "expose-before-recognition",
+        "domain": "character_exposure",
+        "targetIds": ["char-demo"],
+        "masteryTargets": [],
+    }]
+
+    assert validate_curriculum_pack(pack) == []
+
+
 def test_nonrequired_exposure_stage_is_null_and_cannot_back_an_exposure_activity():
     pack = make_pack()
     pack["graph"]["characters"][0]["exposureLevel"] = None
@@ -482,6 +517,52 @@ def test_character_writing_requires_a_recognition_stage_and_cannot_precede_it():
     pack["graph"]["characters"][0]["recognitionLevel"] = 2
     pack["graph"]["characters"][0]["writingLevel"] = 1
     assert "CHARACTER_WRITING_BEFORE_RECOGNITION" in codes(validate_curriculum_pack(pack))
+
+
+def test_recognition_activity_requires_an_explicit_recognition_level():
+    pack = make_pack()
+    character = pack["graph"]["characters"][0]
+    character["recognitionLevel"] = None
+    character["writingLevel"] = None
+
+    assert "RECOGNITION_LEVEL_UNSUPPORTED" in codes(validate_curriculum_pack(pack))
+
+
+def test_exposure_in_one_lesson_does_not_satisfy_later_writing_recognition_gate():
+    pack = make_pack()
+    character = pack["graph"]["characters"][0]
+    character["exposureLevel"] = 1
+    character["recognitionLevel"] = 2
+    character["readingLevel"] = None
+    character["writingLevel"] = 2
+
+    first = pack["lessons"][0]
+    first["level"] = 1
+    first["activities"] = [{
+        "activityId": "expose-character",
+        "domain": "character_exposure",
+        "targetIds": ["char-demo"],
+        "masteryTargets": [],
+    }]
+    second = deepcopy(first)
+    second["lessonId"] = "synthetic-lesson-2"
+    second["level"] = 2
+    second["priorKnowledgeTargetIds"] = ["char-demo", "vocab-demo"]
+    second["priorRecognizedCharacterIds"] = []
+    second["newVocabularyIds"] = []
+    second["recycledTargetIds"] = ["vocab-demo"]
+    second["activities"] = [{
+        "activityId": "write-character",
+        "domain": "writing",
+        "targetIds": ["char-demo"],
+        "masteryTargets": [],
+    }]
+    pack["lessons"].append(second)
+
+    assert "WRITING_BEFORE_RECOGNITION" in codes(validate_curriculum_pack(pack))
+
+    second["priorRecognizedCharacterIds"] = ["char-demo"]
+    assert validate_curriculum_pack(pack) == []
 
 
 def test_character_reading_activity_requires_an_explicit_reading_level():

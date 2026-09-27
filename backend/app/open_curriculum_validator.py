@@ -774,6 +774,7 @@ def validate_curriculum_pack(
                     issues.extend(_sentence_token_issues(example, nodes, example_path))
 
     known_from_previous_lessons: set[str] = set()
+    recognized_characters_from_previous_lessons: set[str] = set()
     prior_skill_aliases: set[str] = set()
     for lesson_index, lesson in enumerate(lessons):
         if not isinstance(lesson, Mapping):
@@ -800,6 +801,29 @@ def validate_curriculum_pack(
         available_ids = id_set("availableTargetIds")
         prior_knowledge_ids = id_set("priorKnowledgeTargetIds") | known_from_previous_lessons
         prior_skills = id_set("priorKnowledgeSkillIds") | prior_skill_aliases
+
+        prior_recognized_character_ids: set[str] = set()
+        for character_id in id_set("priorRecognizedCharacterIds"):
+            character = nodes.get(character_id)
+            if (
+                character is None
+                or character.get("targetType") != "CHARACTER"
+                or character.get("recognitionLevel") is None
+            ):
+                add(
+                    "UNSUPPORTED_PRIOR_RECOGNITION",
+                    _path(lesson_path, "priorRecognizedCharacterIds"),
+                    f"Prior recognition {character_id!r} must resolve to a character with an explicit recognition level.",
+                )
+                continue
+            if character_id not in prior_knowledge_ids:
+                add(
+                    "PRIOR_RECOGNITION_NOT_KNOWN",
+                    _path(lesson_path, "priorRecognizedCharacterIds"),
+                    f"Prior-recognized character {character_id!r} must also be declared as prior knowledge or taught in an earlier pack lesson.",
+                )
+                continue
+            prior_recognized_character_ids.add(character_id)
 
         for key, values in (
             ("skillIds", id_set("skillIds")),
@@ -834,8 +858,6 @@ def validate_curriculum_pack(
             difficulty = node.get("level")
             if node_type in {"VOCABULARY", "GRAMMAR"}:
                 difficulty = node.get("difficultyEvidence", {}).get("level") if isinstance(node.get("difficultyEvidence"), Mapping) else None
-            if node_type == "CHARACTER":
-                difficulty = node.get("recognitionLevel")
             if isinstance(lesson_level, int) and isinstance(difficulty, int) and difficulty > lesson_level:
                 add("TARGET_OUT_OF_LEVEL", _path(lesson_path, "level"), f"Target {target_id!r} is level {difficulty}, above lesson level {lesson_level}.")
             prereqs = node.get("prerequisites", [])
@@ -897,7 +919,7 @@ def validate_curriculum_pack(
 
         # Writing requires recognized characters first in the same lesson or prior knowledge.
         activities = lesson.get("activities", [])
-        seen_recognition: set[str] = set()
+        seen_recognition: set[str] = recognized_characters_from_previous_lessons | prior_recognized_character_ids
         if isinstance(activities, list):
             for activity_index, activity in enumerate(activities):
                 if not isinstance(activity, Mapping):
@@ -956,7 +978,7 @@ def validate_curriculum_pack(
                         add("WRITING_LEVEL_UNSUPPORTED", _path(lesson_path, "activities", activity_index, "targetIds"), f"Character {target_id!r} has no approved writing level.")
                     elif isinstance(lesson_level, int) and isinstance(node.get("writingLevel"), int) and node.get("writingLevel") > lesson_level:
                         add("TARGET_OUT_OF_LEVEL", _path(lesson_path, "activities", activity_index, "targetIds"), f"Character {target_id!r} writing level {node.get('writingLevel')} is above lesson level {lesson_level}.")
-                    if target_id not in prior_knowledge_ids and target_id not in seen_recognition:
+                    if target_id not in seen_recognition:
                         add("WRITING_BEFORE_RECOGNITION", _path(lesson_path, "activities", activity_index), f"Character {target_id!r} must be recognized before its writing activity.")
 
         # Mastery references must map to a supported registered skill in this lesson.
@@ -993,6 +1015,7 @@ def validate_curriculum_pack(
                     if key not in lesson_mastery_keys:
                         add("UNSUPPORTED_ACTIVITY_MASTERY_TARGET", _path(lesson_path, "activities", activity_index, "masteryTargets", target_index), "Activity mastery targets must be declared by the lesson and map to a registered skill.")
 
+        recognized_characters_from_previous_lessons.update(seen_recognition)
         for target_id in id_set("targetVocabularyIds") | id_set("targetGrammarIds") | id_set("targetCharacterIds"):
             known_from_previous_lessons.add(target_id)
         for skill_ref in id_set("skillIds"):

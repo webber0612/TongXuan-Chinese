@@ -8,7 +8,7 @@ The default source registry is [`shared/content-sources/source-registry.json`](.
 
 ## Graph identity and dependency integrity
 
-Pack schema version 1.1 includes an explicit skill `capability` and distinct nullable character learning stages: `exposureLevel`, `recognitionLevel`, `readingLevel`, and `writingLevel`. Every non-required stage is explicitly `null`. An activity may use a stage only when that character has an explicit level for it. Exposure alone never implies a recognition or writing requirement.
+Pack schema version 1.2 includes an explicit skill `capability` and distinct nullable character learning stages: `exposureLevel`, `recognitionLevel`, `readingLevel`, and `writingLevel`. Every non-required stage is explicitly `null`. An activity may use a stage only when that character has an explicit level for it, and its level check uses only the stage exercised by the activity.
 
 Pack-level graph validation checks identity and relationship semantics before lesson-level checks:
 
@@ -16,10 +16,10 @@ Pack-level graph validation checks identity and relationship semantics before le
 - Skill `targetVocabulary`, `targetGrammar`, and `targetCharacters` references must resolve to nodes of the corresponding type. Skill `prerequisites` and character `prerequisiteSkills` must resolve to skill IDs or aliases.
 - Vocabulary `introducedBySkill` must resolve to a skill. Vocabulary and grammar `prerequisites` may reference a registered graph target or skill alias.
 - Missing references and wrong node types fail closed. Prerequisite edges reject self-dependencies and directed cycles across graph node types. Association lists such as skill target lists are not prerequisite edges.
-- Writing activities require a character with an explicit writing level, and that graph stage requires recognition and cannot be at a lower level than recognition. Character reading activities require an explicit reading level. Exposure activities require an explicit exposure level and do not mark a character recognized or writable.
+- Writing activities require a character with an explicit writing level, and that graph stage requires recognition and cannot be at a lower level than recognition. Character reading activities require an explicit reading level. Exposure activities require an explicit exposure level and do not mark a character recognized or writable. `priorRecognizedCharacterIds` is the stage-specific prior-state declaration; generic prior knowledge or exposure cannot satisfy a writing prerequisite. A recognition activity in an earlier pack lesson can satisfy it.
 - `evidenceIds` must resolve within the candidate pack; schema and rights checks still apply independently.
 
-The diagnostics include `DUPLICATE_TARGET_ID`, `SKILL_ALIAS_COLLISION`, `UNREGISTERED_GRAPH_REFERENCE`, `GRAPH_REFERENCE_TYPE_MISMATCH`, `SELF_PREREQUISITE`, `GRAPH_PREREQUISITE_CYCLE`, `CHARACTER_WRITING_WITHOUT_RECOGNITION`, `CHARACTER_WRITING_BEFORE_RECOGNITION`, `EXPOSURE_LEVEL_UNSUPPORTED`, `RECOGNITION_LEVEL_UNSUPPORTED`, `READING_LEVEL_UNSUPPORTED`, and `WRITING_LEVEL_UNSUPPORTED`. These checks constrain graph structure only. They do not approve targets, decide pedagogy, clear rights, or imply that a lesson should come next. Current regression cases use synthetic fixture nodes only.
+The diagnostics include `DUPLICATE_TARGET_ID`, `SKILL_ALIAS_COLLISION`, `UNREGISTERED_GRAPH_REFERENCE`, `GRAPH_REFERENCE_TYPE_MISMATCH`, `SELF_PREREQUISITE`, `GRAPH_PREREQUISITE_CYCLE`, `CHARACTER_WRITING_WITHOUT_RECOGNITION`, `CHARACTER_WRITING_BEFORE_RECOGNITION`, `UNSUPPORTED_PRIOR_RECOGNITION`, `PRIOR_RECOGNITION_NOT_KNOWN`, `EXPOSURE_LEVEL_UNSUPPORTED`, `RECOGNITION_LEVEL_UNSUPPORTED`, `READING_LEVEL_UNSUPPORTED`, and `WRITING_LEVEL_UNSUPPORTED`. These checks constrain graph structure and stage evidence only. They do not approve targets, decide pedagogy, clear rights, or imply that a lesson should come next. Current regression cases use synthetic fixture nodes only.
 
 ## Publishable-pack rules
 

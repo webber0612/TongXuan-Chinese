@@ -7,7 +7,7 @@
   "additionalProperties": false,
   "required": ["schemaVersion", "documentType", "packId", "publicationStatus", "graph", "lessons", "validationPolicy"],
   "properties": {
-    "schemaVersion": { "const": "1.1" },
+    "schemaVersion": { "const": "1.2" },
     "documentType": { "const": "CURRICULUM_PACK" },
     "packId": { "$ref": "#/$defs/id" },
     "publicationStatus": { "enum": ["PROPOSED", "PUBLISHABLE"] },
@@ -290,13 +290,14 @@
     "lesson": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["lessonId", "level", "skillIds", "availableSkillIds", "priorKnowledgeSkillIds", "targetVocabularyIds", "targetGrammarIds", "targetCharacterIds", "availableTargetIds", "priorKnowledgeTargetIds", "newVocabularyIds", "recycledTargetIds", "sentences", "activities", "masteryTargets", "sourceProvenance", "rationale", "approvalStatus"],
+      "required": ["lessonId", "level", "skillIds", "availableSkillIds", "priorKnowledgeSkillIds", "priorRecognizedCharacterIds", "targetVocabularyIds", "targetGrammarIds", "targetCharacterIds", "availableTargetIds", "priorKnowledgeTargetIds", "newVocabularyIds", "recycledTargetIds", "sentences", "activities", "masteryTargets", "sourceProvenance", "rationale", "approvalStatus"],
       "properties": {
         "lessonId": { "$ref": "#/$defs/id" },
         "level": { "$ref": "#/$defs/level" },
         "skillIds": { "type": "array", "items": { "$ref": "#/$defs/id" } },
         "availableSkillIds": { "type": "array", "items": { "$ref": "#/$defs/id" } },
         "priorKnowledgeSkillIds": { "type": "array", "items": { "$ref": "#/$defs/id" } },
+        "priorRecognizedCharacterIds": { "type": "array", "items": { "$ref": "#/$defs/id" } },
         "targetVocabularyIds": { "type": "array", "items": { "$ref": "#/$defs/id" } },
         "targetGrammarIds": { "type": "array", "items": { "$ref": "#/$defs/id" } },
         "targetCharacterIds": { "type": "array", "items": { "$ref": "#/$defs/id" } },
