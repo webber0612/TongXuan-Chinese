@@ -2,6 +2,7 @@
 import { describe, expect, it, vi } from "vitest";
 import React, { act } from "react";
 import { createRoot } from "react-dom/client";
+import HanziWriter from "hanzi-writer";
 
 import { LessonPlayerPage, optionalWritingSkipResult } from "../pages/LessonPlayerPage";
 import {
@@ -1066,6 +1067,81 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     expect(recordedEvents).toContain("skip:session-e2e-1:writing-guided");
     expect(session.tasks.find((task) => task.key === "writing-guided")?.state).toBe("DEFERRED");
     root.unmount(); container.remove(); vi.unstubAllGlobals();
+  });
+
+  it("25a. Flow writing uses one exact final evidence operation and retries with the same identity", async () => {
+    const session = authoritativeSessionFixture("book1-l01", "session-writing-atomic", {
+      listen: "COMPLETED", "recognition-1": "COMPLETED", "recognition-2": "COMPLETED",
+      "sentence-pattern": "COMPLETED", speaking: "COMPLETED", pronunciation: "COMPLETED",
+      "writing-guided": "IN_PROGRESS",
+    }, {
+      "writing-guided": {
+        attemptCount: 0,
+        itemId: "你",
+        taskData: { character: "你", phase: "guided", scriptMode: "TRADITIONAL", repeatCount: 2 },
+      },
+    }, true);
+    const writing = session.tasks.find((task) => task.key === "writing-guided")! as typeof session.tasks[number] & { attemptCount?: number; evidenceRef?: string };
+    const evidenceRequests: Array<{ taskId: string; body: any }> = [];
+    let standaloneWrites = 0;
+    let shouldFailFirstEvidence = true;
+    const requests = installPlannerSessionMock(session, (url, init) => {
+      if (init?.method !== "POST") return undefined;
+      if (url.includes("/api/sprint-b/writing/attempts")) {
+        standaloneWrites += 1;
+        return new Response(JSON.stringify({ id: "wrong-separate-write" }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.endsWith(`/tasks/${writing.id}/evidence`)) {
+        const taskId = decodeURIComponent(url.split("/tasks/")[1].split("/evidence")[0]);
+        evidenceRequests.push({ taskId, body: JSON.parse(init.body as string) });
+        if (shouldFailFirstEvidence) {
+          shouldFailFirstEvidence = false;
+          return new Response(JSON.stringify({ detail: "temporary evidence failure" }), { status: 500, headers: { "Content-Type": "application/json" } });
+        }
+        writing.attemptCount = (writing.attemptCount ?? 0) + 1;
+        writing.evidenceRef = evidenceRequests.at(-1)?.body.evidence_ref;
+        return new Response(JSON.stringify(session), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return undefined;
+    });
+
+    let traceComplete: (() => void) | undefined;
+    const writerSpy = vi.spyOn(HanziWriter, "create").mockImplementation(((_target: any, _character: string, _options: any) => ({
+      quiz: (options: { onComplete: () => void }) => { traceComplete = options.onComplete; },
+      animateCharacter: vi.fn(),
+    })) as any);
+    const container = document.createElement("div"); document.body.appendChild(container); const root = createRoot(container);
+    await act(async () => { root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} initialMode="LEARN" />); });
+    await advanceToPlannerStep(container, "writing");
+    expect(traceComplete).toBeTypeOf("function");
+
+    await act(async () => { traceComplete?.(); await new Promise((resolve) => setTimeout(resolve, 0)); });
+    expect(evidenceRequests).toHaveLength(1);
+    expect(container.querySelector(".error-strip")?.textContent).toBeTruthy();
+    await act(async () => { traceComplete?.(); await new Promise((resolve) => setTimeout(resolve, 0)); });
+
+    expect(standaloneWrites).toBe(0);
+    expect(requests.some((request) => request.includes("/api/sprint-b/writing/attempts"))).toBe(false);
+    expect(evidenceRequests).toHaveLength(2);
+    expect(evidenceRequests.map((request) => request.taskId)).toEqual([writing.id, writing.id]);
+    expect(evidenceRequests.map((request) => request.body.evidence_ref)).toEqual([
+      `flow-writing:${session.id}:${writing.id}:0`,
+      `flow-writing:${session.id}:${writing.id}:0`,
+    ]);
+    expect(evidenceRequests[1].body).toMatchObject({
+      trace_result: "correct",
+      assisted: false,
+      provider: "HANZI_WRITER",
+      phase: "guided",
+      script_mode: "TRADITIONAL",
+      attempt_index: 0,
+    });
+    expect(writing.attemptCount).toBe(1);
+    expect(container.querySelector(".error-strip")).toBeNull();
+
+    writerSpy.mockRestore();
+    await act(async () => { root.unmount(); });
+    container.remove(); vi.unstubAllGlobals();
   });
 
   // Test 26

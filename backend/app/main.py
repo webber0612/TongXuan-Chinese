@@ -240,8 +240,16 @@ class LearningTaskAnswerRequest(BaseModel):
 
 class LearningTaskEvidenceRequest(BaseModel):
     model_config = {"extra": "forbid"}
-    evidence_ref: str = Field(min_length=1, max_length=255)
+    evidence_ref: str | None = Field(default=None, min_length=1, max_length=255)
     duration_ms: int | None = Field(default=None, ge=0, le=3_600_000)
+    # Flow-owned writing is created by this final evidence operation so the
+    # provider attempt and task settlement can share one database transaction.
+    trace_result: str | None = None
+    assisted: bool | None = None
+    provider: str | None = None
+    phase: str | None = None
+    script_mode: str | None = None
+    attempt_index: int | None = Field(default=None, ge=0, strict=True)
 
 
 class LearningSessionStopRequest(BaseModel):
@@ -803,7 +811,19 @@ def post_learning_task_answer(child_id: int, session_id: str, task_id: str, requ
 @app.post("/api/children/{child_id}/learning-sessions/{session_id}/tasks/{task_id}/evidence")
 def post_learning_task_evidence(child_id: int, session_id: str, task_id: str, request: LearningTaskEvidenceRequest) -> dict[str, object]:
     try:
-        return attach_learning_evidence(child_id=child_id, session_id=session_id, task_id=task_id, evidence_ref=request.evidence_ref, duration_ms=request.duration_ms)
+        return attach_learning_evidence(
+            child_id=child_id,
+            session_id=session_id,
+            task_id=task_id,
+            evidence_ref=request.evidence_ref,
+            duration_ms=request.duration_ms,
+            trace_result=request.trace_result,
+            writing_assisted=request.assisted,
+            writing_provider=request.provider,
+            writing_phase=request.phase,
+            writing_script_mode=request.script_mode,
+            writing_attempt_index=request.attempt_index,
+        )
     except ValueError as error:
         raise _learning_flow_error(error) from error
 
