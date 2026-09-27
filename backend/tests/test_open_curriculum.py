@@ -1056,6 +1056,14 @@ def test_proposed_node_relationship_references_resolve_and_match_types():
     assert validate_curriculum_pack(pack) == []
 
 
+def test_proposed_skill_alias_cannot_collide_with_registered_non_skill_target_id():
+    pack = make_pack()
+    node = pack["curriculumChangeProposals"][0]["proposedNodes"][0]
+    node["skillId"] = "vocab-demo"
+
+    assert "PROPOSAL_SKILL_ALIAS_COLLISION" in codes(validate_curriculum_pack(pack))
+
+
 def test_proposed_node_self_prerequisite_and_duplicate_node_ids_fail_closed():
     pack = make_pack()
     proposal = pack["curriculumChangeProposals"][0]
