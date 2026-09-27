@@ -27,12 +27,75 @@ export function learningFlowTask(
 
 // Planner-faithful LEARN task sets from backend/app/learning_flow.py::_session_plan.
 export function plannerTasksForLesson(
-  lessonId: "starter-l01" | "starter-l02" | "starter-l03" | "basic-l01" | "book1-l01",
+  lessonId: "starter-l01" | "starter-l02" | "starter-l03" | "starter-l04" | "basic-l01" | "book1-l01",
   includeOptionalWriting = false,
   partialRecognition = false,
   childId = 1,
 ) {
   const tasks: ReturnType<typeof learningFlowTask>[] = [];
+  if (lessonId === "starter-l04") {
+    const pkg = getLessonPackage(lessonId)!;
+    const stepData = (key: string) => pkg.taskBlueprint.learnSteps.find((step) => step.stepKey === key)!.data;
+    const context = stepData("context");
+    const pattern = stepData("sentence_pattern");
+    const phonetics = stepData("exit_ticket");
+    const speaking = stepData("speaking");
+    const reflection = stepData("mini_check");
+    const wrap = stepData("wrap_up");
+    tasks.push({
+      ...learningFlowTask(lessonId, "listen", "listen", "LISTENING", "listening", {
+        text: context.audioText, locale: "zh-TW", textKind: "sentence", authorship: context.authorship,
+      }),
+      itemId: `lf_${childId}_${lessonId}_phrase`,
+    });
+    ["小", "狗"].forEach((character, index) => {
+      const other = index === 0 ? "狗" : "小";
+      tasks.push({
+        ...learningFlowTask(lessonId, `recognition-${index + 1}`, `recognition-${index + 1}`, index === 0 ? "RECOGNITION" : "MINI_CHECK", "recognition", {
+          prompt: "聽一聽發音，選出聽到的字：", audioText: character,
+          choices: index === 0
+            ? [{ id: "option-1", label: other }, { id: "option-2", label: character }]
+            : [{ id: "option-1", label: character }, { id: "option-2", label: other }],
+          authorship: "TONGXUAN_AUTHORED_PRACTICE",
+        }),
+        itemId: `lf_${childId}_${lessonId}_char_${index + 1}`,
+      });
+    });
+    tasks.push({
+      ...learningFlowTask(lessonId, "sentence", "sentence-pattern", "SENTENCE_PATTERN", null, {
+        prompt: pattern.prompt, choices: pattern.choices!.map(({ id, label }: any) => ({ id, label })), authorship: pattern.authorship,
+      }),
+      itemId: null as any,
+    });
+    tasks.push({
+      ...learningFlowTask(lessonId, "phonetics", "phonetics", "PHONETICS", "phonetics", {
+        prompt: phonetics.prompt,
+        questions: phonetics.questions!.map(({ id, character, script, choices }: any) => ({
+          id, character, script, choices: choices.map(({ id: choiceId, label }: any) => ({ id: choiceId, label })),
+        })),
+        authorship: phonetics.authorship,
+      }),
+      itemId: null as any,
+    });
+    tasks.push({
+      ...learningFlowTask(lessonId, "speaking", "speaking", "SPEAKING_ATTEMPT", "speaking", {
+        text: speaking.speakingPrompt!.expectedText, locale: "zh-TW", textKind: "sentence", sourceType: "SENTENCE", audioPolicy: "LOCAL_ONLY", authorship: speaking.authorship,
+      }),
+      itemId: `lf_${childId}_${lessonId}_sentence`,
+    });
+    tasks.push(learningFlowTask(lessonId, "reflection", "mini-check-reflection", "MINI_CHECK", null, {
+      mode: "reflection", prompt: reflection.prompt, choices: reflection.choices, authorship: reflection.authorship,
+    }));
+    tasks.push(learningFlowTask(lessonId, "wrap-up", "wrap-up", "LESSON_WRAP_UP", null, {
+      label: wrap.wrapUpSummary!.completionText, masteryNotice: wrap.wrapUpSummary!.masteryNotice, authorship: wrap.authorship,
+    }));
+    for (const task of tasks) {
+      task.childId = childId;
+      task.sessionId = `test-session-${lessonId}`;
+      task.id = `${task.sessionId}:${task.key}`;
+    }
+    return tasks;
+  }
   if (lessonId === "starter-l02" || lessonId === "starter-l03") {
     const pkg = getLessonPackage(lessonId)!;
     const stepData = (key: string) => pkg.taskBlueprint.learnSteps.find((step) => step.stepKey === key)!.data;
@@ -154,7 +217,7 @@ export function plannerTasksForLesson(
 }
 
 export function authoritativeSessionFixture(
-  lessonId: "starter-l01" | "starter-l02" | "starter-l03" | "basic-l01" | "book1-l01",
+  lessonId: "starter-l01" | "starter-l02" | "starter-l03" | "starter-l04" | "basic-l01" | "book1-l01",
   sessionId: string,
   states: Record<string, string> = {},
   taskOverrides: Record<string, Record<string, unknown>> = {},
@@ -181,8 +244,8 @@ export function authoritativeSessionFixture(
     curriculumContext: {
       lessonId,
       lessonMasteredBeforeSession: false,
-      stageTitle: lessonId === "starter-l01" || lessonId === "starter-l02" || lessonId === "starter-l03" ? "入門冊" : lessonId === "basic-l01" ? "基礎冊" : "第一冊",
-      official: { title: lessonId === "starter-l02" ? "我七歲" : lessonId === "starter-l03" ? "爸爸媽媽" : lessonId === "basic-l01" ? "數字一到十" : "你好" },
+      stageTitle: ["starter-l01", "starter-l02", "starter-l03", "starter-l04"].includes(lessonId) ? "入門冊" : lessonId === "basic-l01" ? "基礎冊" : "第一冊",
+      official: { title: lessonId === "starter-l02" ? "我七歲" : lessonId === "starter-l03" ? "爸爸媽媽" : lessonId === "starter-l04" ? "小狗" : lessonId === "basic-l01" ? "數字一到十" : "你好" },
     },
     tasks,
   };

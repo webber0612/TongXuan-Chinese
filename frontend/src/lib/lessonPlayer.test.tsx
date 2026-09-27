@@ -19,7 +19,7 @@ import {
 } from "../data/lessonPackages";
 import { officialCoursePath } from "../data/officialCoursePath";
 import partialRecognitionContract from "../../../shared/test-fixtures/partial-recognition-contract.json";
-import { authoritativeSessionFixture, plannerTasksForLesson } from "./testFixtures/learningFlow";
+import { authoritativeSessionFixture, learningFlowTask, plannerTasksForLesson } from "./testFixtures/learningFlow";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -381,15 +381,16 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
   // Test 13
   it("13. Supported lesson packages preserve the common schema and original-authored starter lesson contracts", () => {
     const packages = getAllLessonPackages();
-    expect(packages.length).toBe(5);
+    expect(packages.length).toBe(6);
 
     const ids = packages.map((p) => p.lessonId);
     expect(ids).toContain("starter-l01");
     expect(ids).toContain("basic-l01");
     expect(ids).toContain("book1-l01");
     expect(ids).toContain("starter-l03");
+    expect(ids).toContain("starter-l04");
 
-    for (const p of packages.filter((item) => !["starter-l02", "starter-l03"].includes(item.lessonId))) {
+    for (const p of packages.filter((item) => !["starter-l02", "starter-l03", "starter-l04"].includes(item.lessonId))) {
       expect(p.schemaVersion).toBe("v2.0");
       expect(p.taskBlueprint.learnSteps.length).toBe(9);
       expect(p.taskBlueprint.fastTrackSteps.length).toBeGreaterThanOrEqual(2);
@@ -412,6 +413,18 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     expect(starterL03.textBlocks.every((item) => item.authorship === "TONGXUAN_AUTHORED_PRACTICE")).toBe(true);
     expect(starterL03.vocabulary.map((item) => item.written)).toEqual(["爸爸媽媽"]);
     expect(starterL03.vocabulary.every((item) => item.authorship === "TONGXUAN_AUTHORED")).toBe(true);
+    const starterL04 = getLessonPackage("starter-l04")!;
+    expect(starterL04.curriculumSource).toMatchObject({
+      title: "小狗", lesson: "第4課", licenseStatus: "PERMISSION_REQUIRED", commercialReady: false,
+    });
+    expect(starterL04.characters.map((item) => item.char)).toEqual(["小", "狗"]);
+    expect(starterL04.textBlocks.map((item) => item.text)).toEqual(["我有一隻小狗。"]);
+    expect(starterL04.textBlocks.every((item) => item.authorship === "TONGXUAN_AUTHORED_PRACTICE")).toBe(true);
+    expect(starterL04.vocabulary).toEqual([]);
+    const malformedRecognitionPackage = structuredClone(starterL04);
+    const recognitionBlueprint = malformedRecognitionPackage.taskBlueprint.learnSteps.find((step) => step.stepKey === "characters");
+    if (Array.isArray(recognitionBlueprint?.data.questions)) recognitionBlueprint.data.questions[0].choices[0].label = "非本課目標";
+    expect(buildAuthoritativeLearnSteps(malformedRecognitionPackage, plannerTasksForLesson("starter-l04")).valid).toBe(false);
   });
 
   it("14. Each supported authoritative planner task maps once to an exact reachable Lesson Player step", () => {
@@ -419,11 +432,12 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
       "starter-l01": ["context", "exit_ticket", "speaking", "mini_check", "wrap_up"],
       "starter-l02": ["context", "vocabulary", "exit_ticket", "speaking", "mini_check", "wrap_up"],
       "starter-l03": ["context", "vocabulary", "exit_ticket", "speaking", "mini_check", "wrap_up"],
+      "starter-l04": ["context", "characters", "characters", "sentence_pattern", "exit_ticket", "speaking", "mini_check", "wrap_up"],
       "basic-l01": ["context", "characters", "characters", "vocabulary", "speaking", "mini_check", "wrap_up"],
       "book1-l01": ["context", "characters", "characters", "sentence_pattern", "speaking", "mini_check", "wrap_up"],
     };
 
-    for (const lessonId of ["starter-l01", "starter-l02", "starter-l03", "basic-l01", "book1-l01"] as const) {
+    for (const lessonId of ["starter-l01", "starter-l02", "starter-l03", "starter-l04", "basic-l01", "book1-l01"] as const) {
       const pkg = getLessonPackage(lessonId);
       expect(pkg).not.toBeNull();
       if (!pkg) continue;
@@ -478,6 +492,36 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
           ? { ...task, taskData: { ...task.taskData, questions: task.taskData.questions.slice(1) } }
           : task);
         expect(buildAuthoritativeLearnSteps(pkg, missingPhonetic).valid).toBe(false);
+      }
+      if (lessonId === "starter-l04") {
+        expect(plan.steps.find((step) => step.stepKey === "context")?.data).toMatchObject({
+          taskId: plannedTasks.find((task) => task.key === "listen")?.id,
+          audioText: "我有一隻小狗。", sceneLabel: "情境：說說自己有的動物",
+        });
+        expect(plan.steps.filter((step) => step.stepKey === "characters").map((step) => step.data.charObj.char)).toEqual(["小", "狗"]);
+        expect(plan.steps.find((step) => step.stepKey === "sentence_pattern")?.data).toMatchObject({
+          taskId: plannedTasks.find((task) => task.key === "sentence-pattern")?.id,
+          prompt: "哪一句是在說自己有一隻小狗？",
+          choices: [{ id: "has-dog", label: "我有一隻小狗。" }, { id: "dog-has-me", label: "小狗有一隻我。" }],
+        });
+        expect(plan.steps.find((step) => step.stepKey === "exit_ticket")?.data.questions).toHaveLength(4);
+        expect(plan.steps.find((step) => step.stepKey === "speaking")?.data.speakingPrompt?.expectedText).toBe("我有一隻小狗。");
+        const missingSentencePattern = plannedTasks.filter((task) => task.key !== "sentence-pattern");
+        expect(buildAuthoritativeLearnSteps(pkg, missingSentencePattern).valid).toBe(false);
+        const wrongIdentity = plannedTasks.map((task) => task.key === "listen" ? { ...task, itemId: "lf_2_starter-l04_phrase" } : task);
+        expect(buildAuthoritativeLearnSteps(pkg, wrongIdentity).valid).toBe(false);
+        const malformedChoice = plannedTasks.map((task) => task.key === "sentence-pattern"
+          ? { ...task, taskData: { ...task.taskData, choices: [{ id: "invented", label: "我有一隻小狗。" }, task.taskData.choices[1]] } }
+          : task);
+        expect(buildAuthoritativeLearnSteps(pkg, malformedChoice).valid).toBe(false);
+        const nonPackageRecognition = plannedTasks.map((task) => task.key === "recognition-1"
+          ? { ...task, taskData: { ...task.taskData, choices: [{ id: "option-1", label: "非本課目標" }, task.taskData.choices[1]] } }
+          : task);
+        expect(buildAuthoritativeLearnSteps(pkg, nonPackageRecognition).valid).toBe(false);
+        const forgedVocab = [...plannedTasks, learningFlowTask("starter-l04", "vocabulary", "vocabulary", "VOCABULARY", "vocabulary", {
+          prompt: "假的詞彙題", choices: [{ id: "a", label: "小狗" }, { id: "b", label: "你好" }], wordText: "你好",
+        })];
+        expect(buildAuthoritativeLearnSteps(pkg, forgedVocab).valid).toBe(false);
       }
     }
   });

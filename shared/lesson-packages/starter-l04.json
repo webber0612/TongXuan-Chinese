@@ -1,0 +1,269 @@
+{
+  "schemaVersion": "v2.0",
+  "lessonId": "starter-l04",
+  "stageId": "starter",
+  "lessonNumber": 4,
+  "curriculumSource": {
+    "kind": "OFFICIAL_OCAC",
+    "series": "學華語向前走",
+    "book": "入門冊 A",
+    "lesson": "第4課",
+    "title": "小狗",
+    "url": "https://www.huayuworld.org/Ebook/ebookDetail?EID=623",
+    "provenanceStatus": "VERIFIED_OFFICIAL_TITLE",
+    "licenseStatus": "PERMISSION_REQUIRED",
+    "commercialReady": false
+  },
+  "objectives": [
+    "原創練習：聽辨並認讀「小」和「狗」。",
+    "原創練習：用「我有一隻小狗」描述熟悉的動物。",
+    "依已驗證的課程目標練習聲韻、動物詞語，以及數詞、量詞和動物詞的表達。"
+  ],
+  "textBlocks": [
+    {
+      "id": "starter-l04-authored-animal-example",
+      "text": "我有一隻小狗。",
+      "pinyin": "wǒ yǒu yì zhī xiǎo gǒu",
+      "zhuyin": "ㄨㄛˇ ㄧㄡˇ ㄧˋ ㄓ ㄒㄧㄠˇ ㄍㄡˇ",
+      "authorship": "TONGXUAN_AUTHORED_PRACTICE"
+    }
+  ],
+  "vocabulary": [],
+  "characters": [
+    {
+      "char": "小",
+      "pronunciation": { "pinyin": "xiǎo", "zhuyin": "ㄒㄧㄠˇ" },
+      "meaning": { "zh": "小；不大", "en": "small" },
+      "writingRequired": false,
+      "learningRole": "RECOGNIZE",
+      "strokeCount": 3,
+      "radical": "小",
+      "authorship": "TONGXUAN_AUTHORED_PRACTICE"
+    },
+    {
+      "char": "狗",
+      "pronunciation": { "pinyin": "gǒu", "zhuyin": "ㄍㄡˇ" },
+      "meaning": { "zh": "狗", "en": "dog" },
+      "writingRequired": false,
+      "learningRole": "RECOGNIZE",
+      "strokeCount": 8,
+      "radical": "犬",
+      "authorship": "TONGXUAN_AUTHORED_PRACTICE"
+    }
+  ],
+  "sentencePatterns": [],
+  "nativeLanguageSupport": { "defaultLanguage": "en", "mode": "FULL", "entries": {} },
+  "culturalNotes": [],
+  "taskBlueprint": {
+    "learnSteps": [
+      {
+        "stepNumber": 1,
+        "stepKey": "context",
+        "domain": "listening",
+        "title": "聽聽動物句",
+        "subtitle": "聆聽一個原創動物例句",
+        "primaryAction": "聆聽",
+        "estimatedMinutes": 2,
+        "required": true,
+        "data": {
+          "prompt": "聽一聽原創練習句。",
+          "audioText": "我有一隻小狗。",
+          "sceneLabel": "情境：說說自己有的動物",
+          "authorship": "TONGXUAN_AUTHORED_PRACTICE"
+        }
+      },
+      {
+        "stepNumber": 2,
+        "stepKey": "characters",
+        "domain": "recognition",
+        "title": "聽音認字",
+        "subtitle": "辨認「小」和「狗」",
+        "primaryAction": "選出聽到的字",
+        "estimatedMinutes": 3,
+        "required": true,
+        "data": {
+          "prompt": "聽一聽發音，選出聽到的字：",
+          "questions": [
+            {
+              "character": "小",
+              "choices": [
+                { "id": "option-1", "label": "狗" },
+                { "id": "option-2", "label": "小" }
+              ],
+              "correctChoiceId": "option-2"
+            },
+            {
+              "character": "狗",
+              "choices": [
+                { "id": "option-1", "label": "狗" },
+                { "id": "option-2", "label": "小" }
+              ],
+              "correctChoiceId": "option-1"
+            }
+          ],
+          "authorship": "TONGXUAN_AUTHORED_PRACTICE"
+        }
+      },
+      {
+        "stepNumber": 3,
+        "stepKey": "sentence_pattern",
+        "domain": null,
+        "title": "說說我有什麼",
+        "subtitle": "練習「我有……」句型",
+        "primaryAction": "選擇句子",
+        "estimatedMinutes": 2,
+        "required": true,
+        "data": {
+          "prompt": "哪一句是在說自己有一隻小狗？",
+          "choices": [
+            { "id": "has-dog", "label": "我有一隻小狗。" },
+            { "id": "dog-has-me", "label": "小狗有一隻我。" }
+          ],
+          "correctChoiceId": "has-dog",
+          "authorship": "TONGXUAN_AUTHORED_PRACTICE"
+        }
+      },
+      {
+        "stepNumber": 4,
+        "stepKey": "exit_ticket",
+        "domain": "phonetics",
+        "title": "注音與拼音",
+        "subtitle": "認讀本課目標字音",
+        "primaryAction": "選擇字音",
+        "estimatedMinutes": 5,
+        "required": true,
+        "data": {
+          "prompt": "選出與目標字相符的注音或拼音。",
+          "questions": [
+            {
+              "id": "traditional-xiao",
+              "character": "小",
+              "script": "TRADITIONAL",
+              "choices": [
+                { "id": "choice-a", "label": "ㄒㄧㄠˇ" },
+                { "id": "choice-b", "label": "ㄒㄧㄠˋ" }
+              ],
+              "correctChoiceId": "choice-a",
+              "authorship": "TONGXUAN_AUTHORED_PRACTICE"
+            },
+            {
+              "id": "simplified-xiao",
+              "character": "小",
+              "script": "SIMPLIFIED",
+              "choices": [
+                { "id": "choice-a", "label": "xiǎo" },
+                { "id": "choice-b", "label": "xiào" }
+              ],
+              "correctChoiceId": "choice-a",
+              "authorship": "TONGXUAN_AUTHORED_PRACTICE"
+            },
+            {
+              "id": "traditional-gou",
+              "character": "狗",
+              "script": "TRADITIONAL",
+              "choices": [
+                { "id": "choice-a", "label": "ㄍㄡˇ" },
+                { "id": "choice-b", "label": "ㄍㄡˋ" }
+              ],
+              "correctChoiceId": "choice-a",
+              "authorship": "TONGXUAN_AUTHORED_PRACTICE"
+            },
+            {
+              "id": "simplified-gou",
+              "character": "狗",
+              "script": "SIMPLIFIED",
+              "choices": [
+                { "id": "choice-a", "label": "gǒu" },
+                { "id": "choice-b", "label": "gòu" }
+              ],
+              "correctChoiceId": "choice-a",
+              "authorship": "TONGXUAN_AUTHORED_PRACTICE"
+            }
+          ],
+          "authorship": "TONGXUAN_AUTHORED_PRACTICE"
+        }
+      },
+      {
+        "stepNumber": 5,
+        "stepKey": "speaking",
+        "domain": "speaking",
+        "title": "介紹一隻小狗",
+        "subtitle": "用原創例句練習口說",
+        "primaryAction": "開始錄音",
+        "estimatedMinutes": 3,
+        "required": true,
+        "data": {
+          "speakingPrompt": {
+            "instruction": "請用「我有……」說說你有什麼動物。",
+            "expectedText": "我有一隻小狗。",
+            "audioPolicy": "LOCAL_ONLY"
+          },
+          "authorship": "TONGXUAN_AUTHORED_PRACTICE"
+        }
+      },
+      {
+        "stepNumber": 6,
+        "stepKey": "mini_check",
+        "domain": null,
+        "title": "練習回顧",
+        "subtitle": "回想今天做過的練習",
+        "primaryAction": "繼續",
+        "estimatedMinutes": 1,
+        "required": true,
+        "data": {
+          "mode": "reflection",
+          "prompt": "今天你練習說自己有什麼？",
+          "choices": [
+            { "id": "animal", "label": "我有一隻小狗。" },
+            { "id": "more", "label": "下次再練一次" }
+          ],
+          "authorship": "TONGXUAN_AUTHORED_PRACTICE"
+        }
+      },
+      {
+        "stepNumber": 7,
+        "stepKey": "wrap_up",
+        "domain": null,
+        "title": "今日練習完成",
+        "subtitle": "TongXuan 原創練習完成",
+        "primaryAction": "結束練習",
+        "estimatedMinutes": 1,
+        "required": true,
+        "data": {
+          "wrapUpSummary": {
+            "completionText": "入門冊第四課原創練習完成。",
+            "masteryNotice": "課程授權仍須另行確認；精熟度依有效證據判定。"
+          },
+          "authorship": "TONGXUAN_AUTHORED_PRACTICE"
+        }
+      }
+    ],
+    "fastTrackSteps": [],
+    "reviewSteps": [],
+    "repairStepsByDomain": {}
+  },
+  "masteryPolicy": {
+    "domainRequirements": {
+      "listening": { "gateType": "NON_SCORE_GATE" },
+      "speaking": { "gateType": "NON_SCORE_GATE" },
+      "recognition": { "gateType": "SCORED", "passScore": 0.75 },
+      "writing": { "gateType": "NON_SCORE_GATE" },
+      "reading": { "gateType": "SCORED", "passScore": 0.75 },
+      "phonetics": { "gateType": "SCORED", "passScore": 0.75 },
+      "pronunciation": { "gateType": "NON_SCORE_GATE" },
+      "vocabulary": { "gateType": "SCORED", "passScore": 0.75 },
+      "grammar": { "gateType": "SCORED", "passScore": 0.75 }
+    },
+    "fastTrackPassThreshold": 1.0,
+    "srsIntervalsMinutes": [10, 1440, 4320, 10080]
+  },
+  "difficultyProfile": {
+    "pacing": "GENTLE",
+    "targetMinutes": { "learn": 15, "fastTrack": 3, "review": 2, "repair": 4 }
+  },
+  "provenance": {
+    "authorship": "TONGXUAN_PEDAGOGY_WRAPPER",
+    "curriculumSourceProvenance": "VERIFIED_OFFICIAL_TITLE",
+    "licenseNote": "Only verified official title/source metadata is included. All tasks and examples are TongXuan-authored; OCAC permission is still required."
+  }
+}
