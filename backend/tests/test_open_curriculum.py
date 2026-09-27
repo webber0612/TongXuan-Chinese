@@ -811,6 +811,25 @@ def test_new_vocabulary_ratio_is_checked_only_with_explicit_approved_limit():
     assert "NEW_VOCABULARY_LIMIT_REQUIRED" not in codes(validate_curriculum_pack(pack))
 
 
+@pytest.mark.parametrize("invalid_limit", [float("nan"), float("inf"), float("-inf")])
+def test_non_finite_new_vocabulary_limit_fails_closed(invalid_limit):
+    pack = make_pack()
+    pack["validationPolicy"]["maxNewVocabularyRatio"] = invalid_limit
+    issues = codes(validate_curriculum_pack(pack))
+
+    assert "NEW_VOCABULARY_LIMIT_INVALID" in issues
+    assert "NEW_VOCABULARY_RATIO_EXCEEDED" not in issues
+
+
+@pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity"])
+def test_json_reader_rejects_non_standard_non_finite_constants(tmp_path, constant):
+    path = tmp_path / "non-standard.json"
+    path.write_text(f'{{"maxNewVocabularyRatio": {constant}}}', encoding="utf-8")
+
+    with pytest.raises(ValueError, match="Non-standard JSON numeric constant"):
+        open_curriculum_validator._read_json(path)
+
+
 def test_recycling_must_be_known_used_and_not_marked_new():
     pack = make_pack()
     pack["lessons"][0]["recycledTargetIds"] = ["vocab-demo"]

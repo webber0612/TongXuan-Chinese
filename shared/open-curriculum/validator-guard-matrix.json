@@ -119,9 +119,12 @@
       "name": "Excessive new-target load",
       "status": "NEEDS_PRODUCT_DECISION",
       "priority": "P1",
-      "rule": ["NEW_VOCABULARY_LIMIT_REQUIRED", "NEW_VOCABULARY_RATIO_EXCEEDED"],
-      "tests": [{"file": "backend/tests/test_open_curriculum.py", "name": "test_new_vocabulary_ratio_is_checked_only_with_explicit_approved_limit"}],
-      "remainingGap": "Publishable lessons with new vocabulary require an explicitly approved ratio, but this repository has no approved numeric threshold or cross-domain cognitive-load definition.",
+      "rule": ["NEW_VOCABULARY_LIMIT_REQUIRED", "NEW_VOCABULARY_LIMIT_INVALID", "NEW_VOCABULARY_RATIO_EXCEEDED"],
+      "tests": [
+        {"file": "backend/tests/test_open_curriculum.py", "name": "test_new_vocabulary_ratio_is_checked_only_with_explicit_approved_limit"},
+        {"file": "backend/tests/test_open_curriculum.py", "name": "test_non_finite_new_vocabulary_limit_fails_closed"}
+      ],
+      "remainingGap": "Publishable lessons with new vocabulary require an explicitly approved finite ratio in [0, 1], but this repository has no approved numeric threshold or cross-domain cognitive-load definition.",
       "ownerDecision": true
     },
     {

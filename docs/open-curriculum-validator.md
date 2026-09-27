@@ -36,7 +36,7 @@ The diagnostics include `DUPLICATE_TARGET_ID`, `SKILL_ALIAS_COLLISION`, `UNREGIS
 - Character writing requires prior learner knowledge or an earlier recognition activity in the same lesson. A character without a writing level cannot be assigned writing activity.
 - Sentence tokens must map to registered vocabulary/character nodes, match their registered spellings, and cover the sentence in order (ignoring punctuation and spaces).
 - Mastery targets must map to a registered skill included in that lesson, and the requested domain must match the skill.
-- A publishable lesson that introduces new vocabulary must provide an approved numeric `maxNewVocabularyRatio`; missing limits fail with `NEW_VOCABULARY_LIMIT_REQUIRED`. The validator sets no default ratio and does not invent a teaching threshold. If the limit is present and the policy is approved, the per-lesson ratio is checked against it.
+- A publishable lesson that introduces new vocabulary must provide an approved finite `maxNewVocabularyRatio` between 0 and 1. Missing limits fail with `NEW_VOCABULARY_LIMIT_REQUIRED`; non-finite and out-of-range limits fail with `NEW_VOCABULARY_LIMIT_INVALID`. The validator sets no default ratio and does not invent a teaching threshold. If the limit is valid and the policy is approved, the per-lesson ratio is checked against it.
 - Recycled targets must have been explicitly known or introduced by an earlier lesson, appear in the lesson targets, and cannot also be labeled new.
 
 ## Diagnostic codes
