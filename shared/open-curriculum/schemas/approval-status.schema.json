@@ -1,0 +1,6 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tongxuan.dev/schemas/approval-status.schema.json",
+  "title": "Open Curriculum approval status",
+  "enum": ["PROPOSED", "EVIDENCE_CHECKED", "ARCHITECT_APPROVED", "REJECTED"]
+}
