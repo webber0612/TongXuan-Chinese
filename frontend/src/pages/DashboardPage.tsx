@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { buildDashboardPath, DASHBOARD_SKILLS, dashboardWindowLabel, DashboardWindow } from "../lib/dashboard";
+import { apiFetch } from "../lib/apiFetch";
 
 const API = import.meta.env.VITE_API_BASE ?? "";
 type Child = { id: number; name: string };
 
 async function api<T>(path: string): Promise<T> {
-  const response = await fetch(`${API}${path}`);
+  const response = await apiFetch(`${API}${path}`);
   if (!response.ok) throw new Error((await response.json()).detail ?? "Request failed");
   return response.json();
 }

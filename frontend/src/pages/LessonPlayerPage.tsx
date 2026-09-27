@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import HanziWriter from "hanzi-writer";
+import { apiFetch } from "../lib/apiFetch";
 import {
   ArrowLeft,
   BookOpen,
@@ -489,7 +490,7 @@ const copy = {
 } as const;
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API}${path}`, { headers: { "Content-Type": "application/json" }, ...init });
+  const response = await apiFetch(`${API}${path}`, { headers: { "Content-Type": "application/json" }, ...init });
   if (!response.ok) throw new Error((await response.json().catch(() => ({}))).detail ?? "lesson_player_request_failed");
   return response.json() as Promise<T>;
 }

@@ -6,11 +6,12 @@ import { BrowserMediaRecorderAdapter, ReadingAloudTextKind } from "../lib/readin
 import { buildOCRConfirmPayload, LocalOCRProvider, resetOCRLocalState } from "../lib/ocrImport";
 import { buildAdaptiveRequest, explainAdaptiveReasons, AdaptivePreference } from "../lib/adaptive";
 import { currentLearningLocale } from "../lib/i18n";
+import { apiFetch } from "../lib/apiFetch";
 
 const API = import.meta.env.VITE_API_BASE ?? "";
 
 async function api<T>(path: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(`${API}${path}`, { headers: { "Content-Type": "application/json" }, ...options });
+  const response = await apiFetch(`${API}${path}`, { headers: { "Content-Type": "application/json" }, ...options });
   if (!response.ok) throw new Error((await response.json()).detail ?? "Request failed");
   return response.json();
 }

@@ -15,6 +15,7 @@ class Settings:
     backup_dir: Path | None
     allowed_origins: tuple[str, ...]
     auth_secret: str
+    google_client_id: str
     build_target: str
     parent_password: str
 
@@ -29,6 +30,7 @@ def load_settings() -> Settings:
         backup_dir=Path(backup) if backup else None,
         allowed_origins=origins,
         auth_secret=os.getenv("TONGXUAN_AUTH_SECRET", ""),
+        google_client_id=os.getenv("GOOGLE_CLIENT_ID", "").strip(),
         build_target=os.getenv("BUILD_TARGET", "family").strip().lower(),
         parent_password=os.getenv("TONGXUAN_PARENT_PASSWORD", "test-parent-password" if environment in {"development", "test"} else ""),
     )
@@ -47,6 +49,8 @@ def validate_settings(settings: Settings) -> list[str]:
             errors.append("production_backup_dir_required")
         if settings.auth_secret == "" or len(settings.auth_secret) < 32:
             errors.append("production_auth_secret_required")
+        if not settings.google_client_id:
+            errors.append("production_google_client_id_required")
         if not settings.allowed_origins or "*" in settings.allowed_origins:
             errors.append("production_cors_origins_required")
         if settings.parent_password == "" or len(settings.parent_password) < 12:

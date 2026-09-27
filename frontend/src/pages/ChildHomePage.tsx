@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowUpRight, BookOpen, CircleHelp, Gift, RefreshCw, Star, Target, Volume2, X } from "lucide-react";
 import { BrowserSpeechSynthesisProvider } from "../lib/tts";
+import { apiFetch } from "../lib/apiFetch";
 import { currentAnnotationMode, currentLearningLocale, useLocale } from "../lib/i18n";
 import { Reward, PARENT_GATE_NOTE, isPasswordEntered } from "../lib/parentGate";
 
@@ -11,7 +12,7 @@ type Child = { id: number; name: string };
 type ReadingHint = { notation: string; notation_system: string };
 
 async function api<T>(path: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(`${API}${path}`, { headers: { "Content-Type": "application/json" }, ...options });
+  const response = await apiFetch(`${API}${path}`, { headers: { "Content-Type": "application/json" }, ...options });
   if (!response.ok) { let detail = "Request failed"; try { detail = (await response.json()).detail ?? detail; } catch { /* preserve fallback */ } throw new Error(detail); }
   return response.json();
 }

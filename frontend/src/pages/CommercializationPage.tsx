@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { buildCommercializationPath, BuildTarget } from "../lib/commercialization";
+import { apiFetch } from "../lib/apiFetch";
 
 const API = import.meta.env.VITE_API_BASE ?? "";
 async function api<T>(path: string): Promise<T> {
-  const response = await fetch(`${API}${path}`);
+  const response = await apiFetch(`${API}${path}`);
   if (!response.ok) throw new Error((await response.json()).detail ?? "Request failed");
   return response.json();
 }

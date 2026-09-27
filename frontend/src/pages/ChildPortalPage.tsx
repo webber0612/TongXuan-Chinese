@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, type ReactNode } from "react";
+import { apiFetch } from "../lib/apiFetch";
 import HanziWriter from "hanzi-writer";
 import {
   EMPTY_WRITING_PROGRESS,
@@ -2046,7 +2047,7 @@ export function ChildPortalPage({
       return () => { cancelled = true; };
     }
 
-    fetch(`${API}/api/children/${targetChildId}/learning-daily-queue`)
+    apiFetch(`${API}/api/children/${targetChildId}/learning-daily-queue`)
       .then((res) => (res.ok ? res.json() as Promise<unknown> : null))
       .then((data: unknown) => {
         if (!cancelled && typeof data === "object" && data !== null &&

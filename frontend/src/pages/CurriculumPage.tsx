@@ -3,6 +3,7 @@ import { ArrowUpRight, BookOpen, Check, RefreshCw } from "lucide-react";
 import { buildCurriculumPath, progressLabel } from "../lib/curriculum";
 import { useLocale } from "../lib/i18n";
 import { officialCoursePath, officialCourseSourceNote } from "../data/officialCoursePath";
+import { apiFetch } from "../lib/apiFetch";
 
 const API = import.meta.env.VITE_API_BASE ?? "";
 type Child = { id: number; name: string };
@@ -12,7 +13,7 @@ type CurriculumLevel = { id: string; title: string; sequence: number; units: Cur
 type CurriculumPayload = { as_of: string; progress: { total: number; completed: number; in_progress: number; not_started: number }; levels: CurriculumLevel[] };
 
 async function api<T>(path: string): Promise<T> {
-  const response = await fetch(`${API}${path}`);
+  const response = await apiFetch(`${API}${path}`);
   if (!response.ok) throw new Error((await response.json()).detail ?? "Request failed");
   return response.json();
 }

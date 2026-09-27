@@ -200,6 +200,8 @@ small { color: var(--muted); display: block; line-height: 1.45; }
 .setting-divider { background: var(--line); height: 1px; margin: 14px 0; }
 .family-list { display: grid; }
 .family-row { align-items: center; border-top: 1px solid #edf0e8; display: flex; gap: 10px; padding: 11px 0; }
+.family-row-button { background: transparent; border-left: 0; border-right: 0; border-bottom: 0; color: inherit; cursor: pointer; text-align: left; width: 100%; }
+.family-row-button:hover, .family-row-button:focus-visible, .family-row-button[aria-pressed="true"] { background: #f4f7f1; }
 .family-row > span:nth-child(2) { flex: 1; }
 .family-row strong { display: block; font-size: .85rem; }
 .family-row small { font-size: .7rem; }

@@ -32,26 +32,29 @@ def _snapshot() -> dict[str, list[tuple[Any, ...]]]:
 
 def run_smoke(dist: Path | None = None) -> dict[str, Any]:
     from backend.app.auth import issue_session
+    from backend.app.parent_accounts import upsert_google_parent
     from backend.app.production import backup_database, restore_database
     from scripts.production_check import check_dist
 
-    env_keys = ("TONGXUAN_ENV", "BUILD_TARGET", "TONGXUAN_DB_PATH", "TONGXUAN_BACKUP_DIR", "TONGXUAN_AUTH_SECRET", "TONGXUAN_PARENT_PASSWORD", "TONGXUAN_ALLOWED_ORIGINS")
+    env_keys = ("TONGXUAN_ENV", "BUILD_TARGET", "TONGXUAN_DB_PATH", "TONGXUAN_BACKUP_DIR", "TONGXUAN_AUTH_SECRET", "TONGXUAN_PARENT_PASSWORD", "TONGXUAN_ALLOWED_ORIGINS", "GOOGLE_CLIENT_ID")
     previous = {key: os.environ.get(key) for key in env_keys}
     temporary = tempfile.mkdtemp(prefix="tongxuan-phase20-")
     try:
         root = Path(temporary)
-        os.environ.update({"TONGXUAN_ENV": "production", "BUILD_TARGET": "family", "TONGXUAN_DB_PATH": str(root / "data.sqlite3"), "TONGXUAN_BACKUP_DIR": str(root / "backups"), "TONGXUAN_AUTH_SECRET": "phase20-smoke-secret-01234567890123456789", "TONGXUAN_PARENT_PASSWORD": "phase20-parent-password-012345", "TONGXUAN_ALLOWED_ORIGINS": "https://family.example"})
+        os.environ.update({"TONGXUAN_ENV": "production", "BUILD_TARGET": "family", "TONGXUAN_DB_PATH": str(root / "data.sqlite3"), "TONGXUAN_BACKUP_DIR": str(root / "backups"), "TONGXUAN_AUTH_SECRET": "phase20-smoke-secret-01234567890123456789", "TONGXUAN_PARENT_PASSWORD": "phase20-parent-password-012345", "TONGXUAN_ALLOWED_ORIGINS": "https://family.example", "GOOGLE_CLIENT_ID": "smoke-web-client.apps.googleusercontent.com"})
         from backend.app.main import app
         admin = {"Authorization": f"Bearer {issue_session(subject='admin', role='admin')}"}
         with TestClient(app) as api:
             _assert(api.get("/api/health"))
             readiness = _assert(api.get("/api/readiness"))
             assert readiness["status"] == "READY"
-            alice = _assert(api.post("/api/children", headers=admin, json={"name": "Alice"}))
-            bob = _assert(api.post("/api/children", headers=admin, json={"name": "Bob"}))
+            alice_parent = upsert_google_parent(google_sub="smoke-google-parent-alice", email="alice@example.invalid", display_name="Alice parent")
+            bob_parent = upsert_google_parent(google_sub="smoke-google-parent-bob", email="bob@example.invalid", display_name="Bob parent")
+            alice_session = {"Authorization": f"Bearer {issue_session(subject='alice-parent', role='parent', parent_id=alice_parent['id'])}"}
+            bob_session = {"Authorization": f"Bearer {issue_session(subject='bob-parent', role='parent', parent_id=bob_parent['id'])}"}
+            alice = _assert(api.post("/api/children", headers=alice_session, json={"name": "Alice"}))
+            bob = _assert(api.post("/api/children", headers=bob_session, json={"name": "Bob"}))
             alice_id, bob_id = alice["id"], bob["id"]
-            alice_session = {"Authorization": f"Bearer {issue_session(subject='alice-parent', role='parent', child_ids=[alice_id])}"}
-            bob_session = {"Authorization": f"Bearer {issue_session(subject='bob-parent', role='parent', child_ids=[bob_id])}"}
             _assert(api.post(f"/api/children/{alice_id}/learning-items/seed", headers=alice_session, json={"characters": ["學"]}))
             _assert(api.post(f"/api/children/{bob_id}/learning-items/seed", headers=bob_session, json={"characters": ["学"]}))
             _assert(api.post("/api/sprint-b/seed", headers=alice_session, params={"child_id": alice_id}))

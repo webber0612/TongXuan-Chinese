@@ -15,6 +15,7 @@ import os
 import secrets
 import time
 from dataclasses import dataclass
+from typing import Any
 
 from fastapi import HTTPException, Request
 
@@ -28,6 +29,7 @@ class Session:
     role: str
     expires_at: int
     child_ids: frozenset[int] = frozenset()
+    parent_id: int | None = None
 
 
 def _secret() -> bytes:
@@ -35,11 +37,13 @@ def _secret() -> bytes:
     return configured.encode("utf-8") if configured else _PROCESS_SECRET
 
 
-def issue_session(*, subject: str, role: str, ttl_seconds: int = 3600, child_ids: list[int] | None = None) -> str:
+def issue_session(*, subject: str, role: str, ttl_seconds: int = 3600, child_ids: list[int] | None = None, parent_id: int | None = None) -> str:
     """Provision a token for an external auth adapter or tests; never an API route."""
     if role not in ALLOWED_ROLES:
         raise ValueError("invalid_role")
     payload = {"subject": subject, "role": role, "exp": int(time.time()) + ttl_seconds, "child_ids": child_ids or []}
+    if parent_id is not None:
+        payload["parent_id"] = int(parent_id)
     encoded = base64.urlsafe_b64encode(json.dumps(payload, separators=(",", ":")).encode()).decode().rstrip("=")
     signature = hmac.new(_secret(), encoded.encode(), hashlib.sha256).hexdigest()
     return f"{encoded}.{signature}"
@@ -63,12 +67,61 @@ def authenticate(request: Request) -> Session:
     try:
         padding = "=" * (-len(encoded) % 4)
         payload = json.loads(base64.urlsafe_b64decode((encoded + padding).encode()))
-        session = Session(str(payload["subject"]), str(payload["role"]), int(payload["exp"]), frozenset(int(item) for item in payload.get("child_ids", [])))
+        parent_id = payload.get("parent_id")
+        session = Session(
+            str(payload["subject"]), str(payload["role"]), int(payload["exp"]),
+            frozenset(int(item) for item in payload.get("child_ids", [])),
+            int(parent_id) if parent_id is not None else None,
+        )
     except (ValueError, KeyError, TypeError, json.JSONDecodeError) as error:
         raise HTTPException(status_code=401, detail="invalid_session") from error
     if session.role not in ALLOWED_ROLES or session.expires_at <= int(time.time()):
         raise HTTPException(status_code=401, detail="invalid_session")
     return session
+
+
+def verify_google_id_token(credential: str, client_id: str) -> dict[str, Any]:
+    """Verify a Google ID token with Google's maintained Python auth library."""
+    if not credential or len(credential) > 20_000 or not client_id:
+        raise ValueError("invalid_google_credential")
+    try:
+        from google.auth.transport.requests import Request as GoogleRequest
+        from google.oauth2 import id_token
+
+        claims = id_token.verify_oauth2_token(credential, GoogleRequest(), client_id)
+    except Exception as error:
+        raise ValueError("invalid_google_credential") from error
+    if not isinstance(claims, dict):
+        raise ValueError("invalid_google_credential")
+    subject = claims.get("sub")
+    issuer = claims.get("iss")
+    audience = claims.get("aud")
+    try:
+        expiry = int(claims.get("exp", 0))
+    except (TypeError, ValueError) as error:
+        raise ValueError("invalid_google_credential") from error
+    if (
+        not isinstance(subject, str) or not subject.strip() or len(subject) > 255
+        or issuer not in {"accounts.google.com", "https://accounts.google.com"}
+        or audience != client_id or expiry <= int(time.time())
+    ):
+        raise ValueError("invalid_google_credential")
+    return {
+        "sub": subject,
+        "email": str(claims.get("email") or "")[:320],
+        "name": str(claims.get("name") or "")[:120],
+    }
+
+
+def parent_owns_child(session: Session, child_id: int, *, production: bool) -> bool:
+    if session.role != "parent":
+        return True
+    if session.parent_id is not None:
+        from .parent_accounts import parent_owns_child as owns
+        return owns(session.parent_id, child_id)
+    # Legacy externally provisioned child_ids remain usable only in local/test
+    # environments. Production authorization always comes from persistent ownership.
+    return not production and child_id in session.child_ids
 
 
 def require_commercialization_admin(request: Request) -> Session:
@@ -84,7 +137,7 @@ def require_child_access(request: Request, child_id: int) -> Session | None:
     if load_settings().environment != "production":
         return None
     session = authenticate(request)
-    if session.role == "parent" and child_id not in session.child_ids:
+    if not parent_owns_child(session, child_id, production=True):
         raise HTTPException(status_code=403, detail="child_access_denied")
     return session
 
@@ -94,7 +147,8 @@ def require_parent_or_admin_child_access(request: Request, child_id: int) -> Ses
     session = authenticate(request)
     if session.role not in {"parent", "admin"}:
         raise HTTPException(status_code=403, detail="parent_or_admin_required")
-    if session.role == "parent" and child_id not in session.child_ids:
+    from .config import load_settings
+    if not parent_owns_child(session, child_id, production=load_settings().environment == "production"):
         raise HTTPException(status_code=403, detail="child_access_denied")
     return session
 
@@ -112,6 +166,6 @@ def require_reward_redemption_access(request: Request, child_id: int) -> Session
     session = authenticate(request)
     if session.role not in {"parent", "developer", "admin"}:
         raise HTTPException(status_code=403, detail="reward_redemption_role_required")
-    if session.role == "parent" and child_id not in session.child_ids:
+    if not parent_owns_child(session, child_id, production=True):
         raise HTTPException(status_code=403, detail="child_access_denied")
     return session
