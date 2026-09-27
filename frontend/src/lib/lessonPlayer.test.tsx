@@ -381,7 +381,7 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
   // Test 13
   it("13. Supported lesson packages preserve the common schema and original-authored starter lesson contracts", () => {
     const packages = getAllLessonPackages();
-    expect(packages.length).toBe(6);
+    expect(packages.length).toBe(7);
 
     const ids = packages.map((p) => p.lessonId);
     expect(ids).toContain("starter-l01");
@@ -389,8 +389,9 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     expect(ids).toContain("book1-l01");
     expect(ids).toContain("starter-l03");
     expect(ids).toContain("starter-l04");
+    expect(ids).toContain("starter-l05");
 
-    for (const p of packages.filter((item) => !["starter-l02", "starter-l03", "starter-l04"].includes(item.lessonId))) {
+    for (const p of packages.filter((item) => !["starter-l02", "starter-l03", "starter-l04", "starter-l05"].includes(item.lessonId))) {
       expect(p.schemaVersion).toBe("v2.0");
       expect(p.taskBlueprint.learnSteps.length).toBe(9);
       expect(p.taskBlueprint.fastTrackSteps.length).toBeGreaterThanOrEqual(2);
@@ -421,6 +422,55 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     expect(starterL04.textBlocks.map((item) => item.text)).toEqual(["我有一隻小狗。"]);
     expect(starterL04.textBlocks.every((item) => item.authorship === "TONGXUAN_AUTHORED_PRACTICE")).toBe(true);
     expect(starterL04.vocabulary).toEqual([]);
+    const starterL05 = getLessonPackage("starter-l05")!;
+    expect(starterL05.curriculumSource).toMatchObject({
+      title: "我的妹妹", lesson: "第5課", licenseStatus: "PERMISSION_REQUIRED", commercialReady: false,
+    });
+    expect(starterL05.objectives[0]).toBe(`官方目標摘要：${officialCoursePath.stages.flatMap((stage) => stage.lessons).find((lesson) => lesson.id === "starter-l05")?.tongxuan.handbookSummary.text}`);
+    expect(starterL05.characters.map((item) => item.char)).toEqual(["妹"]);
+    expect(starterL05.textBlocks.map((item) => item.text)).toEqual(["我有一個妹妹。"]);
+    expect(starterL05.textBlocks.every((item) => item.authorship === "TONGXUAN_AUTHORED_PRACTICE")).toBe(true);
+    expect(starterL05.vocabulary.map((item) => item.written)).toEqual(["妹妹"]);
+    expect(starterL05.vocabulary.every((item) => item.authorship === "TONGXUAN_AUTHORED")).toBe(true);
+    const l05Plan = buildAuthoritativeLearnSteps(starterL05, plannerTasksForLesson("starter-l05"));
+    expect(l05Plan.valid).toBe(true);
+    expect(l05Plan.steps.map(({ stepKey, title, subtitle }) => [stepKey, title, subtitle])).toEqual([
+      ["context", "聽聽妹妹例句", "聆聽一個原創家庭例句"],
+      ["vocabulary", "親屬詞語", "認識「妹妹」"],
+      ["exit_ticket", "注音與拼音", "認讀原創練習目標字音"],
+      ["speaking", "介紹妹妹", "用原創例句練習口說"],
+      ["mini_check", "練習回顧", "回想今天做過的練習"],
+      ["wrap_up", "今日練習完成", "TongXuan 原創練習完成"],
+    ]);
+    expect(getScaffoldText(starterL05, "sister_example", "FULL")).toMatchObject({
+      visibleText: "I have a younger sister.",
+      notes: "TongXuan-authored practice sentence; not quoted from the course source.",
+      reviewStatus: "REVIEWED",
+    });
+    const malformedL05Package = structuredClone(starterL05);
+    malformedL05Package.curriculumSource.licenseStatus = "APPROVED" as any;
+    expect(buildAuthoritativeLearnSteps(malformedL05Package, plannerTasksForLesson("starter-l05")).valid).toBe(false);
+    const malformedL05Mutations: Array<(pkg: any) => void> = [
+      (pkg) => { pkg.taskBlueprint.learnSteps.find((step: any) => step.stepKey === "exit_ticket").data.questions[0].choices[1].label = "mèi"; },
+      (pkg) => { pkg.taskBlueprint.learnSteps.find((step: any) => step.stepKey === "exit_ticket").data.questions[1].choices[1].label = "ㄇㄟˋ"; },
+      (pkg) => { pkg.taskBlueprint.learnSteps.find((step: any) => step.stepKey === "exit_ticket").data.questions[0].choices[1].id = "pinyin-distractor"; },
+      (pkg) => { pkg.taskBlueprint.learnSteps.find((step: any) => step.stepKey === "exit_ticket").data.questions[1].choices[1].id = "zhuyin-distractor"; },
+      (pkg) => { pkg.taskBlueprint.learnSteps.find((step: any) => step.stepKey === "exit_ticket").data.questions[0].correctChoiceId = "tone-two"; },
+      (pkg) => { pkg.taskBlueprint.learnSteps.find((step: any) => step.stepKey === "exit_ticket").data.questions[1].correctChoiceId = "tone-two"; },
+      (pkg) => { pkg.taskBlueprint.learnSteps.find((step: any) => step.stepKey === "context").title = "未審核標題"; },
+      (pkg) => { pkg.taskBlueprint.learnSteps.find((step: any) => step.stepKey === "wrap_up").subtitle = "未審核副標題"; },
+      (pkg) => { pkg.nativeLanguageSupport.entries.sister_example.naturalMeaning = "An unexpected translation."; },
+      (pkg) => { pkg.nativeLanguageSupport.entries.sister_example.notes = "Unexpected helper note."; },
+      (pkg) => { pkg.taskBlueprint.learnSteps.find((step: any) => step.stepKey === "context").data.prompt = "Unexpected prompt."; },
+      (pkg) => { pkg.taskBlueprint.learnSteps.find((step: any) => step.stepKey === "speaking").data.speakingPrompt.instruction = "Unexpected speaking copy."; },
+      (pkg) => { pkg.taskBlueprint.learnSteps.find((step: any) => step.stepKey === "exit_ticket").data.prompt = "Unexpected phonetics prompt."; },
+      (pkg) => { pkg.taskBlueprint.learnSteps.find((step: any) => step.stepKey === "wrap_up").data.wrapUpSummary.masteryNotice = "Unexpected notice."; },
+    ];
+    for (const mutate of malformedL05Mutations) {
+      const malformed = structuredClone(starterL05) as any;
+      mutate(malformed);
+      expect(buildAuthoritativeLearnSteps(malformed, plannerTasksForLesson("starter-l05"))).toMatchObject({ valid: false, steps: [] });
+    }
     const malformedRecognitionPackage = structuredClone(starterL04);
     const recognitionBlueprint = malformedRecognitionPackage.taskBlueprint.learnSteps.find((step) => step.stepKey === "characters");
     if (Array.isArray(recognitionBlueprint?.data.questions)) recognitionBlueprint.data.questions[0].choices[0].label = "非本課目標";
@@ -445,11 +495,12 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
       "starter-l02": ["context", "vocabulary", "exit_ticket", "speaking", "mini_check", "wrap_up"],
       "starter-l03": ["context", "vocabulary", "exit_ticket", "speaking", "mini_check", "wrap_up"],
       "starter-l04": ["context", "characters", "characters", "sentence_pattern", "exit_ticket", "speaking", "mini_check", "wrap_up"],
+      "starter-l05": ["context", "vocabulary", "exit_ticket", "speaking", "mini_check", "wrap_up"],
       "basic-l01": ["context", "characters", "characters", "vocabulary", "speaking", "mini_check", "wrap_up"],
       "book1-l01": ["context", "characters", "characters", "sentence_pattern", "speaking", "mini_check", "wrap_up"],
     };
 
-    for (const lessonId of ["starter-l01", "starter-l02", "starter-l03", "starter-l04", "basic-l01", "book1-l01"] as const) {
+    for (const lessonId of ["starter-l01", "starter-l02", "starter-l03", "starter-l04", "starter-l05", "basic-l01", "book1-l01"] as const) {
       const pkg = getLessonPackage(lessonId);
       expect(pkg).not.toBeNull();
       if (!pkg) continue;
@@ -534,6 +585,26 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
           prompt: "假的詞彙題", choices: [{ id: "a", label: "小狗" }, { id: "b", label: "你好" }], wordText: "你好",
         })];
         expect(buildAuthoritativeLearnSteps(pkg, forgedVocab).valid).toBe(false);
+      }
+      if (lessonId === "starter-l05") {
+        const vocabTask = plannedTasks.find((task) => task.key === "vocabulary")!;
+        expect(plan.steps.find((step) => step.stepKey === "context")?.data).toMatchObject({
+          taskId: plannedTasks.find((task) => task.key === "listen")?.id,
+          audioText: "我有一個妹妹。", sceneLabel: "情境：介紹妹妹", scaffoldKey: "sister_example",
+        });
+        expect(plan.steps.find((step) => step.stepKey === "vocabulary")?.data).toMatchObject({
+          taskId: vocabTask.id, word: "妹妹", pinyin: "mèimei", zhuyin: "ㄇㄟˋ ㄇㄟ˙",
+          exampleSentence: "我有一個妹妹。", correctChoiceId: "younger-sister", scaffoldKey: "sister_example",
+        });
+        expect(plan.steps.find((step) => step.stepKey === "exit_ticket")?.data.questions).toHaveLength(2);
+        expect(plan.steps.find((step) => step.stepKey === "speaking")?.data.speakingPrompt?.expectedText).toBe("我有一個妹妹。");
+        expect(buildAuthoritativeLearnSteps(pkg, plannedTasks.filter((task) => task.key !== "vocabulary")).valid).toBe(false);
+        expect(buildAuthoritativeLearnSteps(pkg, plannedTasks.map((task) => task.key === "vocabulary"
+          ? { ...task, itemId: "lf_2_starter-l05_vocabulary" } : task)).valid).toBe(false);
+        expect(buildAuthoritativeLearnSteps(pkg, plannedTasks.map((task) => task.key === "phonetics"
+          ? { ...task, taskData: { ...task.taskData, questions: task.taskData.questions.slice(1) } } : task)).valid).toBe(false);
+        expect(buildAuthoritativeLearnSteps(pkg, plannedTasks.map((task) => task.key === "mini-check-reflection"
+          ? { ...task, taskData: { ...task.taskData, choices: [{ id: "same", label: "妹妹" }, { id: "same", label: "再練一次" }] } } : task)).valid).toBe(false);
       }
     }
   });
@@ -750,6 +821,32 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     expect(selectReviewTasksAcrossPackages(tasks, dueItems.slice(1), 1, "domain-session")).toBeNull();
     expect(validateReviewDueItems([{ ...dueItems[1], id: "你" }])).toBe(false);
     expect(validateReviewDueItems([{ ...dueItems[0], id: "unknown-word-item" }])).toBe(false);
+  });
+
+  it("14e. starter-l05 word REVIEW maps only its package word and exact child-owned item", () => {
+    const pkg = getLessonPackage("starter-l05")!;
+    const dueAt = "2026-09-02T00:00:00Z";
+    const dueItems = [{ id: "lf_55_starter-l05_vocabulary", skillDomain: "word", word: "妹妹", lessonId: "starter-l05", dueAt }];
+    const task = {
+      id: "l5-review-session:review-word-1", sessionId: "l5-review-session", childId: 55, key: "review-word-1",
+      taskType: "REVIEW_VOCABULARY", sourceQueue: "REVIEW", lessonId: "starter-l05", skillDomain: "word",
+      itemId: "lf_55_starter-l05_vocabulary", state: "PENDING", required: true, masteryImpact: "NONE",
+      evidenceType: "learning_session_vocabulary_choice",
+      taskData: {
+        word: "妹妹", prompt: "「妹妹」是什麼意思？",
+        choices: [{ id: "younger-sister", label: "年紀比我小的姊妹" }, { id: "older-sister", label: "年紀比我大的姊妹" }], dueAt,
+      },
+    };
+    expect(validateReviewDueItems(dueItems)).toBe(true);
+    expect(validateReviewDueItems([{ ...dueItems[0], word: "爸爸媽媽" }])).toBe(false);
+    const selected = selectReviewTasksAcrossPackages([task], dueItems, 55, "l5-review-session");
+    expect(selected?.map((item) => item.id)).toEqual([task.id]);
+    expect(selectReviewTasksAcrossPackages([task], [{ ...dueItems[0], word: "爸爸媽媽" }], 55, "l5-review-session")).toBeNull();
+    expect(selectReviewTasksAcrossPackages([task], dueItems, 56, "l5-review-session")).toBeNull();
+    expect(selectReviewTasksAcrossPackages([{ ...task, itemId: "lf_56_starter-l05_vocabulary" }], dueItems, 55, "l5-review-session")).toBeNull();
+    const steps = getStepsForMode(pkg, "REVIEW", [], selected ?? []);
+    expect(steps.map((step) => step.stepKey)).toEqual(["vocabulary", "wrap_up"]);
+    expect(steps[0].data).toMatchObject({ taskId: task.id, word: "妹妹", choices: task.taskData.choices });
   });
 
   it("14b. The shared partial-recognition contract maps only the planner's single first-character MINI_CHECK", () => {

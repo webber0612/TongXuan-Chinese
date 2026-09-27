@@ -30,7 +30,7 @@ from .sprint_b import _practice_pronunciation_in_transaction, _practice_writing_
 from .writing_provider import provider_for
 
 
-FLOW_LESSONS = {"starter-l01", "starter-l02", "starter-l03", "starter-l04", "basic-l01", "book1-l01"}
+FLOW_LESSONS = {"starter-l01", "starter-l02", "starter-l03", "starter-l04", "starter-l05", "basic-l01", "book1-l01"}
 STAGE_STARTS = {"STARTER": "starter-l01", "BASIC": "basic-l01", "BOOK_1": "book1-l01"}
 STAGE_RANK = {"starter": 0, "basic": 1, "book-1": 2}
 PLACEMENT_RANK = {"STARTER": 0, "BASIC": 1, "BOOK_1": 2}
@@ -43,6 +43,7 @@ PHONETICS = {
     "媽": {"TRADITIONAL": ("ㄇㄚ", "mā"), "SIMPLIFIED": ("ㄇㄚ", "mā")},
     "小": {"TRADITIONAL": ("ㄒㄧㄠˇ", "xiǎo"), "SIMPLIFIED": ("ㄒㄧㄠˇ", "xiǎo")},
     "狗": {"TRADITIONAL": ("ㄍㄡˇ", "gǒu"), "SIMPLIFIED": ("ㄍㄡˇ", "gǒu")},
+    "妹": {"TRADITIONAL": ("ㄇㄟˋ", "mèi"), "SIMPLIFIED": ("ㄇㄟˋ", "mèi")},
 }
 WRITING_PHASES = ("guided", "reduced_hint", "independent")
 DEFAULT_TARGET_MINUTES = 18
@@ -114,7 +115,7 @@ def _lesson_for_child(db: Any, child_id: int, requested_lesson_id: str | None = 
     lesson = _lesson_rows().get(lesson_id)
     if lesson is None:
         raise ValueError("validated_lesson_not_found")
-    selected_stage = {"starter-l01": "STARTER", "starter-l02": "STARTER", "starter-l03": "STARTER", "starter-l04": "STARTER", "basic-l01": "BASIC", "book1-l01": "BOOK_1"}[lesson_id]
+    selected_stage = {"starter-l01": "STARTER", "starter-l02": "STARTER", "starter-l03": "STARTER", "starter-l04": "STARTER", "starter-l05": "STARTER", "basic-l01": "BASIC", "book1-l01": "BOOK_1"}[lesson_id]
     if selected_stage != stage_start:
         raise ValueError("learning_flow_lesson_not_in_placement")
     if not lesson_is_accessible(db, child_id, lesson_id):
@@ -391,7 +392,178 @@ def _starter_l04_contract() -> tuple[dict[str, Any], dict[str, dict[str, Any]]] 
     return (package, by_key) if seen == expected_identities else None
 
 
+def _starter_l05_contract() -> tuple[dict[str, Any], dict[str, dict[str, Any]]] | None:
+    """Validate Lesson 5's original sister activities against exact verified metadata."""
+    package = get_lesson_package("starter-l05")
+    lesson = _lesson_rows().get("starter-l05")
+    source = package.get("curriculumSource") if isinstance(package, dict) else None
+    provenance = package.get("provenance") if isinstance(package, dict) else None
+    if (
+        not isinstance(package, dict) or package.get("lessonId") != "starter-l05" or
+        not lesson or lesson.get("title") != "我的妹妹" or lesson.get("sourceBook") != "入門冊 A" or
+        lesson.get("number") != 5 or lesson.get("domains") != ["listening", "speaking", "phonetics", "vocabulary"] or
+        not isinstance(source, dict) or source.get("title") != lesson.get("title") or
+        source.get("book") != lesson.get("sourceBook") or source.get("lesson") != "第5課" or
+        source.get("url") != "https://www.huayuworld.org/Ebook/ebookDetail?EID=623" or
+        source.get("objectiveSourceUrl") != lesson.get("objectiveSourceUrl") or
+        package.get("officialObjectiveSummary") != lesson.get("officialObjectiveSummary") or
+        source.get("provenanceStatus") != "VERIFIED_OFFICIAL_TITLE" or
+        source.get("licenseStatus") != "PERMISSION_REQUIRED" or source.get("commercialReady") is not False or
+        not isinstance(provenance, dict) or provenance.get("authorship") != "TONGXUAN_PEDAGOGY_WRAPPER"
+    ):
+        return None
+
+    blueprint = package.get("taskBlueprint")
+    steps = blueprint.get("learnSteps") if isinstance(blueprint, dict) else None
+    required_keys = {"context", "vocabulary", "exit_ticket", "speaking", "mini_check", "wrap_up"}
+    by_key = {step.get("stepKey"): step for step in steps if isinstance(step, dict) and isinstance(step.get("stepKey"), str)} if isinstance(steps, list) else {}
+    if not isinstance(steps, list) or len(by_key) != len(steps) or set(by_key) != required_keys:
+        return None
+    expected_step_presentation = {
+        "context": (1, "listening", "聽聽妹妹例句", "聆聽一個原創家庭例句", "聆聽", 2),
+        "vocabulary": (2, "vocabulary", "親屬詞語", "認識「妹妹」", "選出詞語意思", 3),
+        "exit_ticket": (3, "phonetics", "注音與拼音", "認讀原創練習目標字音", "選擇字音", 5),
+        "speaking": (4, "speaking", "介紹妹妹", "用原創例句練習口說", "開始錄音", 3),
+        "mini_check": (5, None, "練習回顧", "回想今天做過的練習", "繼續", 1),
+        "wrap_up": (6, None, "今日練習完成", "TongXuan 原創練習完成", "結束練習", 1),
+    }
+    if any(
+        (by_key[key].get("stepNumber"), by_key[key].get("domain"), by_key[key].get("title"),
+         by_key[key].get("subtitle"), by_key[key].get("primaryAction"), by_key[key].get("estimatedMinutes"),
+         by_key[key].get("required")) != (*expected, True)
+        for key, expected in expected_step_presentation.items()
+    ):
+        return None
+    if any(not isinstance(by_key[key].get("data"), dict) or by_key[key]["data"].get("authorship") != "TONGXUAN_AUTHORED_PRACTICE" for key in required_keys):
+        return None
+
+    chars = package.get("characters")
+    reading = PHONETICS["妹"]["TRADITIONAL"]
+    if (
+        not isinstance(chars, list) or len(chars) != 1 or not isinstance(chars[0], dict) or
+        chars[0].get("char") != "妹" or chars[0].get("authorship") != "TONGXUAN_AUTHORED_PRACTICE" or
+        chars[0].get("pronunciation") != {"pinyin": reading[1], "zhuyin": reading[0]}
+    ):
+        return None
+
+    text_blocks = package.get("textBlocks")
+    sentences = [block for block in text_blocks if isinstance(block, dict) and block.get("authorship") == "TONGXUAN_AUTHORED_PRACTICE"] if isinstance(text_blocks, list) else []
+    sentence = "我有一個妹妹。"
+    if (
+        len(sentences) != 1 or sentences[0].get("text") != sentence or
+        sentences[0].get("pinyin") != "wǒ yǒu yí ge mèimei" or
+        sentences[0].get("zhuyin") != "ㄨㄛˇ ㄧㄡˇ ㄧˊ ㄍㄜ˙ ㄇㄟˋ ㄇㄟ˙"
+    ):
+        return None
+
+    context = by_key["context"]["data"]
+    vocabulary = by_key["vocabulary"]["data"]
+    speaking = by_key["speaking"]["data"].get("speakingPrompt")
+    reflection = by_key["mini_check"]["data"]
+    summary = by_key["wrap_up"]["data"].get("wrapUpSummary")
+    words = package.get("vocabulary")
+    word = words[0] if isinstance(words, list) and len(words) == 1 and isinstance(words[0], dict) else None
+    choices = vocabulary.get("choices")
+    answer_key = vocabulary.get("correctChoiceId")
+
+    def valid_pair(raw: Any) -> bool:
+        if not isinstance(raw, list) or len(raw) != 2:
+            return False
+        if any(not isinstance(choice, dict) or not isinstance(choice.get("id"), str) or not choice["id"].strip() or
+               not isinstance(choice.get("label"), str) or not choice["label"].strip() or "isCorrect" in choice for choice in raw):
+            return False
+        return len({choice["id"] for choice in raw}) == 2 and len({choice["label"] for choice in raw}) == 2
+
+    native = package.get("nativeLanguageSupport")
+    native_entries = native.get("entries") if isinstance(native, dict) else None
+    expected_scaffold = {
+        "defaultLanguage": "en",
+        "mode": "FULL",
+        "entries": {
+            "sister_example": {
+                "naturalMeaning": "I have a younger sister.",
+                "notes": "TongXuan-authored practice sentence; not quoted from the course source.",
+                "reviewStatus": "REVIEWED",
+            },
+        },
+    }
+    if (
+        context.get("audioText") != sentence or not isinstance(context.get("prompt"), str) or not context["prompt"].strip() or
+        context.get("prompt") != "聽一聽原創練習句。" or
+        context.get("sceneLabel") != "情境：介紹妹妹" or context.get("scaffoldKey") != "sister_example" or
+        package.get("objectives") != [
+            f"官方目標摘要：{lesson['officialObjectiveSummary']}",
+            "原創練習：聽辨並認讀「妹」的聲音。",
+            "原創練習：理解「妹妹」，並用一句話介紹家人。",
+        ] or
+        native != expected_scaffold or
+        not isinstance(native_entries, dict) or not isinstance(native_entries.get("sister_example"), dict) or
+        native_entries["sister_example"].get("reviewStatus") != "REVIEWED" or
+        not word or word.get("id") != "starter-l05-authored-sister-word" or word.get("written") != "妹妹" or
+        word.get("authorship") != "TONGXUAN_AUTHORED" or word.get("reviewStatus") != "REVIEWED" or
+        word.get("pronunciation") != {"pinyin": "mèimei", "zhuyin": "ㄇㄟˋ ㄇㄟ˙"} or
+        word.get("usage") != [sentence] or vocabulary.get("word") != word["written"] or
+        vocabulary.get("pinyin") != word["pronunciation"]["pinyin"] or vocabulary.get("zhuyin") != word["pronunciation"]["zhuyin"] or
+        vocabulary.get("exampleSentence") != sentence or vocabulary.get("scaffoldKey") != "sister_example" or
+        vocabulary.get("prompt") != "「妹妹」是什麼意思？" or not valid_pair(choices) or
+        choices != [{"id": "younger-sister", "label": "年紀比我小的姊妹"}, {"id": "older-sister", "label": "年紀比我大的姊妹"}] or
+        answer_key != "younger-sister" or
+        not isinstance(speaking, dict) or speaking.get("instruction") != "請用一句話介紹家人的妹妹。" or
+        speaking.get("expectedText") != sentence or speaking.get("audioPolicy") != "LOCAL_ONLY" or
+        reflection.get("mode") != "reflection" or reflection.get("prompt") != "今天你練習介紹誰？" or not valid_pair(reflection.get("choices")) or
+        reflection.get("choices") != [{"id": "sister", "label": "妹妹"}, {"id": "more", "label": "下次再練一次"}] or
+        not isinstance(summary, dict) or summary.get("completionText") != "入門冊第五課原創練習完成。" or
+        summary.get("masteryNotice") != "課程授權仍須另行確認；精熟度依有效證據判定。"
+    ):
+        return None
+
+    if by_key["exit_ticket"]["data"].get("prompt") != "選出「妹」的正確聲調讀音。":
+        return None
+    questions = by_key["exit_ticket"]["data"].get("questions")
+    expected = {("妹", "TRADITIONAL"), ("妹", "SIMPLIFIED")}
+    expected_phonetics = {
+        ("妹", "TRADITIONAL"): {
+            "id": "traditional-mei",
+            "correctChoiceId": "tone-four",
+            "choices": [{"id": "tone-four", "label": "ㄇㄟˋ"}, {"id": "tone-two", "label": "ㄇㄟˊ"}],
+        },
+        ("妹", "SIMPLIFIED"): {
+            "id": "simplified-mei",
+            "correctChoiceId": "tone-four",
+            "choices": [{"id": "tone-four", "label": "mèi"}, {"id": "tone-two", "label": "méi"}],
+        },
+    }
+    if not isinstance(questions, list) or len(questions) != len(expected):
+        return None
+    seen: set[tuple[str, str]] = set()
+    question_ids: set[str] = set()
+    for question in questions:
+        if not isinstance(question, dict):
+            return None
+        character, script = question.get("character"), question.get("script")
+        if not isinstance(character, str) or not isinstance(script, str):
+            return None
+        identity = (character, script)
+        question_id, answer, options = question.get("id"), question.get("correctChoiceId"), question.get("choices")
+        expected_reading = PHONETICS.get(identity[0], {}).get(identity[1])
+        expected_label = expected_reading[0] if identity[1] == "TRADITIONAL" and expected_reading else expected_reading[1] if expected_reading else None
+        expected_question = expected_phonetics.get(identity)
+        correct = next((option for option in options if isinstance(option, dict) and option.get("id") == answer), None) if isinstance(options, list) else None
+        if (
+            identity not in expected or identity in seen or not isinstance(question_id, str) or not question_id.strip() or question_id in question_ids or
+            question_id != expected_question["id"] or answer != expected_question["correctChoiceId"] or
+            question.get("authorship") != "TONGXUAN_AUTHORED_PRACTICE" or not valid_pair(options) or
+            options != expected_question["choices"] or not correct or correct.get("label") != expected_label
+        ):
+            return None
+        seen.add(identity)
+        question_ids.add(question_id)
+    return (package, by_key) if seen == expected else None
+
+
 def _characters(lesson: dict[str, Any]) -> list[str]:
+    if lesson.get("id") == "starter-l05":
+        return ["妹"]
     return list(dict.fromkeys(re.findall(r"[\u3400-\u9fff]", lesson["title"])))[:2]
 
 
@@ -622,6 +794,27 @@ def _vocabulary_task(child_id: int, lesson: dict[str, Any]) -> dict[str, Any] | 
             },
             private={"_answerKey": step_data["correctChoiceId"], "_answerKind": "vocabulary"},
         )
+    if lesson["id"] == "starter-l05":
+        contract = _starter_l05_contract()
+        if contract is None:
+            raise ValueError("learning_flow_starter_l05_package_invalid")
+        package, steps = contract
+        step_data = steps["vocabulary"]["data"]
+        word = package["vocabulary"][0]
+        pronunciation = word["pronunciation"]
+        choices = step_data["choices"]
+        return _task(
+            "vocabulary", "VOCABULARY", lesson["id"], skill="vocabulary",
+            item_id=_item_id(child_id, lesson["id"], "vocabulary"), minutes=3,
+            evidence_type="learning_session_vocabulary_choice", mastery_impact="SCORED_DOMAIN_EVIDENCE",
+            data={
+                "prompt": step_data["prompt"], "choices": [{"id": choice["id"], "label": choice["label"]} for choice in choices],
+                "wordText": word["written"], "pinyin": pronunciation["pinyin"],
+                "zhuyin": pronunciation["zhuyin"], "exampleSentence": step_data["exampleSentence"],
+                "authorship": "TONGXUAN_AUTHORED_PRACTICE",
+            },
+            private={"_answerKey": step_data["correctChoiceId"], "_answerKind": "vocabulary"},
+        )
     choices = [
         {"id": "opt-hello", "label": "打招呼問好 (Hello)"},
         {"id": "opt-eat", "label": "問對方吃飽沒 (Eat meal)"},
@@ -826,6 +1019,7 @@ def _session_plan(db: Any, child_id: int, as_of_text: str, lesson: dict[str, Any
     starter_l02_steps: dict[str, dict[str, Any]] | None = None
     starter_l03_steps: dict[str, dict[str, Any]] | None = None
     starter_l04_steps: dict[str, dict[str, Any]] | None = None
+    starter_l05_steps: dict[str, dict[str, Any]] | None = None
     if lesson_id == "starter-l02":
         contract = _starter_l02_contract()
         if contract is None:
@@ -841,7 +1035,12 @@ def _session_plan(db: Any, child_id: int, as_of_text: str, lesson: dict[str, Any
         if contract is None:
             raise ValueError("learning_flow_starter_l04_package_invalid")
         _, starter_l04_steps = contract
-    authored_steps = starter_l02_steps or starter_l03_steps or starter_l04_steps
+    elif lesson_id == "starter-l05":
+        contract = _starter_l05_contract()
+        if contract is None:
+            raise ValueError("learning_flow_starter_l05_package_invalid")
+        _, starter_l05_steps = contract
+    authored_steps = starter_l02_steps or starter_l03_steps or starter_l04_steps or starter_l05_steps
     chars = _characters(lesson)
     if not chars:
         raise ValueError("learning_flow_lesson_has_no_character_targets")
@@ -867,7 +1066,7 @@ def _session_plan(db: Any, child_id: int, as_of_text: str, lesson: dict[str, Any
             tasks.append(_task(
                 "listen", "LISTENING", lesson_id, skill="listening", item_id=phrase_id, minutes=3,
                 evidence_type="reference_audio_completed", mastery_impact="NON_SCORE_GATE_EVIDENCE",
-                data={"text": listen_text, "locale": "zh-TW", "textKind": "sentence" if lesson_id in {"starter-l03", "starter-l04"} else "character",
+                data={"text": listen_text, "locale": "zh-TW", "textKind": "sentence" if lesson_id in {"starter-l03", "starter-l04", "starter-l05"} else "character",
                       **({"authorship": "TONGXUAN_AUTHORED_PRACTICE"} if authored_steps else {})},
             ))
 
@@ -1037,6 +1236,9 @@ def _session_plan(db: Any, child_id: int, as_of_text: str, lesson: dict[str, Any
         elif starter_l04_steps:
             authored_reflection = starter_l04_steps["mini_check"]["data"]
             reflection_data = {"mode": "reflection", "prompt": authored_reflection["prompt"], "choices": authored_reflection["choices"]}
+        elif starter_l05_steps:
+            authored_reflection = starter_l05_steps["mini_check"]["data"]
+            reflection_data = {"mode": "reflection", "prompt": authored_reflection["prompt"], "choices": authored_reflection["choices"]}
         tasks.append(_task(
             "mini-check-reflection", "MINI_CHECK", lesson_id, skill=None, required=True,
             minutes=2, mastery_impact="NONE", data={**reflection_data, **({"authorship": "TONGXUAN_AUTHORED_PRACTICE"} if authored_steps else {})},
@@ -1116,7 +1318,10 @@ def _ensure_lesson_materials(db: Any, child_id: int, lesson: dict[str, Any]) -> 
     starter_l04_contract = _starter_l04_contract() if lesson_id == "starter-l04" else None
     if lesson_id == "starter-l04" and starter_l04_contract is None:
         raise ValueError("learning_flow_starter_l04_package_invalid")
-    authored_contract = starter_l02_contract or starter_l03_contract or starter_l04_contract
+    starter_l05_contract = _starter_l05_contract() if lesson_id == "starter-l05" else None
+    if lesson_id == "starter-l05" and starter_l05_contract is None:
+        raise ValueError("learning_flow_starter_l05_package_invalid")
+    authored_contract = starter_l02_contract or starter_l03_contract or starter_l04_contract or starter_l05_contract
     authored_sentence = next((
         block["text"] for block in authored_contract[0]["textBlocks"]
         if isinstance(block, dict) and block.get("authorship") == "TONGXUAN_AUTHORED_PRACTICE" and isinstance(block.get("text"), str)
@@ -1757,8 +1962,13 @@ def _validate_external_evidence(db: Any, child_id: int, row: Any, evidence_ref: 
     if task_type in {"SPEAKING_ATTEMPT", "PRONUNCIATION_ATTEMPT"}:
         expected_domain = "speaking" if task_type == "SPEAKING_ATTEMPT" else "pronunciation"
         expected_source = "CURRICULUM"
-        if row["lesson_id"] in {"starter-l02", "starter-l03", "starter-l04"} and task_type == "SPEAKING_ATTEMPT":
-            authored_contract = _starter_l02_contract() if row["lesson_id"] == "starter-l02" else _starter_l03_contract() if row["lesson_id"] == "starter-l03" else _starter_l04_contract()
+        if row["lesson_id"] in {"starter-l02", "starter-l03", "starter-l04", "starter-l05"} and task_type == "SPEAKING_ATTEMPT":
+            authored_contract = (
+                _starter_l02_contract() if row["lesson_id"] == "starter-l02" else
+                _starter_l03_contract() if row["lesson_id"] == "starter-l03" else
+                _starter_l04_contract() if row["lesson_id"] == "starter-l04" else
+                _starter_l05_contract()
+            )
             expected_text = next((
                 block.get("text") for block in authored_contract[0].get("textBlocks", [])
                 if isinstance(block, dict) and block.get("authorship") == "TONGXUAN_AUTHORED_PRACTICE"
@@ -2110,7 +2320,7 @@ def get_learning_daily_queue(*, child_id: int, as_of: str | None = None) -> dict
         placement_start = placement["main_curriculum_start"] if placement else "STARTER"
         start_id = STAGE_STARTS.get(placement_start, "starter-l01")
         lessons = _lesson_rows()
-        supported_ids = [start_id, "starter-l02", "starter-l03", "starter-l04"] if placement_start == "STARTER" else [start_id]
+        supported_ids = [start_id, "starter-l02", "starter-l03", "starter-l04", "starter-l05"] if placement_start == "STARTER" else [start_id]
         states = {
             lesson_id: db.execute("SELECT status FROM curriculum_lesson_states WHERE child_id=? AND lesson_id=?", (child_id, lesson_id)).fetchone()
             for lesson_id in supported_ids

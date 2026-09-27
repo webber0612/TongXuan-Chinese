@@ -334,6 +334,56 @@ describe("child-first shell contracts", () => {
     vi.unstubAllGlobals();
   });
 
+  it("launches unlocked starter-l05 from canonical Home with the exact child and original-authored plan", async () => {
+    localStorage.clear();
+    localStorage.setItem(DISPLAY_LANGUAGE_KEY, "zh-Hant");
+    persistSelectedBackendChild(55, "L5 Learner");
+    window.history.replaceState({}, "", "/");
+    const requestLog: Array<{ url: string; method: string; body?: any }> = [];
+    const session = authoritativeSessionFixture("starter-l05", "home-l5-session", {}, {}, false, false, 55);
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+      const body = init?.body ? JSON.parse(init.body as string) : undefined;
+      requestLog.push({ url, method, body });
+      if (url.endsWith("/api/children")) return new Response(JSON.stringify([{ id: 55, name: "L5 Learner" }]), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.endsWith("/api/children/55/learning-daily-queue")) return new Response(JSON.stringify({
+        childId: 55, asOf: "2026-09-25T08:00:00Z", placementStart: "STARTER",
+        review: { sourceQueue: "REVIEW", dueCount: 0, items: [] },
+        newLesson: { sourceQueue: "CURRICULUM", lessonId: "starter-l05", title: "我的妹妹", domains: ["listening", "speaking", "phonetics", "vocabulary"], status: "AVAILABLE", availableInLearningFlowV1: true },
+        completedLesson: { sourceQueue: "CURRICULUM", lessonId: "starter-l04", title: "小狗", domains: ["listening", "speaking", "phonetics", "recognition"], status: "MASTERED" },
+        currentLessonComplete: false, nextLessonComingSoon: false, nextAccessibleLesson: null, activeSession: null,
+        schoolQueueSeparate: true, targetMinutes: 18,
+      }), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.endsWith("/api/children/55/learning-sessions/current")) return new Response("null", { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.endsWith("/api/children/55/learning-sessions") && method === "POST") return new Response(JSON.stringify(session), { status: 200, headers: { "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({}), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    document.body.innerHTML = '<div id="root"></div>';
+    const root = createRoot(document.getElementById("root")!);
+    await act(async () => { root.render(React.createElement(AppShell)); await new Promise((resolve) => setTimeout(resolve, 45)); });
+    const cta = document.querySelector(".hero-primary-cta-row .launch-quiz-cta-btn") as HTMLButtonElement;
+    expect(cta).toBeTruthy();
+    await import("../pages/LessonPlayerPage");
+    await act(async () => { cta.click(); await new Promise((resolve) => setTimeout(resolve, 60)); });
+
+    expect(window.location.pathname).toBe("/TongXuan-Chinese/learning-session");
+    expect(document.querySelector("main.lesson-player-container")).toBeTruthy();
+    expect(document.querySelector(".mode-badge.mode-learn")).toBeTruthy();
+    expect(document.querySelector(".player-lesson-title")?.textContent).toBe("我的妹妹");
+    expect(document.querySelector('.lesson-step-card[data-step-key="context"]')?.textContent).toContain("情境：介紹妹妹");
+    expect(document.querySelector('.lesson-step-card[data-step-key="characters"]')).toBeNull();
+    const startRequest = requestLog.find((entry) => entry.url.endsWith("/api/children/55/learning-sessions") && entry.method === "POST");
+    expect(startRequest?.body).toMatchObject({ lesson_id: "starter-l05" });
+    expect(session.tasks.map((task) => task.id)).toEqual(session.tasks.map((task) => `home-l5-session:${task.key}`));
+    expect(session.tasks.find((task) => task.key === "vocabulary")?.itemId).toBe("lf_55_starter-l05_vocabulary");
+    expect(requestLog.some((entry) => entry.url.includes("/api/children/1/learning-sessions"))).toBe(false);
+
+    await act(async () => { root.unmount(); });
+    vi.unstubAllGlobals();
+  });
+
   it("keeps the normal canonical Home CTA in LEARN and does not retarget the existing starter lesson", async () => {
     localStorage.clear();
     localStorage.setItem(DISPLAY_LANGUAGE_KEY, "zh-Hant");

@@ -11,6 +11,7 @@ import starterL01Json from "../../../shared/lesson-packages/starter-l01.json";
 import starterL02Json from "../../../shared/lesson-packages/starter-l02.json";
 import starterL03Json from "../../../shared/lesson-packages/starter-l03.json";
 import starterL04Json from "../../../shared/lesson-packages/starter-l04.json";
+import starterL05Json from "../../../shared/lesson-packages/starter-l05.json";
 import basicL01Json from "../../../shared/lesson-packages/basic-l01.json";
 import { officialCoursePath } from "./officialCoursePath";
 
@@ -22,6 +23,7 @@ export const LESSON_PACKAGES: Record<string, LessonPackage> = {
   "starter-l02": starterL02Json as unknown as LessonPackage,
   "starter-l03": starterL03Json as unknown as LessonPackage,
   "starter-l04": starterL04Json as unknown as LessonPackage,
+  "starter-l05": starterL05Json as unknown as LessonPackage,
   "basic-l01": basicL01Json as unknown as LessonPackage,
 };
 
@@ -34,6 +36,7 @@ export function getAllLessonPackages(): LessonPackage[] {
 }
 
 function plannerCharacterSet(lessonId: string): Set<string> {
+  if (lessonId === "starter-l05") return new Set(["妹"]);
   const lesson = officialCoursePath.stages.flatMap((stage) => stage.lessons).find((item) => item.id === lessonId);
   return new Set(lesson?.official.title.match(/[\u3400-\u9fff]/g) ?? []);
 }
@@ -78,6 +81,73 @@ function starterL03VocabularyContract(pkg: LessonPackage) {
     typeof data.exampleSentence !== "string" || data.exampleSentence !== word.usage[0]
   ) return null;
   return { word, step, data };
+}
+
+const STARTER_L05_STEP_PRESENTATION: Record<string, {
+  stepNumber: number; domain: string | null; title: string; subtitle: string;
+  primaryAction: string; estimatedMinutes: number; required: boolean;
+}> = {
+  context: { stepNumber: 1, domain: "listening", title: "聽聽妹妹例句", subtitle: "聆聽一個原創家庭例句", primaryAction: "聆聽", estimatedMinutes: 2, required: true },
+  vocabulary: { stepNumber: 2, domain: "vocabulary", title: "親屬詞語", subtitle: "認識「妹妹」", primaryAction: "選出詞語意思", estimatedMinutes: 3, required: true },
+  exit_ticket: { stepNumber: 3, domain: "phonetics", title: "注音與拼音", subtitle: "認讀原創練習目標字音", primaryAction: "選擇字音", estimatedMinutes: 5, required: true },
+  speaking: { stepNumber: 4, domain: "speaking", title: "介紹妹妹", subtitle: "用原創例句練習口說", primaryAction: "開始錄音", estimatedMinutes: 3, required: true },
+  mini_check: { stepNumber: 5, domain: null, title: "練習回顧", subtitle: "回想今天做過的練習", primaryAction: "繼續", estimatedMinutes: 1, required: true },
+  wrap_up: { stepNumber: 6, domain: null, title: "今日練習完成", subtitle: "TongXuan 原創練習完成", primaryAction: "結束練習", estimatedMinutes: 1, required: true },
+};
+
+const STARTER_L05_SCAFFOLD = {
+  defaultLanguage: "en",
+  mode: "FULL",
+  entries: {
+    sister_example: {
+      naturalMeaning: "I have a younger sister.",
+      notes: "TongXuan-authored practice sentence; not quoted from the course source.",
+      reviewStatus: "REVIEWED",
+    },
+  },
+};
+
+const STARTER_L05_PHONETICS = {
+  "妹:TRADITIONAL": {
+    id: "traditional-mei", correctChoiceId: "tone-four",
+    choices: [{ id: "tone-four", label: "ㄇㄟˋ" }, { id: "tone-two", label: "ㄇㄟˊ" }],
+  },
+  "妹:SIMPLIFIED": {
+    id: "simplified-mei", correctChoiceId: "tone-four",
+    choices: [{ id: "tone-four", label: "mèi" }, { id: "tone-two", label: "méi" }],
+  },
+};
+
+function starterL05VocabularyContract(pkg: LessonPackage) {
+  if (pkg.lessonId !== "starter-l05") return null;
+  if (!Array.isArray(pkg.vocabulary) || !Array.isArray(pkg.taskBlueprint?.learnSteps)) return null;
+  const word = pkg.vocabulary.length === 1 ? pkg.vocabulary[0] : null;
+  const step = pkg.taskBlueprint.learnSteps.find((candidate) => candidate.stepKey === "vocabulary");
+  const data = step?.data;
+  const nativeSupport = pkg.nativeLanguageSupport as any;
+  const scaffoldKey = typeof data?.scaffoldKey === "string" ? data.scaffoldKey : "";
+  const scaffold = scaffoldKey ? nativeSupport?.entries?.[scaffoldKey] : null;
+  if (
+    !step || step.title !== STARTER_L05_STEP_PRESENTATION.vocabulary.title ||
+    step.subtitle !== STARTER_L05_STEP_PRESENTATION.vocabulary.subtitle ||
+    !word || word.id !== "starter-l05-authored-sister-word" || word.written !== "妹妹" ||
+    word.authorship !== "TONGXUAN_AUTHORED" || word.reviewStatus !== "REVIEWED" ||
+    word.pronunciation?.pinyin !== "mèimei" || word.pronunciation?.zhuyin !== "ㄇㄟˋ ㄇㄟ˙" ||
+    !Array.isArray(word.usage) || word.usage.length !== 1 || word.usage[0] !== "我有一個妹妹。" ||
+    !data || data.authorship !== "TONGXUAN_AUTHORED_PRACTICE" || data.word !== word.written ||
+    data.pinyin !== word.pronunciation.pinyin || data.zhuyin !== word.pronunciation.zhuyin ||
+    data.exampleSentence !== word.usage[0] || data.prompt !== "「妹妹」是什麼意思？" ||
+    scaffoldKey !== "sister_example" || JSON.stringify(nativeSupport) !== JSON.stringify(STARTER_L05_SCAFFOLD) ||
+    !scaffold || scaffold.naturalMeaning !== "I have a younger sister." ||
+    scaffold.notes !== "TongXuan-authored practice sentence; not quoted from the course source." ||
+    scaffold.reviewStatus !== "REVIEWED" ||
+    data.correctChoiceId !== "younger-sister" || !Array.isArray(data.choices) || data.choices.length !== 2 ||
+    JSON.stringify(data.choices) !== JSON.stringify([
+      { id: "younger-sister", label: "年紀比我小的姊妹" },
+      { id: "older-sister", label: "年紀比我大的姊妹" },
+    ])
+  ) return null;
+  return { word, step, data, scaffoldKey };
 }
 
 function starterL04LearnContract(pkg: LessonPackage) {
@@ -249,6 +319,9 @@ export function validateReviewDueItems(dueItems: unknown): dueItems is ReviewDue
         if (!contract || item.word !== contract.word.written) return false;
       } else if (item.lessonId === "starter-l03") {
         const contract = starterL03VocabularyContract(pkg);
+        if (!contract || item.word !== contract.word.written) return false;
+      } else if (item.lessonId === "starter-l05") {
+        const contract = starterL05LearnContract(pkg)?.vocab;
         if (!contract || item.word !== contract.word.written) return false;
       } else if (item.lessonId === "starter-l04") {
         return false;
@@ -446,6 +519,11 @@ function isValidReviewTask(task: any, pkg: LessonPackage, expectedLessonId?: str
     return Boolean(contract && data.word === contract.word.written && data.prompt === contract.data.prompt &&
       JSON.stringify(data.choices) === JSON.stringify(contract.data.choices?.map(({ id, label }: any) => ({ id, label }))));
   }
+  if (pkg.lessonId === "starter-l05") {
+    const contract = starterL05LearnContract(pkg)?.vocab;
+    return Boolean(contract && data.word === contract.word.written && data.prompt === contract.data.prompt &&
+      JSON.stringify(data.choices) === JSON.stringify(contract.data.choices?.map(({ id, label }: any) => ({ id, label }))));
+  }
   if (pkg.lessonId === "starter-l04") return false;
   return data.word === "你好" && validReviewChoices(data.choices, "opt-hello", true);
 }
@@ -501,6 +579,99 @@ function starterL03LearnContract(pkg: LessonPackage) {
     questionIds.add(question.id);
   }
   return { byKey, chars, context, vocab, speaking, questions };
+}
+
+function starterL05LearnContract(pkg: LessonPackage) {
+  if (pkg.lessonId !== "starter-l05") return null;
+  if (!Array.isArray(pkg.taskBlueprint?.learnSteps) || !Array.isArray(pkg.textBlocks) || !Array.isArray(pkg.characters)) return null;
+  const lesson = officialCoursePath.stages.flatMap((stage) => stage.lessons).find((item) => item.id === pkg.lessonId);
+  const source = pkg.curriculumSource as any;
+  const byKey = Object.fromEntries(pkg.taskBlueprint.learnSteps.map((step) => [step.stepKey, step]));
+  const required = ["context", "vocabulary", "exit_ticket", "speaking", "mini_check", "wrap_up"];
+  const sentenceBlocks = pkg.textBlocks.filter((block) =>
+    block.authorship === "TONGXUAN_AUTHORED_PRACTICE" && typeof block.text === "string" && Boolean(block.text.trim()));
+  const sentence = sentenceBlocks.length === 1 ? sentenceBlocks[0].text : null;
+  const chars = ["妹"];
+  const context = byKey.context?.data;
+  const vocab = starterL05VocabularyContract(pkg);
+  const questions = byKey.exit_ticket?.data?.questions;
+  const speaking = byKey.speaking?.data?.speakingPrompt;
+  const reflection = byKey.mini_check?.data;
+  const summary = byKey.wrap_up?.data?.wrapUpSummary;
+  const validPair = (choices: unknown): choices is Array<{ id: string; label: string }> => {
+    if (!Array.isArray(choices) || choices.length !== 2) return false;
+    if (choices.some((choice: any) => !choice || typeof choice.id !== "string" || !choice.id.trim() ||
+        typeof choice.label !== "string" || !choice.label.trim() || "isCorrect" in choice)) return false;
+    return new Set(choices.map((choice: any) => choice.id)).size === 2 &&
+      new Set(choices.map((choice: any) => choice.label)).size === 2;
+  };
+  const nativeEntries = pkg.nativeLanguageSupport?.entries as Record<string, any> | undefined;
+  if (
+    !lesson || lesson.number !== 5 || lesson.official.title !== "我的妹妹" || lesson.official.source.book !== "入門冊 A" ||
+    lesson.official.source.lesson !== "第5課" ||
+    lesson.official.source.url !== "https://www.huayuworld.org/Ebook/ebookDetail?EID=623" ||
+    lesson.official.source.provenanceStatus !== "VERIFIED_OFFICIAL_TITLE" ||
+    lesson.official.source.licenseStatus !== "PERMISSION_REQUIRED" || lesson.official.source.commercialReady !== false ||
+    source?.title !== lesson.official.title || source?.book !== lesson.official.source.book ||
+    source?.lesson !== lesson.official.source.lesson || source?.url !== lesson.official.source.url ||
+    source?.objectiveSourceUrl !== lesson.tongxuan.handbookSummary.sourceUrl ||
+    source?.provenanceStatus !== "VERIFIED_OFFICIAL_TITLE" || source?.licenseStatus !== "PERMISSION_REQUIRED" ||
+    source?.commercialReady !== false || pkg.objectives?.[0] !== `官方目標摘要：${lesson.tongxuan.handbookSummary.text}` ||
+    pkg.provenance?.authorship !== "TONGXUAN_PEDAGOGY_WRAPPER" ||
+    pkg.provenance?.curriculumSourceProvenance !== "VERIFIED_OFFICIAL_TITLE" ||
+    JSON.stringify(pkg.objectives) !== JSON.stringify([
+      `官方目標摘要：${lesson.tongxuan.handbookSummary.text}`,
+      "原創練習：聽辨並認讀「妹」的聲音。",
+      "原創練習：理解「妹妹」，並用一句話介紹家人。",
+    ]) ||
+    JSON.stringify(pkg.nativeLanguageSupport) !== JSON.stringify(STARTER_L05_SCAFFOLD) ||
+    pkg.characters.length !== 1 || pkg.characters[0].char !== "妹" ||
+    pkg.characters[0].authorship !== "TONGXUAN_AUTHORED_PRACTICE" ||
+    pkg.characters[0].pronunciation?.pinyin !== "mèi" || pkg.characters[0].pronunciation?.zhuyin !== "ㄇㄟˋ" ||
+    pkg.taskBlueprint.learnSteps.length !== required.length ||
+    required.some((key) => {
+      const step = byKey[key];
+      const expected = STARTER_L05_STEP_PRESENTATION[key];
+      return !step || !expected || step.data.authorship !== "TONGXUAN_AUTHORED_PRACTICE" ||
+        step.stepNumber !== expected.stepNumber || step.domain !== expected.domain || step.title !== expected.title ||
+        step.subtitle !== expected.subtitle || step.primaryAction !== expected.primaryAction ||
+        step.estimatedMinutes !== expected.estimatedMinutes || step.required !== expected.required;
+    }) ||
+    sentence !== "我有一個妹妹。" || sentenceBlocks[0]?.pinyin !== "wǒ yǒu yí ge mèimei" ||
+    sentenceBlocks[0]?.zhuyin !== "ㄨㄛˇ ㄧㄡˇ ㄧˊ ㄍㄜ˙ ㄇㄟˋ ㄇㄟ˙" ||
+    context?.audioText !== sentence || context?.sceneLabel !== "情境：介紹妹妹" ||
+    context?.prompt !== "聽一聽原創練習句。" || context?.scaffoldKey !== "sister_example" ||
+    !nativeEntries?.sister_example || nativeEntries.sister_example.reviewStatus !== "REVIEWED" || !vocab ||
+    !speaking || speaking.instruction !== "請用一句話介紹家人的妹妹。" ||
+    speaking.expectedText !== sentence || speaking.audioPolicy !== "LOCAL_ONLY" ||
+    !Array.isArray(questions) || questions.length !== 2 ||
+    byKey.exit_ticket.data.prompt !== "選出「妹」的正確聲調讀音。" ||
+    reflection?.mode !== "reflection" || reflection.prompt !== "今天你練習介紹誰？" ||
+    !validPair(reflection.choices) || JSON.stringify(reflection.choices) !== JSON.stringify([
+      { id: "sister", label: "妹妹" }, { id: "more", label: "下次再練一次" },
+    ]) ||
+    !summary || summary.completionText !== "入門冊第五課原創練習完成。" ||
+    summary.masteryNotice !== "課程授權仍須另行確認；精熟度依有效證據判定。"
+  ) return null;
+
+  const seen = new Set<string>();
+  const questionIds = new Set<string>();
+  for (const question of questions as any[]) {
+    const identity = `${question?.character}:${question?.script}`;
+    const choices = question?.choices;
+    const expected = STARTER_L05_PHONETICS[identity as keyof typeof STARTER_L05_PHONETICS];
+    if (
+      !expected || question?.character !== "妹" || !["TRADITIONAL", "SIMPLIFIED"].includes(question?.script) || seen.has(identity) ||
+      typeof question.id !== "string" || !question.id.trim() || questionIds.has(question.id) ||
+      question.id !== expected.id || question.correctChoiceId !== expected.correctChoiceId ||
+      question.authorship !== "TONGXUAN_AUTHORED_PRACTICE" || !validPair(choices) ||
+      JSON.stringify(choices) !== JSON.stringify(expected.choices)
+    ) return null;
+    seen.add(identity);
+    questionIds.add(question.id);
+  }
+  if (seen.size !== 2 || !seen.has("妹:TRADITIONAL") || !seen.has("妹:SIMPLIFIED")) return null;
+  return { byKey, chars, sentence, context, vocab, speaking, questions };
 }
 
 function validReviewChoices(choices: unknown, expected: string, expectedIsChoiceId = false): boolean {
@@ -671,6 +842,9 @@ export function buildAuthoritativeLearnSteps(
   const starterL04 = pkg.lessonId === "starter-l04";
   const starterL04Plan = starterL04 ? starterL04LearnContract(pkg) : null;
   const starterL04ChildId = starterL04 ? curriculumTasks[0].childId : undefined;
+  const starterL05 = pkg.lessonId === "starter-l05";
+  const starterL05Plan = starterL05 ? starterL05LearnContract(pkg) : null;
+  const starterL05ChildId = starterL05 ? curriculumTasks[0].childId : undefined;
   if (starterL03 && (
     !starterL03Plan || typeof starterL03ChildId !== "number" || !Number.isSafeInteger(starterL03ChildId) || starterL03ChildId <= 0 ||
     curriculumTasks.some((task) => task.childId !== starterL03ChildId || !task.sessionId || task.id !== `${task.sessionId}:${task.key}` ||
@@ -692,6 +866,11 @@ export function buildAuthoritativeLearnSteps(
     curriculumTasks.some((task) => task.childId !== starterL04ChildId || !task.sessionId || task.id !== `${task.sessionId}:${task.key}` ||
       task.taskData?.authorship !== "TONGXUAN_AUTHORED_PRACTICE")
   )) return { valid: false, steps: [] };
+  if (starterL05 && (
+    !starterL05Plan || typeof starterL05ChildId !== "number" || !Number.isSafeInteger(starterL05ChildId) || starterL05ChildId <= 0 ||
+    curriculumTasks.some((task) => task.childId !== starterL05ChildId || !task.sessionId || task.id !== `${task.sessionId}:${task.key}` ||
+      task.taskData?.authorship !== "TONGXUAN_AUTHORED_PRACTICE")
+  )) return { valid: false, steps: [] };
 
   const ids = new Set<string>();
   const keys = new Set<string>();
@@ -702,9 +881,9 @@ export function buildAuthoritativeLearnSteps(
   const plannerLesson = officialCoursePath.stages
     .flatMap((stage) => stage.lessons)
     .find((lesson) => lesson.id === pkg.lessonId);
-  const plannerCharacters = plannerLesson
+  const plannerCharacters = starterL05Plan?.chars ?? (plannerLesson
     ? Array.from(new Set(plannerLesson.official.title.match(/[\u3400-\u9fff]/g) ?? [])).slice(0, 2)
-    : [];
+    : []);
   if (!plannerLesson || plannerCharacters.length === 0) return { valid: false, steps: [] };
 
   const template = (stepKey: LessonStepDefinition["stepKey"]) =>
@@ -757,6 +936,9 @@ export function buildAuthoritativeLearnSteps(
       if (starterL04 && (task.itemId !== `lf_${starterL04ChildId}_starter-l04_phrase` ||
           data.text !== starterL04Plan?.sentence || data.textKind !== "sentence" ||
           data.authorship !== "TONGXUAN_AUTHORED_PRACTICE")) return { valid: false, steps: [] };
+      if (starterL05 && (task.itemId !== `lf_${starterL05ChildId}_starter-l05_phrase` ||
+          data.text !== starterL05Plan?.sentence || data.textKind !== "sentence" ||
+          data.authorship !== "TONGXUAN_AUTHORED_PRACTICE")) return { valid: false, steps: [] };
       const contextPresentation = template("context")?.data;
       if (!append(task, "context", "listening", {
         taskId: task.id, prompt: data.prompt, audioText: data.text || data.audioText,
@@ -793,6 +975,16 @@ export function buildAuthoritativeLearnSteps(
             authoredQuestions.length !== data.questions.length ||
             JSON.stringify(projection(data.questions)) !== JSON.stringify(projection(authoredQuestions))) return { valid: false, steps: [] };
       }
+      if (starterL05) {
+        const authoredQuestions = starterL05Plan?.questions;
+        const projection = (items: any[]) => items.map((question: any) => ({
+          id: question.id, character: question.character, script: question.script, choices: question.choices,
+        }));
+        if (task.itemId !== null || data.authorship !== "TONGXUAN_AUTHORED_PRACTICE" ||
+            data.prompt !== starterL05Plan?.byKey.exit_ticket.data.prompt || !Array.isArray(authoredQuestions) ||
+            authoredQuestions.length !== data.questions.length ||
+            JSON.stringify(projection(data.questions)) !== JSON.stringify(projection(authoredQuestions))) return { valid: false, steps: [] };
+      }
       const questions = data.questions.map((question: any) => ({
         id: question.id,
         domain: "phonetics",
@@ -820,6 +1012,13 @@ export function buildAuthoritativeLearnSteps(
         data.exampleSentence !== starterL03Plan?.vocab.data.exampleSentence ||
         JSON.stringify(data.choices) !== JSON.stringify(starterL03Plan?.vocab.data.choices?.map(({ id, label }: any) => ({ id, label })))
       )) return { valid: false, steps: [] };
+      if (starterL05 && (
+        task.itemId !== `lf_${starterL05ChildId}_starter-l05_vocabulary` ||
+        data.wordText !== starterL05Plan?.vocab.word.written || data.prompt !== starterL05Plan?.vocab.data.prompt ||
+        data.pinyin !== starterL05Plan?.vocab.word.pronunciation.pinyin || data.zhuyin !== starterL05Plan?.vocab.word.pronunciation.zhuyin ||
+        data.exampleSentence !== starterL05Plan?.vocab.data.exampleSentence ||
+        JSON.stringify(data.choices) !== JSON.stringify(starterL05Plan?.vocab.data.choices?.map(({ id, label }: any) => ({ id, label })))
+      )) return { valid: false, steps: [] };
       if (!append(task, "vocabulary", "vocabulary", {
         taskId: task.id, prompt: data.prompt, choices: data.choices,
         ...(starterL02 ? {
@@ -831,6 +1030,11 @@ export function buildAuthoritativeLearnSteps(
           word: data.wordText, pinyin: data.pinyin, zhuyin: data.zhuyin,
           exampleSentence: data.exampleSentence, correctChoiceId: starterL03Plan?.vocab.data.correctChoiceId,
           scaffoldKey: starterL03Plan?.vocab.data.scaffoldKey,
+        } : {}),
+        ...(starterL05 ? {
+          word: data.wordText, pinyin: data.pinyin, zhuyin: data.zhuyin,
+          exampleSentence: data.exampleSentence, correctChoiceId: starterL05Plan?.vocab.data.correctChoiceId,
+          scaffoldKey: starterL05Plan?.vocab.scaffoldKey,
         } : {}),
       })) return { valid: false, steps: [] };
       continue;
@@ -853,6 +1057,8 @@ export function buildAuthoritativeLearnSteps(
             JSON.stringify(data.choices) !== JSON.stringify(starterL03Plan?.byKey.mini_check.data.choices))) return { valid: false, steps: [] };
         if (starterL04 && (data.prompt !== starterL04Plan?.byKey.mini_check.data.prompt ||
             JSON.stringify(data.choices) !== JSON.stringify(starterL04Plan?.byKey.mini_check.data.choices))) return { valid: false, steps: [] };
+        if (starterL05 && (data.prompt !== starterL05Plan?.byKey.mini_check.data.prompt ||
+            JSON.stringify(data.choices) !== JSON.stringify(starterL05Plan?.byKey.mini_check.data.choices))) return { valid: false, steps: [] };
         if (!append(task, "mini_check", null, { taskId: task.id, prompt: data.prompt, choices: data.choices })) return { valid: false, steps: [] };
         continue;
       }
@@ -921,6 +1127,9 @@ export function buildAuthoritativeLearnSteps(
       if (starterL04 && (task.taskType !== "SPEAKING_ATTEMPT" || task.itemId !== `lf_${starterL04ChildId}_starter-l04_sentence` ||
           data.text !== starterL04Plan?.speaking.expectedText || data.textKind !== "sentence" ||
           data.sourceType !== "SENTENCE" || data.authorship !== "TONGXUAN_AUTHORED_PRACTICE")) return { valid: false, steps: [] };
+      if (starterL05 && (task.taskType !== "SPEAKING_ATTEMPT" || task.itemId !== `lf_${starterL05ChildId}_starter-l05_sentence` ||
+          data.text !== starterL05Plan?.speaking.expectedText || data.textKind !== "sentence" ||
+          data.sourceType !== "SENTENCE" || data.authorship !== "TONGXUAN_AUTHORED_PRACTICE")) return { valid: false, steps: [] };
       const existing = steps.at(-1)?.stepKey === "speaking" ? steps.at(-1) : undefined;
       if (existing) {
         existing.data.taskIds = [...(existing.data.taskIds ?? []), task.id];
@@ -945,6 +1154,9 @@ export function buildAuthoritativeLearnSteps(
           data.authorship !== "TONGXUAN_AUTHORED_PRACTICE")) return { valid: false, steps: [] };
       if (starterL04 && (data.label !== starterL04Plan?.byKey.wrap_up.data.wrapUpSummary?.completionText ||
           data.masteryNotice !== starterL04Plan?.byKey.wrap_up.data.wrapUpSummary?.masteryNotice ||
+          data.authorship !== "TONGXUAN_AUTHORED_PRACTICE")) return { valid: false, steps: [] };
+      if (starterL05 && (data.label !== starterL05Plan?.byKey.wrap_up.data.wrapUpSummary?.completionText ||
+          data.masteryNotice !== starterL05Plan?.byKey.wrap_up.data.wrapUpSummary?.masteryNotice ||
           data.authorship !== "TONGXUAN_AUTHORED_PRACTICE")) return { valid: false, steps: [] };
       wrapCount += 1;
       if (!append(task, "wrap_up", null, { taskId: task.id, wrapUpSummary: { completionText: data.label || "", masteryNotice: data.masteryNotice || "" } })) return { valid: false, steps: [] };

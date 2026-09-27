@@ -79,7 +79,7 @@ def complete_session(api: TestClient, child_id: int, current: dict, assisted_sco
             if task["taskData"].get("mode") == "reflection":
                 selected = next((option["id"] for option in task["taskData"]["choices"] if option["id"] == "practiced"), task["taskData"]["choices"][0]["id"])
             elif task["taskType"] == "VOCABULARY":
-                selected = next(option["id"] for option in task["taskData"]["choices"] if option["id"] in {"greeting", "opt-hello", "age-seven", "family-parents"} or "打招呼" in option["label"])
+                selected = next(option["id"] for option in task["taskData"]["choices"] if option["id"] in {"greeting", "opt-hello", "age-seven", "family-parents", "younger-sister"} or "打招呼" in option["label"])
             elif task["taskType"] == "SENTENCE_PATTERN":
                 selected = next(option["id"] for option in task["taskData"]["choices"] if option["id"] in {"greeting", "opt-correct-order", "has-dog"} or option.get("isCorrect"))
             else:
@@ -527,7 +527,237 @@ def test_starter_l04_unlocks_after_l03_and_settles_exact_original_authored_plan(
             ).fetchone() is None
         finished_queue = api.get(f"/api/children/{learner}/learning-daily-queue", params={"as_of": "2099-01-01T00:00:00Z"}).json()
         assert finished_queue["completedLesson"]["lessonId"] == "starter-l04"
-        assert finished_queue["newLesson"] is None
+        assert finished_queue["newLesson"]["lessonId"] == "starter-l05"
+        assert finished_queue["newLesson"]["title"] == "我的妹妹"
+
+
+def test_starter_l05_unlocks_after_l04_settles_exact_package_and_reconciles_exact_word_srs(tmp_path):
+    from app.database import connect
+
+    with client(tmp_path) as api:
+        learner = child(api, "Starter L5 learner")
+        sibling = child(api, "Starter L5 sibling")
+        place(learner, "STARTER")
+        place(sibling, "STARTER")
+        for lesson_id in ("starter-l01", "starter-l02", "starter-l03"):
+            response = api.post(
+                f"/api/children/{learner}/learning-sessions",
+                json={"lesson_id": lesson_id, "target_minutes": 18, "script_mode": "TRADITIONAL", "as_of": "2026-09-19T08:00:00Z"},
+            )
+            assert response.status_code == 200, response.text
+            complete_session(api, learner, response.json())
+
+        before_l04_queue = api.get(f"/api/children/{learner}/learning-daily-queue").json()
+        assert before_l04_queue["newLesson"]["lessonId"] == "starter-l04"
+        blocked_before_l04 = api.post(
+            f"/api/children/{learner}/learning-sessions",
+            json={"lesson_id": "starter-l05", "target_minutes": 18, "script_mode": "TRADITIONAL"},
+        )
+        assert blocked_before_l04.status_code == 409 and blocked_before_l04.json()["detail"] == "prerequisite_not_mastered"
+        with connect() as db:
+            assert db.execute("SELECT 1 FROM learning_flow_sessions WHERE child_id=? AND lesson_id='starter-l05'", (learner,)).fetchone() is None
+
+        l04 = api.post(
+            f"/api/children/{learner}/learning-sessions",
+            json={"lesson_id": "starter-l04", "target_minutes": 18, "script_mode": "TRADITIONAL", "as_of": "2026-09-19T08:00:00Z"},
+        )
+        assert l04.status_code == 200, l04.text
+        complete_session(api, learner, l04.json())
+        queue = api.get(f"/api/children/{learner}/learning-daily-queue").json()
+        assert queue["newLesson"]["lessonId"] == "starter-l05"
+        assert queue["newLesson"]["title"] == "我的妹妹"
+        curriculum = api.get(f"/api/children/{learner}/validated-curriculum").json()
+        l05 = next(lesson for stage in curriculum["stages"] for lesson in stage["lessons"] if lesson["id"] == "starter-l05")
+        assert l05["accessible"] is True and l05["prerequisiteLessonId"] == "starter-l04"
+        assert l05["official"]["source"]["licenseStatus"] == "PERMISSION_REQUIRED"
+        assert l05["official"]["source"]["commercialReady"] is False
+        assert l05["tongxuan"]["domains"] == ["listening", "speaking", "phonetics", "vocabulary"]
+
+        blocked = api.post(
+            f"/api/children/{sibling}/learning-sessions",
+            json={"lesson_id": "starter-l05", "target_minutes": 18, "script_mode": "TRADITIONAL"},
+        )
+        assert blocked.status_code == 409 and blocked.json()["detail"] == "prerequisite_not_mastered"
+        assert api.get(f"/api/children/{sibling}/learning-daily-queue").json()["newLesson"]["lessonId"] == "starter-l01"
+
+        with connect() as db:
+            # Keep prior Starter word rows out of this review queue so the assertion
+            # isolates the exact L5 vocabulary SRS identity.
+            db.execute("UPDATE srs_review_states SET due_at='2999-01-01 00:00:00' WHERE child_id=? AND skill_domain='word'", (learner,))
+        started = api.post(
+            f"/api/children/{learner}/learning-sessions",
+            json={"lesson_id": "starter-l05", "target_minutes": 18, "script_mode": "TRADITIONAL", "as_of": "2026-09-19T08:00:00Z"},
+        )
+        assert started.status_code == 200, started.text
+        current = started.json()
+        by_key = {task["key"]: task for task in current["tasks"]}
+        assert current["childId"] == learner and current["curriculumContext"]["lessonId"] == "starter-l05"
+        assert current["curriculumContext"]["official"]["title"] == "我的妹妹"
+        assert current["curriculumContext"]["official"]["source"]["licenseStatus"] == "PERMISSION_REQUIRED"
+        assert set(by_key) == {"listen", "vocabulary", "phonetics", "speaking", "mini-check-reflection", "wrap-up"}
+        assert all(task["id"] == f"{current['id']}:{task['key']}" for task in current["tasks"])
+        assert all(task["lessonId"] == "starter-l05" and task["childId"] == learner for task in current["tasks"])
+        assert all(task["taskData"]["authorship"] == "TONGXUAN_AUTHORED_PRACTICE" for task in current["tasks"])
+        assert by_key["listen"]["itemId"] == f"lf_{learner}_starter-l05_phrase"
+        assert by_key["listen"]["taskData"]["text"] == "我有一個妹妹。"
+        assert by_key["listen"]["taskData"]["textKind"] == "sentence"
+        assert by_key["vocabulary"]["itemId"] == f"lf_{learner}_starter-l05_vocabulary"
+        assert by_key["vocabulary"]["taskData"]["wordText"] == "妹妹"
+        assert by_key["vocabulary"]["taskData"]["exampleSentence"] == "我有一個妹妹。"
+        assert by_key["speaking"]["itemId"] == f"lf_{learner}_starter-l05_sentence"
+        assert by_key["speaking"]["taskData"]["text"] == "我有一個妹妹。"
+        assert by_key["phonetics"]["itemId"] is None
+        assert {(question["character"], question["script"]) for question in by_key["phonetics"]["taskData"]["questions"]} == {
+            ("妹", "TRADITIONAL"), ("妹", "SIMPLIFIED"),
+        }
+        with connect() as db:
+            sentence = db.execute(
+                "SELECT child_id,sentence,source_name,provenance_status,commercial_ready FROM sentences WHERE id=?",
+                (by_key["speaking"]["itemId"],),
+            ).fetchone()
+            assert sentence and tuple(sentence) == (
+                learner, "我有一個妹妹。", "TONGXUAN_AUTHORED_PRACTICE · starter-l05",
+                "TONGXUAN_AUTHORED_INTERNAL_DRAFT", 0,
+            )
+            assert db.execute(
+                "SELECT 1 FROM curriculum_item_links WHERE child_id=? AND skill_domain='vocabulary' AND item_id=? AND lesson_id='starter-l05'",
+                (learner, by_key["vocabulary"]["itemId"]),
+            ).fetchone()
+            assert db.execute("SELECT 1 FROM sentences WHERE child_id=? AND id=?", (sibling, by_key["speaking"]["itemId"])).fetchone() is None
+            assert db.execute("SELECT 1 FROM srs_review_states WHERE child_id=? AND item_id=?", (sibling, by_key["vocabulary"]["itemId"])).fetchone() is None
+
+        current = start_task(api, learner, current, by_key["listen"])
+        listen_attempt = api.post(f"/api/children/{learner}/listening-attempts", json={"item_id": by_key["listen"]["itemId"]}).json()
+        listened = api.post(
+            f"/api/children/{learner}/learning-sessions/{current['id']}/tasks/{by_key['listen']['id']}/evidence",
+            json={"evidence_ref": listen_attempt["id"], "duration_ms": 500},
+        )
+        assert listened.status_code == 200, listened.text
+        current = api.get(f"/api/children/{learner}/learning-sessions/{current['id']}").json()
+        vocabulary_task = next(task for task in current["tasks"] if task["key"] == "vocabulary")
+        current = start_task(api, learner, current, vocabulary_task)
+        current = answer_task(api, learner, current, vocabulary_task, "younger-sister")
+
+        due_at = "2026-09-19 07:00:00"
+        with connect() as db:
+            db.execute(
+                "UPDATE srs_review_states SET due_at=? WHERE child_id=? AND skill_domain='word' AND item_id=?",
+                (due_at, learner, vocabulary_task["itemId"]),
+            )
+            before_rows = [tuple(row) for row in db.execute(
+                "SELECT skill_domain,item_id,stage,last_result,due_at FROM srs_review_states WHERE child_id=? AND skill_domain='word' ORDER BY item_id",
+                (learner,),
+            ).fetchall()]
+            before_l05_evidence = db.execute(
+                "SELECT COUNT(*) FROM curriculum_skill_evidence WHERE child_id=? AND lesson_id='starter-l05' AND skill_domain='vocabulary'",
+                (learner,),
+            ).fetchone()[0]
+        daily = api.get(
+            f"/api/children/{learner}/learning-daily-queue",
+            params={"as_of": "2026-09-19T08:00:00Z"},
+        ).json()
+        assert daily["review"]["items"] == [{
+            "id": vocabulary_task["itemId"], "skillDomain": "word", "character": None, "scriptMode": None,
+            "word": "妹妹", "lessonId": "starter-l05", "dueAt": due_at,
+        }]
+        reconciled = api.post(
+            f"/api/children/{learner}/learning-sessions/{current['id']}/reconcile-reviews",
+            json={"as_of": "2026-09-19T08:00:00Z"},
+        )
+        assert reconciled.status_code == 200, reconciled.text
+        current = reconciled.json()
+        reviews = [task for task in current["tasks"] if task["sourceQueue"] == "REVIEW"]
+        assert len(reviews) == 1
+        review = reviews[0]
+        assert review["id"] == f"{current['id']}:{review['key']}"
+        assert review["taskType"] == "REVIEW_VOCABULARY" and review["masteryImpact"] == "NONE"
+        assert review["childId"] == learner and review["lessonId"] == "starter-l05"
+        assert review["itemId"] == vocabulary_task["itemId"]
+        assert review["taskData"]["word"] == "妹妹"
+        assert {choice["id"] for choice in review["taskData"]["choices"]} == {"younger-sister", "older-sister"}
+
+        current = start_task(api, learner, current, review)
+        current = answer_task(api, learner, current, review, "younger-sister")
+        review_state = next(task for task in current["tasks"] if task["id"] == review["id"])
+        pending_curriculum = next(task for task in current["tasks"] if task["key"] == "phonetics")
+        assert current["status"] == "IN_PROGRESS" and review_state["state"] == "COMPLETED"
+        assert pending_curriculum["state"] == "PENDING"
+        with connect() as db:
+            after_rows = [tuple(row) for row in db.execute(
+                "SELECT skill_domain,item_id,stage,last_result,due_at FROM srs_review_states WHERE child_id=? AND skill_domain='word' ORDER BY item_id",
+                (learner,),
+            ).fetchall()]
+            after_l05_evidence = db.execute(
+                "SELECT COUNT(*) FROM curriculum_skill_evidence WHERE child_id=? AND lesson_id='starter-l05' AND skill_domain='vocabulary'",
+                (learner,),
+            ).fetchone()[0]
+        before_by_item = {row[1]: row for row in before_rows}
+        after_by_item = {row[1]: row for row in after_rows}
+        exact_l05_row = after_by_item[vocabulary_task["itemId"]]
+        assert exact_l05_row[2] == 2 and exact_l05_row[3] == "correct" and exact_l05_row[4] > due_at
+        assert {item: row for item, row in after_by_item.items() if item != vocabulary_task["itemId"]} == {
+            item: row for item, row in before_by_item.items() if item != vocabulary_task["itemId"]
+        }
+        assert after_l05_evidence == before_l05_evidence
+
+        settled = complete_session(api, learner, current)
+        assert settled["status"] == "COMPLETED" and settled["assessment"]["status"] == "MASTERED"
+        assert settled["reward"]["points"] == 5
+        final_queue = api.get(f"/api/children/{learner}/learning-daily-queue", params={"as_of": "2099-01-01T00:00:00Z"}).json()
+        assert final_queue["completedLesson"]["lessonId"] == "starter-l05"
+        assert final_queue["newLesson"] is None
+
+
+def test_starter_l05_malformed_package_fails_closed_before_material_session_or_tasks(tmp_path, monkeypatch):
+    import copy
+    from app import learning_flow
+    from app.database import connect
+
+    with client(tmp_path) as api:
+        learner = child(api, "Starter L5 malformed package")
+        place(learner, "STARTER")
+        for lesson_id in ("starter-l01", "starter-l02", "starter-l03", "starter-l04"):
+            current = api.post(
+                f"/api/children/{learner}/learning-sessions",
+                json={"lesson_id": lesson_id, "target_minutes": 18, "script_mode": "TRADITIONAL"},
+            ).json()
+            complete_session(api, learner, current)
+
+        original = learning_flow.get_lesson_package
+        mutations = [
+            lambda package: package["vocabulary"][0].update(id="unrelated-word"),
+            lambda package: package["taskBlueprint"]["learnSteps"][2]["data"]["questions"][0]["choices"][1].update(label="mèi"),
+            lambda package: package["taskBlueprint"]["learnSteps"][2]["data"]["questions"][1]["choices"][1].update(label="ㄇㄟˋ"),
+            lambda package: package["taskBlueprint"]["learnSteps"][2]["data"]["questions"][0]["choices"][1].update(id="pinyin-distractor"),
+            lambda package: package["taskBlueprint"]["learnSteps"][2]["data"]["questions"][1]["choices"][1].update(id="zhuyin-distractor"),
+            lambda package: package["taskBlueprint"]["learnSteps"][2]["data"]["questions"][0].update(correctChoiceId="tone-two"),
+            lambda package: package["taskBlueprint"]["learnSteps"][2]["data"]["questions"][1].update(correctChoiceId="tone-two"),
+            lambda package: package["taskBlueprint"]["learnSteps"][0].update(title="未審核標題"),
+            lambda package: package["taskBlueprint"]["learnSteps"][5].update(subtitle="未審核副標題"),
+            lambda package: package["nativeLanguageSupport"]["entries"]["sister_example"].update(naturalMeaning="An unexpected translation."),
+            lambda package: package["nativeLanguageSupport"]["entries"]["sister_example"].update(notes="Unexpected helper note."),
+            lambda package: package["taskBlueprint"]["learnSteps"][0]["data"].update(prompt="Unexpected prompt."),
+            lambda package: package["taskBlueprint"]["learnSteps"][3]["data"]["speakingPrompt"].update(instruction="Unexpected speaking copy."),
+            lambda package: package["taskBlueprint"]["learnSteps"][2]["data"].update(prompt="Unexpected phonetics prompt."),
+            lambda package: package["taskBlueprint"]["learnSteps"][5]["data"]["wrapUpSummary"].update(masteryNotice="Unexpected notice."),
+        ]
+        for mutation_index, mutate in enumerate(mutations):
+            broken = copy.deepcopy(original("starter-l05"))
+            mutate(broken)
+            monkeypatch.setattr(
+                learning_flow, "get_lesson_package",
+                lambda lesson_id, broken=broken: broken if lesson_id == "starter-l05" else original(lesson_id),
+            )
+            response = api.post(
+                f"/api/children/{learner}/learning-sessions",
+                json={"lesson_id": "starter-l05", "target_minutes": 18, "script_mode": "TRADITIONAL"},
+            )
+            assert response.status_code == 400 and response.json()["detail"] == "learning_flow_starter_l05_package_invalid", f"L5 package mutation {mutation_index} was accepted: {response.text}"
+            with connect() as db:
+                assert db.execute("SELECT 1 FROM learning_flow_sessions WHERE child_id=? AND lesson_id='starter-l05'", (learner,)).fetchone() is None
+                assert db.execute("SELECT 1 FROM learning_flow_tasks WHERE child_id=? AND lesson_id='starter-l05'", (learner,)).fetchone() is None
+                assert db.execute("SELECT 1 FROM curriculum_item_links WHERE child_id=? AND lesson_id='starter-l05'", (learner,)).fetchone() is None
+                assert db.execute("SELECT 1 FROM sentences WHERE child_id=? AND source_name='TONGXUAN_AUTHORED_PRACTICE · starter-l05'", (learner,)).fetchone() is None
 
 
 def test_starter_l04_fails_closed_when_authored_package_license_is_changed(tmp_path, monkeypatch):

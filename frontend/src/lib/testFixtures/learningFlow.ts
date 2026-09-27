@@ -27,7 +27,7 @@ export function learningFlowTask(
 
 // Planner-faithful LEARN task sets from backend/app/learning_flow.py::_session_plan.
 export function plannerTasksForLesson(
-  lessonId: "starter-l01" | "starter-l02" | "starter-l03" | "starter-l04" | "basic-l01" | "book1-l01",
+  lessonId: "starter-l01" | "starter-l02" | "starter-l03" | "starter-l04" | "starter-l05" | "basic-l01" | "book1-l01",
   includeOptionalWriting = false,
   partialRecognition = false,
   childId = 1,
@@ -89,6 +89,61 @@ export function plannerTasksForLesson(
     tasks.push(learningFlowTask(lessonId, "wrap-up", "wrap-up", "LESSON_WRAP_UP", null, {
       label: wrap.wrapUpSummary!.completionText, masteryNotice: wrap.wrapUpSummary!.masteryNotice, authorship: wrap.authorship,
     }));
+    for (const task of tasks) {
+      task.childId = childId;
+      task.sessionId = `test-session-${lessonId}`;
+      task.id = `${task.sessionId}:${task.key}`;
+    }
+    return tasks;
+  }
+  if (lessonId === "starter-l05") {
+    const pkg = getLessonPackage(lessonId)!;
+    const stepData = (key: string) => pkg.taskBlueprint.learnSteps.find((step) => step.stepKey === key)!.data;
+    const context = stepData("context");
+    const vocabulary = stepData("vocabulary");
+    const phonetics = stepData("exit_ticket");
+    const speaking = stepData("speaking");
+    const reflection = stepData("mini_check");
+    const wrap = stepData("wrap_up");
+    const questions = phonetics.questions!.map(({ id, character, script, choices }: any) => ({
+      id, character, script, choices: choices.map(({ id: choiceId, label }: any) => ({ id: choiceId, label })),
+    }));
+    const tasks = [
+      {
+        ...learningFlowTask(lessonId, "listen", "listen", "LISTENING", "listening", {
+          text: context.audioText, locale: "zh-TW", textKind: "sentence", authorship: context.authorship,
+        }),
+        itemId: `lf_${childId}_${lessonId}_phrase`,
+      },
+      {
+        ...learningFlowTask(lessonId, "vocabulary", "vocabulary", "VOCABULARY", "vocabulary", {
+          prompt: vocabulary.prompt, choices: vocabulary.choices!.map(({ id, label }: any) => ({ id, label })),
+          wordText: vocabulary.word, pinyin: pkg.vocabulary[0].pronunciation.pinyin,
+          zhuyin: pkg.vocabulary[0].pronunciation.zhuyin, exampleSentence: vocabulary.exampleSentence,
+          authorship: vocabulary.authorship,
+        }),
+        itemId: `lf_${childId}_${lessonId}_vocabulary`,
+      },
+      {
+        ...learningFlowTask(lessonId, "phonetics", "phonetics", "PHONETICS", "phonetics", {
+          prompt: phonetics.prompt, questions, authorship: phonetics.authorship,
+        }),
+        itemId: null as any,
+      },
+      {
+        ...learningFlowTask(lessonId, "speaking", "speaking", "SPEAKING_ATTEMPT", "speaking", {
+          text: speaking.speakingPrompt!.expectedText, locale: "zh-TW", textKind: "sentence",
+          sourceType: "SENTENCE", audioPolicy: "LOCAL_ONLY", authorship: speaking.authorship,
+        }),
+        itemId: `lf_${childId}_${lessonId}_sentence`,
+      },
+      learningFlowTask(lessonId, "reflection", "mini-check-reflection", "MINI_CHECK", null, {
+        mode: "reflection", prompt: reflection.prompt, choices: reflection.choices, authorship: reflection.authorship,
+      }),
+      learningFlowTask(lessonId, "wrap-up", "wrap-up", "LESSON_WRAP_UP", null, {
+        label: wrap.wrapUpSummary!.completionText, masteryNotice: wrap.wrapUpSummary!.masteryNotice, authorship: wrap.authorship,
+      }),
+    ];
     for (const task of tasks) {
       task.childId = childId;
       task.sessionId = `test-session-${lessonId}`;
@@ -217,7 +272,7 @@ export function plannerTasksForLesson(
 }
 
 export function authoritativeSessionFixture(
-  lessonId: "starter-l01" | "starter-l02" | "starter-l03" | "starter-l04" | "basic-l01" | "book1-l01",
+  lessonId: "starter-l01" | "starter-l02" | "starter-l03" | "starter-l04" | "starter-l05" | "basic-l01" | "book1-l01",
   sessionId: string,
   states: Record<string, string> = {},
   taskOverrides: Record<string, Record<string, unknown>> = {},
@@ -244,8 +299,8 @@ export function authoritativeSessionFixture(
     curriculumContext: {
       lessonId,
       lessonMasteredBeforeSession: false,
-      stageTitle: ["starter-l01", "starter-l02", "starter-l03", "starter-l04"].includes(lessonId) ? "入門冊" : lessonId === "basic-l01" ? "基礎冊" : "第一冊",
-      official: { title: lessonId === "starter-l02" ? "我七歲" : lessonId === "starter-l03" ? "爸爸媽媽" : lessonId === "starter-l04" ? "小狗" : lessonId === "basic-l01" ? "數字一到十" : "你好" },
+      stageTitle: ["starter-l01", "starter-l02", "starter-l03", "starter-l04", "starter-l05"].includes(lessonId) ? "入門冊" : lessonId === "basic-l01" ? "基礎冊" : "第一冊",
+      official: { title: lessonId === "starter-l02" ? "我七歲" : lessonId === "starter-l03" ? "爸爸媽媽" : lessonId === "starter-l04" ? "小狗" : lessonId === "starter-l05" ? "我的妹妹" : lessonId === "basic-l01" ? "數字一到十" : "你好" },
     },
     tasks,
   };
