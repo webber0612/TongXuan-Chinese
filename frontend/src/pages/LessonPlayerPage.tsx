@@ -1875,7 +1875,7 @@ export function LessonPlayerPage({
                 text: speakingTask.taskData?.text || pkg?.curriculumSource.title || "你好",
                 text_kind: speakingTask.taskData?.textKind || "character",
                 locale: speakingTask.taskData?.locale || (locale === "zh-CN" ? "zh-CN" : "zh-TW"),
-                source_type: "CURRICULUM",
+                source_type: speakingTask.taskData?.sourceType || "CURRICULUM",
                 source_id: speakingTask.itemId,
                 activity_domain: "speaking",
               }),
@@ -2443,8 +2443,8 @@ export function LessonPlayerPage({
                     <span className="vocab-role-pill">{text.activeRole}</span>
                   </div>
                   <div className="vocab-phonetics-row">
-                    <span className="pinyin-tag">nǐ hǎo</span>
-                    <span className="zhuyin-tag">ㄋㄧˇ ㄏㄠˇ</span>
+                    <span className="pinyin-tag">{currentStep.data.pinyin || "nǐ hǎo"}</span>
+                    <span className="zhuyin-tag">{currentStep.data.zhuyin || "ㄋㄧˇ ㄏㄠˇ"}</span>
                     <button
                       type="button"
                       className="button button-icon-subtle"
@@ -2455,7 +2455,7 @@ export function LessonPlayerPage({
                     </button>
                   </div>
                   <div className="vocab-example-sentence">
-                    <p><strong>例句：</strong> 你好！我叫大衛。</p>
+                    <p><strong>例句：</strong> {currentStep.data.exampleSentence || "你好！我叫大衛。"}</p>
                   </div>
                   {renderScaffold("greeting")}
                 </div>
@@ -2466,7 +2466,7 @@ export function LessonPlayerPage({
                   {choices?.map((choice: { id: string; label: string; isCorrect?: boolean }) => {
                     const vocabularyChoiceKey = currentStep.data.taskId ? `vocab-${currentStep.data.taskId}` : "vocab";
                     const isSelected = selectedChoices[vocabularyChoiceKey] === choice.id;
-                    const isCorrect = choice.id === "opt-hello" || choice.id === "greeting" || choice.isCorrect;
+                    const isCorrect = choice.id === currentStep.data.correctChoiceId || choice.id === "opt-hello" || choice.id === "greeting" || choice.isCorrect;
                     return (
                       <button
                         key={choice.id}

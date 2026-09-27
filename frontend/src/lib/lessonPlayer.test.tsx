@@ -45,7 +45,7 @@ function installPlannerSessionMock(
         const choice = task.taskData?.choices?.find((option: { id: string }) => option.id === selected);
         const answerIsCorrect = task.taskType === "RECOGNITION" || task.taskType === "MINI_CHECK"
           ? task.taskData?.mode === "reflection" ? selected === "practiced" : choice?.label === task.taskData?.audioText
-          : task.taskType === "VOCABULARY" ? selected === "opt-hello"
+          : task.taskType === "VOCABULARY" ? selected === (task.taskData?.correctChoiceId ?? "opt-hello")
           : task.taskType === "SENTENCE_PATTERN" ? selected === "opt-correct-order"
           : true;
         task.state = answerIsCorrect ? "COMPLETED" : "IN_PROGRESS";
@@ -381,30 +381,38 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
   // Test 13
   it("13. Starter / Basic / Book 1 Lesson 1 can each render from the common schema", () => {
     const packages = getAllLessonPackages();
-    expect(packages.length).toBe(3);
+    expect(packages.length).toBe(4);
 
     const ids = packages.map((p) => p.lessonId);
     expect(ids).toContain("starter-l01");
     expect(ids).toContain("basic-l01");
     expect(ids).toContain("book1-l01");
 
-    for (const p of packages) {
+    for (const p of packages.filter((item) => item.lessonId !== "starter-l02")) {
       expect(p.schemaVersion).toBe("v2.0");
       expect(p.taskBlueprint.learnSteps.length).toBe(9);
       expect(p.taskBlueprint.fastTrackSteps.length).toBeGreaterThanOrEqual(2);
       expect(p.taskBlueprint.reviewSteps.length).toBeGreaterThanOrEqual(2);
       expect(p.curriculumSource.provenanceStatus).toBe("VERIFIED_OFFICIAL_TITLE");
     }
+    const starterL02 = getLessonPackage("starter-l02")!;
+    expect(starterL02.curriculumSource).toMatchObject({
+      title: "我七歲", lesson: "第2課", licenseStatus: "PERMISSION_REQUIRED", commercialReady: false,
+    });
+    expect(starterL02.characters.map((item) => item.char)).toEqual(["我", "七"]);
+    expect(starterL02.textBlocks.every((item) => item.authorship === "TONGXUAN_AUTHORED_PRACTICE")).toBe(true);
+    expect(starterL02.vocabulary.every((item) => item.authorship === "TONGXUAN_AUTHORED")).toBe(true);
   });
 
   it("14. Each supported authoritative planner task maps once to an exact reachable Lesson Player step", () => {
     const expectedKeys: Record<string, string[]> = {
       "starter-l01": ["context", "exit_ticket", "speaking", "mini_check", "wrap_up"],
+      "starter-l02": ["context", "vocabulary", "exit_ticket", "speaking", "mini_check", "wrap_up"],
       "basic-l01": ["context", "characters", "characters", "vocabulary", "speaking", "mini_check", "wrap_up"],
       "book1-l01": ["context", "characters", "characters", "sentence_pattern", "speaking", "mini_check", "wrap_up"],
     };
 
-    for (const lessonId of ["starter-l01", "basic-l01", "book1-l01"] as const) {
+    for (const lessonId of ["starter-l01", "starter-l02", "basic-l01", "book1-l01"] as const) {
       const pkg = getLessonPackage(lessonId);
       expect(pkg).not.toBeNull();
       if (!pkg) continue;
@@ -415,7 +423,91 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
       const mappedIds = plan.steps.flatMap((step) => step.data.taskIds ?? [step.data.taskId]);
       expect(mappedIds).toEqual(plannedTasks.map((task) => task.id));
       expect(plan.steps.at(-1)?.data.taskId).toBe(plannedTasks.at(-1)?.id);
+      if (lessonId === "starter-l02") {
+        expect(plan.steps.find((step) => step.stepKey === "vocabulary")?.data).toMatchObject({
+          taskId: plannedTasks.find((task) => task.key === "vocabulary")?.id,
+          word: "七歲", pinyin: "qī suì", zhuyin: "ㄑㄧ ㄙㄨㄟˋ",
+        });
+        expect(buildAuthoritativeLearnSteps(pkg, plannedTasks.filter((task) => task.key !== "phonetics")).valid).toBe(false);
+        expect(buildAuthoritativeLearnSteps(pkg, plannedTasks.filter((task) => task.key !== "vocabulary")).valid).toBe(false);
+        const malformed = plannedTasks.map((task) => task.key === "phonetics"
+          ? { ...task, taskData: { ...task.taskData, questions: task.taskData.questions.slice(1) } }
+          : task);
+        expect(buildAuthoritativeLearnSteps(pkg, malformed).valid).toBe(false);
+        const wrongIdentity = plannedTasks.map((task) => task.key === "vocabulary" ? { ...task, itemId: "lf_2_starter-l02_vocabulary" } : task);
+        expect(buildAuthoritativeLearnSteps(pkg, wrongIdentity).valid).toBe(false);
+        const speakingStep = plan.steps.find((step) => step.stepKey === "speaking");
+        expect(speakingStep?.data.speakingTasks).toEqual([{ id: plannedTasks.find((task) => task.key === "speaking")?.id, taskType: "SPEAKING_ATTEMPT" }]);
+        const invalidSentenceSource = plannedTasks.map((task) => task.key === "speaking" ? { ...task, taskData: { ...task.taskData, sourceType: "CURRICULUM" } } : task);
+        expect(buildAuthoritativeLearnSteps(pkg, invalidSentenceSource).valid).toBe(false);
+        const invalidSentenceId = plannedTasks.map((task) => task.key === "speaking" ? { ...task, itemId: "lf_1_starter-l02_phrase" } : task);
+        expect(buildAuthoritativeLearnSteps(pkg, invalidSentenceId).valid).toBe(false);
+      }
     }
+  });
+
+  it("15. starter-l02 Lesson Player sends its authored sentence against the exact sentence task identity", async () => {
+    const session = authoritativeSessionFixture("starter-l02", "session-l2-speaking", {
+      listen: "COMPLETED", vocabulary: "COMPLETED", phonetics: "COMPLETED",
+    }, {}, false, false, 31);
+    const pkg = getLessonPackage("starter-l02")!;
+    const providerStarts: any[] = [];
+    const evidenceWrites: Array<{ taskId: string; body: any }> = [];
+    const track = { stop: vi.fn() }; const stream = { getTracks: () => [track] };
+    class MockMediaRecorder {
+      state = "inactive"; mimeType = "audio/webm";
+      ondataavailable = (_event: { data: Blob }) => {}; onstop = () => {}; onerror = () => {};
+      constructor(public stream: unknown) {}
+      start() { this.state = "recording"; }
+      stop() { this.state = "inactive"; this.ondataavailable({ data: new Blob(["audio"]) }); this.onstop(); }
+    }
+    vi.stubGlobal("navigator", { ...navigator, mediaDevices: { getUserMedia: vi.fn().mockResolvedValue(stream) } });
+    vi.stubGlobal("MediaRecorder", MockMediaRecorder);
+    installPlannerSessionMock(session, (url, init) => {
+      if (init?.method !== "POST") return undefined;
+      if (url.includes("/reading-aloud/attempts/start")) {
+        const body = JSON.parse(init.body as string); providerStarts.push(body);
+        return new Response(JSON.stringify({ id: "attempt-l2-sentence", status: "STARTED" }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/tasks/") && url.endsWith("/evidence")) {
+        const taskId = decodeURIComponent(url.split("/tasks/")[1].split("/evidence")[0]);
+        evidenceWrites.push({ taskId, body: JSON.parse(init.body as string) });
+        session.tasks.find((task) => task.id === taskId)!.state = "COMPLETED";
+        return new Response(JSON.stringify(session), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return undefined;
+    });
+    const container = document.createElement("div"); document.body.appendChild(container); const root = createRoot(container);
+    await act(async () => { root.render(<LessonPlayerPage lessonId="starter-l02" activeChildId={31} onBack={() => {}} initialMode="LEARN" />); });
+    await advanceToPlannerStep(container, "vocabulary");
+    expect(container.querySelector(".vocab-hanzi")?.textContent).toContain("七歲");
+    await act(async () => { (container.querySelector(".step-vocab-body .choice-card-btn") as HTMLButtonElement).click(); });
+    await act(async () => { (container.querySelector(".next-step-cta-btn") as HTMLButtonElement).click(); });
+    const questions = pkg.taskBlueprint.learnSteps.find((step) => step.stepKey === "exit_ticket")!.data.questions!;
+    const cards = Array.from(container.querySelectorAll(".exit-ticket-item-card"));
+    expect(cards).toHaveLength(questions.length);
+    for (let index = 0; index < questions.length; index++) {
+      const question = questions[index];
+      const card = cards[index];
+      const correctLabel = question.choices.find((choice) => choice.id === question.correctChoiceId)!.label;
+      const answerButton = Array.from(card.querySelectorAll(".choice-card-btn")).find((button) => button.textContent?.includes(correctLabel)) as HTMLButtonElement;
+      await act(async () => { answerButton.click(); });
+    }
+    await act(async () => { (container.querySelector(".submit-exit-ticket-btn") as HTMLButtonElement).click(); await new Promise((resolve) => setTimeout(resolve, 0)); });
+    await act(async () => { (container.querySelector(".next-step-cta-btn") as HTMLButtonElement).click(); });
+    expect(container.querySelector('.lesson-step-card[data-step-key="speaking"]')).toBeTruthy();
+    expect(container.querySelector(".player-lesson-title")?.textContent).toBe("我七歲");
+    await act(async () => { (container.querySelector(".mic-record-btn") as HTMLButtonElement).click(); await new Promise((resolve) => setTimeout(resolve, 0)); });
+    await act(async () => { (container.querySelector(".mic-record-btn") as HTMLButtonElement).click(); await new Promise((resolve) => setTimeout(resolve, 0)); });
+    expect(providerStarts).toEqual([{
+      text: "我今年七歲。", text_kind: "sentence", locale: "zh-TW", source_type: "SENTENCE",
+      source_id: "lf_31_starter-l02_sentence", activity_domain: "speaking",
+    }]);
+    expect(evidenceWrites).toHaveLength(1);
+    expect(evidenceWrites[0]).toMatchObject({ taskId: "session-l2-speaking:speaking", body: { evidence_ref: "attempt-l2-sentence" } });
+    expect(evidenceWrites[0].body.duration_ms).toBeGreaterThan(0);
+    expect(session.tasks.find((task) => task.id === "session-l2-speaking:speaking")?.state).toBe("COMPLETED");
+    await act(async () => { root.unmount(); }); container.remove(); vi.unstubAllGlobals();
   });
 
   it("14c. mixed-lesson REVIEW rows map by their own package and stay outside the parent LEARN plan", () => {

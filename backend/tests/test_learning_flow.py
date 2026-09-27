@@ -70,7 +70,7 @@ def complete_session(api: TestClient, child_id: int, current: dict, assisted_sco
             assert response.status_code == 200, response.text
         elif task["taskType"] in {"SPEAKING_ATTEMPT", "PRONUNCIATION_ATTEMPT"}:
             domain = "pronunciation" if task["taskType"] == "PRONUNCIATION_ATTEMPT" else "speaking"
-            attempt = api.post("/api/reading-aloud/attempts/start?child_id=" + str(child_id), json={"text": task["taskData"]["text"], "text_kind": "character", "locale": "zh-TW", "source_type": "CURRICULUM", "source_id": task["itemId"], "activity_domain": domain})
+            attempt = api.post("/api/reading-aloud/attempts/start?child_id=" + str(child_id), json={"text": task["taskData"]["text"], "text_kind": task["taskData"].get("textKind", "character"), "locale": "zh-TW", "source_type": task["taskData"].get("sourceType", "CURRICULUM"), "source_id": task["itemId"], "activity_domain": domain})
             assert attempt.status_code == 200, attempt.text
             attempt_id = attempt.json()["id"]
             response = api.post(f"/api/children/{child_id}/learning-sessions/{current['id']}/tasks/{task['id']}/evidence", json={"evidence_ref": attempt_id, "duration_ms": 500})
@@ -79,7 +79,7 @@ def complete_session(api: TestClient, child_id: int, current: dict, assisted_sco
             if task["taskData"].get("mode") == "reflection":
                 selected = "practiced"
             elif task["taskType"] == "VOCABULARY":
-                selected = next(option["id"] for option in task["taskData"]["choices"] if option["id"] in {"greeting", "opt-hello"} or "打招呼" in option["label"])
+                selected = next(option["id"] for option in task["taskData"]["choices"] if option["id"] in {"greeting", "opt-hello", "age-seven"} or "打招呼" in option["label"])
             elif task["taskType"] == "SENTENCE_PATTERN":
                 selected = next(option["id"] for option in task["taskData"]["choices"] if option["id"] in {"greeting", "opt-correct-order"} or option.get("isCorrect"))
             else:
@@ -154,6 +154,131 @@ def test_each_supported_lesson_planner_task_set_reaches_authoritative_settlement
                 if task["required"]
             )
             assert final_by_id[next(task["id"] for task in planned["tasks"] if task["taskType"] == "LESSON_WRAP_UP")]["state"] == "COMPLETED"
+
+
+def test_starter_l02_unlocks_after_l01_and_settles_exact_child_scoped_authored_tasks(tmp_path):
+    from app.database import connect
+
+    with client(tmp_path) as api:
+        child_id = child(api, "Starter L2 learner")
+        sibling_id = child(api, "Sibling")
+        place(child_id, "STARTER")
+        place(sibling_id, "STARTER")
+
+        before = api.get(f"/api/children/{child_id}/learning-daily-queue").json()
+        assert before["newLesson"]["lessonId"] == "starter-l01"
+        curriculum = api.get(f"/api/children/{child_id}/validated-curriculum").json()
+        starter_stage = next(stage for stage in curriculum["stages"] if stage["id"] == "starter")
+        lesson2 = next(lesson for lesson in starter_stage["lessons"] if lesson["id"] == "starter-l02")
+        assert lesson2["accessible"] is False
+        locked = api.post(
+            f"/api/children/{child_id}/learning-sessions",
+            json={"lesson_id": "starter-l02", "target_minutes": 18, "script_mode": "TRADITIONAL"},
+        )
+        assert locked.status_code == 409 and locked.json()["detail"] == "prerequisite_not_mastered"
+
+        starter_l01 = session(api, child_id)
+        completed_l01 = complete_session(api, child_id, starter_l01)
+        assert completed_l01["status"] == "COMPLETED"
+        queue = api.get(f"/api/children/{child_id}/learning-daily-queue").json()
+        assert queue["newLesson"]["lessonId"] == "starter-l02"
+        assert queue["newLesson"]["availableInLearningFlowV1"] is True
+        assert queue["currentLessonComplete"] is False
+        after_curriculum = api.get(f"/api/children/{child_id}/validated-curriculum").json()
+        lesson2 = next(lesson for stage in after_curriculum["stages"] for lesson in stage["lessons"] if lesson["id"] == "starter-l02")
+        assert lesson2["accessible"] is True
+
+        started = api.post(
+            f"/api/children/{child_id}/learning-sessions",
+            json={"lesson_id": "starter-l02", "target_minutes": 18, "script_mode": "TRADITIONAL", "as_of": "2026-09-20T08:00:00Z"},
+        )
+        assert started.status_code == 200, started.text
+        planned = started.json()
+        assert planned["childId"] == child_id
+        assert planned["curriculumContext"]["lessonId"] == "starter-l02"
+        assert planned["curriculumContext"]["official"]["title"] == "我七歲"
+        assert planned["curriculumContext"]["tongxuan"]["authorship"] == "TONGXUAN_AUTHORED_PRACTICE"
+        by_key = {task["key"]: task for task in planned["tasks"]}
+        assert set(by_key) == {"listen", "vocabulary", "phonetics", "speaking", "mini-check-reflection", "wrap-up"}
+        assert all(task["id"] == f"{planned['id']}:{task['key']}" for task in planned["tasks"])
+        assert all(task["lessonId"] == "starter-l02" and task["taskData"]["authorship"] == "TONGXUAN_AUTHORED_PRACTICE" for task in planned["tasks"])
+        assert by_key["listen"]["itemId"] == f"lf_{child_id}_starter-l02_phrase"
+        assert by_key["vocabulary"]["itemId"] == f"lf_{child_id}_starter-l02_vocabulary"
+        assert by_key["vocabulary"]["taskData"]["wordText"] == "七歲"
+        assert by_key["vocabulary"]["taskData"]["choices"] == [
+            {"id": "age-seven", "label": "我今年七歲。"},
+            {"id": "age-eight", "label": "我今年八歲。"},
+        ]
+        phonetic_questions = by_key["phonetics"]["taskData"]["questions"]
+        assert {(question["character"], question["script"]) for question in phonetic_questions} == {
+            (character, script) for character in ("我", "七") for script in ("TRADITIONAL", "SIMPLIFIED")
+        }
+        assert by_key["speaking"]["taskData"]["text"] == "我今年七歲。"
+        assert by_key["speaking"]["itemId"] == f"lf_{child_id}_starter-l02_sentence"
+        assert by_key["speaking"]["taskData"]["sourceType"] == "SENTENCE"
+        assert by_key["speaking"]["taskData"]["textKind"] == "sentence"
+
+        with connect() as db:
+            assert db.execute("SELECT 1 FROM learning_items WHERE id=? AND child_id=?", (by_key["listen"]["itemId"], child_id)).fetchone()
+            assert db.execute("SELECT 1 FROM learning_items WHERE id=? AND child_id=?", (by_key["listen"]["itemId"], sibling_id)).fetchone() is None
+            linked_readings = db.execute(
+                "SELECT item_id FROM curriculum_item_links WHERE child_id=? AND lesson_id='starter-l02' AND skill_domain='phonetics' ORDER BY item_id",
+                (child_id,),
+            ).fetchall()
+            assert len(linked_readings) == 4
+            assert all(row["item_id"].startswith(f"lf_{child_id}_starter-l02_reading_") for row in linked_readings)
+            sentence = db.execute("SELECT sentence,source_name,provenance_status,commercial_ready FROM sentences WHERE id=? AND child_id=?", (by_key["speaking"]["itemId"], child_id)).fetchone()
+            assert sentence and sentence["sentence"] == "我今年七歲。"
+            assert sentence["source_name"] == "TONGXUAN_AUTHORED_PRACTICE · starter-l02"
+            assert sentence["provenance_status"] == "TONGXUAN_AUTHORED_INTERNAL_DRAFT" and sentence["commercial_ready"] == 0
+            assert db.execute("SELECT 1 FROM curriculum_item_links WHERE child_id=? AND lesson_id='starter-l02' AND skill_domain='speaking' AND item_id=?", (child_id, by_key["speaking"]["itemId"])).fetchone()
+            assert db.execute("SELECT 1 FROM sentences WHERE id=? AND child_id=?", (by_key["speaking"]["itemId"], sibling_id)).fetchone() is None
+            assert db.execute("SELECT 1 FROM learning_flow_sessions WHERE child_id=? AND lesson_id='starter-l02'", (sibling_id,)).fetchone() is None
+
+        sibling_queue = api.get(f"/api/children/{sibling_id}/learning-daily-queue").json()
+        assert sibling_queue["newLesson"]["lessonId"] == "starter-l01"
+        sibling_locked = api.post(
+            f"/api/children/{sibling_id}/learning-sessions",
+            json={"lesson_id": "starter-l02", "target_minutes": 18, "script_mode": "TRADITIONAL"},
+        )
+        assert sibling_locked.status_code == 409
+
+        settled = complete_session(api, child_id, planned)
+        assert settled["status"] == "COMPLETED"
+        assert settled["assessment"]["status"] == "MASTERED"
+        assert settled["reward"]["points"] == 5
+        with connect() as db:
+            l02_srs = db.execute(
+                "SELECT skill_domain,item_id,stage FROM srs_review_states WHERE child_id=? AND item_id IN (SELECT item_id FROM curriculum_item_links WHERE child_id=? AND lesson_id='starter-l02') ORDER BY skill_domain,item_id",
+                (child_id, child_id),
+            ).fetchall()
+            assert [tuple(row) for row in l02_srs] == [("word", f"lf_{child_id}_starter-l02_vocabulary", 1)]
+            assert db.execute("SELECT 1 FROM srs_review_states WHERE child_id=? AND item_id LIKE 'lf_%_starter-l02_%'", (sibling_id,)).fetchone() is None
+        finished_queue = api.get(f"/api/children/{child_id}/learning-daily-queue", params={"as_of": "2099-01-01T00:00:00Z"}).json()
+        assert finished_queue["newLesson"] is None
+        assert finished_queue["completedLesson"]["lessonId"] == "starter-l02"
+        assert finished_queue["currentLessonComplete"] is True
+
+
+def test_starter_l02_fails_closed_when_authored_package_metadata_does_not_match(tmp_path, monkeypatch):
+    import copy
+    import app.learning_flow as learning_flow
+
+    with client(tmp_path) as api:
+        child_id = child(api)
+        place(child_id, "STARTER")
+        complete_session(api, child_id, session(api, child_id))
+        original = learning_flow.get_lesson_package
+        broken = copy.deepcopy(original("starter-l02"))
+        broken["curriculumSource"]["title"] = "替代標題"
+        monkeypatch.setattr(learning_flow, "get_lesson_package", lambda lesson_id: broken if lesson_id == "starter-l02" else original(lesson_id))
+        response = api.post(
+            f"/api/children/{child_id}/learning-sessions",
+            json={"lesson_id": "starter-l02", "target_minutes": 18, "script_mode": "TRADITIONAL"},
+        )
+        assert response.status_code == 400
+        assert response.json()["detail"] == "learning_flow_starter_l02_package_invalid"
+        assert api.get(f"/api/children/{child_id}/learning-sessions/current").json() is None
 
 
 def test_equal_age_children_start_from_their_assessed_placement(tmp_path):
