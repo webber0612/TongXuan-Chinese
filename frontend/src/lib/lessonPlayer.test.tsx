@@ -837,14 +837,17 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
   });
 
   // Test 21
-  it("21. Step choices and skip actions dispatch to backend learning flow tasks", async () => {
-    const postedUrls: string[] = []; const session = authoritativeSessionFixture("book1-l01", "session-flow-1");
+  it("21. Listening evidence retries the same provider attempt without a standalone completion request", async () => {
+    const postedUrls: string[] = []; const evidenceBodies: Array<Record<string, unknown>> = []; const session = authoritativeSessionFixture("book1-l01", "session-flow-1");
+    let evidenceRequestCount = 0;
     installPlannerSessionMock(session, (url, init) => {
       if (init?.method !== "POST") return undefined;
       postedUrls.push(url);
       if (url.includes("/listening-attempts") && !url.includes("/complete")) return new Response(JSON.stringify({ id: "listen-attempt-1" }), { status: 200, headers: { "Content-Type": "application/json" } });
-      if (url.includes("/listening-attempts/listen-attempt-1/complete")) return new Response(JSON.stringify({ id: "listen-attempt-1", status: "COMPLETED" }), { status: 200, headers: { "Content-Type": "application/json" } });
       if (url.includes(`/tasks/${session.id}:listen/evidence`)) {
+        evidenceBodies.push(JSON.parse(init.body as string));
+        evidenceRequestCount += 1;
+        if (evidenceRequestCount === 1) return new Response(JSON.stringify({ detail: "temporary_failure" }), { status: 500, headers: { "Content-Type": "application/json" } });
         session.tasks.find((task) => task.key === "listen")!.state = "COMPLETED";
         return new Response(JSON.stringify(session), { status: 200, headers: { "Content-Type": "application/json" } });
       }
@@ -854,8 +857,16 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     await act(async () => { root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} />); });
     expect(container.querySelector("[data-step-key='context']")).toBeTruthy();
     await act(async () => { (container.querySelector(".next-step-cta-btn") as HTMLButtonElement).click(); });
+    expect(session.tasks.find((task) => task.key === "listen")?.state).toBe("PENDING");
+    await act(async () => { (container.querySelector(".next-step-cta-btn") as HTMLButtonElement).click(); });
     expect(postedUrls.some((url) => url.includes("/listening-attempts"))).toBe(true);
+    expect(postedUrls.some((url) => url.endsWith("/complete"))).toBe(false);
+    expect(postedUrls.filter((url) => url.endsWith("/listening-attempts"))).toHaveLength(1);
     expect(postedUrls.some((url) => url.includes(`/tasks/${session.id}:listen/evidence`))).toBe(true);
+    expect(evidenceBodies).toEqual([
+      { evidence_ref: "listen-attempt-1", duration_ms: 1500 },
+      { evidence_ref: "listen-attempt-1", duration_ms: 1500 },
+    ]);
     expect(session.tasks.find((task) => task.key === "listen")?.state).toBe("COMPLETED");
     root.unmount(); container.remove(); vi.unstubAllGlobals();
   });
@@ -1020,13 +1031,10 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
       if (url.includes("/listening-attempts") && !url.includes("/complete")) {
         recordedEvents.push("listening_start"); return new Response(JSON.stringify({ id: "listen-att-101" }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
-      if (url.includes("/listening-attempts/listen-att-101/complete")) {
-        recordedEvents.push("listening_complete"); return new Response(JSON.stringify({ id: "listen-att-101", status: "COMPLETED" }), { status: 200, headers: { "Content-Type": "application/json" } });
-      }
       if (url.includes("/tasks/") && url.includes("/evidence")) {
         const taskId = decodeURIComponent(url.split("/tasks/")[1].split("/evidence")[0]);
         const task = session.tasks.find((candidate) => candidate.id === taskId);
-        if (task) { task.state = "COMPLETED"; recordedEvents.push(`evidence:${taskId}`); }
+        if (task) { task.state = "COMPLETED"; recordedEvents.push(`evidence:${taskId}:${JSON.parse(init.body as string).duration_ms}`); }
         return new Response(JSON.stringify(session), { status: 200, headers: { "Content-Type": "application/json" } });
       }
       if (url.includes("/tasks/") && url.endsWith("/skip")) {
@@ -1049,7 +1057,9 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     expect(completedResult).toEqual({ sessionCompleted: true, masteryGranted: false });
     expect(session.status).toBe("COMPLETED");
     expect(session.tasks.filter((task) => task.required).every((task) => task.state === "COMPLETED" || task.state === "DEFERRED")).toBe(true);
-    expect(recordedEvents).toContain("evidence:session-e2e-1:listen");
+    expect(recordedEvents.indexOf("listening_start")).toBeLessThan(recordedEvents.indexOf("evidence:session-e2e-1:listen:1500"));
+    expect(recordedEvents).not.toContain("listening_complete");
+    expect(recordedEvents).toContain("evidence:session-e2e-1:listen:1500");
     expect(recordedEvents).toContain("answer:session-e2e-1:recognition-1:option-2");
     expect(recordedEvents).toContain("answer:session-e2e-1:recognition-2:option-2");
     expect(recordedEvents).toContain("answer:session-e2e-1:sentence-pattern:opt-correct-order");

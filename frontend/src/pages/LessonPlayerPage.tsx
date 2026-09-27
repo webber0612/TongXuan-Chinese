@@ -565,6 +565,7 @@ export function LessonPlayerPage({
   sessionRef.current = session;
   const submittedAnswersRef = useRef<Record<string, { optionId?: string | null; answersKey?: string }>>({});
   const submittedEvidenceRef = useRef<Record<string, string>>({});
+  const listeningAttemptIdsByTaskRef = useRef<Record<string, string>>({});
   const submittedSkipsRef = useRef<Record<string, boolean>>({});
 
   const [dailyQueueDueItems, setDailyQueueDueItems] = useState<any[]>([]);
@@ -1223,32 +1224,32 @@ export function LessonPlayerPage({
       return false;
     }
     if (listenTask.state === "COMPLETED" || listenTask.state === "DEFERRED") {
+      delete listeningAttemptIdsByTaskRef.current[listenTask.id];
       return true;
     }
     if (listenTask.itemId) {
       try {
-        const startRes = await api<{ id: string }>(`/api/children/${activeChildId}/listening-attempts`, {
-          method: "POST",
-          body: JSON.stringify({
-            item_id: listenTask.itemId,
-            lesson_id: listenTask.lessonId || resolvedLessonId,
-          }),
-        });
-        if (startRes?.id) {
-          const completeRes = await api<{ id: string; status: string }>(
-            `/api/children/${activeChildId}/listening-attempts/${startRes.id}/complete`,
-            {
-              method: "POST",
-              body: JSON.stringify({ duration_ms: 1500 }),
-            }
+        let attemptId = listeningAttemptIdsByTaskRef.current[listenTask.id];
+        if (!attemptId) {
+          const startRes = await api<{ id: string }>(`/api/children/${activeChildId}/listening-attempts`, {
+            method: "POST",
+            body: JSON.stringify({
+              item_id: listenTask.itemId,
+              lesson_id: listenTask.lessonId || resolvedLessonId,
+            }),
+          });
+          attemptId = startRes?.id;
+          if (attemptId) listeningAttemptIdsByTaskRef.current[listenTask.id] = attemptId;
+        }
+        if (attemptId) {
+          const writeResult = await submitBackendTaskEvidence(
+            (t) => t.id === listenTask.id,
+            attemptId,
+            1500
           );
-          if (completeRes?.status === "COMPLETED") {
-            const writeResult = await submitBackendTaskEvidence(
-              (t) => t.id === listenTask.id || t.taskType === "LISTENING" || t.key === "listen",
-              startRes.id
-            );
-            return writeResult.taskState === "COMPLETED" || writeResult.taskState === "DEFERRED";
-          }
+          const finished = writeResult.taskState === "COMPLETED" || writeResult.taskState === "DEFERRED";
+          if (finished) delete listeningAttemptIdsByTaskRef.current[listenTask.id];
+          return finished;
         }
         setError(text.taskFailed);
         return false;

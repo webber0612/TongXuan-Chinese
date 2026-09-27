@@ -12,6 +12,206 @@ def make_client(tmp_path: Path):
     return TestClient(app)
 
 
+def _start_book1_listening_task(client: TestClient, name: str) -> tuple[int, dict, dict, dict]:
+    from app.auth import issue_session
+
+    child_resp = client.post("/api/children", json={"name": name})
+    assert child_resp.status_code == 200, child_resp.text
+    child_id = child_resp.json()["id"]
+    parent_token = issue_session(subject="parent", role="parent", child_ids=[child_id])
+    placement = client.put(
+        f"/api/children/{child_id}/placement-profile",
+        headers={"Authorization": f"Bearer {parent_token}"},
+        json={"domain_levels": {"listening": "BOOK_1", "recognition": "BOOK_1", "speaking": "BOOK_1", "writing": "STARTER"}},
+    )
+    assert placement.status_code == 200, placement.text
+    started = client.post(
+        f"/api/children/{child_id}/learning-sessions",
+        json={"target_minutes": 18, "lesson_id": "book1-l01"},
+    )
+    assert started.status_code == 200, started.text
+    current = started.json()
+    task = next(task for task in current["tasks"] if task["taskType"] == "LISTENING")
+    task_start = client.post(f"/api/children/{child_id}/learning-sessions/{current['id']}/tasks/{task['id']}/start")
+    assert task_start.status_code == 200, task_start.text
+    attempt_start = client.post(
+        f"/api/children/{child_id}/listening-attempts",
+        json={"item_id": task["itemId"], "lesson_id": task["lessonId"]},
+    )
+    assert attempt_start.status_code == 200, attempt_start.text
+    return child_id, task_start.json(), task, attempt_start.json()
+
+
+def _listening_flow_snapshot(child_id: int, session_id: str, task_id: str, attempt_id: str) -> dict:
+    from app.database import connect
+
+    with connect() as db:
+        attempt = db.execute("SELECT status,completed_at,duration_ms FROM listening_attempts WHERE id=? AND child_id=?", (attempt_id, child_id)).fetchone()
+        gate_rows = db.execute("SELECT id,gate_status,evidence_ref,evidence_type,evidence_item_id FROM curriculum_skill_gates WHERE child_id=? AND skill_domain='listening' AND evidence_ref=?", (child_id, attempt_id)).fetchall()
+        task = db.execute("SELECT state,attempt_count,failure_count,evidence_ref,completed_at,elapsed_seconds FROM learning_flow_tasks WHERE id=? AND session_id=? AND child_id=?", (task_id, session_id, child_id)).fetchone()
+        attempts = db.execute("SELECT result,assisted,evidence_ref,scorer_version FROM learning_flow_task_attempts WHERE session_id=? AND task_id=? AND child_id=? ORDER BY occurred_at,id", (session_id, task_id, child_id)).fetchall()
+        telemetry = db.execute("SELECT event_type,task_id,details_json FROM learning_flow_telemetry WHERE session_id=? AND child_id=? AND task_id=? ORDER BY occurred_at,id", (session_id, child_id, task_id)).fetchall()
+        provider_attempts = db.execute(
+            """SELECT id,status FROM listening_attempts WHERE child_id=?
+               AND item_id=(SELECT activity_item_id FROM learning_flow_tasks WHERE id=? AND session_id=? AND child_id=?)
+               AND lesson_id=(SELECT lesson_id FROM learning_flow_tasks WHERE id=? AND session_id=? AND child_id=?)
+               ORDER BY started_at,id""",
+            (child_id, task_id, session_id, child_id, task_id, session_id, child_id),
+        ).fetchall()
+        return {
+            "attempt": tuple(attempt) if attempt else None,
+            "provider_attempts": [tuple(row) for row in provider_attempts],
+            "gates": [tuple(row) for row in gate_rows],
+            "task": tuple(task) if task else None,
+            "flow_attempts": [tuple(row) for row in attempts],
+            "telemetry": [tuple(row) for row in telemetry],
+        }
+
+
+def test_flow_owned_listening_evidence_is_atomic_and_replay_safe(tmp_path):
+    from app.database import connect
+
+    with make_client(tmp_path) as client:
+        child_id, current, task, attempt = _start_book1_listening_task(client, "Listening Atomic")
+        session_id, attempt_id = current["id"], attempt["id"]
+        before = _listening_flow_snapshot(child_id, session_id, task["id"], attempt_id)
+        assert before["attempt"] == ("STARTED", None, None)
+        assert before["gates"] == []
+        assert before["task"][0] == "IN_PROGRESS"
+        assert before["flow_attempts"] == []
+        assert before["provider_attempts"] == [(attempt_id, "STARTED")]
+
+        with connect() as db:
+            db.execute(
+                f"""CREATE TRIGGER fail_listening_evidence_telemetry
+                    BEFORE INSERT ON learning_flow_telemetry
+                    WHEN NEW.task_id='{task['id']}' AND NEW.event_type='task_evidence_attached'
+                    BEGIN SELECT RAISE(ABORT, 'forced listening telemetry failure'); END"""
+            )
+
+        failure = client.post(
+            f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{task['id']}/evidence",
+            json={"evidence_ref": attempt_id, "duration_ms": 1500},
+        )
+        assert failure.status_code == 500, failure.text
+        assert _listening_flow_snapshot(child_id, session_id, task["id"], attempt_id) == before
+
+        recovered_start = client.post(
+            f"/api/children/{child_id}/listening-attempts",
+            json={"item_id": task["itemId"], "lesson_id": task["lessonId"]},
+        )
+        assert recovered_start.status_code == 200, recovered_start.text
+        assert recovered_start.json()["id"] == attempt_id
+        assert _listening_flow_snapshot(child_id, session_id, task["id"], attempt_id)["provider_attempts"] == [(attempt_id, "STARTED")]
+
+        with connect() as db:
+            db.execute("DROP TRIGGER fail_listening_evidence_telemetry")
+        completed = client.post(
+            f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{task['id']}/evidence",
+            json={"evidence_ref": attempt_id, "duration_ms": 1500},
+        )
+        assert completed.status_code == 200, completed.text
+        after = _listening_flow_snapshot(child_id, session_id, task["id"], attempt_id)
+        assert after["attempt"][0] == "COMPLETED"
+        assert after["attempt"][2] == 1500
+        assert len(after["gates"]) == 1
+        assert after["gates"][0][1:] == ("ATTEMPTED_INDEPENDENTLY", attempt_id, "reference_audio_completed", task["itemId"])
+        assert after["task"][0] == "COMPLETED"
+        assert after["task"][1] == 1
+        assert after["task"][3] == attempt_id
+        assert len(after["flow_attempts"]) == 1
+        assert after["flow_attempts"][0][2:] == (attempt_id, "listening_attempt")
+        assert [row[0] for row in after["telemetry"]].count("task_evidence_attached") == 1
+        assert completed.json()["status"] == "IN_PROGRESS"
+
+        replay = client.post(
+            f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{task['id']}/evidence",
+            json={"evidence_ref": attempt_id, "duration_ms": 1500},
+        )
+        assert replay.status_code == 200, replay.text
+        assert _listening_flow_snapshot(child_id, session_id, task["id"], attempt_id) == after
+
+
+def test_standalone_listening_finalize_rejects_active_learn_and_flow_evidence_recovers_completed_attempt(tmp_path):
+    from app.database import connect
+    from app.listening import complete_listening_attempt_in_transaction
+
+    with make_client(tmp_path) as client:
+        child_id, current, task, attempt = _start_book1_listening_task(client, "Listening Recovery")
+        session_id, attempt_id = current["id"], attempt["id"]
+        before = _listening_flow_snapshot(child_id, session_id, task["id"], attempt_id)
+        standalone = client.post(
+            f"/api/children/{child_id}/listening-attempts/{attempt_id}/complete",
+            json={"duration_ms": 1500},
+        )
+        assert standalone.status_code == 409
+        assert standalone.json()["detail"] == "listening_attempt_bound_to_active_learning_task"
+        assert _listening_flow_snapshot(child_id, session_id, task["id"], attempt_id) == before
+
+        paused = client.post(f"/api/children/{child_id}/learning-sessions/{session_id}/stop", json={"reason": "USER_EXIT"})
+        assert paused.status_code == 200, paused.text
+        assert paused.json()["status"] == "PAUSED"
+        paused_snapshot = _listening_flow_snapshot(child_id, session_id, task["id"], attempt_id)
+        assert paused_snapshot["attempt"] == before["attempt"]
+        standalone_paused = client.post(
+            f"/api/children/{child_id}/listening-attempts/{attempt_id}/complete",
+            json={"duration_ms": 1500},
+        )
+        assert standalone_paused.status_code == 409
+        assert standalone_paused.json()["detail"] == "listening_attempt_bound_to_active_learning_task"
+        assert _listening_flow_snapshot(child_id, session_id, task["id"], attempt_id) == paused_snapshot
+        paused_start_retry = client.post(
+            f"/api/children/{child_id}/listening-attempts",
+            json={"item_id": task["itemId"], "lesson_id": task["lessonId"]},
+        )
+        assert paused_start_retry.status_code == 409
+        assert paused_start_retry.json()["detail"] == "learning_session_not_in_progress"
+        assert _listening_flow_snapshot(child_id, session_id, task["id"], attempt_id) == paused_snapshot
+
+        resumed = client.post(
+            f"/api/children/{child_id}/learning-sessions",
+            json={"target_minutes": 18, "lesson_id": "book1-l01", "expected_session_id": session_id},
+        )
+        assert resumed.status_code == 200, resumed.text
+        assert resumed.json()["id"] == session_id
+        assert resumed.json()["status"] == "IN_PROGRESS"
+        resumed_start_retry = client.post(
+            f"/api/children/{child_id}/listening-attempts",
+            json={"item_id": task["itemId"], "lesson_id": task["lessonId"]},
+        )
+        assert resumed_start_retry.status_code == 200, resumed_start_retry.text
+        assert resumed_start_retry.json()["id"] == attempt_id
+        assert _listening_flow_snapshot(child_id, session_id, task["id"], attempt_id)["provider_attempts"] == [(attempt_id, "STARTED")]
+
+        # Simulate a durable provider completion from the former two-request flow.
+        with connect() as db:
+            complete_listening_attempt_in_transaction(
+                db,
+                child_id=child_id,
+                attempt_id=attempt_id,
+                duration_ms=1500,
+                reject_active_learn_binding=False,
+            )
+        legacy_completed = _listening_flow_snapshot(child_id, session_id, task["id"], attempt_id)
+        assert legacy_completed["attempt"][0] == "COMPLETED"
+        assert len(legacy_completed["gates"]) == 1
+        assert legacy_completed["task"][0] == "PENDING"
+        assert legacy_completed["flow_attempts"] == []
+
+        recovered = client.post(
+            f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{task['id']}/evidence",
+            json={"evidence_ref": attempt_id, "duration_ms": 3000},
+        )
+        assert recovered.status_code == 200, recovered.text
+        after = _listening_flow_snapshot(child_id, session_id, task["id"], attempt_id)
+        assert after["attempt"] == legacy_completed["attempt"]  # replay does not rewrite provider completion
+        assert len(after["gates"]) == 1
+        assert after["task"][0] == "COMPLETED"
+        assert after["task"][1] == 1
+        assert len(after["flow_attempts"]) == 1
+        assert [row[0] for row in after["telemetry"]].count("task_evidence_attached") == 1
+
+
 def test_lesson_package_book1_l01_golden_content():
     pkg = get_lesson_package("book1-l01")
     assert pkg is not None
@@ -401,13 +601,11 @@ def test_real_book1_l01_end_to_end_completion_flow(tmp_path):
             task_type = t["taskType"]
             task_id = t["id"]
             if task_type == "LISTENING":
-                # Start and complete listening attempt
+                # Start listening; final provider completion is owned by task evidence.
                 l_start = client.post(f"/api/children/{child_id}/listening-attempts", json={"item_id": t["itemId"]})
                 assert l_start.status_code == 200
                 attempt_id = l_start.json()["id"]
-                l_comp = client.post(f"/api/children/{child_id}/listening-attempts/{attempt_id}/complete", json={"duration_ms": 1500})
-                assert l_comp.status_code == 200
-                ev_resp = client.post(f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{task_id}/evidence", json={"evidence_ref": attempt_id})
+                ev_resp = client.post(f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{task_id}/evidence", json={"evidence_ref": attempt_id, "duration_ms": 1500})
                 assert ev_resp.status_code == 200
             elif task_type == "RECOGNITION":
                 ans_resp = client.post(f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{task_id}/answer", json={"selected_option_id": "option-2"})
@@ -486,8 +684,8 @@ def test_incomplete_required_evidence_rejects_session_completion(tmp_path):
         l_start = client.post(f"/api/children/{child_id}/listening-attempts", json={"item_id": listen_task["itemId"]})
         assert l_start.status_code == 200
         attempt_id = l_start.json()["id"]
-        client.post(f"/api/children/{child_id}/listening-attempts/{attempt_id}/complete", json={"duration_ms": 1500})
-        client.post(f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{listen_task['id']}/evidence", json={"evidence_ref": attempt_id})
+        attached = client.post(f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{listen_task['id']}/evidence", json={"evidence_ref": attempt_id, "duration_ms": 1500})
+        assert attached.status_code == 200, attached.text
 
         # Try to complete session prematurely
         comp_resp = client.post(f"/api/children/{child_id}/learning-sessions/{session_id}/complete")

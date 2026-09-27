@@ -1013,7 +1013,7 @@ def _validate_external_evidence(db: Any, child_id: int, row: Any, evidence_ref: 
     task_type = row["task_type"]
     if task_type == "LISTENING":
         attempt = db.execute("SELECT status,item_id,lesson_id FROM listening_attempts WHERE id=? AND child_id=?", (evidence_ref, child_id)).fetchone()
-        if not attempt or attempt["status"] != "COMPLETED" or attempt["item_id"] != row["activity_item_id"] or attempt["lesson_id"] != row["lesson_id"]:
+        if not attempt or attempt["status"] not in {"STARTED", "COMPLETED"} or attempt["item_id"] != row["activity_item_id"] or attempt["lesson_id"] != row["lesson_id"]:
             raise ValueError("listening_evidence_not_completed")
         return "completed", False, "listening_attempt"
     if task_type in {"SPEAKING_ATTEMPT", "PRONUNCIATION_ATTEMPT"}:
@@ -1060,8 +1060,25 @@ def attach_learning_evidence(*, child_id: int, session_id: str, task_id: str, ev
         if session["status"] != "IN_PROGRESS":
             raise ValueError("learning_session_not_in_progress")
         if row["state"] == "COMPLETED":
+            if row["task_type"] == "LISTENING" and row["evidence_ref"] != evidence_ref:
+                raise ValueError("learning_task_evidence_conflict")
             return _session_payload(db, session)
         result, assisted, evidence_type = _validate_external_evidence(db, child_id, row, evidence_ref)
+        if row["task_type"] == "LISTENING":
+            # The final evidence operation owns provider completion, the linked gate,
+            # and flow settlement. A failed write below rolls all of them back.
+            from .listening import complete_listening_attempt_in_transaction
+
+            listening_completion = complete_listening_attempt_in_transaction(
+                db,
+                child_id=child_id,
+                attempt_id=evidence_ref,
+                duration_ms=duration_ms,
+                allow_completed=True,
+                reject_active_learn_binding=False,
+            )
+            if listening_completion["gateId"] is None:
+                raise ValueError("listening_skill_gate_not_linked")
         if row["task_type"] in {"SPEAKING_ATTEMPT", "PRONUNCIATION_ATTEMPT"}:
             # Provider completion, the linked curriculum gate, and flow evidence share this transaction.
             # Any downstream failure rolls back all three authoritative writes.
