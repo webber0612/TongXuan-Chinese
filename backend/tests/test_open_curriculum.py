@@ -57,7 +57,7 @@ def synthetic_content_source_for_pack_fixtures(monkeypatch):
     monkeypatch.setattr(open_curriculum_validator, "load_default_source_registry", lambda: sources)
 
 
-def evidence(evidence_id="synthetic-evidence"):
+def evidence(evidence_id="synthetic-evidence", supports_claims=()):
     return {
         "evidenceId": evidence_id,
         "sourceId": SOURCE_ID,
@@ -65,6 +65,7 @@ def evidence(evidence_id="synthetic-evidence"):
         "evidenceType": "synthetic validator fixture",
         "reference": "test-only fixture; no curriculum decision",
         "rationale": "Synthetic data only exercises the schema and validator.",
+        "supportsClaims": list(supports_claims),
         "recordedAt": "2026-09-27",
         "reviewStatus": "EVIDENCE_CHECKED",
     }
@@ -137,15 +138,29 @@ def make_pack():
     }
     vocabulary = {
         **core("vocab-demo", "VOCABULARY"),
+        "evidence": [evidence(
+            "evidence-vocab-demo",
+            ["TARGET_DIFFICULTY", "RECEPTIVE_REQUIREMENT", "PRODUCTIVE_REQUIREMENT"],
+        )],
         "traditional": "甲乙",
         "simplified": "甲乙",
         "pinyin": "jiǎ yǐ",
         "zhuyin": None,
         "meanings": {"en": "synthetic fixture"},
-        "frequencyEvidence": [evidence("evidence-vocab-demo-frequency")],
+        "frequencyEvidence": [evidence("evidence-vocab-demo-frequency", ["VOCABULARY_FREQUENCY"])],
         "introducedBySkill": "recognition",
         "prerequisites": [],
         "requiresRecycling": False,
+        "receptiveRequirement": {
+            "required": True,
+            "description": "Synthetic receptive role only.",
+            "evidenceIds": ["evidence-vocab-demo"],
+        },
+        "productiveRequirement": {
+            "required": False,
+            "description": "Synthetic productive role only.",
+            "evidenceIds": ["evidence-vocab-demo"],
+        },
     }
     character = {
         **core("char-demo", "CHARACTER"),
@@ -165,9 +180,12 @@ def make_pack():
     grammar = {
         **core("grammar-demo", "GRAMMAR"),
         "evidence": [
-            evidence("evidence-grammar-demo"),
-            evidence("evidence-grammar-level"),
+            evidence("evidence-grammar-demo", ["TARGET_DIFFICULTY"]),
+            evidence("evidence-grammar-level", ["TARGET_DIFFICULTY"]),
             evidence("evidence-grammar-example"),
+            evidence("evidence-grammar-receptive", ["RECEPTIVE_REQUIREMENT"]),
+            evidence("evidence-grammar-productive", ["PRODUCTIVE_REQUIREMENT"]),
+            evidence("evidence-grammar-policy", ["RECEPTIVE_PRODUCTIVE_POLICY"]),
         ],
         "canonicalDescription": "Synthetic grammar schema fixture.",
         "levelEvidence": {
@@ -175,6 +193,18 @@ def make_pack():
             "evidenceIds": ["evidence-grammar-level"],
             "rationale": "Fixture-only level value.",
         },
+        "receptiveRequirement": {
+            "required": True,
+            "description": "Synthetic receptive grammar requirement.",
+            "evidenceIds": ["evidence-grammar-receptive"],
+        },
+        "productiveRequirement": {
+            "required": True,
+            "description": "Synthetic productive grammar requirement.",
+            "evidenceIds": ["evidence-grammar-productive"],
+        },
+        "receptiveProductivePolicy": "RECEPTIVE_BEFORE_PRODUCTIVE",
+        "receptiveProductivePolicyEvidenceIds": ["evidence-grammar-policy"],
         "prerequisites": [],
         "examples": [{
             "text": "甲乙",
@@ -238,7 +268,7 @@ def make_pack():
         "approvalStatus": "ARCHITECT_APPROVED",
     }
     return {
-        "schemaVersion": "1.2",
+        "schemaVersion": "1.3",
         "documentType": "CURRICULUM_PACK",
         "packId": "synthetic-pack",
         "publicationStatus": "PUBLISHABLE",
@@ -425,6 +455,96 @@ def test_graph_evidence_references_must_resolve_within_the_pack():
     pack["graph"]["skills"][0]["productiveRequirement"]["evidenceIds"] = ["missing-evidence"]
 
     assert "EVIDENCE_NOT_REGISTERED" in codes(validate_curriculum_pack(pack))
+
+
+def test_vocabulary_and_grammar_require_explicit_learning_contracts():
+    pack = make_pack()
+    del pack["graph"]["vocabulary"][0]["receptiveRequirement"]
+    del pack["graph"]["grammar"][0]["receptiveProductivePolicy"]
+
+    assert "SCHEMA_INVALID" in codes(validate_curriculum_pack(pack))
+
+
+def test_vocabulary_and_grammar_claim_evidence_must_be_node_local_and_claim_specific():
+    pack = make_pack()
+    pack["graph"]["vocabulary"][0]["productiveRequirement"]["evidenceIds"] = ["evidence-skill-recognition"]
+    pack["graph"]["grammar"][0]["receptiveProductivePolicyEvidenceIds"] = ["evidence-skill-writing"]
+
+    found = codes(validate_curriculum_pack(pack))
+    assert "CROSS_NODE_GRAPH_EVIDENCE" in found
+
+    pack = make_pack()
+    pack["graph"]["vocabulary"][0]["evidence"][0]["supportsClaims"] = ["TARGET_DIFFICULTY"]
+    assert "GRAPH_EVIDENCE_CLAIM_MISMATCH" in codes(validate_curriculum_pack(pack))
+
+    pack = make_pack()
+    pack["graph"]["vocabulary"][0]["frequencyEvidence"][0]["supportsClaims"] = []
+    assert "GRAPH_EVIDENCE_CLAIM_MISMATCH" in codes(validate_curriculum_pack(pack))
+
+
+def test_publishable_graph_claims_reject_unreviewed_and_rejected_evidence():
+    pack = make_pack()
+    pack["graph"]["vocabulary"][0]["evidence"][0]["reviewStatus"] = "PROPOSED"
+    pack["graph"]["grammar"][0]["evidence"][0]["reviewStatus"] = "REJECTED"
+
+    found = codes(validate_curriculum_pack(pack))
+    assert "GRAPH_CLAIM_EVIDENCE_UNVERIFIED" in found
+
+
+def test_approved_graph_claims_reject_unreviewed_evidence_in_proposed_pack():
+    pack = make_pack()
+    pack["publicationStatus"] = "PROPOSED"
+    pack["graph"]["vocabulary"][0]["evidence"][0]["reviewStatus"] = "REJECTED"
+
+    found = codes(validate_curriculum_pack(pack))
+    assert "GRAPH_CLAIM_EVIDENCE_UNVERIFIED" in found
+
+    pack = make_pack()
+    pack["publicationStatus"] = "PROPOSED"
+    pack["graph"]["vocabulary"][0]["frequencyEvidence"][0]["reviewStatus"] = "PROPOSED"
+
+    found = codes(validate_curriculum_pack(pack))
+    assert "GRAPH_CLAIM_EVIDENCE_UNVERIFIED" in found
+
+
+def test_unresolved_grammar_policy_fails_closed_for_approved_or_publishable_nodes():
+    pack = make_pack()
+    pack["graph"]["grammar"][0]["receptiveProductivePolicy"] = "UNRESOLVED"
+    pack["graph"]["grammar"][0]["receptiveProductivePolicyEvidenceIds"] = []
+    assert "UNRESOLVED_GRAMMAR_SEQUENCE_POLICY" in codes(validate_curriculum_pack(pack))
+
+    pack = make_pack()
+    pack["publicationStatus"] = "PROPOSED"
+    pack["graph"]["grammar"][0]["approvalStatus"] = "EVIDENCE_CHECKED"
+    pack["graph"]["grammar"][0]["receptiveProductivePolicy"] = "UNRESOLVED"
+    pack["graph"]["grammar"][0]["receptiveProductivePolicyEvidenceIds"] = []
+    assert "UNRESOLVED_GRAMMAR_SEQUENCE_POLICY" not in codes(validate_curriculum_pack(pack))
+
+
+def test_grammar_sequence_policy_must_match_learning_requirements():
+    pack = make_pack()
+    pack["graph"]["grammar"][0]["receptiveRequirement"]["required"] = False
+    assert "GRAMMAR_SEQUENCE_POLICY_INCONSISTENT" in codes(validate_curriculum_pack(pack))
+
+    pack = make_pack()
+    pack["graph"]["grammar"][0]["receptiveProductivePolicy"] = "NOT_APPLICABLE"
+    assert "GRAMMAR_SEQUENCE_POLICY_INCONSISTENT" in codes(validate_curriculum_pack(pack))
+
+
+@pytest.mark.parametrize(
+    ("policy", "productive_required"),
+    [
+        ("RECEPTIVE_BEFORE_PRODUCTIVE", True),
+        ("NO_ORDER_CONSTRAINT", True),
+        ("NOT_APPLICABLE", False),
+    ],
+)
+def test_explicit_grammar_sequence_policies_validate(policy, productive_required):
+    pack = make_pack()
+    grammar = pack["graph"]["grammar"][0]
+    grammar["receptiveProductivePolicy"] = policy
+    grammar["productiveRequirement"]["required"] = productive_required
+    assert validate_curriculum_pack(pack) == []
 
 
 def test_graph_rejects_skill_alias_collisions_with_skills_and_target_ids():

@@ -8,7 +8,7 @@ The default source registry is [`shared/content-sources/source-registry.json`](.
 
 ## Graph identity and dependency integrity
 
-Pack schema version 1.2 includes an explicit skill `capability` and distinct nullable character learning stages: `exposureLevel`, `recognitionLevel`, `readingLevel`, and `writingLevel`. Every non-required stage is explicitly `null`. An activity may use a stage only when that character has an explicit level for it, and its level check uses only the stage exercised by the activity.
+Pack schema version 1.3 includes an explicit skill `capability`; distinct nullable character learning stages (`exposureLevel`, `recognitionLevel`, `readingLevel`, and `writingLevel`); vocabulary receptive/productive requirements; and grammar receptive/productive requirements plus an explicit sequence-policy state. Every non-required character stage is explicitly `null`. An activity may use a stage only when that character has an explicit level for it, and its level check uses only the stage exercised by the activity.
 
 Pack-level graph validation checks identity and relationship semantics before lesson-level checks:
 
@@ -18,8 +18,10 @@ Pack-level graph validation checks identity and relationship semantics before le
 - Missing references and wrong node types fail closed. Prerequisite edges reject self-dependencies and directed cycles across graph node types. Association lists such as skill target lists are not prerequisite edges.
 - Writing activities require a character with an explicit writing level, and that graph stage requires recognition and cannot be at a lower level than recognition. Character reading activities require an explicit reading level. Exposure activities require an explicit exposure level and do not mark a character recognized or writable. `priorRecognizedCharacterIds` is the stage-specific prior-state declaration; generic prior knowledge or exposure cannot satisfy a writing prerequisite. A recognition activity in an earlier pack lesson can satisfy it.
 - `evidenceIds` must resolve within the candidate pack; schema and rights checks still apply independently.
+- Vocabulary and grammar difficulty/role claim references must resolve to evidence attached to that same graph node. Each cited record must declare the matching `supportsClaims` value; publishable claims require `EVIDENCE_CHECKED` or `ARCHITECT_APPROVED` evidence. Vocabulary frequency records must declare `VOCABULARY_FREQUENCY`.
+- Vocabulary and grammar separately state whether receptive and productive learning is required. Grammar records `RECEPTIVE_BEFORE_PRODUCTIVE`, `NO_ORDER_CONSTRAINT`, `NOT_APPLICABLE`, or `UNRESOLVED`; the policy must agree with the requirement records. An unresolved policy cannot be Architect-approved or published. This records an explicit decision and does not choose a decision or change lesson activity ordering.
 
-The diagnostics include `DUPLICATE_TARGET_ID`, `SKILL_ALIAS_COLLISION`, `UNREGISTERED_GRAPH_REFERENCE`, `GRAPH_REFERENCE_TYPE_MISMATCH`, `SELF_PREREQUISITE`, `GRAPH_PREREQUISITE_CYCLE`, `CHARACTER_WRITING_WITHOUT_RECOGNITION`, `CHARACTER_WRITING_BEFORE_RECOGNITION`, `UNSUPPORTED_PRIOR_RECOGNITION`, `PRIOR_RECOGNITION_NOT_KNOWN`, `EXPOSURE_LEVEL_UNSUPPORTED`, `RECOGNITION_LEVEL_UNSUPPORTED`, `READING_LEVEL_UNSUPPORTED`, and `WRITING_LEVEL_UNSUPPORTED`. These checks constrain graph structure and stage evidence only. They do not approve targets, decide pedagogy, clear rights, or imply that a lesson should come next. Current regression cases use synthetic fixture nodes only.
+The diagnostics include `DUPLICATE_TARGET_ID`, `SKILL_ALIAS_COLLISION`, `UNREGISTERED_GRAPH_REFERENCE`, `GRAPH_REFERENCE_TYPE_MISMATCH`, `SELF_PREREQUISITE`, `GRAPH_PREREQUISITE_CYCLE`, `CROSS_NODE_GRAPH_EVIDENCE`, `GRAPH_EVIDENCE_CLAIM_MISMATCH`, `GRAPH_CLAIM_EVIDENCE_UNVERIFIED`, `GRAMMAR_SEQUENCE_POLICY_EVIDENCE_REQUIRED`, `GRAMMAR_SEQUENCE_POLICY_INCONSISTENT`, `UNRESOLVED_GRAMMAR_SEQUENCE_POLICY`, `CHARACTER_WRITING_WITHOUT_RECOGNITION`, `CHARACTER_WRITING_BEFORE_RECOGNITION`, `UNSUPPORTED_PRIOR_RECOGNITION`, `PRIOR_RECOGNITION_NOT_KNOWN`, `EXPOSURE_LEVEL_UNSUPPORTED`, `RECOGNITION_LEVEL_UNSUPPORTED`, `READING_LEVEL_UNSUPPORTED`, and `WRITING_LEVEL_UNSUPPORTED`. These checks constrain graph structure and stage evidence only. They do not approve targets, decide pedagogy, clear rights, or imply that a lesson should come next. Current regression cases use synthetic fixture nodes only.
 
 ## Publishable-pack rules
 
@@ -47,7 +49,7 @@ The tracked-path inventory and public-artifact guard are implemented in [`script
 
 ## Verification results
 
-The repository registry passes its schema. Test-only synthetic fixtures cover composed skill/vocabulary/grammar/character schemas; approval; provenance; source rights; prerequisites; level bounds; conditional vocabulary ratio; recycling; writing sequence; registered sentence tokens; and supported mastery targets. These fixtures are not curriculum content and are not executable lessons. Run:
+The repository registry passes its schema. Test-only synthetic fixtures cover composed skill/vocabulary/grammar/character schemas; approval; provenance; source rights; prerequisites; level bounds; conditional vocabulary ratio; recycling; writing sequence; registered sentence tokens; supported mastery targets; separate vocabulary/grammar receptive and productive requirements; same-node claim evidence; checked/rejected evidence states; and resolved/unresolved grammar policy. These fixtures are not curriculum content and are not executable lessons. Run:
 
 ```powershell
 cd backend
@@ -56,4 +58,4 @@ python -m pytest tests/test_open_curriculum.py -q
 python ../scripts/open_curriculum_rights_gate.py --check
 ```
 
-The authority and rights regression suites pass **50 tests** on the current PR head. Full backend, frontend, production-build, and exact-head review results are recorded in the active project handoff snapshot and the Phase 1 PR metadata for Issue #88.
+The Open Curriculum validator suite passes **54 tests** on the Issue #96 candidate. Its exact head and independent-review status, full backend/frontend counts, production build, rights gate, compileall, diff check, and Actions state are recorded in the current project handoff snapshot and PR metadata. These tests establish validator behavior only; they do not validate a real curriculum target or approve teaching policy.
