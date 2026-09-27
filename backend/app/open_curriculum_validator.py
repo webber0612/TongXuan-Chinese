@@ -568,6 +568,191 @@ def _validate_graph_relationships(
     return sorted(set(issues))
 
 
+def _validate_proposed_node_relationships(
+    proposed_nodes: list[Any],
+    proposal_path: str,
+    nodes: Mapping[str, Mapping[str, Any]],
+    skill_aliases: Mapping[str, Mapping[str, Any]],
+    ambiguous_skill_aliases: set[str],
+) -> list[ValidationIssue]:
+    """Resolve candidate-node edges against this proposal plus the approved graph."""
+    issues: list[ValidationIssue] = []
+
+    def add(code: str, path: str, message: str) -> None:
+        issues.append(ValidationIssue(code, path, message))
+
+    candidate_nodes: dict[str, Mapping[str, Any]] = {}
+    candidate_paths: dict[str, str] = {}
+    candidate_skill_aliases: dict[str, Mapping[str, Any]] = {}
+    ambiguous_candidate_aliases: set[str] = set()
+    for index, node in enumerate(proposed_nodes):
+        if not isinstance(node, Mapping):
+            continue
+        node_id = node.get("id")
+        node_path = _path(proposal_path, "proposedNodes", index)
+        if not isinstance(node_id, str) or not node_id:
+            continue
+        if node_id in candidate_nodes:
+            add("DUPLICATE_PROPOSED_NODE_ID", _path(node_path, "id"), f"Proposed node ID {node_id!r} is duplicated in this proposal.")
+            continue
+        candidate_nodes[node_id] = node
+        candidate_paths[node_id] = node_path
+        if node.get("targetType") != "SKILL":
+            continue
+        for alias in (node_id, node.get("skillId")):
+            if not isinstance(alias, str) or not alias:
+                continue
+            previous = candidate_skill_aliases.get(alias)
+            registered = skill_aliases.get(alias)
+            registered_id = registered.get("id") if isinstance(registered, Mapping) else None
+            if previous is not None and previous.get("id") != node_id:
+                ambiguous_candidate_aliases.add(alias)
+            elif registered is not None and registered_id != node_id:
+                ambiguous_candidate_aliases.add(alias)
+            else:
+                candidate_skill_aliases[alias] = node
+            if alias in ambiguous_candidate_aliases:
+                add("PROPOSAL_SKILL_ALIAS_COLLISION", _path(node_path, "skillId"), f"Proposed skill alias {alias!r} collides with another registered skill.")
+
+    combined_nodes = dict(nodes)
+    combined_nodes.update(candidate_nodes)
+    for node_id, node in candidate_nodes.items():
+        registered_skill = skill_aliases.get(node_id)
+        registered_skill_id = registered_skill.get("id") if isinstance(registered_skill, Mapping) else None
+        if node_id in ambiguous_skill_aliases or (registered_skill is not None and registered_skill_id != node_id):
+            add(
+                "PROPOSAL_SKILL_ALIAS_COLLISION",
+                _path(candidate_paths[node_id], "id"),
+                f"Proposed target ID {node_id!r} collides with a registered skill alias.",
+            )
+
+    for alias, node in candidate_skill_aliases.items():
+        alias_target = combined_nodes.get(alias)
+        node_id = node.get("id")
+        alias_target_id = alias_target.get("id") if isinstance(alias_target, Mapping) else None
+        if alias_target is not None and alias_target_id != node_id:
+            ambiguous_candidate_aliases.add(alias)
+            node_path = candidate_paths.get(node_id, proposal_path)
+            add(
+                "PROPOSAL_SKILL_ALIAS_COLLISION",
+                _path(node_path, "skillId"),
+                f"Proposed skill alias {alias!r} collides with a different graph target ID.",
+            )
+
+    combined_aliases = dict(skill_aliases)
+    for alias, node in candidate_skill_aliases.items():
+        if alias not in ambiguous_candidate_aliases:
+            combined_aliases[alias] = node
+    combined_ambiguous_aliases = set(ambiguous_skill_aliases) | ambiguous_candidate_aliases
+
+    def resolve(
+        reference: Any,
+        path: str,
+        *,
+        expected_types: set[str] | None = None,
+        allow_skill_alias: bool = False,
+    ) -> str | None:
+        if not isinstance(reference, str) or not reference:
+            add("PROPOSAL_GRAPH_REFERENCE_NOT_REGISTERED", path, f"Proposed-node reference {reference!r} must resolve to a graph target or skill.")
+            return None
+        target = None
+        if allow_skill_alias and reference in combined_ambiguous_aliases:
+            add("PROPOSAL_GRAPH_REFERENCE_AMBIGUOUS", path, f"Proposed-node skill reference {reference!r} is ambiguous.")
+            return None
+        if allow_skill_alias and reference in combined_aliases:
+            alias_node = combined_aliases[reference]
+            alias_id = alias_node.get("id")
+            target = combined_nodes.get(alias_id) if isinstance(alias_id, str) else alias_node
+        if target is None:
+            target = combined_nodes.get(reference)
+        if target is None:
+            add("PROPOSAL_GRAPH_REFERENCE_NOT_REGISTERED", path, f"Proposed-node reference {reference!r} is not registered in this proposal or the graph.")
+            return None
+        actual_type = target.get("targetType")
+        if expected_types is not None and actual_type not in expected_types:
+            add("PROPOSAL_GRAPH_REFERENCE_TYPE_MISMATCH", path, f"Proposed-node reference {reference!r} resolves to {actual_type!r}; expected {', '.join(sorted(expected_types))}.")
+            return None
+        target_id = target.get("id")
+        return target_id if isinstance(target_id, str) and target_id else None
+
+    dependency_edges: dict[str, set[str]] = {node_id: set() for node_id in combined_nodes}
+
+    def check_refs(
+        source_id: str,
+        source_node: Mapping[str, Any],
+        source_path: str,
+        field: str,
+        *,
+        expected_types: set[str] | None,
+        allow_skill_alias: bool,
+        dependency: bool,
+    ) -> None:
+        references = source_node.get(field, [])
+        if not isinstance(references, list):
+            return
+        is_candidate = source_id in candidate_nodes and candidate_nodes[source_id] is source_node
+        for ref_index, reference in enumerate(references):
+            ref_path = _path(source_path, field, ref_index)
+            if is_candidate:
+                target_id = resolve(reference, ref_path, expected_types=expected_types, allow_skill_alias=allow_skill_alias)
+            else:
+                if not isinstance(reference, str) or not reference:
+                    continue
+                target = None
+                if allow_skill_alias and reference in combined_ambiguous_aliases:
+                    continue
+                if allow_skill_alias and reference in combined_aliases:
+                    alias_node = combined_aliases[reference]
+                    alias_id = alias_node.get("id")
+                    target = combined_nodes.get(alias_id) if isinstance(alias_id, str) else alias_node
+                if target is None and isinstance(reference, str):
+                    target = combined_nodes.get(reference)
+                if target is None or (expected_types is not None and target.get("targetType") not in expected_types):
+                    continue
+                target_id = target.get("id") if isinstance(target.get("id"), str) else None
+            if dependency and target_id is not None:
+                if target_id == source_id and is_candidate:
+                    add("PROPOSAL_SELF_PREREQUISITE", ref_path, f"Proposed node {source_id!r} cannot require itself.")
+                dependency_edges.setdefault(source_id, set()).add(target_id)
+
+    for source_id, source_node in combined_nodes.items():
+        source_path = candidate_paths.get(source_id, "/graph")
+        target_type = source_node.get("targetType")
+        if target_type == "SKILL":
+            check_refs(source_id, source_node, source_path, "targetVocabulary", expected_types={"VOCABULARY"}, allow_skill_alias=False, dependency=False)
+            check_refs(source_id, source_node, source_path, "targetGrammar", expected_types={"GRAMMAR"}, allow_skill_alias=False, dependency=False)
+            check_refs(source_id, source_node, source_path, "targetCharacters", expected_types={"CHARACTER"}, allow_skill_alias=False, dependency=False)
+            check_refs(source_id, source_node, source_path, "prerequisites", expected_types={"SKILL"}, allow_skill_alias=True, dependency=True)
+        elif target_type == "VOCABULARY":
+            if source_id in candidate_nodes and candidate_nodes[source_id] is source_node:
+                resolve(source_node.get("introducedBySkill"), _path(source_path, "introducedBySkill"), expected_types={"SKILL"}, allow_skill_alias=True)
+            check_refs(source_id, source_node, source_path, "prerequisites", expected_types=None, allow_skill_alias=True, dependency=True)
+        elif target_type == "GRAMMAR":
+            check_refs(source_id, source_node, source_path, "prerequisites", expected_types=None, allow_skill_alias=True, dependency=True)
+        elif target_type == "CHARACTER":
+            check_refs(source_id, source_node, source_path, "prerequisiteSkills", expected_types={"SKILL"}, allow_skill_alias=True, dependency=True)
+
+    in_degree = {node_id: 0 for node_id in combined_nodes}
+    for dependencies in dependency_edges.values():
+        for dependency_id in dependencies:
+            if dependency_id in in_degree:
+                in_degree[dependency_id] += 1
+    ready = [node_id for node_id, degree in in_degree.items() if degree == 0]
+    while ready:
+        source_id = ready.pop()
+        for dependency_id in dependency_edges.get(source_id, set()):
+            if dependency_id not in in_degree:
+                continue
+            in_degree[dependency_id] -= 1
+            if in_degree[dependency_id] == 0:
+                ready.append(dependency_id)
+    for node_id, degree in in_degree.items():
+        if degree > 0 and node_id in candidate_paths:
+            add("PROPOSAL_GRAPH_PREREQUISITE_CYCLE", candidate_paths[node_id], f"Proposed node {node_id!r} participates in a prerequisite cycle.")
+
+    return sorted(set(issues))
+
+
 def validate_curriculum_pack(
     pack: Mapping[str, Any],
     source_registry: Mapping[str, Any] | None = None,
@@ -704,6 +889,204 @@ def validate_curriculum_pack(
             else:
                 evidence_records[evidence_id] = value
             evidence_ids.add(evidence_id)
+
+    proposal_ids: set[str] = set()
+    proposal_target_ids: dict[str, str] = {}
+    proposals = pack.get("curriculumChangeProposals", [])
+    if isinstance(proposals, list):
+        for proposal_index, proposal in enumerate(proposals):
+            if not isinstance(proposal, Mapping):
+                continue
+            proposal_path = _path("/curriculumChangeProposals", proposal_index)
+            proposal_id = proposal.get("proposalId")
+            if isinstance(proposal_id, str) and proposal_id:
+                if proposal_id in proposal_ids:
+                    add("DUPLICATE_PROPOSAL_ID", _path(proposal_path, "proposalId"), f"Proposal ID {proposal_id!r} is duplicated.")
+                proposal_ids.add(proposal_id)
+
+            if proposal.get("approvalStatus") != "PROPOSED":
+                add("PROPOSAL_APPROVAL_NOT_AUTHENTICATED", _path(proposal_path, "approvalStatus"), "Proposal records remain PROPOSED until a separate authenticated human approval transition exists.")
+
+            proposed_nodes = proposal.get("proposedNodes", [])
+            if not isinstance(proposed_nodes, list):
+                proposed_nodes = []
+            proposed_target_ids = {
+                node.get("id")
+                for node in proposed_nodes
+                if isinstance(node, Mapping) and isinstance(node.get("id"), str)
+            }
+            change_type = proposal.get("changeType")
+            for node_index, node in enumerate(proposed_nodes):
+                if not isinstance(node, Mapping):
+                    continue
+                node_path = _path(proposal_path, "proposedNodes", node_index)
+                node_id = node.get("id")
+                if node.get("approvalStatus") != "PROPOSED":
+                    add("PROPOSAL_TARGET_APPROVAL_NOT_AUTHENTICATED", _path(node_path, "approvalStatus"), "A proposed node cannot self-assert approval; human approval must use a separate authenticated transition.")
+                if change_type == "ADD_TARGET" and isinstance(node_id, str):
+                    if node_id in nodes:
+                        add("PROPOSAL_TARGET_ALREADY_REGISTERED", _path(node_path, "id"), f"New target {node_id!r} already exists in the approved graph.")
+                    elif node_id in proposal_target_ids:
+                        add("DUPLICATE_PROPOSED_TARGET_ID", _path(node_path, "id"), f"New target {node_id!r} is already proposed by {proposal_target_ids[node_id]!r}.")
+                    else:
+                        proposal_target_ids[node_id] = proposal_id if isinstance(proposal_id, str) else proposal_path
+
+            issues.extend(
+                _validate_proposed_node_relationships(
+                    proposed_nodes,
+                    proposal_path,
+                    nodes,
+                    skill_aliases,
+                    ambiguous_skill_aliases,
+                )
+            )
+
+            affected_ids = proposal.get("affectedTargetIds", [])
+            if not isinstance(affected_ids, list):
+                affected_ids = []
+            if change_type in {"MODIFY_TARGET", "REMOVE_TARGET", "CHANGE_PREREQUISITE", "CHANGE_SEQUENCE"} and not affected_ids:
+                add("PROPOSAL_AFFECTED_TARGET_REQUIRED", _path(proposal_path, "affectedTargetIds"), f"{change_type} proposals must identify at least one existing target.")
+            for target_index, target_id in enumerate(affected_ids):
+                if isinstance(target_id, str) and target_id not in nodes:
+                    add("PROPOSAL_AFFECTED_TARGET_NOT_REGISTERED", _path(proposal_path, "affectedTargetIds", target_index), f"Affected target {target_id!r} is not in the current graph.")
+
+            if change_type == "REMOVE_TARGET" and proposed_nodes:
+                add("PROPOSAL_REMOVAL_HAS_PROPOSED_NODE", _path(proposal_path, "proposedNodes"), "A removal proposal identifies the existing affected target and must not include a replacement node.")
+            elif change_type in {"MODIFY_TARGET", "CHANGE_PREREQUISITE", "CHANGE_SEQUENCE"}:
+                proposed_ids = {
+                    node.get("id")
+                    for node in proposed_nodes
+                    if isinstance(node, Mapping) and isinstance(node.get("id"), str)
+                }
+                affected_id_set = {target_id for target_id in affected_ids if isinstance(target_id, str)}
+                for node_index, node in enumerate(proposed_nodes):
+                    if not isinstance(node, Mapping):
+                        continue
+                    node_id = node.get("id")
+                    if isinstance(node_id, str) and node_id not in affected_id_set:
+                        add("PROPOSAL_NODE_NOT_AFFECTED", _path(proposal_path, "proposedNodes", node_index, "id"), f"Proposed node {node_id!r} is not declared in affectedTargetIds.")
+                    current_node = nodes.get(node_id) if isinstance(node_id, str) else None
+                    if current_node is not None and node.get("targetType") != current_node.get("targetType"):
+                        add("PROPOSAL_TARGET_TYPE_MISMATCH", _path(proposal_path, "proposedNodes", node_index, "targetType"), f"Proposed node {node_id!r} must preserve the existing target type {current_node.get('targetType')!r}.")
+                for target_index, target_id in enumerate(affected_ids):
+                    if isinstance(target_id, str) and target_id not in proposed_ids:
+                        add("PROPOSAL_AFFECTED_TARGET_NOT_PROPOSED", _path(proposal_path, "affectedTargetIds", target_index), f"Affected target {target_id!r} must have a corresponding proposed node for this change type.")
+
+            prerequisites = proposal.get("prerequisites", [])
+            if not isinstance(prerequisites, list):
+                prerequisites = []
+            for prerequisite_index, prerequisite in enumerate(prerequisites):
+                if not isinstance(prerequisite, Mapping):
+                    continue
+                target_id = prerequisite.get("targetId")
+                if isinstance(target_id, str) and target_id not in nodes and target_id not in skill_aliases:
+                    add("PROPOSAL_PREREQUISITE_NOT_REGISTERED", _path(proposal_path, "prerequisites", prerequisite_index, "targetId"), f"Prerequisite {target_id!r} is not an existing graph target or skill.")
+
+            local_evidence: dict[str, Mapping[str, Any]] = {
+                value.get("evidenceId"): value
+                for _, value in _walk(proposal)
+                if isinstance(value, Mapping)
+                and isinstance(value.get("evidenceId"), str)
+            }
+
+            def validate_proposal_evidence_refs(
+                refs: Any,
+                field_path: str,
+                expected_claim: str | None = None,
+            ) -> set[str]:
+                resolved: set[str] = set()
+                if not isinstance(refs, list):
+                    return resolved
+                for ref_index, evidence_id in enumerate(refs):
+                    ref_path = _path(field_path, ref_index)
+                    if not isinstance(evidence_id, str) or evidence_id not in local_evidence:
+                        add("PROPOSAL_EVIDENCE_NOT_LOCAL", ref_path, f"Proposal evidence {evidence_id!r} must be included in this proposal record.")
+                        continue
+                    resolved.add(evidence_id)
+                    if expected_claim is not None:
+                        claims = local_evidence[evidence_id].get("supportsClaims", [])
+                        if not isinstance(claims, list) or expected_claim not in claims:
+                            add("PROPOSAL_EVIDENCE_CLAIM_MISMATCH", ref_path, f"Proposal evidence {evidence_id!r} must declare support for {expected_claim}.")
+                return resolved
+
+            validate_proposal_evidence_refs(
+                proposal.get("whyNow", {}).get("evidenceIds") if isinstance(proposal.get("whyNow"), Mapping) else None,
+                _path(proposal_path, "whyNow", "evidenceIds"),
+            )
+            validate_proposal_evidence_refs(
+                proposal.get("authorityEvidenceIds"),
+                _path(proposal_path, "authorityEvidenceIds"),
+                "CURRICULUM_AUTHORITY",
+            )
+            difficulty_evidence_ids = validate_proposal_evidence_refs(
+                proposal.get("difficultyEvidenceIds"),
+                _path(proposal_path, "difficultyEvidenceIds"),
+                "TARGET_DIFFICULTY",
+            )
+            for node in proposed_nodes:
+                if not isinstance(node, Mapping):
+                    continue
+                difficulty = node.get("difficultyEvidence")
+                if isinstance(difficulty, Mapping):
+                    node_difficulty_ids = difficulty.get("evidenceIds", [])
+                    if not isinstance(node_difficulty_ids, list):
+                        node_difficulty_ids = []
+                    for evidence_id in node_difficulty_ids:
+                        if isinstance(evidence_id, str) and evidence_id not in difficulty_evidence_ids:
+                            add("PROPOSAL_DIFFICULTY_EVIDENCE_NOT_DECLARED", _path(proposal_path, "difficultyEvidenceIds"), f"Node difficulty evidence {evidence_id!r} must be listed in proposal difficultyEvidenceIds.")
+
+            alternatives = proposal.get("alternativesConsidered", [])
+            seen_alternative_ids: set[str] = set()
+            if isinstance(alternatives, list):
+                for alternative_index, alternative in enumerate(alternatives):
+                    if not isinstance(alternative, Mapping):
+                        continue
+                    alternative_path = _path(proposal_path, "alternativesConsidered", alternative_index)
+                    alternative_id = alternative.get("alternativeId")
+                    if isinstance(alternative_id, str) and alternative_id in seen_alternative_ids:
+                        add("DUPLICATE_PROPOSAL_ALTERNATIVE_ID", _path(alternative_path, "alternativeId"), f"Alternative ID {alternative_id!r} is duplicated within this proposal.")
+                    if isinstance(alternative_id, str):
+                        seen_alternative_ids.add(alternative_id)
+                    validate_proposal_evidence_refs(alternative.get("evidenceIds"), _path(alternative_path, "evidenceIds"))
+
+            cognitive_load = proposal.get("expectedCognitiveLoad", {})
+            dimensions = cognitive_load.get("dimensions", []) if isinstance(cognitive_load, Mapping) else []
+            if isinstance(dimensions, list):
+                referenced_targets = proposed_target_ids | {
+                    target_id for target_id in affected_ids if isinstance(target_id, str)
+                }
+                for dimension_index, dimension in enumerate(dimensions):
+                    if not isinstance(dimension, Mapping):
+                        continue
+                    dimension_path = _path(proposal_path, "expectedCognitiveLoad", "dimensions", dimension_index)
+                    dimension_target_ids = dimension.get("targetIds", [])
+                    if not isinstance(dimension_target_ids, list):
+                        dimension_target_ids = []
+                    for target_index, target_id in enumerate(dimension_target_ids):
+                        if isinstance(target_id, str) and target_id not in referenced_targets:
+                            add("PROPOSAL_LOAD_TARGET_NOT_DECLARED", _path(dimension_path, "targetIds", target_index), f"Load target {target_id!r} must be a proposed or affected target.")
+                    validate_proposal_evidence_refs(
+                        dimension.get("evidenceIds"),
+                        _path(dimension_path, "evidenceIds"),
+                        "EXPECTED_COGNITIVE_LOAD",
+                    )
+
+            confidence = proposal.get("confidence")
+            if isinstance(confidence, Mapping):
+                estimate = confidence.get("estimate")
+                if (
+                    not isinstance(estimate, (int, float))
+                    or isinstance(estimate, bool)
+                    or not 0 <= estimate <= 1
+                    or not math.isfinite(estimate)
+                ):
+                    add("PROPOSAL_CONFIDENCE_INVALID", _path(proposal_path, "confidence", "estimate"), "Proposal confidence must be a finite number between 0 and 1.")
+                validate_proposal_evidence_refs(
+                    confidence.get("evidenceIds"),
+                    _path(proposal_path, "confidence", "evidenceIds"),
+                    "PROPOSAL_CONFIDENCE",
+                )
+
     for object_path, value in _walk(pack):
         refs = value.get("evidenceIds")
         if isinstance(refs, list):

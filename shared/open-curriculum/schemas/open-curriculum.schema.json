@@ -7,7 +7,7 @@
   "additionalProperties": false,
   "required": ["schemaVersion", "documentType", "packId", "publicationStatus", "graph", "lessons", "validationPolicy"],
   "properties": {
-    "schemaVersion": { "const": "1.3" },
+    "schemaVersion": { "const": "1.4" },
     "documentType": { "const": "CURRICULUM_PACK" },
     "packId": { "$ref": "#/$defs/id" },
     "publicationStatus": { "enum": ["PROPOSED", "PUBLISHABLE"] },
@@ -30,7 +30,7 @@
     "id": { "type": "string", "minLength": 1, "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:-]*$" },
     "level": { "type": "integer", "minimum": 1, "maximum": 7 },
     "approvalStatus": { "enum": ["PROPOSED", "EVIDENCE_CHECKED", "ARCHITECT_APPROVED", "REJECTED"] },
-    "evidenceClaim": { "enum": ["TARGET_DIFFICULTY", "VOCABULARY_FREQUENCY", "RECEPTIVE_REQUIREMENT", "PRODUCTIVE_REQUIREMENT", "RECEPTIVE_PRODUCTIVE_POLICY"] },
+    "evidenceClaim": { "enum": ["TARGET_DIFFICULTY", "CURRICULUM_AUTHORITY", "VOCABULARY_FREQUENCY", "RECEPTIVE_REQUIREMENT", "PRODUCTIVE_REQUIREMENT", "RECEPTIVE_PRODUCTIVE_POLICY", "EXPECTED_COGNITIVE_LOAD", "PROPOSAL_CONFIDENCE"] },
     "authorityType": { "enum": ["CURRICULUM_FRAMEWORK", "OFFICIAL_ASSESSMENT", "OPEN_CORPUS", "LEXICAL_REFERENCE", "AUTHORED_RATIONALE", "EXPERT_REVIEW", "LEARNER_VALIDATION", "OTHER"] },
     "evidence": {
       "type": "object",
@@ -342,20 +342,96 @@
         "evidenceIds": { "type": "array", "items": { "$ref": "#/$defs/id" } }
       }
     },
+    "proposalPrerequisite": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["targetId", "rationale"],
+      "properties": {
+        "targetId": { "$ref": "#/$defs/id" },
+        "rationale": { "type": "string", "minLength": 1 }
+      }
+    },
+    "proposalAlternative": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["alternativeId", "description", "rationale", "evidenceIds"],
+      "properties": {
+        "alternativeId": { "$ref": "#/$defs/id" },
+        "description": { "type": "string", "minLength": 1 },
+        "rationale": { "type": "string", "minLength": 1 },
+        "evidenceIds": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/id" } }
+      }
+    },
+    "proposalLoadDimension": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dimension", "estimatedImpact", "targetIds", "rationale", "evidenceIds"],
+      "properties": {
+        "dimension": { "type": "string", "minLength": 1 },
+        "estimatedImpact": { "type": "string", "minLength": 1 },
+        "targetIds": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/id" } },
+        "rationale": { "type": "string", "minLength": 1 },
+        "evidenceIds": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/id" } }
+      }
+    },
+    "proposalConfidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["estimate", "rationale", "evidenceIds", "limitations"],
+      "properties": {
+        "estimate": { "type": "number", "minimum": 0, "maximum": 1 },
+        "rationale": { "type": "string", "minLength": 1 },
+        "evidenceIds": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/id" } },
+        "limitations": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+      }
+    },
     "curriculumChangeProposal": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["proposalId", "documentType", "changeType", "affectedTargetIds", "proposedNodes", "rationale", "evidence", "approvalStatus"],
+      "required": ["proposalId", "documentType", "changeType", "affectedTargetIds", "proposedNodes", "whyNow", "prerequisites", "authorityEvidenceIds", "difficultyEvidenceIds", "alternativesConsidered", "expectedCognitiveLoad", "confidence", "unresolvedQuestions", "rationale", "evidence", "approvalStatus"],
       "properties": {
         "proposalId": { "$ref": "#/$defs/id" },
         "documentType": { "const": "CURRICULUM_CHANGE_PROPOSAL" },
         "changeType": { "enum": ["ADD_TARGET", "MODIFY_TARGET", "REMOVE_TARGET", "CHANGE_PREREQUISITE", "CHANGE_SEQUENCE"] },
-        "affectedTargetIds": { "type": "array", "items": { "$ref": "#/$defs/id" } },
-        "proposedNodes": { "type": "array", "minItems": 1, "items": { "oneOf": [{ "$ref": "#/$defs/skillNode" }, { "$ref": "#/$defs/vocabularyNode" }, { "$ref": "#/$defs/grammarNode" }, { "$ref": "#/$defs/characterNode" }] } },
+        "affectedTargetIds": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/id" } },
+        "proposedNodes": { "type": "array", "items": { "oneOf": [{ "$ref": "#/$defs/skillNode" }, { "$ref": "#/$defs/vocabularyNode" }, { "$ref": "#/$defs/grammarNode" }, { "$ref": "#/$defs/characterNode" }] } },
+        "whyNow": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["rationale", "evidenceIds"],
+          "properties": {
+            "rationale": { "type": "string", "minLength": 1 },
+            "evidenceIds": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/id" } }
+          }
+        },
+        "prerequisites": { "type": "array", "items": { "$ref": "#/$defs/proposalPrerequisite" } },
+        "authorityEvidenceIds": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/id" } },
+        "difficultyEvidenceIds": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/id" } },
+        "alternativesConsidered": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/proposalAlternative" } },
+        "expectedCognitiveLoad": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["dimensions"],
+          "properties": {
+            "dimensions": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/proposalLoadDimension" } }
+          }
+        },
+        "confidence": { "$ref": "#/$defs/proposalConfidence" },
+        "unresolvedQuestions": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
         "rationale": { "type": "string", "minLength": 1 },
         "evidence": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/evidence" } },
-        "approvalStatus": { "$ref": "#/$defs/approvalStatus" }
-      }
+        "approvalStatus": { "const": "PROPOSED" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "changeType": { "const": "REMOVE_TARGET" } }, "required": ["changeType"] },
+          "then": { "properties": { "proposedNodes": { "maxItems": 0 } } }
+        },
+        {
+          "if": { "properties": { "changeType": { "enum": ["ADD_TARGET", "MODIFY_TARGET", "CHANGE_PREREQUISITE", "CHANGE_SEQUENCE"] } }, "required": ["changeType"] },
+          "then": { "properties": { "proposedNodes": { "minItems": 1 } } }
+        }
+      ]
     }
   }
 }
