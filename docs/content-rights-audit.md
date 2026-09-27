@@ -33,7 +33,7 @@ The tracked current tree contains a content-rich OCAC-labeled Book 1 L1 package 
 
 ## Source-status summary
 
-The machine-readable statuses and conditions are in [`shared/content-sources/source-registry.json`](../shared/content-sources/source-registry.json). In brief: OCAC, TBCL, and TOCFL/CCCC are `YELLOW`; CC-CEDICT, Tatoeba, and Mozilla Common Voice are `GREEN` with source-specific constraints. No YELLOW source data was downloaded or copied during this audit. Common Voice is not mirrored despite its dataset CC0 notice because current Mozilla terms direct dataset access through Mozilla Data Collective and prohibit rehosting/mirroring.
+The machine-readable statuses and conditions are in [`shared/content-sources/source-registry.json`](../shared/content-sources/source-registry.json). In brief: OCAC, TBCL, and TOCFL/CCCC are `YELLOW`; CC-CEDICT, Tatoeba, and Mozilla Common Voice are `GREEN` with source-specific constraints. No YELLOW source data was downloaded or copied during this audit. Mozilla’s current Common Voice terms ask users not to repost, distribute, or mirror datasets and direct access through Mozilla Data Collective. TongXuan adopts a conservative project policy against mirroring; this audit does not characterize Mozilla’s request as a legal prohibition.
 
 ## Audit limits and follow-up
 

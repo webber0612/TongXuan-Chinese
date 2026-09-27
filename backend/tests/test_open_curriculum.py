@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from copy import deepcopy
 from pathlib import Path
 
 import pytest
@@ -34,10 +35,19 @@ def evidence(evidence_id="synthetic-evidence"):
 def provenance():
     return {
         "sourceId": SOURCE_ID,
-        "useMode": "EVIDENCE_REFERENCE",
+        "useMode": "CONTENT_SOURCE",
         "reference": "test-only synthetic fixture",
         "rawContentIncluded": False,
-        "itemLicenseVerified": False,
+        "itemLicenseVerified": True,
+        "itemRightsEvidence": {
+            "createdBy": "synthetic fixture author",
+            "createdAt": "2026-09-27",
+            "rightsGrantReference": "test-only synthetic authorship record",
+            "verifiedBy": "synthetic validator fixture",
+            "verifiedAt": "2026-09-27",
+            "publicRepoPermission": "YES",
+            "rawIngestionPermission": "YES",
+        },
     }
 
 
@@ -279,7 +289,30 @@ def test_content_source_requires_registered_green_item_license_and_public_rights
             "itemLicenseVerified": False,
         }]
         found = codes(validate_curriculum_pack(pack, source_registry))
-        assert {"SOURCE_NOT_GREEN", "ITEM_LICENSE_UNVERIFIED", "SOURCE_REDISTRIBUTION_NOT_CLEARED", "UNLICENSED_RAW_CONTENT"} <= found
+        assert {"SOURCE_NOT_GREEN", "ITEM_LICENSE_UNVERIFIED", "ITEM_RIGHTS_EVIDENCE_MISSING", "SOURCE_REDISTRIBUTION_NOT_CLEARED", "UNLICENSED_RAW_CONTENT", "SCHEMA_INVALID"} <= found
+
+
+def test_publishable_content_cannot_be_marked_as_evidence_reference_only():
+    for content_node in (
+        lambda pack: pack["graph"]["vocabulary"][0],
+        lambda pack: pack["graph"]["grammar"][0]["examples"][0],
+        lambda pack: pack["lessons"][0]["sentences"][0],
+    ):
+        pack = make_pack()
+        content_node(pack)["sourceProvenance"] = [{
+            "sourceId": SOURCE_ID,
+            "useMode": "EVIDENCE_REFERENCE",
+            "reference": "synthetic evidence only",
+            "rawContentIncluded": False,
+            "itemLicenseVerified": False,
+        }]
+        assert "CONTENT_RIGHTS_EVIDENCE_REQUIRED" in codes(validate_curriculum_pack(pack))
+
+
+def test_conditional_publication_rights_require_item_level_yes():
+    pack = make_pack()
+    pack["graph"]["vocabulary"][0]["sourceProvenance"][0]["itemRightsEvidence"]["publicRepoPermission"] = "UNKNOWN"
+    assert {"SOURCE_REDISTRIBUTION_NOT_CLEARED", "CONTENT_RIGHTS_EVIDENCE_REQUIRED"} <= codes(validate_curriculum_pack(pack))
 
 
 def test_unmet_prerequisite_and_out_of_level_targets_fail_closed():
@@ -322,6 +355,46 @@ def test_writing_activity_requires_recognition_first():
     assert "WRITING_BEFORE_RECOGNITION" in codes(validate_curriculum_pack(pack))
 
 
+def test_each_lesson_gets_activity_and_mastery_validation():
+    pack = make_pack()
+    invalid_first = deepcopy(pack["lessons"][0])
+    invalid_first["activities"].reverse()
+    invalid_first["activities"][1]["masteryTargets"] = [{
+        "skillId": "unregistered-skill",
+        "domain": "writing",
+    }]
+    valid_second = deepcopy(pack["lessons"][0])
+    valid_second["lessonId"] = "valid-second-lesson"
+    pack["lessons"] = [invalid_first, valid_second]
+
+    found = codes(validate_curriculum_pack(pack))
+    assert {"WRITING_BEFORE_RECOGNITION", "UNSUPPORTED_ACTIVITY_MASTERY_TARGET"} <= found
+
+
+def test_prior_knowledge_accumulates_between_pack_lessons():
+    pack = make_pack()
+    first = deepcopy(pack["lessons"][0])
+    second = deepcopy(pack["lessons"][0])
+    second.update({
+        "lessonId": "second-lesson",
+        "skillIds": ["writing"],
+        "availableSkillIds": ["writing"],
+        "priorKnowledgeSkillIds": [],
+        "targetVocabularyIds": [],
+        "targetGrammarIds": [],
+        "targetCharacterIds": [],
+        "availableTargetIds": [],
+        "newVocabularyIds": [],
+        "recycledTargetIds": [],
+        "sentences": [],
+        "activities": [],
+        "masteryTargets": [],
+    })
+    pack["lessons"] = [first, second]
+
+    assert "UNMET_PREREQUISITE" not in codes(validate_curriculum_pack(pack))
+
+
 def test_sentence_tokens_must_be_registered_and_match_sentence_text():
     pack = make_pack()
     sentence = pack["lessons"][0]["sentences"][0]
@@ -346,6 +419,7 @@ def test_mastery_targets_must_map_to_registered_lesson_skill():
 
 def test_source_provenance_cannot_smuggle_raw_text_as_evidence_reference():
     pack = make_pack()
+    pack["lessons"][0]["sourceProvenance"][0]["useMode"] = "EVIDENCE_REFERENCE"
     pack["lessons"][0]["sourceProvenance"][0]["rawContentIncluded"] = True
     assert "RAW_CONTENT_AS_EVIDENCE" in codes(validate_curriculum_pack(pack))
 

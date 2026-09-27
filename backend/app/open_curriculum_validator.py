@@ -157,6 +157,22 @@ def _path(base: str, *parts: Any) -> str:
     return "/" + "/".join((base.strip("/"), *(str(part) for part in parts)))
 
 
+def _permission_cleared(registry_permission: Any, item_permission: Any) -> bool:
+    """Allow registry-wide YES, or CONDITIONAL with explicit item-level YES."""
+    return registry_permission == "YES" or (
+        registry_permission == "CONDITIONAL" and item_permission == "YES"
+    )
+
+
+def _requires_content_rights(value: Mapping[str, Any], object_path: str) -> bool:
+    """Identify graph targets and authored text-bearing curriculum examples."""
+    return (
+        (object_path.startswith("/graph/") and value.get("targetType") in {"SKILL", "VOCABULARY", "GRAMMAR", "CHARACTER"})
+        or (object_path.startswith("/graph/") and isinstance(value.get("reading"), str))
+        or (object_path.startswith(("/graph/", "/lessons/")) and isinstance(value.get("text"), str) and isinstance(value.get("tokens"), list))
+    )
+
+
 def _walk(value: Any, path: str = ""):
     if isinstance(value, dict):
         yield path, value
@@ -279,17 +295,50 @@ def validate_curriculum_pack(
             if use_mode == "CONTENT_SOURCE":
                 if source is None:
                     continue
+                rights = value.get("itemRightsEvidence")
+                if not isinstance(rights, Mapping):
+                    rights = {}
+                    add("ITEM_RIGHTS_EVIDENCE_MISSING", _path(object_path, "itemRightsEvidence"), "Content-source use requires item-level authorship and rights evidence.")
                 if source.get("legalStatus") != "GREEN":
                     add("SOURCE_NOT_GREEN", _path(object_path, "sourceId"), "Content-source use requires a GREEN registered source.")
                 if value.get("itemLicenseVerified") is not True:
                     add("ITEM_LICENSE_UNVERIFIED", _path(object_path, "itemLicenseVerified"), "Content-source use requires item-level license verification.")
-                if publishable and source.get("publicRepoAllowed") != "YES":
+                public_repo_cleared = _permission_cleared(
+                    source.get("publicRepoAllowed"), rights.get("publicRepoPermission")
+                )
+                raw_ingestion_cleared = _permission_cleared(
+                    source.get("rawIngestionAllowed"), rights.get("rawIngestionPermission")
+                )
+                if publishable and not public_repo_cleared:
                     add("SOURCE_REDISTRIBUTION_NOT_CLEARED", _path(object_path, "sourceId"), "Publishable content requires explicit YES for public-repository use.")
-                if raw_included and (
-                    source.get("rawIngestionAllowed") != "YES"
-                    or source.get("publicRepoAllowed") != "YES"
-                ):
+                if raw_included and (not raw_ingestion_cleared or not public_repo_cleared):
                     add("UNLICENSED_RAW_CONTENT", _path(object_path, "rawContentIncluded"), "Raw content requires explicit YES for ingestion and public-repository use.")
+
+    if publishable:
+        for object_path, value in _walk(pack):
+            if not _requires_content_rights(value, object_path):
+                continue
+            provenance_records = value.get("sourceProvenance", [])
+            if not isinstance(provenance_records, list):
+                provenance_records = []
+            has_verified_rights = False
+            for provenance in provenance_records:
+                if not isinstance(provenance, Mapping) or provenance.get("useMode") != "CONTENT_SOURCE":
+                    continue
+                source_id = provenance.get("sourceId")
+                source = source_entries.get(source_id) if isinstance(source_id, str) else None
+                rights = provenance.get("itemRightsEvidence")
+                if (
+                    source is not None
+                    and source.get("legalStatus") == "GREEN"
+                    and provenance.get("itemLicenseVerified") is True
+                    and isinstance(rights, Mapping)
+                    and _permission_cleared(source.get("publicRepoAllowed"), rights.get("publicRepoPermission"))
+                ):
+                    has_verified_rights = True
+                    break
+            if not has_verified_rights:
+                add("CONTENT_RIGHTS_EVIDENCE_REQUIRED", _path(object_path, "sourceProvenance"), "Every publishable content-bearing target or example requires verified item-level authorship/rights and explicit public-repository permission.")
 
     if publishable:
         for target_type, group in node_groups.items():
@@ -298,6 +347,17 @@ def validate_curriculum_pack(
             for index, node in enumerate(group):
                 if isinstance(node, Mapping) and node.get("approvalStatus") != "ARCHITECT_APPROVED":
                     add("UNAPPROVED_TARGET", _path("/graph", graph_paths[target_type], index, "approvalStatus"), "Publishable packs may include only ARCHITECT_APPROVED graph targets.")
+
+    # Grammar examples belong to graph targets, so validate them once at pack scope.
+    grammar_nodes = node_groups.get("GRAMMAR", [])
+    if isinstance(grammar_nodes, list):
+        for grammar_index, grammar_node in enumerate(grammar_nodes):
+            if not isinstance(grammar_node, Mapping):
+                continue
+            for example_index, example in enumerate(grammar_node.get("examples", [])):
+                if isinstance(example, Mapping):
+                    example_path = _path("/graph/grammar", grammar_index, "examples", example_index)
+                    issues.extend(_sentence_token_issues(example, nodes, example_path))
 
     known_from_previous_lessons: set[str] = set()
     prior_skill_aliases: set[str] = set()
@@ -420,16 +480,6 @@ def validate_curriculum_pack(
                         token_id = token.get("id")
                         if isinstance(token_id, str) and token_id not in content_target_ids | prior_knowledge_ids:
                             add("SENTENCE_TARGET_NOT_DECLARED", _path(sentence_path, "tokens", token_index), f"Sentence target {token_id!r} is neither targeted nor declared as prior knowledge.")
-
-    grammar_nodes = node_groups.get("GRAMMAR", [])
-    if isinstance(grammar_nodes, list):
-        for grammar_index, grammar_node in enumerate(grammar_nodes):
-            if not isinstance(grammar_node, Mapping):
-                continue
-            for example_index, example in enumerate(grammar_node.get("examples", [])):
-                if isinstance(example, Mapping):
-                    example_path = _path("/graph/grammar", grammar_index, "examples", example_index)
-                    issues.extend(_sentence_token_issues(example, nodes, example_path))
 
         # Writing requires recognized characters first in the same lesson or prior knowledge.
         activities = lesson.get("activities", [])

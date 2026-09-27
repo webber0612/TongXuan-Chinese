@@ -21,6 +21,8 @@ All schema wrappers resolve into the bundled Draft 2020-12 schema; consumers sho
 
 `availableTargetIds` lists vocabulary, grammar, and character targets allowed in that lesson; selected targets must be included. `availableSkillIds` lists skills allowed for use. `priorKnowledgeTargetIds` and `priorKnowledgeSkillIds` are the explicit learner-known sets before the lesson; the validator also treats targets and skills from earlier lessons in the same candidate pack as previously taught. Prerequisites are checked against those sets, not inferred from a lesson title or sequence position.
 
+Publishable content-bearing targets and examples require `CONTENT_SOURCE` provenance with affirmative item-level rights evidence, including author, creation date, rights-grant reference, verification, and public-repository permission. Evidence citations can support a target's rationale but do not authorize the text or media itself.
+
 ## Authority states
 
 `PROPOSED` is never executable. `EVIDENCE_CHECKED` is not approval. Only `ARCHITECT_APPROVED` targets can enter a publishable pack, and the pack's validation policy must itself be approved. Schema validity does not imply source permission, educational correctness, sequencing approval, or learner validation.

@@ -168,9 +168,9 @@
       "curriculumRole": [],
       "evidenceRole": ["SPEECH_CORPUS_REFERENCE", "ASR_EVALUATION"],
       "legalStatus": "GREEN",
-      "constraints": ["Do not post, distribute, or mirror any dataset, in whole or in part, on another platform or service.", "Access datasets through Mozilla Data Collective and follow its current access terms.", "Do not commit downloaded audio or dataset rows to this public repository."],
+      "constraints": ["TongXuan project policy: do not post, distribute, or mirror any dataset, in whole or in part, on another platform or service.", "Access datasets through Mozilla Data Collective and follow its current access terms.", "Do not commit downloaded audio or dataset rows to this public repository."],
       "lastVerifiedAt": "2026-09-27",
-      "notes": "CC0 does not cancel the separate access and anti-mirroring conditions stated in the current Common Voice terms."
+      "notes": "CC0 dataset licensing is distinct from Mozilla Data Collective access terms. Mozilla asks users not to repost, distribute, or mirror datasets; this project follows that request as a conservative repository policy."
     },
     {
       "sourceId": "tongxuan-original-authorship",

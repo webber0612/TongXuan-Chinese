@@ -66,10 +66,33 @@
         "reference": { "type": "string", "minLength": 1 },
         "rawContentIncluded": { "type": "boolean" },
         "itemLicenseVerified": { "type": "boolean" },
+        "itemRightsEvidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["createdBy", "createdAt", "rightsGrantReference", "verifiedBy", "verifiedAt", "publicRepoPermission", "rawIngestionPermission"],
+          "properties": {
+            "createdBy": { "type": "string", "minLength": 1 },
+            "createdAt": { "type": "string", "format": "date" },
+            "rightsGrantReference": { "type": "string", "minLength": 1 },
+            "verifiedBy": { "type": "string", "minLength": 1 },
+            "verifiedAt": { "type": "string", "format": "date" },
+            "publicRepoPermission": { "enum": ["YES", "NO", "NOT_ALLOWED", "CONDITIONAL", "UNKNOWN"] },
+            "rawIngestionPermission": { "enum": ["YES", "NO", "NOT_ALLOWED", "CONDITIONAL", "UNKNOWN"] }
+          }
+        },
         "attributionText": { "type": "string" },
         "sourceVersion": { "type": "string" },
         "changeDescription": { "type": "string" }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "useMode": { "const": "CONTENT_SOURCE" } },
+            "required": ["useMode"]
+          },
+          "then": { "required": ["itemRightsEvidence"] }
+        }
+      ]
     },
     "targetCore": {
       "type": "object",
