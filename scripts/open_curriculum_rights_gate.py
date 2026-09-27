@@ -50,6 +50,7 @@ SCOPE_FILES = {
     "frontend/src/pages/CourseZeroPage.tsx",
     "frontend/src/pages/FirstLessonPage.tsx",
     "frontend/src/pages/LearningPage.tsx",
+    "frontend/src/pages/LessonPlayerPage.tsx",
     "frontend/src/components/PlacementStatus.tsx",
     "frontend/src/lib/childFirst.test.tsx",
     "frontend/src/lib/lessonPlayer.test.tsx",

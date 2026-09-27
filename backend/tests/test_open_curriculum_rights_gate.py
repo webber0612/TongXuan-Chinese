@@ -36,6 +36,7 @@ NEW_CURRICULUM_CONTENT_PATHS = (
     "frontend/src/pages/CourseZeroPage.tsx",
     "frontend/src/pages/FirstLessonPage.tsx",
     "frontend/src/pages/LearningPage.tsx",
+    "frontend/src/pages/LessonPlayerPage.tsx",
     "frontend/src/components/PlacementStatus.tsx",
     "frontend/src/lib/childFirst.test.tsx",
     "frontend/src/lib/lessonPlayer.test.tsx",
@@ -61,6 +62,7 @@ OCAC_SOURCE_LINKED_CONTENT_PATHS = frozenset({
     "frontend/src/lib/lessonPlayer.test.tsx",
     "frontend/src/lib/testFixtures/learningFlow.ts",
     "frontend/src/components/PlacementStatus.tsx",
+    "frontend/src/pages/LessonPlayerPage.tsx",
 })
 
 
@@ -102,14 +104,15 @@ def test_embedded_curriculum_and_reference_paths_are_inventoried_and_blocked():
 
 
 def test_embedded_curriculum_inventory_omission_and_digest_drift_fail_closed():
-    audit = load_audit()
-    audit["entries"] = [entry for entry in audit["entries"] if entry["path"] != "backend/app/learning_flow.py"]
-    assert "AUDIT_PATH_UNREGISTERED: backend/app/learning_flow.py" in validate_inventory(audit)
+    for path in ("backend/app/learning_flow.py", "frontend/src/pages/LessonPlayerPage.tsx"):
+        audit = load_audit()
+        audit["entries"] = [entry for entry in audit["entries"] if entry["path"] != path]
+        assert f"AUDIT_PATH_UNREGISTERED: {path}" in validate_inventory(audit)
 
-    audit = load_audit()
-    entry = next(item for item in audit["entries"] if item["path"] == "backend/app/learning_flow.py")
-    entry["sha256"] = "0" * 64
-    assert "AUDIT_CONTENT_DIGEST_MISMATCH: backend/app/learning_flow.py" in validate_inventory(audit)
+        audit = load_audit()
+        entry = next(item for item in audit["entries"] if item["path"] == path)
+        entry["sha256"] = "0" * 64
+        assert f"AUDIT_CONTENT_DIGEST_MISMATCH: {path}" in validate_inventory(audit)
 
 
 def test_newly_discovered_content_cannot_be_cleared_by_status_flip_without_rights_evidence():

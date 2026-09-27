@@ -45,6 +45,7 @@
       "frontend/src/pages/CourseZeroPage.tsx",
       "frontend/src/pages/FirstLessonPage.tsx",
       "frontend/src/pages/LearningPage.tsx",
+      "frontend/src/pages/LessonPlayerPage.tsx",
       "shared/validated-curriculum-slice.json"
     ],
     "method": "Enumerate tracked curriculum packages, source imports, media, known embedded-content modules, curriculum regression fixtures, and curriculum reference documents; record path, classification, source/evidence links where supported, canonical size, digest mode, and SHA-256 only. No source corpus is downloaded.",
@@ -810,6 +811,25 @@
       "sizeBytes": 23491,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "LEGACY_SAMPLE_LEARNING_AND_PRACTICE_DATA",
+      "digestMode": "TEXT_LF_NORMALIZED"
+    },
+    {
+      "path": "frontend/src/pages/LessonPlayerPage.tsx",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [
+        "ocac-learn-mandarin-children"
+      ],
+      "evidenceIds": [
+        "evidence-ocac-learn-mandarin-children-series-page"
+      ],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "The canonical lesson runtime contains fixed lesson-example and speaking-prompt fallbacks alongside package-backed tasks. Item-level authorship/source/rights evidence is incomplete. This fail-closed path classification is not a finding of copying or infringement.",
+      "sha256": "1e608cf81c0b799dbad635b12f6d72f973a5794fe4f04c46b33b59c4d2d8ef12",
+      "sizeBytes": 129969,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "CANONICAL_LESSON_RUNTIME_FALLBACKS",
+      "sourceRelationship": "This is the /learning-session runtime and includes inline examples/prompts used as fallbacks for course tasks. The linked OCAC series-page evidence establishes source identity only; it does not establish the origin or reuse rights of these strings.",
       "digestMode": "TEXT_LF_NORMALIZED"
     },
     {
