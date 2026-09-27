@@ -554,6 +554,95 @@ def test_starter_l04_fails_closed_when_authored_package_license_is_changed(tmp_p
         assert response.json()["detail"] == "learning_flow_starter_l04_package_invalid"
 
 
+def test_starter_l04_rejects_malformed_choice_pairs_before_creating_session_or_tasks(tmp_path, monkeypatch):
+    import copy
+    from app import learning_flow
+    from app.database import connect
+
+    def step_data(package, key):
+        return next(step["data"] for step in package["taskBlueprint"]["learnSteps"] if step["stepKey"] == key)
+
+    def duplicate_phonetics_distractor_label(package):
+        choices = step_data(package, "exit_ticket")["questions"][0]["choices"]
+        choices[1]["label"] = choices[0]["label"]
+
+    def duplicate_sentence_pattern_label(package):
+        choices = step_data(package, "sentence_pattern")["choices"]
+        choices[1]["label"] = choices[0]["label"]
+
+    def omit_sentence_pattern_choices(package):
+        step_data(package, "sentence_pattern").pop("choices")
+
+    def empty_sentence_pattern_choices(package):
+        step_data(package, "sentence_pattern")["choices"] = []
+
+    def empty_sentence_pattern_label(package):
+        step_data(package, "sentence_pattern")["choices"][1]["label"] = "  "
+
+    def duplicate_reflection_choice_ids(package):
+        choices = step_data(package, "mini_check")["choices"]
+        choices[1]["id"] = choices[0]["id"]
+
+    def omit_reflection_choice_id(package):
+        step_data(package, "mini_check")["choices"][0].pop("id")
+
+    def empty_reflection_choice_label(package):
+        step_data(package, "mini_check")["choices"][1]["label"] = " "
+
+    def duplicate_reflection_choice_labels(package):
+        choices = step_data(package, "mini_check")["choices"]
+        choices[1]["label"] = choices[0]["label"]
+
+    cases = [
+        ("phonetics duplicate distractor label", duplicate_phonetics_distractor_label),
+        ("sentence pattern duplicate labels", duplicate_sentence_pattern_label),
+        ("sentence pattern missing choices", omit_sentence_pattern_choices),
+        ("sentence pattern empty choices", empty_sentence_pattern_choices),
+        ("sentence pattern empty label", empty_sentence_pattern_label),
+        ("reflection duplicate IDs", duplicate_reflection_choice_ids),
+        ("reflection missing ID", omit_reflection_choice_id),
+        ("reflection empty label", empty_reflection_choice_label),
+        ("reflection duplicate labels", duplicate_reflection_choice_labels),
+    ]
+
+    with client(tmp_path) as api:
+        learner = child(api, "Starter L4 malformed choices")
+        place(learner, "STARTER")
+        for lesson_id in ("starter-l01", "starter-l02", "starter-l03"):
+            response = api.post(
+                f"/api/children/{learner}/learning-sessions",
+                json={"lesson_id": lesson_id, "target_minutes": 18, "script_mode": "TRADITIONAL"},
+            )
+            assert response.status_code == 200, response.text
+            complete_session(api, learner, response.json())
+
+        original = learning_flow.get_lesson_package
+        selected_package = {"value": original("starter-l04")}
+        monkeypatch.setattr(
+            learning_flow,
+            "get_lesson_package",
+            lambda lesson_id: selected_package["value"] if lesson_id == "starter-l04" else original(lesson_id),
+        )
+        for name, corrupt in cases:
+            selected_package["value"] = copy.deepcopy(original("starter-l04"))
+            corrupt(selected_package["value"])
+            response = api.post(
+                f"/api/children/{learner}/learning-sessions",
+                json={"lesson_id": "starter-l04", "target_minutes": 18, "script_mode": "TRADITIONAL"},
+            )
+            assert response.status_code == 400, name
+            assert response.json()["detail"] == "learning_flow_starter_l04_package_invalid", name
+            with connect() as db:
+                assert db.execute(
+                    "SELECT 1 FROM learning_flow_sessions WHERE child_id=? AND lesson_id='starter-l04'",
+                    (learner,),
+                ).fetchone() is None, name
+                assert db.execute(
+                    "SELECT 1 FROM learning_flow_tasks t JOIN learning_flow_sessions s ON s.id=t.session_id WHERE s.child_id=? AND s.lesson_id='starter-l04'",
+                    (learner,),
+                ).fetchone() is None, name
+
+
 def test_starter_l03_fails_closed_when_authored_package_contract_is_broken(tmp_path, monkeypatch):
     import copy
     from app import learning_flow

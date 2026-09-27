@@ -282,6 +282,22 @@ def _starter_l03_contract() -> tuple[dict[str, Any], dict[str, dict[str, Any]]] 
 
 def _starter_l04_contract() -> tuple[dict[str, Any], dict[str, dict[str, Any]]] | None:
     """Validate the original-authored Lesson 4 animal activities against exact metadata."""
+    def valid_choice_pair(choices: Any) -> bool:
+        if not isinstance(choices, list) or len(choices) != 2:
+            return False
+        if any(
+            not isinstance(choice, dict) or
+            not isinstance(choice.get("id"), str) or not choice["id"].strip() or
+            not isinstance(choice.get("label"), str) or not choice["label"].strip() or
+            "isCorrect" in choice
+            for choice in choices
+        ):
+            return False
+        return (
+            len({choice["id"].strip() for choice in choices}) == 2 and
+            len({choice["label"].strip() for choice in choices}) == 2
+        )
+
     package = get_lesson_package("starter-l04")
     lesson = _lesson_rows().get("starter-l04")
     source = package.get("curriculumSource") if isinstance(package, dict) else None
@@ -330,12 +346,9 @@ def _starter_l04_contract() -> tuple[dict[str, Any], dict[str, dict[str, Any]]] 
         not isinstance(context.get("sceneLabel"), str) or not context["sceneLabel"].strip() or
         "scaffoldKey" in context or
         not isinstance(sentence_pattern.get("prompt"), str) or not sentence_pattern["prompt"].strip() or
-        not isinstance(sentence_pattern.get("choices"), list) or len(sentence_pattern["choices"]) != 2 or
+        not valid_choice_pair(sentence_pattern.get("choices")) or
         not isinstance(sentence_pattern.get("correctChoiceId"), str) or
         sum(1 for choice in sentence_pattern["choices"] if isinstance(choice, dict) and choice.get("id") == sentence_pattern["correctChoiceId"] and choice.get("label") == sentence) != 1 or
-        any(not isinstance(choice, dict) or not isinstance(choice.get("id"), str) or not choice["id"].strip() or
-            not isinstance(choice.get("label"), str) or not choice["label"].strip() or "isCorrect" in choice for choice in sentence_pattern["choices"]) or
-        len({choice["id"] for choice in sentence_pattern["choices"]}) != 2 or
         not isinstance(speaking, dict) or speaking.get("expectedText") != sentence or speaking.get("audioPolicy") != "LOCAL_ONLY"
     ):
         return None
@@ -364,16 +377,13 @@ def _starter_l04_contract() -> tuple[dict[str, Any], dict[str, dict[str, Any]]] 
             identity not in expected_identities or identity in seen or
             not isinstance(question_id, str) or not question_id.strip() or question_id in question_ids or
             question.get("authorship") != "TONGXUAN_AUTHORED_PRACTICE" or
-            not isinstance(choices, list) or len(choices) != 2 or not correct_choice or correct_choice.get("label") != expected_reading or
-            any(not isinstance(choice, dict) or not isinstance(choice.get("id"), str) or not choice["id"].strip() or
-                not isinstance(choice.get("label"), str) or not choice["label"].strip() or "isCorrect" in choice for choice in choices) or
-            len({choice["id"] for choice in choices}) != 2
+            not valid_choice_pair(choices) or not correct_choice or correct_choice.get("label") != expected_reading
         ):
             return None
         seen.add(identity)
         question_ids.add(question_id)
     reflection = by_key["mini_check"]["data"]
-    if reflection.get("mode") != "reflection" or not isinstance(reflection.get("prompt"), str) or not reflection["prompt"].strip() or not isinstance(reflection.get("choices"), list) or len(reflection["choices"]) != 2:
+    if reflection.get("mode") != "reflection" or not isinstance(reflection.get("prompt"), str) or not reflection["prompt"].strip() or not valid_choice_pair(reflection.get("choices")):
         return None
     summary = by_key["wrap_up"]["data"].get("wrapUpSummary")
     if not isinstance(summary, dict) or not isinstance(summary.get("completionText"), str) or not summary["completionText"].strip() or not isinstance(summary.get("masteryNotice"), str) or not summary["masteryNotice"].strip():

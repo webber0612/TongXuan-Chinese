@@ -93,6 +93,13 @@ function starterL04LearnContract(pkg: LessonPackage) {
   const pattern = byKey.sentence_pattern?.data;
   const speaking = byKey.speaking?.data?.speakingPrompt;
   const questions = byKey.exit_ticket?.data?.questions;
+  const hasValidChoicePair = (choices: unknown): choices is Array<{ id: string; label: string }> => {
+    if (!Array.isArray(choices) || choices.length !== 2) return false;
+    if (choices.some((choice: any) => !choice || typeof choice.id !== "string" || !choice.id.trim() ||
+        typeof choice.label !== "string" || !choice.label.trim() || "isCorrect" in choice)) return false;
+    return new Set(choices.map((choice: any) => choice.id.trim())).size === 2 &&
+      new Set(choices.map((choice: any) => choice.label.trim())).size === 2;
+  };
   if (
     source?.title !== "小狗" || source?.book !== "入門冊 A" || source?.lesson !== "第4課" ||
     source?.url !== "https://www.huayuworld.org/Ebook/ebookDetail?EID=623" ||
@@ -102,10 +109,8 @@ function starterL04LearnContract(pkg: LessonPackage) {
     required.some((key) => !byKey[key] || byKey[key].data.authorship !== "TONGXUAN_AUTHORED_PRACTICE") ||
     pkg.taskBlueprint.learnSteps.length !== required.length || sentence !== "我有一隻小狗。" ||
     context?.audioText !== sentence || typeof context?.sceneLabel !== "string" || !context.sceneLabel.trim() || (Boolean(context) && "scaffoldKey" in context!) ||
-    typeof pattern?.prompt !== "string" || !pattern.prompt.trim() || !Array.isArray(pattern.choices) || pattern.choices.length !== 2 ||
+    typeof pattern?.prompt !== "string" || !pattern.prompt.trim() || !hasValidChoicePair(pattern.choices) ||
     typeof pattern.correctChoiceId !== "string" || pattern.choices.filter((choice: any) => choice?.id === pattern.correctChoiceId && choice?.label === sentence).length !== 1 ||
-    pattern.choices.some((choice: any) => !choice || typeof choice.id !== "string" || !choice.id.trim() || typeof choice.label !== "string" || !choice.label.trim() || "isCorrect" in choice) ||
-    new Set(pattern.choices.map((choice: any) => choice.id)).size !== 2 ||
     recognition?.authorship !== "TONGXUAN_AUTHORED_PRACTICE" ||
     recognition.prompt !== "聽一聽發音，選出聽到的字：" ||
     JSON.stringify(recognition.questions) !== JSON.stringify([
@@ -115,7 +120,7 @@ function starterL04LearnContract(pkg: LessonPackage) {
     !speaking || speaking.expectedText !== sentence || speaking.audioPolicy !== "LOCAL_ONLY" ||
     !Array.isArray(questions) || questions.length !== chars.length * 2 ||
     byKey.mini_check?.data?.mode !== "reflection" || typeof byKey.mini_check.data.prompt !== "string" || !byKey.mini_check.data.prompt.trim() ||
-    !Array.isArray(byKey.mini_check.data.choices) || byKey.mini_check.data.choices.length !== 2 ||
+    !hasValidChoicePair(byKey.mini_check.data.choices) ||
     typeof byKey.wrap_up?.data?.wrapUpSummary?.completionText !== "string" || !byKey.wrap_up.data.wrapUpSummary.completionText.trim() ||
     typeof byKey.wrap_up.data.wrapUpSummary.masteryNotice !== "string" || !byKey.wrap_up.data.wrapUpSummary.masteryNotice.trim()
   ) return null;
@@ -129,11 +134,7 @@ function starterL04LearnContract(pkg: LessonPackage) {
     if (
       !character || !["TRADITIONAL", "SIMPLIFIED"].includes(question?.script) || seen.has(identity) ||
       typeof question.id !== "string" || !question.id.trim() || questionIds.has(question.id) || question.authorship !== "TONGXUAN_AUTHORED_PRACTICE" ||
-      !Array.isArray(question.choices) || question.choices.length !== 2 || !correct || correct.label !== expectedReading ||
-      question.choices.some((choice: any) => !choice || typeof choice.id !== "string" || !choice.id.trim() ||
-        typeof choice.label !== "string" || !choice.label.trim() || "isCorrect" in choice) ||
-      new Set(question.choices.map((choice: any) => choice.id)).size !== 2 ||
-      new Set(question.choices.map((choice: any) => choice.label)).size !== 2
+      !hasValidChoicePair(question.choices) || !correct || correct.label !== expectedReading
     ) return null;
     seen.add(identity);
     questionIds.add(question.id);

@@ -425,6 +425,18 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     const recognitionBlueprint = malformedRecognitionPackage.taskBlueprint.learnSteps.find((step) => step.stepKey === "characters");
     if (Array.isArray(recognitionBlueprint?.data.questions)) recognitionBlueprint.data.questions[0].choices[0].label = "非本課目標";
     expect(buildAuthoritativeLearnSteps(malformedRecognitionPackage, plannerTasksForLesson("starter-l04")).valid).toBe(false);
+    const malformedReflectionPackage = structuredClone(starterL04);
+    const reflectionBlueprint = malformedReflectionPackage.taskBlueprint.learnSteps.find((step) => step.stepKey === "mini_check");
+    if (Array.isArray(reflectionBlueprint?.data.choices)) reflectionBlueprint.data.choices[1].id = reflectionBlueprint.data.choices[0].id;
+    expect(buildAuthoritativeLearnSteps(malformedReflectionPackage, plannerTasksForLesson("starter-l04")).valid).toBe(false);
+    const emptyReflectionLabelPackage = structuredClone(starterL04);
+    const emptyReflectionBlueprint = emptyReflectionLabelPackage.taskBlueprint.learnSteps.find((step) => step.stepKey === "mini_check");
+    if (Array.isArray(emptyReflectionBlueprint?.data.choices)) emptyReflectionBlueprint.data.choices[1].label = " ";
+    expect(buildAuthoritativeLearnSteps(emptyReflectionLabelPackage, plannerTasksForLesson("starter-l04")).valid).toBe(false);
+    const ambiguousSentencePatternPackage = structuredClone(starterL04);
+    const sentencePatternBlueprint = ambiguousSentencePatternPackage.taskBlueprint.learnSteps.find((step) => step.stepKey === "sentence_pattern");
+    if (Array.isArray(sentencePatternBlueprint?.data.choices)) sentencePatternBlueprint.data.choices[1].label = sentencePatternBlueprint.data.choices[0].label;
+    expect(buildAuthoritativeLearnSteps(ambiguousSentencePatternPackage, plannerTasksForLesson("starter-l04")).valid).toBe(false);
   });
 
   it("14. Each supported authoritative planner task maps once to an exact reachable Lesson Player step", () => {
