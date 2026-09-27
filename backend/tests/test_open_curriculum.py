@@ -1,0 +1,371 @@
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import pytest
+from jsonschema import Draft202012Validator, FormatChecker
+from referencing import Registry, Resource
+
+from app.open_curriculum_validator import (
+    SCHEMA_DIR,
+    load_default_source_registry,
+    validate_curriculum_pack,
+    validate_source_registry,
+)
+
+
+SOURCE_ID = "tongxuan-original-authorship"
+
+
+def evidence(evidence_id="synthetic-evidence"):
+    return {
+        "evidenceId": evidence_id,
+        "sourceId": SOURCE_ID,
+        "authorityType": "AUTHORED_RATIONALE",
+        "evidenceType": "synthetic validator fixture",
+        "reference": "test-only fixture; no curriculum decision",
+        "rationale": "Synthetic data only exercises the schema and validator.",
+        "recordedAt": "2026-09-27",
+        "reviewStatus": "EVIDENCE_CHECKED",
+    }
+
+
+def provenance():
+    return {
+        "sourceId": SOURCE_ID,
+        "useMode": "EVIDENCE_REFERENCE",
+        "reference": "test-only synthetic fixture",
+        "rawContentIncluded": False,
+        "itemLicenseVerified": False,
+    }
+
+
+def core(target_id, target_type):
+    evidence_id = f"evidence-{target_id}"
+    return {
+        "id": target_id,
+        "targetType": target_type,
+        "approvalStatus": "ARCHITECT_APPROVED",
+        "rationale": "Synthetic validator fixture, not an approved product target.",
+        "evidence": [evidence(evidence_id)],
+        "difficultyEvidence": {
+            "level": 1,
+            "evidenceIds": [evidence_id],
+            "rationale": "Fixture-only level value.",
+        },
+        "sourceProvenance": [provenance()],
+    }
+
+
+def make_pack():
+    recognition = {
+        **core("skill-recognition", "SKILL"),
+        "skillId": "recognition",
+        "domain": "recognition",
+        "description": "Synthetic test skill.",
+        "level": 1,
+        "prerequisites": [],
+        "targetVocabulary": [],
+        "targetGrammar": [],
+        "targetCharacters": [],
+        "productiveRequirement": {"required": False, "description": "fixture", "evidenceIds": []},
+        "receptiveRequirement": {"required": True, "description": "fixture", "evidenceIds": ["evidence-skill-recognition"]},
+    }
+    writing = {
+        **core("skill-writing", "SKILL"),
+        "skillId": "writing",
+        "domain": "writing",
+        "description": "Synthetic test skill.",
+        "level": 1,
+        "prerequisites": ["recognition"],
+        "targetVocabulary": [],
+        "targetGrammar": [],
+        "targetCharacters": [],
+        "productiveRequirement": {"required": True, "description": "fixture", "evidenceIds": ["evidence-skill-writing"]},
+        "receptiveRequirement": {"required": False, "description": "fixture", "evidenceIds": []},
+    }
+    vocabulary = {
+        **core("vocab-demo", "VOCABULARY"),
+        "traditional": "甲乙",
+        "simplified": "甲乙",
+        "pinyin": "jiǎ yǐ",
+        "zhuyin": None,
+        "meanings": {"en": "synthetic fixture"},
+        "frequencyEvidence": [evidence("evidence-vocab-demo-frequency")],
+        "introducedBySkill": "recognition",
+        "prerequisites": [],
+        "requiresRecycling": False,
+    }
+    character = {
+        **core("char-demo", "CHARACTER"),
+        "character": "丙",
+        "recognitionLevel": 1,
+        "writingLevel": 1,
+        "readings": [{
+            "script": "BOTH",
+            "reading": "synthetic fixture reading",
+            "sourceProvenance": [provenance()],
+            "evidenceIds": ["evidence-char-demo"],
+        }],
+        "prerequisiteSkills": [],
+    }
+    grammar = {
+        **core("grammar-demo", "GRAMMAR"),
+        "evidence": [
+            evidence("evidence-grammar-demo"),
+            evidence("evidence-grammar-level"),
+            evidence("evidence-grammar-example"),
+        ],
+        "canonicalDescription": "Synthetic grammar schema fixture.",
+        "levelEvidence": {
+            "level": 1,
+            "evidenceIds": ["evidence-grammar-level"],
+            "rationale": "Fixture-only level value.",
+        },
+        "prerequisites": [],
+        "examples": [{
+            "text": "甲乙",
+            "tokens": [{"id": "vocab-demo", "tokenType": "VOCABULARY", "text": "甲乙"}],
+            "sourceProvenance": [provenance()],
+            "evidenceIds": ["evidence-grammar-example"],
+        }],
+    }
+    proposal_node = {
+        **core("proposal-skill", "SKILL"),
+        "approvalStatus": "PROPOSED",
+        "skillId": "proposal-skill",
+        "domain": "speaking",
+        "description": "Synthetic proposal schema fixture.",
+        "level": 1,
+        "prerequisites": [],
+        "targetVocabulary": [],
+        "targetGrammar": [],
+        "targetCharacters": [],
+        "productiveRequirement": {"required": True, "description": "fixture", "evidenceIds": ["evidence-proposal-skill"]},
+        "receptiveRequirement": {"required": False, "description": "fixture", "evidenceIds": []},
+    }
+    lesson = {
+        "lessonId": "synthetic-lesson",
+        "level": 1,
+        "skillIds": ["recognition", "writing"],
+        "availableSkillIds": ["recognition", "writing"],
+        "priorKnowledgeSkillIds": ["recognition"],
+        "targetVocabularyIds": ["vocab-demo"],
+        "targetGrammarIds": ["grammar-demo"],
+        "targetCharacterIds": ["char-demo"],
+        "availableTargetIds": ["vocab-demo", "grammar-demo", "char-demo"],
+        "priorKnowledgeTargetIds": [],
+        "newVocabularyIds": ["vocab-demo"],
+        "recycledTargetIds": [],
+        "sentences": [{
+            "text": "甲乙。",
+            "tokens": [{"id": "vocab-demo", "tokenType": "VOCABULARY", "text": "甲乙"}],
+            "evidenceIds": ["evidence-vocab-demo"],
+            "sourceProvenance": [provenance()],
+        }],
+        "activities": [
+            {
+                "activityId": "recognize-demo",
+                "domain": "recognition",
+                "targetIds": ["char-demo"],
+                "masteryTargets": [{"skillId": "recognition", "domain": "recognition"}],
+            },
+            {
+                "activityId": "write-demo",
+                "domain": "writing",
+                "targetIds": ["char-demo"],
+                "masteryTargets": [],
+            },
+        ],
+        "masteryTargets": [{"skillId": "recognition", "domain": "recognition"}],
+        "sourceProvenance": [provenance()],
+        "rationale": "Synthetic validator fixture only.",
+        "approvalStatus": "ARCHITECT_APPROVED",
+    }
+    return {
+        "schemaVersion": "1.0",
+        "documentType": "CURRICULUM_PACK",
+        "packId": "synthetic-pack",
+        "publicationStatus": "PUBLISHABLE",
+        "graph": {"skills": [recognition, writing], "vocabulary": [vocabulary], "grammar": [grammar], "characters": [character]},
+        "lessons": [lesson],
+        "curriculumChangeProposals": [{
+            "proposalId": "synthetic-proposal",
+            "documentType": "CURRICULUM_CHANGE_PROPOSAL",
+            "changeType": "ADD_TARGET",
+            "affectedTargetIds": [],
+            "proposedNodes": [proposal_node],
+            "rationale": "Synthetic schema fixture only; does not mutate the graph.",
+            "evidence": [evidence("evidence-proposal-record")],
+            "approvalStatus": "PROPOSED",
+        }],
+        "validationPolicy": {
+            "policyId": "synthetic-approved-policy",
+            "approved": True,
+            "maxNewVocabularyRatio": 1.0,
+            "evidenceIds": ["evidence-skill-recognition"],
+        },
+    }
+
+
+def codes(issues):
+    return {issue.code for issue in issues}
+
+
+def test_registered_source_registry_and_all_schema_files_are_valid():
+    sources = load_default_source_registry()
+    assert validate_source_registry(sources) == []
+    for path in SCHEMA_DIR.glob("*.schema.json"):
+        schema = json.loads(path.read_text(encoding="utf-8"))
+        Draft202012Validator.check_schema(schema)
+
+
+def test_contract_wrappers_resolve_and_validate_their_graph_instances():
+    pack = make_pack()
+    sources = load_default_source_registry()
+    bundle = json.loads((SCHEMA_DIR / "open-curriculum.schema.json").read_text(encoding="utf-8"))
+    source_schema = json.loads((SCHEMA_DIR / "source-registry.schema.json").read_text(encoding="utf-8"))
+    registry = Registry().with_resource(bundle["$id"], Resource.from_contents(bundle))
+    registry = registry.with_resource(source_schema["$id"], Resource.from_contents(source_schema))
+    instances = {
+        "skill-node.schema.json": pack["graph"]["skills"][0],
+        "vocabulary-node.schema.json": pack["graph"]["vocabulary"][0],
+        "grammar-node.schema.json": pack["graph"]["grammar"][0],
+        "character-node.schema.json": pack["graph"]["characters"][0],
+        "evidence.schema.json": pack["graph"]["skills"][0]["evidence"][0],
+        "source-provenance.schema.json": pack["graph"]["skills"][0]["sourceProvenance"][0],
+        "approval-status.schema.json": "ARCHITECT_APPROVED",
+        "curriculum-change-proposal.schema.json": pack["curriculumChangeProposals"][0],
+        "source-registry.schema.json": sources,
+    }
+    for wrapper_name, instance in instances.items():
+        wrapper = json.loads((SCHEMA_DIR / wrapper_name).read_text(encoding="utf-8"))
+        Draft202012Validator(
+            wrapper,
+            registry=registry,
+            format_checker=FormatChecker(),
+        ).validate(instance)
+
+
+def test_synthetic_publishable_pack_passes_composed_graph_schemas():
+    assert validate_curriculum_pack(make_pack()) == []
+
+
+def test_publishable_pack_rejects_unapproved_target_and_policy():
+    pack = make_pack()
+    pack["graph"]["vocabulary"][0]["approvalStatus"] = "EVIDENCE_CHECKED"
+    pack["validationPolicy"]["approved"] = False
+    assert {"UNAPPROVED_TARGET", "VALIDATION_POLICY_NOT_APPROVED"} <= codes(validate_curriculum_pack(pack))
+
+
+def test_publishable_pack_rejects_missing_provenance():
+    pack = make_pack()
+    del pack["graph"]["characters"][0]["sourceProvenance"]
+    assert {"MISSING_PROVENANCE", "SCHEMA_INVALID"} <= codes(validate_curriculum_pack(pack))
+
+
+def test_content_source_requires_registered_green_item_license_and_public_rights():
+    for status in ("YELLOW", "RED", "UNKNOWN"):
+        pack = make_pack()
+        source_registry = load_default_source_registry()
+        source = next(item for item in source_registry["sources"] if item["sourceId"] == SOURCE_ID)
+        source["legalStatus"] = status
+        pack["graph"]["vocabulary"][0]["sourceProvenance"] = [{
+            "sourceId": SOURCE_ID,
+            "useMode": "CONTENT_SOURCE",
+            "reference": "synthetic fixture only",
+            "rawContentIncluded": True,
+            "itemLicenseVerified": False,
+        }]
+        found = codes(validate_curriculum_pack(pack, source_registry))
+        assert {"SOURCE_NOT_GREEN", "ITEM_LICENSE_UNVERIFIED", "SOURCE_REDISTRIBUTION_NOT_CLEARED", "UNLICENSED_RAW_CONTENT"} <= found
+
+
+def test_unmet_prerequisite_and_out_of_level_targets_fail_closed():
+    pack = make_pack()
+    pack["graph"]["vocabulary"][0]["prerequisites"] = ["char-demo"]
+    pack["graph"]["characters"][0]["recognitionLevel"] = 2
+    assert {"UNMET_PREREQUISITE", "TARGET_OUT_OF_LEVEL"} <= codes(validate_curriculum_pack(pack))
+
+
+def test_unregistered_targets_and_sources_fail_closed():
+    pack = make_pack()
+    pack["lessons"][0]["targetCharacterIds"] = ["unregistered-character"]
+    pack["graph"]["vocabulary"][0]["sourceProvenance"][0]["sourceId"] = "unknown-source"
+    assert {"UNREGISTERED_TARGET", "SOURCE_NOT_REGISTERED"} <= codes(validate_curriculum_pack(pack))
+
+
+def test_new_vocabulary_ratio_is_checked_only_with_explicit_approved_limit():
+    pack = make_pack()
+    pack["validationPolicy"]["maxNewVocabularyRatio"] = 0.5
+    assert "NEW_VOCABULARY_RATIO_EXCEEDED" in codes(validate_curriculum_pack(pack))
+
+    pack = make_pack()
+    pack["validationPolicy"].pop("maxNewVocabularyRatio")
+    assert "NEW_VOCABULARY_RATIO_EXCEEDED" not in codes(validate_curriculum_pack(pack))
+
+
+def test_recycling_must_be_known_used_and_not_marked_new():
+    pack = make_pack()
+    pack["lessons"][0]["recycledTargetIds"] = ["vocab-demo"]
+    assert "UNMET_RECYCLING" in codes(validate_curriculum_pack(pack))
+
+    pack["lessons"][0]["priorKnowledgeTargetIds"] = ["vocab-demo"]
+    assert "KNOWN_VOCABULARY_MARKED_NEW" in codes(validate_curriculum_pack(pack))
+    assert "NEW_TARGET_MARKED_RECYCLED" in codes(validate_curriculum_pack(pack))
+
+
+def test_writing_activity_requires_recognition_first():
+    pack = make_pack()
+    pack["lessons"][0]["activities"].reverse()
+    assert "WRITING_BEFORE_RECOGNITION" in codes(validate_curriculum_pack(pack))
+
+
+def test_sentence_tokens_must_be_registered_and_match_sentence_text():
+    pack = make_pack()
+    sentence = pack["lessons"][0]["sentences"][0]
+    sentence["tokens"] = [{"id": "unregistered-character", "tokenType": "CHARACTER", "text": "丙"}]
+    sentence["text"] = "丙。"
+    assert {"UNREGISTERED_SENTENCE_TOKEN", "UNREGISTERED_SENTENCE_TEXT"} <= codes(validate_curriculum_pack(pack))
+
+
+def test_grammar_examples_also_require_registered_character_tokens():
+    pack = make_pack()
+    example = pack["graph"]["grammar"][0]["examples"][0]
+    example["tokens"] = [{"id": "unregistered-character", "tokenType": "CHARACTER", "text": "丙"}]
+    example["text"] = "丙"
+    assert {"UNREGISTERED_SENTENCE_TOKEN", "UNREGISTERED_SENTENCE_TEXT"} <= codes(validate_curriculum_pack(pack))
+
+
+def test_mastery_targets_must_map_to_registered_lesson_skill():
+    pack = make_pack()
+    pack["lessons"][0]["masteryTargets"] = [{"skillId": "unknown", "domain": "reading"}]
+    assert "UNSUPPORTED_MASTERY_TARGET" in codes(validate_curriculum_pack(pack))
+
+
+def test_source_provenance_cannot_smuggle_raw_text_as_evidence_reference():
+    pack = make_pack()
+    pack["lessons"][0]["sourceProvenance"][0]["rawContentIncluded"] = True
+    assert "RAW_CONTENT_AS_EVIDENCE" in codes(validate_curriculum_pack(pack))
+
+
+def test_registry_rejects_invalid_license_status():
+    sources = load_default_source_registry()
+    sources["sources"][0]["legalStatus"] = "MAYBE"
+    assert "SCHEMA_INVALID" in codes(validate_source_registry(sources))
+
+
+@pytest.mark.parametrize("wrapper", [
+    "skill-node.schema.json",
+    "vocabulary-node.schema.json",
+    "grammar-node.schema.json",
+    "character-node.schema.json",
+    "evidence.schema.json",
+    "source-provenance.schema.json",
+    "approval-status.schema.json",
+    "curriculum-change-proposal.schema.json",
+    "source-registry.schema.json",
+])
+def test_contract_inventory_contains_required_wrappers(wrapper):
+    assert (SCHEMA_DIR / wrapper).is_file()

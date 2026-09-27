@@ -11,10 +11,10 @@
     {
       "scope_id": "seed-content-dataset-source",
       "kind": "source_files",
-      "include_globs": ["backend/app/sprint_b.py", "backend/app/curriculum.py", "backend/app/learning.py", "data/*", "shared/*.json"],
-      "extensions": [".json", ".csv", ".tsv", ".txt", ".yaml", ".yml", ".py"],
+      "include_globs": ["backend/app/sprint_b.py", "backend/app/curriculum.py", "backend/app/learning.py", "data/*", "shared/validated-curriculum-slice.json", "shared/lesson-packages/**/*.json", "frontend/src/data/*.ts"],
+      "extensions": [".json", ".csv", ".tsv", ".txt", ".yaml", ".yml", ".py", ".ts"],
       "excluded_paths": ["data/license-registry.json", "data/commercialization-inventory.json"],
-      "registered_paths": ["backend/app/curriculum.py", "backend/app/learning.py", "backend/app/sprint_b.py", "shared/validated-curriculum-slice.json"]
+      "registered_paths": ["backend/app/curriculum.py", "backend/app/learning.py", "backend/app/sprint_b.py", "shared/validated-curriculum-slice.json", "shared/lesson-packages/book1-l01.json", "shared/lesson-packages/starter-l01.json", "shared/lesson-packages/starter-l02.json", "shared/lesson-packages/starter-l03.json", "shared/lesson-packages/starter-l04.json", "shared/lesson-packages/starter-l05.json", "shared/lesson-packages/basic-l01.json", "frontend/src/data/hanzi5000Database.ts", "frontend/src/data/learningPathData.ts", "frontend/src/data/lessonPackages.ts", "frontend/src/data/ocacTextbooksData.ts", "frontend/src/data/officialCoursePath.ts", "frontend/src/data/rewardsShopData.ts"]
     },
     {
       "scope_id": "repository-assets",

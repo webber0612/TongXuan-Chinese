@@ -4,3 +4,4 @@ opencc-python-reimplemented==0.1.7
 google-auth>=2.40,<3
 pytest==8.3.5
 httpx==0.28.1
+jsonschema==4.23.0
