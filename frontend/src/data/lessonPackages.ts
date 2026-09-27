@@ -83,14 +83,53 @@ function starterL03VocabularyContract(pkg: LessonPackage) {
   return { word, step, data };
 }
 
+const STARTER_L05_STEP_PRESENTATION: Record<string, {
+  stepNumber: number; domain: string | null; title: string; subtitle: string;
+  primaryAction: string; estimatedMinutes: number; required: boolean;
+}> = {
+  context: { stepNumber: 1, domain: "listening", title: "聽聽妹妹例句", subtitle: "聆聽一個原創家庭例句", primaryAction: "聆聽", estimatedMinutes: 2, required: true },
+  vocabulary: { stepNumber: 2, domain: "vocabulary", title: "親屬詞語", subtitle: "認識「妹妹」", primaryAction: "選出詞語意思", estimatedMinutes: 3, required: true },
+  exit_ticket: { stepNumber: 3, domain: "phonetics", title: "注音與拼音", subtitle: "認讀原創練習目標字音", primaryAction: "選擇字音", estimatedMinutes: 5, required: true },
+  speaking: { stepNumber: 4, domain: "speaking", title: "介紹妹妹", subtitle: "用原創例句練習口說", primaryAction: "開始錄音", estimatedMinutes: 3, required: true },
+  mini_check: { stepNumber: 5, domain: null, title: "練習回顧", subtitle: "回想今天做過的練習", primaryAction: "繼續", estimatedMinutes: 1, required: true },
+  wrap_up: { stepNumber: 6, domain: null, title: "今日練習完成", subtitle: "TongXuan 原創練習完成", primaryAction: "結束練習", estimatedMinutes: 1, required: true },
+};
+
+const STARTER_L05_SCAFFOLD = {
+  defaultLanguage: "en",
+  mode: "FULL",
+  entries: {
+    sister_example: {
+      naturalMeaning: "I have a younger sister.",
+      notes: "TongXuan-authored practice sentence; not quoted from the course source.",
+      reviewStatus: "REVIEWED",
+    },
+  },
+};
+
+const STARTER_L05_PHONETICS = {
+  "妹:TRADITIONAL": {
+    id: "traditional-mei", correctChoiceId: "tone-four",
+    choices: [{ id: "tone-four", label: "ㄇㄟˋ" }, { id: "tone-two", label: "ㄇㄟˊ" }],
+  },
+  "妹:SIMPLIFIED": {
+    id: "simplified-mei", correctChoiceId: "tone-four",
+    choices: [{ id: "tone-four", label: "mèi" }, { id: "tone-two", label: "méi" }],
+  },
+};
+
 function starterL05VocabularyContract(pkg: LessonPackage) {
   if (pkg.lessonId !== "starter-l05") return null;
+  if (!Array.isArray(pkg.vocabulary) || !Array.isArray(pkg.taskBlueprint?.learnSteps)) return null;
   const word = pkg.vocabulary.length === 1 ? pkg.vocabulary[0] : null;
   const step = pkg.taskBlueprint.learnSteps.find((candidate) => candidate.stepKey === "vocabulary");
   const data = step?.data;
+  const nativeSupport = pkg.nativeLanguageSupport as any;
   const scaffoldKey = typeof data?.scaffoldKey === "string" ? data.scaffoldKey : "";
-  const scaffold = scaffoldKey ? pkg.nativeLanguageSupport.entries[scaffoldKey] : null;
+  const scaffold = scaffoldKey ? nativeSupport?.entries?.[scaffoldKey] : null;
   if (
+    !step || step.title !== STARTER_L05_STEP_PRESENTATION.vocabulary.title ||
+    step.subtitle !== STARTER_L05_STEP_PRESENTATION.vocabulary.subtitle ||
     !word || word.id !== "starter-l05-authored-sister-word" || word.written !== "妹妹" ||
     word.authorship !== "TONGXUAN_AUTHORED" || word.reviewStatus !== "REVIEWED" ||
     word.pronunciation?.pinyin !== "mèimei" || word.pronunciation?.zhuyin !== "ㄇㄟˋ ㄇㄟ˙" ||
@@ -98,8 +137,10 @@ function starterL05VocabularyContract(pkg: LessonPackage) {
     !data || data.authorship !== "TONGXUAN_AUTHORED_PRACTICE" || data.word !== word.written ||
     data.pinyin !== word.pronunciation.pinyin || data.zhuyin !== word.pronunciation.zhuyin ||
     data.exampleSentence !== word.usage[0] || data.prompt !== "「妹妹」是什麼意思？" ||
-    typeof scaffoldKey !== "string" || !scaffold || scaffold.reviewStatus !== "REVIEWED" ||
-    typeof scaffold.naturalMeaning !== "string" || !scaffold.naturalMeaning.trim() ||
+    scaffoldKey !== "sister_example" || JSON.stringify(nativeSupport) !== JSON.stringify(STARTER_L05_SCAFFOLD) ||
+    !scaffold || scaffold.naturalMeaning !== "I have a younger sister." ||
+    scaffold.notes !== "TongXuan-authored practice sentence; not quoted from the course source." ||
+    scaffold.reviewStatus !== "REVIEWED" ||
     data.correctChoiceId !== "younger-sister" || !Array.isArray(data.choices) || data.choices.length !== 2 ||
     JSON.stringify(data.choices) !== JSON.stringify([
       { id: "younger-sister", label: "年紀比我小的姊妹" },
@@ -280,7 +321,7 @@ export function validateReviewDueItems(dueItems: unknown): dueItems is ReviewDue
         const contract = starterL03VocabularyContract(pkg);
         if (!contract || item.word !== contract.word.written) return false;
       } else if (item.lessonId === "starter-l05") {
-        const contract = starterL05VocabularyContract(pkg);
+        const contract = starterL05LearnContract(pkg)?.vocab;
         if (!contract || item.word !== contract.word.written) return false;
       } else if (item.lessonId === "starter-l04") {
         return false;
@@ -479,7 +520,7 @@ function isValidReviewTask(task: any, pkg: LessonPackage, expectedLessonId?: str
       JSON.stringify(data.choices) === JSON.stringify(contract.data.choices?.map(({ id, label }: any) => ({ id, label }))));
   }
   if (pkg.lessonId === "starter-l05") {
-    const contract = starterL05VocabularyContract(pkg);
+    const contract = starterL05LearnContract(pkg)?.vocab;
     return Boolean(contract && data.word === contract.word.written && data.prompt === contract.data.prompt &&
       JSON.stringify(data.choices) === JSON.stringify(contract.data.choices?.map(({ id, label }: any) => ({ id, label }))));
   }
@@ -542,6 +583,7 @@ function starterL03LearnContract(pkg: LessonPackage) {
 
 function starterL05LearnContract(pkg: LessonPackage) {
   if (pkg.lessonId !== "starter-l05") return null;
+  if (!Array.isArray(pkg.taskBlueprint?.learnSteps) || !Array.isArray(pkg.textBlocks) || !Array.isArray(pkg.characters)) return null;
   const lesson = officialCoursePath.stages.flatMap((stage) => stage.lessons).find((item) => item.id === pkg.lessonId);
   const source = pkg.curriculumSource as any;
   const byKey = Object.fromEntries(pkg.taskBlueprint.learnSteps.map((step) => [step.stepKey, step]));
@@ -577,40 +619,53 @@ function starterL05LearnContract(pkg: LessonPackage) {
     source?.commercialReady !== false || pkg.objectives?.[0] !== `官方目標摘要：${lesson.tongxuan.handbookSummary.text}` ||
     pkg.provenance?.authorship !== "TONGXUAN_PEDAGOGY_WRAPPER" ||
     pkg.provenance?.curriculumSourceProvenance !== "VERIFIED_OFFICIAL_TITLE" ||
+    JSON.stringify(pkg.objectives) !== JSON.stringify([
+      `官方目標摘要：${lesson.tongxuan.handbookSummary.text}`,
+      "原創練習：聽辨並認讀「妹」的聲音。",
+      "原創練習：理解「妹妹」，並用一句話介紹家人。",
+    ]) ||
+    JSON.stringify(pkg.nativeLanguageSupport) !== JSON.stringify(STARTER_L05_SCAFFOLD) ||
     pkg.characters.length !== 1 || pkg.characters[0].char !== "妹" ||
     pkg.characters[0].authorship !== "TONGXUAN_AUTHORED_PRACTICE" ||
     pkg.characters[0].pronunciation?.pinyin !== "mèi" || pkg.characters[0].pronunciation?.zhuyin !== "ㄇㄟˋ" ||
     pkg.taskBlueprint.learnSteps.length !== required.length ||
-    required.some((key) => !byKey[key] || byKey[key].data.authorship !== "TONGXUAN_AUTHORED_PRACTICE") ||
+    required.some((key) => {
+      const step = byKey[key];
+      const expected = STARTER_L05_STEP_PRESENTATION[key];
+      return !step || !expected || step.data.authorship !== "TONGXUAN_AUTHORED_PRACTICE" ||
+        step.stepNumber !== expected.stepNumber || step.domain !== expected.domain || step.title !== expected.title ||
+        step.subtitle !== expected.subtitle || step.primaryAction !== expected.primaryAction ||
+        step.estimatedMinutes !== expected.estimatedMinutes || step.required !== expected.required;
+    }) ||
     sentence !== "我有一個妹妹。" || sentenceBlocks[0]?.pinyin !== "wǒ yǒu yí ge mèimei" ||
     sentenceBlocks[0]?.zhuyin !== "ㄨㄛˇ ㄧㄡˇ ㄧˊ ㄍㄜ˙ ㄇㄟˋ ㄇㄟ˙" ||
     context?.audioText !== sentence || context?.sceneLabel !== "情境：介紹妹妹" ||
-    typeof context?.prompt !== "string" || !context.prompt.trim() ||
-    typeof context?.scaffoldKey !== "string" || !nativeEntries?.[context.scaffoldKey] ||
-    nativeEntries[context.scaffoldKey].reviewStatus !== "REVIEWED" || !vocab ||
-    !speaking || speaking.expectedText !== sentence || speaking.audioPolicy !== "LOCAL_ONLY" ||
+    context?.prompt !== "聽一聽原創練習句。" || context?.scaffoldKey !== "sister_example" ||
+    !nativeEntries?.sister_example || nativeEntries.sister_example.reviewStatus !== "REVIEWED" || !vocab ||
+    !speaking || speaking.instruction !== "請用一句話介紹家人的妹妹。" ||
+    speaking.expectedText !== sentence || speaking.audioPolicy !== "LOCAL_ONLY" ||
     !Array.isArray(questions) || questions.length !== 2 ||
+    byKey.exit_ticket.data.prompt !== "選出「妹」的正確聲調讀音。" ||
     reflection?.mode !== "reflection" || reflection.prompt !== "今天你練習介紹誰？" ||
     !validPair(reflection.choices) || JSON.stringify(reflection.choices) !== JSON.stringify([
       { id: "sister", label: "妹妹" }, { id: "more", label: "下次再練一次" },
     ]) ||
     !summary || summary.completionText !== "入門冊第五課原創練習完成。" ||
-    typeof summary.masteryNotice !== "string" || !summary.masteryNotice.trim()
+    summary.masteryNotice !== "課程授權仍須另行確認；精熟度依有效證據判定。"
   ) return null;
 
   const seen = new Set<string>();
   const questionIds = new Set<string>();
   for (const question of questions as any[]) {
     const identity = `${question?.character}:${question?.script}`;
-    const char = pkg.characters.find((item) => item.char === question?.character);
-    const expectedReading = question?.script === "TRADITIONAL" ? char?.pronunciation?.zhuyin : char?.pronunciation?.pinyin;
     const choices = question?.choices;
-    const correct = Array.isArray(choices) ? choices.find((choice: any) => choice?.id === question?.correctChoiceId) : null;
+    const expected = STARTER_L05_PHONETICS[identity as keyof typeof STARTER_L05_PHONETICS];
     if (
-      question?.character !== "妹" || !["TRADITIONAL", "SIMPLIFIED"].includes(question?.script) || seen.has(identity) ||
+      !expected || question?.character !== "妹" || !["TRADITIONAL", "SIMPLIFIED"].includes(question?.script) || seen.has(identity) ||
       typeof question.id !== "string" || !question.id.trim() || questionIds.has(question.id) ||
-      question.authorship !== "TONGXUAN_AUTHORED_PRACTICE" || !validPair(choices) || !correct ||
-      correct.label !== expectedReading
+      question.id !== expected.id || question.correctChoiceId !== expected.correctChoiceId ||
+      question.authorship !== "TONGXUAN_AUTHORED_PRACTICE" || !validPair(choices) ||
+      JSON.stringify(choices) !== JSON.stringify(expected.choices)
     ) return null;
     seen.add(identity);
     questionIds.add(question.id);

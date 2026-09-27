@@ -432,9 +432,45 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     expect(starterL05.textBlocks.every((item) => item.authorship === "TONGXUAN_AUTHORED_PRACTICE")).toBe(true);
     expect(starterL05.vocabulary.map((item) => item.written)).toEqual(["妹妹"]);
     expect(starterL05.vocabulary.every((item) => item.authorship === "TONGXUAN_AUTHORED")).toBe(true);
+    const l05Plan = buildAuthoritativeLearnSteps(starterL05, plannerTasksForLesson("starter-l05"));
+    expect(l05Plan.valid).toBe(true);
+    expect(l05Plan.steps.map(({ stepKey, title, subtitle }) => [stepKey, title, subtitle])).toEqual([
+      ["context", "聽聽妹妹例句", "聆聽一個原創家庭例句"],
+      ["vocabulary", "親屬詞語", "認識「妹妹」"],
+      ["exit_ticket", "注音與拼音", "認讀原創練習目標字音"],
+      ["speaking", "介紹妹妹", "用原創例句練習口說"],
+      ["mini_check", "練習回顧", "回想今天做過的練習"],
+      ["wrap_up", "今日練習完成", "TongXuan 原創練習完成"],
+    ]);
+    expect(getScaffoldText(starterL05, "sister_example", "FULL")).toMatchObject({
+      visibleText: "I have a younger sister.",
+      notes: "TongXuan-authored practice sentence; not quoted from the course source.",
+      reviewStatus: "REVIEWED",
+    });
     const malformedL05Package = structuredClone(starterL05);
     malformedL05Package.curriculumSource.licenseStatus = "APPROVED" as any;
     expect(buildAuthoritativeLearnSteps(malformedL05Package, plannerTasksForLesson("starter-l05")).valid).toBe(false);
+    const malformedL05Mutations: Array<(pkg: any) => void> = [
+      (pkg) => { pkg.taskBlueprint.learnSteps.find((step: any) => step.stepKey === "exit_ticket").data.questions[0].choices[1].label = "mèi"; },
+      (pkg) => { pkg.taskBlueprint.learnSteps.find((step: any) => step.stepKey === "exit_ticket").data.questions[1].choices[1].label = "ㄇㄟˋ"; },
+      (pkg) => { pkg.taskBlueprint.learnSteps.find((step: any) => step.stepKey === "exit_ticket").data.questions[0].choices[1].id = "pinyin-distractor"; },
+      (pkg) => { pkg.taskBlueprint.learnSteps.find((step: any) => step.stepKey === "exit_ticket").data.questions[1].choices[1].id = "zhuyin-distractor"; },
+      (pkg) => { pkg.taskBlueprint.learnSteps.find((step: any) => step.stepKey === "exit_ticket").data.questions[0].correctChoiceId = "tone-two"; },
+      (pkg) => { pkg.taskBlueprint.learnSteps.find((step: any) => step.stepKey === "exit_ticket").data.questions[1].correctChoiceId = "tone-two"; },
+      (pkg) => { pkg.taskBlueprint.learnSteps.find((step: any) => step.stepKey === "context").title = "未審核標題"; },
+      (pkg) => { pkg.taskBlueprint.learnSteps.find((step: any) => step.stepKey === "wrap_up").subtitle = "未審核副標題"; },
+      (pkg) => { pkg.nativeLanguageSupport.entries.sister_example.naturalMeaning = "An unexpected translation."; },
+      (pkg) => { pkg.nativeLanguageSupport.entries.sister_example.notes = "Unexpected helper note."; },
+      (pkg) => { pkg.taskBlueprint.learnSteps.find((step: any) => step.stepKey === "context").data.prompt = "Unexpected prompt."; },
+      (pkg) => { pkg.taskBlueprint.learnSteps.find((step: any) => step.stepKey === "speaking").data.speakingPrompt.instruction = "Unexpected speaking copy."; },
+      (pkg) => { pkg.taskBlueprint.learnSteps.find((step: any) => step.stepKey === "exit_ticket").data.prompt = "Unexpected phonetics prompt."; },
+      (pkg) => { pkg.taskBlueprint.learnSteps.find((step: any) => step.stepKey === "wrap_up").data.wrapUpSummary.masteryNotice = "Unexpected notice."; },
+    ];
+    for (const mutate of malformedL05Mutations) {
+      const malformed = structuredClone(starterL05) as any;
+      mutate(malformed);
+      expect(buildAuthoritativeLearnSteps(malformed, plannerTasksForLesson("starter-l05"))).toMatchObject({ valid: false, steps: [] });
+    }
     const malformedRecognitionPackage = structuredClone(starterL04);
     const recognitionBlueprint = malformedRecognitionPackage.taskBlueprint.learnSteps.find((step) => step.stepKey === "characters");
     if (Array.isArray(recognitionBlueprint?.data.questions)) recognitionBlueprint.data.questions[0].choices[0].label = "非本課目標";

@@ -724,18 +724,40 @@ def test_starter_l05_malformed_package_fails_closed_before_material_session_or_t
             complete_session(api, learner, current)
 
         original = learning_flow.get_lesson_package
-        broken = copy.deepcopy(original("starter-l05"))
-        broken["vocabulary"][0]["id"] = "unrelated-word"
-        monkeypatch.setattr(learning_flow, "get_lesson_package", lambda lesson_id: broken if lesson_id == "starter-l05" else original(lesson_id))
-        response = api.post(
-            f"/api/children/{learner}/learning-sessions",
-            json={"lesson_id": "starter-l05", "target_minutes": 18, "script_mode": "TRADITIONAL"},
-        )
-        assert response.status_code == 400 and response.json()["detail"] == "learning_flow_starter_l05_package_invalid"
-        with connect() as db:
-            assert db.execute("SELECT 1 FROM learning_flow_sessions WHERE child_id=? AND lesson_id='starter-l05'", (learner,)).fetchone() is None
-            assert db.execute("SELECT 1 FROM learning_flow_tasks WHERE child_id=? AND lesson_id='starter-l05'", (learner,)).fetchone() is None
-            assert db.execute("SELECT 1 FROM sentences WHERE child_id=? AND source_name='TONGXUAN_AUTHORED_PRACTICE · starter-l05'", (learner,)).fetchone() is None
+        mutations = [
+            lambda package: package["vocabulary"][0].update(id="unrelated-word"),
+            lambda package: package["taskBlueprint"]["learnSteps"][2]["data"]["questions"][0]["choices"][1].update(label="mèi"),
+            lambda package: package["taskBlueprint"]["learnSteps"][2]["data"]["questions"][1]["choices"][1].update(label="ㄇㄟˋ"),
+            lambda package: package["taskBlueprint"]["learnSteps"][2]["data"]["questions"][0]["choices"][1].update(id="pinyin-distractor"),
+            lambda package: package["taskBlueprint"]["learnSteps"][2]["data"]["questions"][1]["choices"][1].update(id="zhuyin-distractor"),
+            lambda package: package["taskBlueprint"]["learnSteps"][2]["data"]["questions"][0].update(correctChoiceId="tone-two"),
+            lambda package: package["taskBlueprint"]["learnSteps"][2]["data"]["questions"][1].update(correctChoiceId="tone-two"),
+            lambda package: package["taskBlueprint"]["learnSteps"][0].update(title="未審核標題"),
+            lambda package: package["taskBlueprint"]["learnSteps"][5].update(subtitle="未審核副標題"),
+            lambda package: package["nativeLanguageSupport"]["entries"]["sister_example"].update(naturalMeaning="An unexpected translation."),
+            lambda package: package["nativeLanguageSupport"]["entries"]["sister_example"].update(notes="Unexpected helper note."),
+            lambda package: package["taskBlueprint"]["learnSteps"][0]["data"].update(prompt="Unexpected prompt."),
+            lambda package: package["taskBlueprint"]["learnSteps"][3]["data"]["speakingPrompt"].update(instruction="Unexpected speaking copy."),
+            lambda package: package["taskBlueprint"]["learnSteps"][2]["data"].update(prompt="Unexpected phonetics prompt."),
+            lambda package: package["taskBlueprint"]["learnSteps"][5]["data"]["wrapUpSummary"].update(masteryNotice="Unexpected notice."),
+        ]
+        for mutation_index, mutate in enumerate(mutations):
+            broken = copy.deepcopy(original("starter-l05"))
+            mutate(broken)
+            monkeypatch.setattr(
+                learning_flow, "get_lesson_package",
+                lambda lesson_id, broken=broken: broken if lesson_id == "starter-l05" else original(lesson_id),
+            )
+            response = api.post(
+                f"/api/children/{learner}/learning-sessions",
+                json={"lesson_id": "starter-l05", "target_minutes": 18, "script_mode": "TRADITIONAL"},
+            )
+            assert response.status_code == 400 and response.json()["detail"] == "learning_flow_starter_l05_package_invalid", f"L5 package mutation {mutation_index} was accepted: {response.text}"
+            with connect() as db:
+                assert db.execute("SELECT 1 FROM learning_flow_sessions WHERE child_id=? AND lesson_id='starter-l05'", (learner,)).fetchone() is None
+                assert db.execute("SELECT 1 FROM learning_flow_tasks WHERE child_id=? AND lesson_id='starter-l05'", (learner,)).fetchone() is None
+                assert db.execute("SELECT 1 FROM curriculum_item_links WHERE child_id=? AND lesson_id='starter-l05'", (learner,)).fetchone() is None
+                assert db.execute("SELECT 1 FROM sentences WHERE child_id=? AND source_name='TONGXUAN_AUTHORED_PRACTICE · starter-l05'", (learner,)).fetchone() is None
 
 
 def test_starter_l04_fails_closed_when_authored_package_license_is_changed(tmp_path, monkeypatch):

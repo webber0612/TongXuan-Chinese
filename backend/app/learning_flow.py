@@ -419,6 +419,21 @@ def _starter_l05_contract() -> tuple[dict[str, Any], dict[str, dict[str, Any]]] 
     by_key = {step.get("stepKey"): step for step in steps if isinstance(step, dict) and isinstance(step.get("stepKey"), str)} if isinstance(steps, list) else {}
     if not isinstance(steps, list) or len(by_key) != len(steps) or set(by_key) != required_keys:
         return None
+    expected_step_presentation = {
+        "context": (1, "listening", "聽聽妹妹例句", "聆聽一個原創家庭例句", "聆聽", 2),
+        "vocabulary": (2, "vocabulary", "親屬詞語", "認識「妹妹」", "選出詞語意思", 3),
+        "exit_ticket": (3, "phonetics", "注音與拼音", "認讀原創練習目標字音", "選擇字音", 5),
+        "speaking": (4, "speaking", "介紹妹妹", "用原創例句練習口說", "開始錄音", 3),
+        "mini_check": (5, None, "練習回顧", "回想今天做過的練習", "繼續", 1),
+        "wrap_up": (6, None, "今日練習完成", "TongXuan 原創練習完成", "結束練習", 1),
+    }
+    if any(
+        (by_key[key].get("stepNumber"), by_key[key].get("domain"), by_key[key].get("title"),
+         by_key[key].get("subtitle"), by_key[key].get("primaryAction"), by_key[key].get("estimatedMinutes"),
+         by_key[key].get("required")) != (*expected, True)
+        for key, expected in expected_step_presentation.items()
+    ):
+        return None
     if any(not isinstance(by_key[key].get("data"), dict) or by_key[key]["data"].get("authorship") != "TONGXUAN_AUTHORED_PRACTICE" for key in required_keys):
         return None
 
@@ -461,9 +476,27 @@ def _starter_l05_contract() -> tuple[dict[str, Any], dict[str, dict[str, Any]]] 
 
     native = package.get("nativeLanguageSupport")
     native_entries = native.get("entries") if isinstance(native, dict) else None
+    expected_scaffold = {
+        "defaultLanguage": "en",
+        "mode": "FULL",
+        "entries": {
+            "sister_example": {
+                "naturalMeaning": "I have a younger sister.",
+                "notes": "TongXuan-authored practice sentence; not quoted from the course source.",
+                "reviewStatus": "REVIEWED",
+            },
+        },
+    }
     if (
         context.get("audioText") != sentence or not isinstance(context.get("prompt"), str) or not context["prompt"].strip() or
+        context.get("prompt") != "聽一聽原創練習句。" or
         context.get("sceneLabel") != "情境：介紹妹妹" or context.get("scaffoldKey") != "sister_example" or
+        package.get("objectives") != [
+            f"官方目標摘要：{lesson['officialObjectiveSummary']}",
+            "原創練習：聽辨並認讀「妹」的聲音。",
+            "原創練習：理解「妹妹」，並用一句話介紹家人。",
+        ] or
+        native != expected_scaffold or
         not isinstance(native_entries, dict) or not isinstance(native_entries.get("sister_example"), dict) or
         native_entries["sister_example"].get("reviewStatus") != "REVIEWED" or
         not word or word.get("id") != "starter-l05-authored-sister-word" or word.get("written") != "妹妹" or
@@ -475,16 +508,31 @@ def _starter_l05_contract() -> tuple[dict[str, Any], dict[str, dict[str, Any]]] 
         vocabulary.get("prompt") != "「妹妹」是什麼意思？" or not valid_pair(choices) or
         choices != [{"id": "younger-sister", "label": "年紀比我小的姊妹"}, {"id": "older-sister", "label": "年紀比我大的姊妹"}] or
         answer_key != "younger-sister" or
-        not isinstance(speaking, dict) or speaking.get("expectedText") != sentence or speaking.get("audioPolicy") != "LOCAL_ONLY" or
+        not isinstance(speaking, dict) or speaking.get("instruction") != "請用一句話介紹家人的妹妹。" or
+        speaking.get("expectedText") != sentence or speaking.get("audioPolicy") != "LOCAL_ONLY" or
         reflection.get("mode") != "reflection" or reflection.get("prompt") != "今天你練習介紹誰？" or not valid_pair(reflection.get("choices")) or
         reflection.get("choices") != [{"id": "sister", "label": "妹妹"}, {"id": "more", "label": "下次再練一次"}] or
         not isinstance(summary, dict) or summary.get("completionText") != "入門冊第五課原創練習完成。" or
-        not isinstance(summary.get("masteryNotice"), str) or not summary["masteryNotice"].strip()
+        summary.get("masteryNotice") != "課程授權仍須另行確認；精熟度依有效證據判定。"
     ):
         return None
 
+    if by_key["exit_ticket"]["data"].get("prompt") != "選出「妹」的正確聲調讀音。":
+        return None
     questions = by_key["exit_ticket"]["data"].get("questions")
     expected = {("妹", "TRADITIONAL"), ("妹", "SIMPLIFIED")}
+    expected_phonetics = {
+        ("妹", "TRADITIONAL"): {
+            "id": "traditional-mei",
+            "correctChoiceId": "tone-four",
+            "choices": [{"id": "tone-four", "label": "ㄇㄟˋ"}, {"id": "tone-two", "label": "ㄇㄟˊ"}],
+        },
+        ("妹", "SIMPLIFIED"): {
+            "id": "simplified-mei",
+            "correctChoiceId": "tone-four",
+            "choices": [{"id": "tone-four", "label": "mèi"}, {"id": "tone-two", "label": "méi"}],
+        },
+    }
     if not isinstance(questions, list) or len(questions) != len(expected):
         return None
     seen: set[tuple[str, str]] = set()
@@ -492,15 +540,20 @@ def _starter_l05_contract() -> tuple[dict[str, Any], dict[str, dict[str, Any]]] 
     for question in questions:
         if not isinstance(question, dict):
             return None
-        identity = (question.get("character"), question.get("script"))
+        character, script = question.get("character"), question.get("script")
+        if not isinstance(character, str) or not isinstance(script, str):
+            return None
+        identity = (character, script)
         question_id, answer, options = question.get("id"), question.get("correctChoiceId"), question.get("choices")
         expected_reading = PHONETICS.get(identity[0], {}).get(identity[1])
         expected_label = expected_reading[0] if identity[1] == "TRADITIONAL" and expected_reading else expected_reading[1] if expected_reading else None
+        expected_question = expected_phonetics.get(identity)
         correct = next((option for option in options if isinstance(option, dict) and option.get("id") == answer), None) if isinstance(options, list) else None
         if (
             identity not in expected or identity in seen or not isinstance(question_id, str) or not question_id.strip() or question_id in question_ids or
+            question_id != expected_question["id"] or answer != expected_question["correctChoiceId"] or
             question.get("authorship") != "TONGXUAN_AUTHORED_PRACTICE" or not valid_pair(options) or
-            not correct or correct.get("label") != expected_label
+            options != expected_question["choices"] or not correct or correct.get("label") != expected_label
         ):
             return None
         seen.add(identity)
