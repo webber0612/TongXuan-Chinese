@@ -491,6 +491,22 @@ def test_publishable_graph_claims_reject_unreviewed_and_rejected_evidence():
     assert "GRAPH_CLAIM_EVIDENCE_UNVERIFIED" in found
 
 
+def test_approved_graph_claims_reject_unreviewed_evidence_in_proposed_pack():
+    pack = make_pack()
+    pack["publicationStatus"] = "PROPOSED"
+    pack["graph"]["vocabulary"][0]["evidence"][0]["reviewStatus"] = "REJECTED"
+
+    found = codes(validate_curriculum_pack(pack))
+    assert "GRAPH_CLAIM_EVIDENCE_UNVERIFIED" in found
+
+    pack = make_pack()
+    pack["publicationStatus"] = "PROPOSED"
+    pack["graph"]["vocabulary"][0]["frequencyEvidence"][0]["reviewStatus"] = "PROPOSED"
+
+    found = codes(validate_curriculum_pack(pack))
+    assert "GRAPH_CLAIM_EVIDENCE_UNVERIFIED" in found
+
+
 def test_unresolved_grammar_policy_fails_closed_for_approved_or_publishable_nodes():
     pack = make_pack()
     pack["graph"]["grammar"][0]["receptiveProductivePolicy"] = "UNRESOLVED"

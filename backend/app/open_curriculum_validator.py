@@ -741,6 +741,9 @@ def validate_curriculum_pack(
             if not isinstance(node, Mapping):
                 continue
             node_path = _path("/graph", graph_paths[target_type], index)
+            requires_reviewed_claim_evidence = (
+                publishable or node.get("approvalStatus") == "ARCHITECT_APPROVED"
+            )
             local_evidence_ids = {
                 value.get("evidenceId")
                 for _, value in _walk(node)
@@ -771,14 +774,14 @@ def validate_curriculum_pack(
                             f"Evidence {evidence_id!r} does not declare support for {expected_claim}.",
                         )
                     if (
-                        publishable
+                        requires_reviewed_claim_evidence
                         and isinstance(evidence_record, Mapping)
                         and evidence_record.get("reviewStatus") not in {"EVIDENCE_CHECKED", "ARCHITECT_APPROVED"}
                     ):
                         add(
                             "GRAPH_CLAIM_EVIDENCE_UNVERIFIED",
                             ref_path,
-                            f"Publishable graph claims require checked evidence; {evidence_id!r} is {evidence_record.get('reviewStatus')!r}.",
+                            f"Approved or publishable graph claims require checked evidence; {evidence_id!r} is {evidence_record.get('reviewStatus')!r}.",
                         )
 
             for difficulty_field in ("difficultyEvidence", "levelEvidence"):
@@ -816,13 +819,13 @@ def validate_curriculum_pack(
                                 "Frequency evidence must declare VOCABULARY_FREQUENCY support.",
                             )
                         if (
-                            publishable
+                            requires_reviewed_claim_evidence
                             and evidence_record.get("reviewStatus") not in {"EVIDENCE_CHECKED", "ARCHITECT_APPROVED"}
                         ):
                             add(
                                 "GRAPH_CLAIM_EVIDENCE_UNVERIFIED",
                                 _path(evidence_path, "reviewStatus"),
-                                "Publishable frequency claims require checked evidence.",
+                                "Approved or publishable frequency claims require checked evidence.",
                             )
             else:
                 sequence_policy = node.get("receptiveProductivePolicy")
