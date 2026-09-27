@@ -11,7 +11,7 @@ The default source registry is [`shared/content-sources/source-registry.json`](.
 - The pack validation policy must have `approved: true`.
 - Every graph target and lesson must be `ARCHITECT_APPROVED`.
 - Target/source references must resolve to registered graph nodes and source-registry entries.
-- Every publishable content-bearing target and example needs `CONTENT_SOURCE` provenance with item-level creator/date, rights-grant reference, verification, and explicit public-repository permission. A `CONDITIONAL` registry permission is accepted only when the item record says `YES`; `NO`, `NOT_ALLOWED`, and `UNKNOWN` remain blocked. `EVIDENCE_REFERENCE` alone cannot authorize publishing content. Raw source material additionally requires cleared raw-ingestion permission.
+- Every publishable content-bearing target and example needs `CONTENT_SOURCE` provenance with item-level creator/date, rights-grant reference, verification, and explicit public-repository permission. This includes proposed nodes embedded in a publishable pack because proposal text is also present in the public artifact. A `CONDITIONAL` registry permission is accepted only when the item record says `YES`; `NO`, `NOT_ALLOWED`, and `UNKNOWN` remain blocked. `EVIDENCE_REFERENCE` alone cannot authorize publishing content. Raw source material additionally requires cleared raw-ingestion permission.
 - Content-source records require item-level rights evidence in the schema; missing rights information fails validation before publication.
 - Lesson activities, recognition-before-writing order, mastery references, and prerequisite knowledge are checked and accumulated independently for every lesson in pack order.
 - Evidence references may cite a source but cannot contain its raw material.

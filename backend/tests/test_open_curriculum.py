@@ -297,6 +297,7 @@ def test_publishable_content_cannot_be_marked_as_evidence_reference_only():
         lambda pack: pack["graph"]["vocabulary"][0],
         lambda pack: pack["graph"]["grammar"][0]["examples"][0],
         lambda pack: pack["lessons"][0]["sentences"][0],
+        lambda pack: pack["curriculumChangeProposals"][0]["proposedNodes"][0],
     ):
         pack = make_pack()
         content_node(pack)["sourceProvenance"] = [{

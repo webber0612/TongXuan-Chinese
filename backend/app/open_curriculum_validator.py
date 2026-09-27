@@ -166,10 +166,15 @@ def _permission_cleared(registry_permission: Any, item_permission: Any) -> bool:
 
 def _requires_content_rights(value: Mapping[str, Any], object_path: str) -> bool:
     """Identify graph targets and authored text-bearing curriculum examples."""
+    curriculum_content_paths = (
+        "/graph/",
+        "/lessons/",
+        "/curriculumChangeProposals/",
+    )
     return (
-        (object_path.startswith("/graph/") and value.get("targetType") in {"SKILL", "VOCABULARY", "GRAMMAR", "CHARACTER"})
-        or (object_path.startswith("/graph/") and isinstance(value.get("reading"), str))
-        or (object_path.startswith(("/graph/", "/lessons/")) and isinstance(value.get("text"), str) and isinstance(value.get("tokens"), list))
+        (object_path.startswith(curriculum_content_paths) and value.get("targetType") in {"SKILL", "VOCABULARY", "GRAMMAR", "CHARACTER"})
+        or (object_path.startswith(curriculum_content_paths) and isinstance(value.get("reading"), str))
+        or (object_path.startswith(curriculum_content_paths) and isinstance(value.get("text"), str) and isinstance(value.get("tokens"), list))
     )
 
 
