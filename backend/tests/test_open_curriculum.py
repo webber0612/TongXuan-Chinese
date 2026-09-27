@@ -111,6 +111,7 @@ def make_pack():
         **core("skill-recognition", "SKILL"),
         "skillId": "recognition",
         "domain": "recognition",
+        "capability": "Synthetic recognition capability statement.",
         "description": "Synthetic test skill.",
         "level": 1,
         "prerequisites": [],
@@ -124,6 +125,7 @@ def make_pack():
         **core("skill-writing", "SKILL"),
         "skillId": "writing",
         "domain": "writing",
+        "capability": "Synthetic writing capability statement.",
         "description": "Synthetic test skill.",
         "level": 1,
         "prerequisites": ["recognition"],
@@ -148,7 +150,9 @@ def make_pack():
     character = {
         **core("char-demo", "CHARACTER"),
         "character": "丙",
+        "exposureLevel": 1,
         "recognitionLevel": 1,
+        "readingLevel": 1,
         "writingLevel": 1,
         "readings": [{
             "script": "BOTH",
@@ -184,6 +188,7 @@ def make_pack():
         "approvalStatus": "PROPOSED",
         "skillId": "proposal-skill",
         "domain": "speaking",
+        "capability": "Synthetic proposed speaking capability.",
         "description": "Synthetic proposal schema fixture.",
         "level": 1,
         "prerequisites": [],
@@ -199,6 +204,7 @@ def make_pack():
         "skillIds": ["recognition", "writing"],
         "availableSkillIds": ["recognition", "writing"],
         "priorKnowledgeSkillIds": ["recognition"],
+        "priorRecognizedCharacterIds": [],
         "targetVocabularyIds": ["vocab-demo"],
         "targetGrammarIds": ["grammar-demo"],
         "targetCharacterIds": ["char-demo"],
@@ -232,7 +238,7 @@ def make_pack():
         "approvalStatus": "ARCHITECT_APPROVED",
     }
     return {
-        "schemaVersion": "1.0",
+        "schemaVersion": "1.2",
         "documentType": "CURRICULUM_PACK",
         "packId": "synthetic-pack",
         "publicationStatus": "PUBLISHABLE",
@@ -300,6 +306,30 @@ def test_synthetic_publishable_pack_passes_composed_graph_schemas():
     assert validate_curriculum_pack(make_pack()) == []
 
 
+def test_skill_capability_is_required_by_graph_schema_v1_2():
+    pack = make_pack()
+    del pack["graph"]["skills"][0]["capability"]
+
+    assert "SCHEMA_INVALID" in codes(validate_curriculum_pack(pack))
+
+
+def test_lesson_schema_requires_explicit_prior_character_recognition_state():
+    pack = make_pack()
+    del pack["lessons"][0]["priorRecognizedCharacterIds"]
+
+    assert "SCHEMA_INVALID" in codes(validate_curriculum_pack(pack))
+
+
+def test_prior_recognition_declaration_fails_closed_for_wrong_or_not_yet_known_targets():
+    pack = make_pack()
+    pack["lessons"][0]["priorRecognizedCharacterIds"] = ["vocab-demo"]
+    assert "UNSUPPORTED_PRIOR_RECOGNITION" in codes(validate_curriculum_pack(pack))
+
+    pack = make_pack()
+    pack["lessons"][0]["priorRecognizedCharacterIds"] = ["char-demo"]
+    assert "PRIOR_RECOGNITION_NOT_KNOWN" in codes(validate_curriculum_pack(pack))
+
+
 def test_publishable_pack_rejects_unapproved_target_and_policy():
     pack = make_pack()
     pack["graph"]["vocabulary"][0]["approvalStatus"] = "EVIDENCE_CHECKED"
@@ -359,6 +389,234 @@ def test_unmet_prerequisite_and_out_of_level_targets_fail_closed():
     pack["graph"]["vocabulary"][0]["prerequisites"] = ["char-demo"]
     pack["graph"]["characters"][0]["recognitionLevel"] = 2
     assert {"UNMET_PREREQUISITE", "TARGET_OUT_OF_LEVEL"} <= codes(validate_curriculum_pack(pack))
+
+
+def test_graph_relationships_resolve_across_domains_without_approving_new_targets():
+    pack = make_pack()
+    pack["graph"]["skills"][0]["targetVocabulary"] = ["vocab-demo"]
+    pack["graph"]["skills"][0]["targetGrammar"] = ["grammar-demo"]
+    pack["graph"]["skills"][0]["targetCharacters"] = ["char-demo"]
+    pack["graph"]["vocabulary"][0]["prerequisites"] = ["recognition"]
+    pack["graph"]["grammar"][0]["prerequisites"] = ["recognition"]
+    pack["graph"]["characters"][0]["prerequisiteSkills"] = ["recognition"]
+
+    assert validate_curriculum_pack(pack) == []
+
+
+def test_graph_relationships_reject_missing_and_wrong_type_references():
+    pack = make_pack()
+    pack["graph"]["skills"][0]["prerequisites"] = ["missing-skill"]
+    pack["graph"]["skills"][0]["targetVocabulary"] = ["grammar-demo"]
+    pack["graph"]["skills"][0]["targetGrammar"] = ["missing-grammar"]
+    pack["graph"]["skills"][0]["targetCharacters"] = ["vocab-demo"]
+    pack["graph"]["vocabulary"][0]["introducedBySkill"] = "missing-skill"
+    pack["graph"]["vocabulary"][0]["prerequisites"] = ["missing-target"]
+    pack["graph"]["grammar"][0]["prerequisites"] = ["missing-target"]
+    pack["graph"]["characters"][0]["prerequisiteSkills"] = ["vocab-demo"]
+
+    found = validate_curriculum_pack(pack)
+    assert {"UNREGISTERED_GRAPH_REFERENCE", "GRAPH_REFERENCE_TYPE_MISMATCH"} <= codes(found)
+    assert sum(issue.code == "UNREGISTERED_GRAPH_REFERENCE" for issue in found) >= 5
+    assert sum(issue.code == "GRAPH_REFERENCE_TYPE_MISMATCH" for issue in found) >= 3
+
+
+def test_graph_evidence_references_must_resolve_within_the_pack():
+    pack = make_pack()
+    pack["graph"]["skills"][0]["productiveRequirement"]["evidenceIds"] = ["missing-evidence"]
+
+    assert "EVIDENCE_NOT_REGISTERED" in codes(validate_curriculum_pack(pack))
+
+
+def test_graph_rejects_skill_alias_collisions_with_skills_and_target_ids():
+    pack = make_pack()
+    pack["graph"]["skills"][1]["skillId"] = "recognition"
+    assert "SKILL_ALIAS_COLLISION" in codes(validate_curriculum_pack(pack))
+
+    pack = make_pack()
+    pack["graph"]["skills"][1]["skillId"] = "vocab-demo"
+    assert "SKILL_ALIAS_COLLISION" in codes(validate_curriculum_pack(pack))
+
+
+def test_graph_rejects_self_prerequisite_and_cross_target_cycles():
+    pack = make_pack()
+    pack["graph"]["grammar"][0]["prerequisites"] = ["grammar-demo"]
+    assert "SELF_PREREQUISITE" in codes(validate_curriculum_pack(pack))
+
+    pack = make_pack()
+    pack["graph"]["vocabulary"][0]["prerequisites"] = ["grammar-demo"]
+    pack["graph"]["grammar"][0]["prerequisites"] = ["vocab-demo"]
+    found = validate_curriculum_pack(pack)
+    cycle_issues = [issue for issue in found if issue.code == "GRAPH_PREREQUISITE_CYCLE"]
+    assert len(cycle_issues) == 1
+    assert "grammar-demo" in cycle_issues[0].message
+    assert "vocab-demo" in cycle_issues[0].message
+
+
+def test_exposure_only_character_does_not_require_or_infer_later_stages():
+    pack = make_pack()
+    character = pack["graph"]["characters"][0]
+    character["recognitionLevel"] = None
+    character["readingLevel"] = None
+    character["writingLevel"] = None
+    pack["lessons"][0]["activities"] = [{
+        "activityId": "expose-character",
+        "domain": "character_exposure",
+        "targetIds": ["char-demo"],
+        "masteryTargets": [],
+    }]
+
+    assert validate_curriculum_pack(pack) == []
+
+    pack["lessons"][0]["activities"].append({
+        "activityId": "write-exposure-only-character",
+        "domain": "writing",
+        "targetIds": ["char-demo"],
+        "masteryTargets": [],
+    })
+    assert "WRITING_LEVEL_UNSUPPORTED" in codes(validate_curriculum_pack(pack))
+
+
+def test_exposure_activity_uses_its_own_level_not_the_later_recognition_level():
+    pack = make_pack()
+    character = pack["graph"]["characters"][0]
+    character["exposureLevel"] = 1
+    character["recognitionLevel"] = 2
+    character["readingLevel"] = None
+    character["writingLevel"] = 2
+    pack["lessons"][0]["activities"] = [{
+        "activityId": "expose-before-recognition",
+        "domain": "character_exposure",
+        "targetIds": ["char-demo"],
+        "masteryTargets": [],
+    }]
+
+    assert validate_curriculum_pack(pack) == []
+
+
+def test_nonrequired_exposure_stage_is_null_and_cannot_back_an_exposure_activity():
+    pack = make_pack()
+    pack["graph"]["characters"][0]["exposureLevel"] = None
+
+    assert validate_curriculum_pack(pack) == []
+
+    pack["lessons"][0]["activities"].append({
+        "activityId": "expose-without-exposure-stage",
+        "domain": "character_exposure",
+        "targetIds": ["char-demo"],
+        "masteryTargets": [],
+    })
+    assert "EXPOSURE_LEVEL_UNSUPPORTED" in codes(validate_curriculum_pack(pack))
+
+
+def test_character_writing_requires_a_recognition_stage_and_cannot_precede_it():
+    pack = make_pack()
+    pack["graph"]["characters"][0]["recognitionLevel"] = None
+    assert "CHARACTER_WRITING_WITHOUT_RECOGNITION" in codes(validate_curriculum_pack(pack))
+
+    pack = make_pack()
+    pack["graph"]["characters"][0]["recognitionLevel"] = 2
+    pack["graph"]["characters"][0]["writingLevel"] = 1
+    assert "CHARACTER_WRITING_BEFORE_RECOGNITION" in codes(validate_curriculum_pack(pack))
+
+
+def test_recognition_activity_requires_an_explicit_recognition_level():
+    pack = make_pack()
+    character = pack["graph"]["characters"][0]
+    character["recognitionLevel"] = None
+    character["writingLevel"] = None
+
+    assert "RECOGNITION_LEVEL_UNSUPPORTED" in codes(validate_curriculum_pack(pack))
+
+
+def test_exposure_in_one_lesson_does_not_satisfy_later_writing_recognition_gate():
+    pack = make_pack()
+    character = pack["graph"]["characters"][0]
+    character["exposureLevel"] = 1
+    character["recognitionLevel"] = 2
+    character["readingLevel"] = None
+    character["writingLevel"] = 2
+
+    first = pack["lessons"][0]
+    first["level"] = 1
+    first["activities"] = [{
+        "activityId": "expose-character",
+        "domain": "character_exposure",
+        "targetIds": ["char-demo"],
+        "masteryTargets": [],
+    }]
+    second = deepcopy(first)
+    second["lessonId"] = "synthetic-lesson-2"
+    second["level"] = 2
+    second["priorKnowledgeTargetIds"] = ["char-demo", "vocab-demo"]
+    second["priorRecognizedCharacterIds"] = []
+    second["newVocabularyIds"] = []
+    second["recycledTargetIds"] = ["vocab-demo"]
+    second["activities"] = [{
+        "activityId": "write-character",
+        "domain": "writing",
+        "targetIds": ["char-demo"],
+        "masteryTargets": [],
+    }]
+    pack["lessons"].append(second)
+
+    assert "WRITING_BEFORE_RECOGNITION" in codes(validate_curriculum_pack(pack))
+
+    second["priorRecognizedCharacterIds"] = ["char-demo"]
+    assert validate_curriculum_pack(pack) == []
+
+
+def test_character_reading_activity_requires_an_explicit_reading_level():
+    pack = make_pack()
+    pack["graph"]["characters"][0]["readingLevel"] = None
+    pack["lessons"][0]["activities"].append({
+        "activityId": "read-character",
+        "domain": "character_reading",
+        "targetIds": ["char-demo"],
+        "masteryTargets": [],
+    })
+
+    assert "READING_LEVEL_UNSUPPORTED" in codes(validate_curriculum_pack(pack))
+
+
+def test_graph_prerequisite_cycle_diagnostics_are_deterministic():
+    pack = make_pack()
+    pack["graph"]["skills"][0]["prerequisites"] = ["writing"]
+    pack["graph"]["skills"][1]["prerequisites"] = ["recognition"]
+
+    first = validate_curriculum_pack(pack)
+    second = validate_curriculum_pack(pack)
+    first_cycles = [issue for issue in first if issue.code == "GRAPH_PREREQUISITE_CYCLE"]
+    second_cycles = [issue for issue in second if issue.code == "GRAPH_PREREQUISITE_CYCLE"]
+    assert first_cycles == second_cycles
+    assert len(first_cycles) == 1
+
+
+def test_graph_cycle_detection_handles_a_chain_deeper_than_python_recursion_limit():
+    pack = make_pack()
+    template = pack["graph"]["skills"][0]
+    node_count = 1_050
+    skills = []
+    for index in range(node_count):
+        node = deepcopy(template)
+        evidence_id = f"evidence-cycle-skill-{index:04d}"
+        node["id"] = f"skill-node-{index:04d}"
+        node["skillId"] = f"skill-{index:04d}"
+        node["prerequisites"] = [f"skill-{(index + 1) % node_count:04d}"]
+        node["evidence"] = [evidence(evidence_id)]
+        node["difficultyEvidence"]["evidenceIds"] = [evidence_id]
+        node["receptiveRequirement"]["evidenceIds"] = [evidence_id]
+        skills.append(node)
+    pack["graph"]["skills"] = skills
+    pack["graph"]["vocabulary"][0]["introducedBySkill"] = "skill-0000"
+    lesson = pack["lessons"][0]
+    lesson["skillIds"] = ["skill-0000"]
+    lesson["availableSkillIds"] = ["skill-0000"]
+    lesson["priorKnowledgeSkillIds"] = ["skill-0000"]
+    lesson["masteryTargets"] = []
+    for activity in lesson["activities"]:
+        activity["masteryTargets"] = []
+
+    assert "GRAPH_PREREQUISITE_CYCLE" in codes(validate_curriculum_pack(pack))
 
 
 def test_unregistered_targets_and_sources_fail_closed():
