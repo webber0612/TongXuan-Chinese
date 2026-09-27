@@ -119,29 +119,56 @@ def practice_sentence(child_id: int, sentence_id: str, answer: str, assisted: bo
         return {"attempt_id": attempt_id, "correct": bool(correct), "state": dict(db.execute("SELECT * FROM sentence_states WHERE child_id=? AND sentence_id=?", (child_id, sentence_id)).fetchone()), "srs": srs}
 
 
-def practice_writing(child_id: int, character: str, trace_result: str, assisted: bool, provider: str, phase: str = "independent", script_mode: str | None = None) -> dict[str, Any]:
+def _practice_writing_in_transaction(
+    db: sqlite3.Connection,
+    *,
+    child_id: int,
+    character: str,
+    trace_result: str,
+    assisted: bool,
+    provider: str,
+    phase: str = "independent",
+    script_mode: str | None = None,
+    attempt_id: str | None = None,
+) -> dict[str, Any]:
+    """Persist a writing provider result using the caller's transaction."""
     trace_result = provider_for(provider).validate(trace_result)
     if phase not in {"guided", "reduced_hint", "independent"}:
         raise ValueError("invalid_writing_phase")
     if script_mode not in {None, "TRADITIONAL", "SIMPLIFIED"}:
         raise ValueError("invalid_writing_script")
+    ensure_child(db, child_id)
+    attempt_id = attempt_id or uid("writing_attempt")
+    db.execute("INSERT INTO writing_attempts(id,child_id,character,trace_result,assisted,provider,created_at,phase,script_mode) VALUES (?,?,?,?,?,?,?,?,?)", (attempt_id, child_id, character, trace_result, int(assisted), provider, now(), phase, script_mode))
+    gate_id = record_linked_skill_gate(
+        db,
+        child_id=child_id,
+        skill_domain="writing",
+        item_id=character,
+        evidence_ref=attempt_id,
+        evidence_type="writing_provider_attempt",
+        assisted=assisted,
+    )
+    db.execute("""INSERT INTO writing_states VALUES (?,?,?,?,?) ON CONFLICT(child_id,character) DO UPDATE SET independent_success_count=independent_success_count+excluded.independent_success_count,assisted_count=assisted_count+excluded.assisted_count,updated_at=excluded.updated_at""", (child_id, character, int(trace_result == "correct" and not assisted), int(assisted), now()))
+    srs_item_id = f"{script_mode.lower()}::{character}" if script_mode else character
+    srs = record_srs_review(db, child_id=child_id, skill_domain="writing", item_id=srs_item_id, result=trace_result, assisted=assisted)
+    return dict(db.execute("SELECT * FROM writing_states WHERE child_id=? AND character=?", (child_id, character)).fetchone()) | {"attempt_id": attempt_id, "provider": provider, "phase": phase, "script_mode": script_mode, "gate_id": gate_id, "srs": srs}
+
+
+def practice_writing(child_id: int, character: str, trace_result: str, assisted: bool, provider: str, phase: str = "independent", script_mode: str | None = None) -> dict[str, Any]:
     with connect() as db:
-        ensure_child(db, child_id)
-        attempt_id = uid("writing_attempt")
-        db.execute("INSERT INTO writing_attempts(id,child_id,character,trace_result,assisted,provider,created_at,phase,script_mode) VALUES (?,?,?,?,?,?,?,?,?)", (attempt_id, child_id, character, trace_result, int(assisted), provider, now(), phase, script_mode))
-        gate_id = record_linked_skill_gate(
-            db,
-            child_id=child_id,
-            skill_domain="writing",
-            item_id=character,
-            evidence_ref=attempt_id,
-            evidence_type="writing_provider_attempt",
-            assisted=assisted,
-        )
-        db.execute("""INSERT INTO writing_states VALUES (?,?,?,?,?) ON CONFLICT(child_id,character) DO UPDATE SET independent_success_count=independent_success_count+excluded.independent_success_count,assisted_count=assisted_count+excluded.assisted_count,updated_at=excluded.updated_at""", (child_id, character, int(trace_result == "correct" and not assisted), int(assisted), now()))
-        srs_item_id = f"{script_mode.lower()}::{character}" if script_mode else character
-        srs = record_srs_review(db, child_id=child_id, skill_domain="writing", item_id=srs_item_id, result=trace_result, assisted=assisted)
-        return dict(db.execute("SELECT * FROM writing_states WHERE child_id=? AND character=?", (child_id, character)).fetchone()) | {"attempt_id": attempt_id, "provider": provider, "phase": phase, "script_mode": script_mode, "gate_id": gate_id, "srs": srs}
+        flow_binding = db.execute(
+            """SELECT 1 FROM learning_flow_tasks t
+               JOIN learning_flow_sessions s ON s.id=t.session_id AND s.child_id=t.child_id
+               WHERE t.child_id=? AND t.skill_domain='writing' AND t.activity_item_id=?
+                 AND t.task_type LIKE 'WRITING_%'
+                 AND (t.state IN ('PENDING','IN_PROGRESS') OR (t.state='DEFERRED' AND t.deferred_reason<>'OPTIONAL_SKIPPED'))
+                 AND s.status IN ('IN_PROGRESS','PAUSED') LIMIT 1""",
+            (child_id, character),
+        ).fetchone()
+        if flow_binding:
+            raise ValueError("writing_flow_evidence_required")
+        return _practice_writing_in_transaction(db, child_id=child_id, character=character, trace_result=trace_result, assisted=assisted, provider=provider, phase=phase, script_mode=script_mode)
 
 
 def list_readings(character: str | None = None, script: str | None = None, db: sqlite3.Connection | None = None) -> list[dict[str, Any]]:

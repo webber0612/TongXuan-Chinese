@@ -25,7 +25,8 @@ from .curriculum_policy import (
 )
 from .database import connect, initialize_database
 from .learning import _record_attempt_in_transaction, award_points, ensure_child, now, uid
-from .sprint_b import _practice_pronunciation_in_transaction
+from .sprint_b import _practice_pronunciation_in_transaction, _practice_writing_in_transaction
+from .writing_provider import provider_for
 
 
 FLOW_LESSONS = {"starter-l01", "basic-l01", "book1-l01"}
@@ -1030,6 +1031,95 @@ def _validate_external_evidence(db: Any, child_id: int, row: Any, evidence_ref: 
     raise ValueError("learning_task_evidence_type_invalid")
 
 
+def _flow_writing_attempt_id(session_id: str, task_id: str, attempt_index: int) -> str:
+    return f"flow-writing:{session_id}:{task_id}:{attempt_index}"
+
+
+def _ensure_flow_writing_provenance_link(db: Any, *, child_id: int, row: Any) -> None:
+    """Bind a planner-owned writing item to its exact lesson inside the final transaction.
+
+    This also covers sessions persisted before the atomic writing operation existed.
+    Lesson mastery still considers only the official domains in the lesson manifest.
+    """
+    existing = db.execute(
+        "SELECT lesson_id FROM curriculum_item_links WHERE child_id=? AND skill_domain='writing' AND item_id=?",
+        (child_id, row["activity_item_id"]),
+    ).fetchone()
+    if existing and existing["lesson_id"] != row["lesson_id"]:
+        raise ValueError("writing_task_identity_mismatch")
+    if existing is None:
+        db.execute(
+            "INSERT INTO curriculum_item_links(child_id,skill_domain,item_id,lesson_id) VALUES(?,'writing',?,?)",
+            (child_id, row["activity_item_id"], row["lesson_id"]),
+        )
+
+
+def _validate_flow_writing_submission(
+    db: Any,
+    *,
+    child_id: int,
+    session: Any,
+    row: Any,
+    evidence_ref: str | None,
+    trace_result: str | None,
+    assisted: bool | None,
+    provider: str | None,
+    phase: str | None,
+    script_mode: str | None,
+    attempt_index: int | None,
+) -> tuple[str, bool, str, str, bool]:
+    """Validate exact task/provider identity and recognize safe replay by stable attempt ID."""
+    data = json.loads(row["task_json"])
+    writing_data = data.get("taskData") or {}
+    character = row["activity_item_id"]
+    if (
+        not row["task_type"].startswith("WRITING_") or row["skill_domain"] != "writing" or
+        row["source_queue"] != "CURRICULUM" or row["lesson_id"] != session["lesson_id"] or
+        data.get("id") != row["id"] or data.get("lessonId") != row["lesson_id"] or
+        data.get("itemId") != character or data.get("taskType") != row["task_type"] or
+        data.get("sourceQueue") != row["source_queue"] or writing_data.get("character") != character
+    ):
+        raise ValueError("writing_task_identity_mismatch")
+    if trace_result is None or assisted is None or provider is None or phase is None or script_mode is None or attempt_index is None:
+        raise ValueError("writing_flow_evidence_required")
+    if phase not in WRITING_PHASES or phase != writing_data.get("phase"):
+        raise ValueError("writing_task_phase_mismatch")
+    if script_mode not in {"TRADITIONAL", "SIMPLIFIED"} or script_mode != writing_data.get("scriptMode"):
+        raise ValueError("writing_task_script_mismatch")
+    result = provider_for(provider).validate(trace_result)
+    expected_ref = _flow_writing_attempt_id(session["id"], row["id"], attempt_index)
+    if evidence_ref is not None and evidence_ref != expected_ref:
+        raise ValueError("learning_task_evidence_conflict")
+
+    if attempt_index < int(row["attempt_count"]):
+        attempt = db.execute(
+            "SELECT child_id,character,trace_result,assisted,provider,phase,script_mode FROM writing_attempts WHERE id=?",
+            (expected_ref,),
+        ).fetchone()
+        flow_attempt = db.execute(
+            "SELECT child_id,session_id,result,assisted,scorer_version FROM learning_flow_task_attempts WHERE task_id=? AND evidence_ref=?",
+            (row["id"], expected_ref),
+        ).fetchone()
+        if (
+            not attempt or not flow_attempt or attempt["child_id"] != child_id or
+            attempt["character"] != character or attempt["trace_result"] != result or
+            bool(attempt["assisted"]) != assisted or attempt["provider"] != provider or
+            attempt["phase"] != phase or attempt["script_mode"] != script_mode or
+            flow_attempt["child_id"] != child_id or flow_attempt["session_id"] != session["id"] or
+            flow_attempt["result"] != result or bool(flow_attempt["assisted"]) != assisted or
+            flow_attempt["scorer_version"] != "writing_provider_attempt"
+        ):
+            raise ValueError("learning_task_evidence_conflict")
+        return result, assisted, "writing_provider_attempt", expected_ref, True
+    if attempt_index != int(row["attempt_count"]):
+        raise ValueError("writing_attempt_index_stale")
+    if row["state"] != "IN_PROGRESS":
+        raise ValueError("learning_task_not_started")
+    if db.execute("SELECT 1 FROM writing_attempts WHERE id=?", (expected_ref,)).fetchone():
+        raise ValueError("learning_task_evidence_conflict")
+    return result, assisted, "writing_provider_attempt", expected_ref, False
+
+
 def _complete_speaking_provider_attempt_in_transaction(db: Any, *, child_id: int, evidence_ref: str, duration_ms: int | None) -> dict[str, Any]:
     from .reading_aloud import complete_attempt_in_transaction
 
@@ -1049,7 +1139,20 @@ def _insert_learning_flow_task_attempt(db: Any, *, session_id: str, task_id: str
     )
 
 
-def attach_learning_evidence(*, child_id: int, session_id: str, task_id: str, evidence_ref: str, duration_ms: int | None = None) -> dict[str, Any]:
+def attach_learning_evidence(
+    *,
+    child_id: int,
+    session_id: str,
+    task_id: str,
+    evidence_ref: str | None,
+    duration_ms: int | None = None,
+    trace_result: str | None = None,
+    writing_assisted: bool | None = None,
+    writing_provider: str | None = None,
+    writing_phase: str | None = None,
+    writing_script_mode: str | None = None,
+    writing_attempt_index: int | None = None,
+) -> dict[str, Any]:
     initialize_database()
     _enforce_session_time(child_id, session_id)
     with connect() as db:
@@ -1059,11 +1162,51 @@ def attach_learning_evidence(*, child_id: int, session_id: str, task_id: str, ev
             raise ValueError("learning_task_not_found")
         if session["status"] != "IN_PROGRESS":
             raise ValueError("learning_session_not_in_progress")
+        data = json.loads(row["task_json"])
+        is_writing = row["task_type"].startswith("WRITING_")
+        if is_writing:
+            result, assisted, evidence_type, evidence_ref, replayed = _validate_flow_writing_submission(
+                db,
+                child_id=child_id,
+                session=session,
+                row=row,
+                evidence_ref=evidence_ref,
+                trace_result=trace_result,
+                assisted=writing_assisted,
+                provider=writing_provider,
+                phase=writing_phase,
+                script_mode=writing_script_mode,
+                attempt_index=writing_attempt_index,
+            )
+            if replayed:
+                return _session_payload(db, session)
+        else:
+            if any(value is not None for value in (trace_result, writing_assisted, writing_provider, writing_phase, writing_script_mode, writing_attempt_index)):
+                raise ValueError("learning_task_evidence_type_invalid")
+            if evidence_ref is None:
+                raise ValueError("learning_task_evidence_ref_required")
+            if row["state"] == "COMPLETED":
+                if row["task_type"] == "LISTENING" and row["evidence_ref"] != evidence_ref:
+                    raise ValueError("learning_task_evidence_conflict")
+                return _session_payload(db, session)
+            result, assisted, evidence_type = _validate_external_evidence(db, child_id, row, evidence_ref)
         if row["state"] == "COMPLETED":
-            if row["task_type"] == "LISTENING" and row["evidence_ref"] != evidence_ref:
-                raise ValueError("learning_task_evidence_conflict")
             return _session_payload(db, session)
-        result, assisted, evidence_type = _validate_external_evidence(db, child_id, row, evidence_ref)
+        if is_writing:
+            # Bind older in-progress planner rows as well as new sessions. This
+            # provenance insert rolls back together with the gate and evidence.
+            _ensure_flow_writing_provenance_link(db, child_id=child_id, row=row)
+            _practice_writing_in_transaction(
+                db,
+                child_id=child_id,
+                character=row["activity_item_id"],
+                trace_result=result,
+                assisted=assisted,
+                provider=writing_provider or "",
+                phase=writing_phase or "",
+                script_mode=writing_script_mode,
+                attempt_id=evidence_ref,
+            )
         if row["task_type"] == "LISTENING":
             # The final evidence operation owns provider completion, the linked gate,
             # and flow settlement. A failed write below rolls all of them back.
@@ -1083,7 +1226,6 @@ def attach_learning_evidence(*, child_id: int, session_id: str, task_id: str, ev
             # Provider completion, the linked curriculum gate, and flow evidence share this transaction.
             # Any downstream failure rolls back all three authoritative writes.
             _complete_speaking_provider_attempt_in_transaction(db, child_id=child_id, evidence_ref=evidence_ref, duration_ms=duration_ms)
-        data = json.loads(row["task_json"])
         required_repeat = int(data.get("taskData", {}).get("repeatCount", 1)) if row["task_type"].startswith("WRITING_") else 1
         if result == "incorrect":
             failure_count = row["failure_count"] + 1

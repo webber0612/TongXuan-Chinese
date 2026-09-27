@@ -5,12 +5,12 @@ import pytest
 from fastapi.testclient import TestClient
 
 
-def client(tmp_path: Path):
+def client(tmp_path: Path, raise_server_exceptions: bool = True):
     import os
     os.environ["TONGXUAN_ENV"] = "development"
     os.environ["TONGXUAN_DB_PATH"] = str(tmp_path / "learning-flow.sqlite3")
     from app.main import app
-    return TestClient(app)
+    return TestClient(app, raise_server_exceptions=raise_server_exceptions)
 
 
 def child(api: TestClient, name: str = "Learner") -> int:
@@ -847,6 +847,140 @@ def test_optional_writing_can_be_skipped_without_becoming_a_mastery_gate(tmp_pat
         assert state["state"] == "DEFERRED" and state["deferred_reason"] == "OPTIONAL_SKIPPED"
         assert writing_attempts == 0
         assert current["masteryStatus"] == "MASTERED", f"missing={current.get('assessment', {}).get('missingDomains')} failed={current.get('assessment', {}).get('failedDomains')} scores={current.get('assessment', {}).get('scores')} gates={current.get('assessment', {}).get('gateStatuses')}"
+
+
+def _flow_writing_evidence(api: TestClient, child_id: int, current: dict, task: dict, result: str, attempt_index: int, **overrides):
+    evidence_ref = f"flow-writing:{current['id']}:{task['id']}:{attempt_index}"
+    body = {
+        "evidence_ref": evidence_ref,
+        "trace_result": result,
+        "assisted": False,
+        "provider": "HANZI_WRITER",
+        "phase": task["taskData"]["phase"],
+        "script_mode": task["taskData"]["scriptMode"],
+        "attempt_index": attempt_index,
+        **overrides,
+    }
+    response = api.post(f"/api/children/{child_id}/learning-sessions/{current['id']}/tasks/{task['id']}/evidence", json=body)
+    return response, body
+
+
+def _writing_flow_snapshot(child_id: int, session_id: str, task_id: str, character: str, srs_item: str):
+    from app.database import connect
+
+    with connect() as db:
+        return {
+            "attempts": [tuple(row) for row in db.execute("SELECT id,child_id,character,trace_result,assisted,provider,phase,script_mode FROM writing_attempts WHERE child_id=? AND character=? ORDER BY id", (child_id, character))],
+            "links": [tuple(row) for row in db.execute("SELECT child_id,skill_domain,item_id,lesson_id FROM curriculum_item_links WHERE child_id=? AND skill_domain='writing' AND item_id=?", (child_id, character))],
+            "gates": [tuple(row) for row in db.execute("SELECT id,lesson_id,gate_status,assisted,evidence_ref,evidence_type,evidence_item_id FROM curriculum_skill_gates WHERE child_id=? AND skill_domain='writing' AND evidence_item_id=? ORDER BY id", (child_id, character))],
+            "states": [tuple(row) for row in db.execute("SELECT child_id,character,independent_success_count,assisted_count FROM writing_states WHERE child_id=? AND character=?", (child_id, character))],
+            "srs_state": [tuple(row) for row in db.execute("SELECT child_id,skill_domain,item_id,stage,last_result,last_assisted FROM srs_review_states WHERE child_id=? AND skill_domain='writing' AND item_id=?", (child_id, srs_item))],
+            "srs_events": [tuple(row) for row in db.execute("SELECT id,item_id,result,assisted,previous_stage,next_stage FROM srs_review_events WHERE child_id=? AND skill_domain='writing' AND item_id=? ORDER BY id", (child_id, srs_item))],
+            "flow_attempts": [tuple(row) for row in db.execute("SELECT session_id,task_id,result,assisted,evidence_ref,scorer_version FROM learning_flow_task_attempts WHERE child_id=? AND session_id=? AND task_id=? ORDER BY evidence_ref", (child_id, session_id, task_id))],
+            "task": [tuple(row) for row in db.execute("SELECT state,attempt_count,failure_count,deferred_reason,evidence_ref FROM learning_flow_tasks WHERE id=?", (task_id,))],
+            "telemetry": [tuple(row) for row in db.execute("SELECT event_type,task_id FROM learning_flow_telemetry WHERE child_id=? AND session_id=? AND task_id=? ORDER BY rowid", (child_id, session_id, task_id))],
+        }
+
+
+def test_flow_writing_final_evidence_rolls_back_retry_replay_and_keeps_repeat_phase(tmp_path):
+    from app.database import connect
+
+    with client(tmp_path, raise_server_exceptions=False) as api:
+        child_id = child(api)
+        place(child_id, "BOOK_1", writing="BASIC")
+        current = session(api, child_id)
+        task = next(task for task in current["tasks"] if task["taskType"].startswith("WRITING_"))
+        writing_task_id = task["id"]
+        current = start_task(api, child_id, current, task)
+        task = next(task for task in current["tasks"] if task["id"] == writing_task_id)
+        assert task["state"] == "IN_PROGRESS" and task["attemptCount"] == 0
+        assert task["taskData"]["repeatCount"] == 2
+
+        # Identity and task metadata are checked before any provider or SRS write.
+        standalone = api.post(
+            "/api/sprint-b/writing/attempts",
+            params={"child_id": child_id, "character": task["itemId"]},
+            json={"trace_result": "correct", "provider": "HANZI_WRITER", "phase": "guided", "script_mode": "TRADITIONAL"},
+        )
+        assert standalone.status_code == 400
+        invalid, _ = _flow_writing_evidence(api, child_id, current, task, "correct", 0, phase="independent")
+        assert invalid.status_code == 409
+        before = _writing_flow_snapshot(child_id, current["id"], task["id"], task["itemId"], f"traditional::{task['itemId']}")
+        missing = api.post(f"/api/children/{child_id}/learning-sessions/{current['id']}/tasks/{task['id']}/evidence", json={"evidence_ref": f"flow-writing:{current['id']}:{task['id']}:0"})
+        assert missing.status_code == 409
+        assert _writing_flow_snapshot(child_id, current["id"], task["id"], task["itemId"], f"traditional::{task['itemId']}") == before
+
+        # Fail late, after the writing gate/state/SRS and flow task writes have run.
+        with connect() as db:
+            db.execute(f"""CREATE TRIGGER fail_writing_telemetry BEFORE INSERT ON learning_flow_telemetry
+                WHEN NEW.event_type='writing_progressed' AND NEW.task_id='{task['id']}'
+                BEGIN SELECT RAISE(ABORT, 'injected writing telemetry failure'); END""")
+        failed, request_body = _flow_writing_evidence(api, child_id, current, task, "correct", 0)
+        assert failed.status_code == 500
+        assert _writing_flow_snapshot(child_id, current["id"], task["id"], task["itemId"], f"traditional::{task['itemId']}") == before
+
+        with connect() as db:
+            db.execute("DROP TRIGGER fail_writing_telemetry")
+        retried = api.post(f"/api/children/{child_id}/learning-sessions/{current['id']}/tasks/{task['id']}/evidence", json=request_body)
+        assert retried.status_code == 200, retried.text
+        after_first = _writing_flow_snapshot(child_id, current["id"], task["id"], task["itemId"], f"traditional::{task['itemId']}")
+        replay = api.post(f"/api/children/{child_id}/learning-sessions/{current['id']}/tasks/{task['id']}/evidence", json=request_body)
+        assert replay.status_code == 200, replay.text
+        assert _writing_flow_snapshot(child_id, current["id"], task["id"], task["itemId"], f"traditional::{task['itemId']}") == after_first
+        assert after_first["attempts"] == [(f"flow-writing:{current['id']}:{task['id']}:0", child_id, task["itemId"], "correct", 0, "HANZI_WRITER", "guided", "TRADITIONAL")]
+        assert after_first["links"] == [(child_id, "writing", task["itemId"], "book1-l01")]
+        assert after_first["gates"][0][4] == f"flow-writing:{current['id']}:{task['id']}:0"
+        assert len(after_first["srs_events"]) == len(after_first["flow_attempts"]) == 1
+        assert after_first["task"][0][:3] == ("IN_PROGRESS", 1, 0)
+
+        latest = retried.json()
+        repeated, second_body = _flow_writing_evidence(api, child_id, latest, task, "correct", 1)
+        assert repeated.status_code == 200, repeated.text
+        final_snapshot = _writing_flow_snapshot(child_id, current["id"], task["id"], task["itemId"], f"traditional::{task['itemId']}")
+        assert final_snapshot["task"][0][0:3] == ("COMPLETED", 2, 0)
+        assert len(final_snapshot["attempts"]) == len(final_snapshot["gates"]) == len(final_snapshot["srs_events"]) == len(final_snapshot["flow_attempts"]) == 2
+        assert {attempt[0] for attempt in final_snapshot["attempts"]} == {
+            f"flow-writing:{current['id']}:{task['id']}:0",
+            f"flow-writing:{current['id']}:{task['id']}:1",
+        }
+        second_replay = api.post(f"/api/children/{child_id}/learning-sessions/{current['id']}/tasks/{task['id']}/evidence", json=second_body)
+        assert second_replay.status_code == 200, second_replay.text
+        assert _writing_flow_snapshot(child_id, current["id"], task["id"], task["itemId"], f"traditional::{task['itemId']}") == final_snapshot
+
+        from app.learning_flow import _writing_phase
+        with connect() as db:
+            next_phase = _writing_phase(db, child_id, "book1-l01", task["itemId"], "TRADITIONAL")
+        assert next_phase == ("reduced_hint", 1)
+
+
+def test_flow_writing_incorrect_attempt_retry_cap_and_replay_are_atomic(tmp_path):
+    with client(tmp_path) as api:
+        child_id = child(api)
+        place(child_id, "BOOK_1", writing="BASIC")
+        current = session(api, child_id)
+        task = next(task for task in current["tasks"] if task["taskType"].startswith("WRITING_"))
+        writing_task_id = task["id"]
+        current = start_task(api, child_id, current, task)
+        task = next(task for task in current["tasks"] if task["id"] == writing_task_id)
+
+        first, first_body = _flow_writing_evidence(api, child_id, current, task, "incorrect", 0, assisted=True)
+        assert first.status_code == 200, first.text
+        first_snapshot = _writing_flow_snapshot(child_id, current["id"], task["id"], task["itemId"], f"traditional::{task['itemId']}")
+        assert first_snapshot["task"][0][:4] == ("IN_PROGRESS", 1, 1, None)
+        assert first_snapshot["states"][0][2:] == (0, 1)
+        assert first_snapshot["srs_state"][0][-1] == 1 and first_snapshot["flow_attempts"][0][3] == 1
+        first_replay = api.post(f"/api/children/{child_id}/learning-sessions/{current['id']}/tasks/{task['id']}/evidence", json=first_body)
+        assert first_replay.status_code == 200, first_replay.text
+        assert _writing_flow_snapshot(child_id, current["id"], task["id"], task["itemId"], f"traditional::{task['itemId']}") == first_snapshot
+
+        second, second_body = _flow_writing_evidence(api, child_id, first.json(), task, "incorrect", 1)
+        assert second.status_code == 200, second.text
+        deferred_snapshot = _writing_flow_snapshot(child_id, current["id"], task["id"], task["itemId"], f"traditional::{task['itemId']}")
+        assert deferred_snapshot["task"][0][:4] == ("DEFERRED", 2, 2, "WRITING_RETRY_CAP")
+        second_replay = api.post(f"/api/children/{child_id}/learning-sessions/{current['id']}/tasks/{task['id']}/evidence", json=second_body)
+        assert second_replay.status_code == 200, second_replay.text
+        assert _writing_flow_snapshot(child_id, current["id"], task["id"], task["itemId"], f"traditional::{task['itemId']}") == deferred_snapshot
+        assert len(deferred_snapshot["attempts"]) == len(deferred_snapshot["srs_events"]) == len(deferred_snapshot["flow_attempts"]) == 2
 
 
 def test_mastered_placement_lesson_unlocks_next_lesson_in_that_stage(tmp_path):

@@ -1025,7 +1025,8 @@ export function LessonPlayerPage({
   const submitBackendTaskEvidence = async (
     matcher: (t: { id: string; key: string; taskType: string; state: string; itemId?: string; taskData?: any; attemptCount?: number; failureCount?: number; completedAt?: string | null }) => boolean,
     evidenceRef: string,
-    durationMs?: number
+    durationMs?: number,
+    additionalEvidence?: Record<string, unknown>,
   ): Promise<TaskWriteResult> => {
     const currentSess = sessionRef.current;
     if (!activeChildId || !currentSess?.id || !currentSess.tasks) {
@@ -1069,6 +1070,7 @@ export function LessonPlayerPage({
           body: JSON.stringify({
             evidence_ref: evidenceRef,
             ...(durationMs === undefined ? {} : { duration_ms: durationMs }),
+            ...additionalEvidence,
           }),
         }
       );
@@ -1311,33 +1313,39 @@ export function LessonPlayerPage({
   };
 
   const handleWritingTrace = async (result: "correct" | "incorrect") => {
-    if (activeChildId && pkg) {
-      const char = currentStep?.data.character || pkg.characters[activeCharIndex]?.char || "你";
-      const currentSess = sessionRef.current;
-      const writingTask = currentSess?.tasks?.find((t) => currentStep?.data.taskId
-        ? t.id === currentStep.data.taskId
-        : t.taskType.startsWith("WRITING_") || t.key.startsWith("writing"));
-      const phase = writingTask?.taskData?.phase || "guided";
-      const scriptMode = writingTask?.taskData?.scriptMode || (locale === "zh-CN" ? "SIMPLIFIED" : "TRADITIONAL");
-      const writingRes = await api<{ id?: string; attempt_id?: string }>(`/api/sprint-b/writing/attempts?child_id=${activeChildId}&character=${encodeURIComponent(char)}`, {
-        method: "POST",
-        body: JSON.stringify({
-          trace_result: result,
-          assisted: false,
-          phase,
-          script_mode: scriptMode,
-          provider: "HANZI_WRITER",
-        }),
-      }).catch((err: any) => {
-        setError(err?.message || text.taskFailed);
-        return undefined;
-      });
-      if (writingRes && (writingRes.id || writingRes.attempt_id)) {
-        await submitBackendTaskEvidence((t) => currentStep?.data.taskId
-          ? t.id === currentStep.data.taskId
-          : t.taskType.startsWith("WRITING_") || t.key.startsWith("writing"), (writingRes.id || writingRes.attempt_id)!);
-      }
+    if (!activeChildId) return;
+    const currentSess = sessionRef.current;
+    const exactTaskId = currentStep?.data.taskId;
+    const writingTask = currentSess?.tasks?.find((task) => task.id === exactTaskId);
+    const character = currentStep?.data.character;
+    const phase = writingTask?.taskData?.phase;
+    const scriptMode = writingTask?.taskData?.scriptMode;
+    const attemptIndex = writingTask?.attemptCount;
+    if (
+      !currentSess?.id || typeof exactTaskId !== "string" || !writingTask ||
+      !writingTask.taskType.startsWith("WRITING_") || writingTask.state !== "IN_PROGRESS" ||
+      typeof character !== "string" || character !== writingTask.itemId || writingTask.taskData?.character !== character ||
+      !["guided", "reduced_hint", "independent"].includes(phase) ||
+      !["TRADITIONAL", "SIMPLIFIED"].includes(scriptMode) ||
+      typeof attemptIndex !== "number" || !Number.isInteger(attemptIndex) || attemptIndex < 0
+    ) {
+      setError(text.taskFailed);
+      return;
     }
+    const evidenceRef = `flow-writing:${currentSess.id}:${writingTask.id}:${attemptIndex}`;
+    await submitBackendTaskEvidence(
+      (task) => task.id === writingTask.id,
+      evidenceRef,
+      undefined,
+      {
+        trace_result: result,
+        assisted: false,
+        provider: "HANZI_WRITER",
+        phase,
+        script_mode: scriptMode,
+        attempt_index: attemptIndex,
+      },
+    );
   };
 
   const handleToggleScaffoldMode = () => {
