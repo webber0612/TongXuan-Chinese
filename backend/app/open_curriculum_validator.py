@@ -616,6 +616,16 @@ def _validate_proposed_node_relationships(
 
     combined_nodes = dict(nodes)
     combined_nodes.update(candidate_nodes)
+    for node_id, node in candidate_nodes.items():
+        registered_skill = skill_aliases.get(node_id)
+        registered_skill_id = registered_skill.get("id") if isinstance(registered_skill, Mapping) else None
+        if node_id in ambiguous_skill_aliases or (registered_skill is not None and registered_skill_id != node_id):
+            add(
+                "PROPOSAL_SKILL_ALIAS_COLLISION",
+                _path(candidate_paths[node_id], "id"),
+                f"Proposed target ID {node_id!r} collides with a registered skill alias.",
+            )
+
     for alias, node in candidate_skill_aliases.items():
         alias_target = combined_nodes.get(alias)
         node_id = node.get("id")

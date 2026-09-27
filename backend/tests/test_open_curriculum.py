@@ -1064,6 +1064,16 @@ def test_proposed_skill_alias_cannot_collide_with_registered_non_skill_target_id
     assert "PROPOSAL_SKILL_ALIAS_COLLISION" in codes(validate_curriculum_pack(pack))
 
 
+def test_proposed_non_skill_target_id_cannot_collide_with_registered_skill_alias():
+    pack = make_pack()
+    vocabulary_node = deepcopy(pack["graph"]["vocabulary"][0])
+    vocabulary_node["id"] = "recognition"
+    vocabulary_node["approvalStatus"] = "PROPOSED"
+    pack["curriculumChangeProposals"][0]["proposedNodes"].append(vocabulary_node)
+
+    assert "PROPOSAL_SKILL_ALIAS_COLLISION" in codes(validate_curriculum_pack(pack))
+
+
 def test_proposed_node_self_prerequisite_and_duplicate_node_ids_fail_closed():
     pack = make_pack()
     proposal = pack["curriculumChangeProposals"][0]
