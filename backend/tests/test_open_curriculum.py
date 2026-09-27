@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import json
 from copy import deepcopy
 from pathlib import Path
@@ -336,6 +337,43 @@ def test_synthetic_publishable_pack_passes_composed_graph_schemas():
     assert validate_curriculum_pack(make_pack()) == []
 
 
+def test_phase3_guard_matrix_covers_each_roadmap_guard_with_existing_regressions():
+    repository_root = Path(__file__).resolve().parents[2]
+    matrix_path = repository_root / "shared" / "open-curriculum" / "validator-guard-matrix.json"
+    matrix = json.loads(matrix_path.read_text(encoding="utf-8"))
+    guards = matrix["guards"]
+    assert [guard["id"] for guard in guards] == list(range(1, 16))
+
+    allowed_statuses = {
+        "COMPLETE",
+        "PARTIAL",
+        "BROKEN",
+        "MISSING",
+        "NEEDS_PRODUCT_DECISION",
+        "NEEDS_REAL_CHILD_VALIDATION",
+    }
+    discovered_tests: dict[str, set[str]] = {}
+    for guard in guards:
+        assert guard["status"] in allowed_statuses
+        assert guard["priority"] in {"P0", "P1", "P2"}
+        assert guard["rule"]
+        assert guard["remainingGap"]
+        assert isinstance(guard["ownerDecision"], bool)
+        assert guard["tests"]
+        for reference in guard["tests"]:
+            path = reference["file"]
+            if path not in discovered_tests:
+                module = ast.parse((repository_root / path).read_text(encoding="utf-8"))
+                discovered_tests[path] = {
+                    node.name
+                    for node in ast.walk(module)
+                    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+                }
+            assert reference["name"] in discovered_tests[path], (
+                f"Guard {guard['id']} references missing regression {path}:{reference['name']}"
+            )
+
+
 def test_skill_capability_is_required_by_graph_schema_v1_2():
     pack = make_pack()
     del pack["graph"]["skills"][0]["capability"]
@@ -419,6 +457,18 @@ def test_unmet_prerequisite_and_out_of_level_targets_fail_closed():
     pack["graph"]["vocabulary"][0]["prerequisites"] = ["char-demo"]
     pack["graph"]["characters"][0]["recognitionLevel"] = 2
     assert {"UNMET_PREREQUISITE", "TARGET_OUT_OF_LEVEL"} <= codes(validate_curriculum_pack(pack))
+
+
+@pytest.mark.parametrize(
+    "target_type",
+    ["vocabulary", "grammar"],
+)
+def test_vocabulary_and_grammar_targets_above_lesson_level_fail_closed(target_type):
+    pack = make_pack()
+    target = pack["graph"][target_type][0]
+    target["difficultyEvidence"]["level"] = 2
+
+    assert "TARGET_OUT_OF_LEVEL" in codes(validate_curriculum_pack(pack))
 
 
 def test_graph_relationships_resolve_across_domains_without_approving_new_targets():
@@ -753,7 +803,12 @@ def test_new_vocabulary_ratio_is_checked_only_with_explicit_approved_limit():
 
     pack = make_pack()
     pack["validationPolicy"].pop("maxNewVocabularyRatio")
-    assert "NEW_VOCABULARY_RATIO_EXCEEDED" not in codes(validate_curriculum_pack(pack))
+    assert "NEW_VOCABULARY_LIMIT_REQUIRED" in codes(validate_curriculum_pack(pack))
+
+    pack = make_pack()
+    pack["publicationStatus"] = "PROPOSED"
+    pack["validationPolicy"].pop("maxNewVocabularyRatio")
+    assert "NEW_VOCABULARY_LIMIT_REQUIRED" not in codes(validate_curriculum_pack(pack))
 
 
 def test_recycling_must_be_known_used_and_not_marked_new():
@@ -764,6 +819,15 @@ def test_recycling_must_be_known_used_and_not_marked_new():
     pack["lessons"][0]["priorKnowledgeTargetIds"] = ["vocab-demo"]
     assert "KNOWN_VOCABULARY_MARKED_NEW" in codes(validate_curriculum_pack(pack))
     assert "NEW_TARGET_MARKED_RECYCLED" in codes(validate_curriculum_pack(pack))
+
+
+def test_required_recycling_cannot_be_omitted_for_known_vocabulary():
+    pack = make_pack()
+    pack["graph"]["vocabulary"][0]["requiresRecycling"] = True
+    pack["lessons"][0]["priorKnowledgeTargetIds"] = ["vocab-demo"]
+    pack["lessons"][0]["newVocabularyIds"] = []
+
+    assert "RECYCLING_REQUIRED" in codes(validate_curriculum_pack(pack))
 
 
 def test_writing_activity_requires_recognition_first():
@@ -820,6 +884,19 @@ def test_sentence_tokens_must_be_registered_and_match_sentence_text():
     assert {"UNREGISTERED_SENTENCE_TOKEN", "UNREGISTERED_SENTENCE_TEXT"} <= codes(validate_curriculum_pack(pack))
 
 
+def test_sentence_rejects_mismatched_registered_token_and_uncovered_text():
+    pack = make_pack()
+    sentence = pack["lessons"][0]["sentences"][0]
+    sentence["tokens"] = [{"id": "vocab-demo", "tokenType": "VOCABULARY", "text": "未登錄詞"}]
+    sentence["text"] = "未登錄詞"
+    assert "SENTENCE_TOKEN_TEXT_MISMATCH" in codes(validate_curriculum_pack(pack))
+
+    pack = make_pack()
+    sentence = pack["lessons"][0]["sentences"][0]
+    sentence["text"] += "未登錄"
+    assert "UNREGISTERED_SENTENCE_TEXT" in codes(validate_curriculum_pack(pack))
+
+
 def test_grammar_examples_also_require_registered_character_tokens():
     pack = make_pack()
     example = pack["graph"]["grammar"][0]["examples"][0]
@@ -832,6 +909,24 @@ def test_mastery_targets_must_map_to_registered_lesson_skill():
     pack = make_pack()
     pack["lessons"][0]["masteryTargets"] = [{"skillId": "unknown", "domain": "reading"}]
     assert "UNSUPPORTED_MASTERY_TARGET" in codes(validate_curriculum_pack(pack))
+
+
+def test_mastery_target_domain_must_match_registered_skill():
+    pack = make_pack()
+    pack["lessons"][0]["masteryTargets"] = [{"skillId": "recognition", "domain": "writing"}]
+
+    assert "UNSUPPORTED_MASTERY_DOMAIN" in codes(validate_curriculum_pack(pack))
+
+
+def test_approved_proposal_node_does_not_become_a_lesson_graph_skill():
+    pack = make_pack()
+    proposal = pack["curriculumChangeProposals"][0]
+    proposal["approvalStatus"] = "ARCHITECT_APPROVED"
+    proposal["proposedNodes"][0]["approvalStatus"] = "ARCHITECT_APPROVED"
+    pack["lessons"][0]["skillIds"] = ["proposal-skill"]
+    pack["lessons"][0]["availableSkillIds"] = ["proposal-skill"]
+
+    assert "UNREGISTERED_SKILL" in codes(validate_curriculum_pack(pack))
 
 
 def test_source_provenance_cannot_smuggle_raw_text_as_evidence_reference():

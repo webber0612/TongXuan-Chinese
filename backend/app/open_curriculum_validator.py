@@ -1009,6 +1009,15 @@ def validate_curriculum_pack(
         new_vocabulary_ids = id_set("newVocabularyIds")
         recycled_ids = id_set("recycledTargetIds")
         vocabulary_targets = id_set("targetVocabularyIds")
+        if publishable and new_vocabulary_ids and not isinstance(
+            policy.get("maxNewVocabularyRatio") if isinstance(policy, Mapping) else None,
+            (int, float),
+        ):
+            add(
+                "NEW_VOCABULARY_LIMIT_REQUIRED",
+                "/validationPolicy/maxNewVocabularyRatio",
+                "A publishable lesson with new vocabulary requires an explicitly approved maxNewVocabularyRatio; the validator does not choose a threshold.",
+            )
         for target_id in new_vocabulary_ids:
             if target_id not in vocabulary_targets:
                 add("NEW_VOCABULARY_NOT_TARGETED", _path(lesson_path, "newVocabularyIds"), f"New vocabulary {target_id!r} must also be a lesson target.")
