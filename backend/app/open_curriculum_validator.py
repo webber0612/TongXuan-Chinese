@@ -333,6 +333,233 @@ def _walk(value: Any, path: str = ""):
             yield from _walk(child, _path(path, index))
 
 
+def _validate_graph_relationships(
+    node_groups: Mapping[str, Any],
+    graph_paths: Mapping[str, str],
+    nodes: Mapping[str, Mapping[str, Any]],
+    node_paths: Mapping[str, str],
+    skill_aliases: Mapping[str, Mapping[str, Any]],
+    ambiguous_skill_aliases: set[str],
+) -> list[ValidationIssue]:
+    """Validate graph edges and reject prerequisite cycles without loading content."""
+    issues: list[ValidationIssue] = []
+    dependency_edges: dict[str, list[tuple[str, str]]] = {node_id: [] for node_id in nodes}
+
+    def add(code: str, path: str, message: str) -> None:
+        issues.append(ValidationIssue(code, path, message))
+
+    def resolve(
+        reference: Any,
+        path: str,
+        *,
+        expected_types: set[str] | None = None,
+        allow_skill_alias: bool = False,
+    ) -> tuple[str, Mapping[str, Any]] | None:
+        if not isinstance(reference, str) or not reference:
+            return None
+        if allow_skill_alias and reference in ambiguous_skill_aliases:
+            return None
+        if allow_skill_alias and reference in skill_aliases:
+            node = skill_aliases[reference]
+        else:
+            node = nodes.get(reference)
+        if node is None:
+            add(
+                "UNREGISTERED_GRAPH_REFERENCE",
+                path,
+                f"Graph reference {reference!r} does not resolve to a registered node or allowed skill alias.",
+            )
+            return None
+        actual_type = node.get("targetType")
+        if expected_types is not None and actual_type not in expected_types:
+            expected = ", ".join(sorted(expected_types))
+            add(
+                "GRAPH_REFERENCE_TYPE_MISMATCH",
+                path,
+                f"Graph reference {reference!r} resolves to {actual_type!r}; expected {expected}.",
+            )
+            return None
+        canonical_id = node.get("id")
+        if not isinstance(canonical_id, str) or not canonical_id:
+            return None
+        return canonical_id, node
+
+    def iter_references(node: Mapping[str, Any], field: str, path: str):
+        values = node.get(field, [])
+        if not isinstance(values, list):
+            return
+        for index, value in enumerate(values):
+            yield value, _path(path, field, index)
+
+    def add_dependency(
+        source_node: Mapping[str, Any],
+        reference: Any,
+        path: str,
+        *,
+        expected_types: set[str] | None,
+        allow_skill_alias: bool,
+    ) -> None:
+        source_id = source_node.get("id")
+        if not isinstance(source_id, str) or nodes.get(source_id) is not source_node:
+            return
+        resolved = resolve(
+            reference,
+            path,
+            expected_types=expected_types,
+            allow_skill_alias=allow_skill_alias,
+        )
+        if resolved is None:
+            return
+        dependency_id, _ = resolved
+        if dependency_id == source_id:
+            add(
+                "SELF_PREREQUISITE",
+                path,
+                f"Graph node {source_id!r} cannot require itself as a prerequisite.",
+            )
+            return
+        dependency_edges[source_id].append((dependency_id, path))
+
+    for target_type, group in node_groups.items():
+        if not isinstance(group, list):
+            continue
+        for index, node in enumerate(group):
+            if not isinstance(node, Mapping):
+                continue
+            node_id = node.get("id")
+            if not isinstance(node_id, str) or nodes.get(node_id) is not node:
+                continue
+            node_path = _path("/graph", graph_paths[target_type], index)
+
+            if target_type == "SKILL":
+                for field, expected_type in (
+                    ("targetVocabulary", "VOCABULARY"),
+                    ("targetGrammar", "GRAMMAR"),
+                    ("targetCharacters", "CHARACTER"),
+                ):
+                    for reference, reference_path in iter_references(node, field, node_path):
+                        resolve(reference, reference_path, expected_types={expected_type})
+                for reference, reference_path in iter_references(node, "prerequisites", node_path):
+                    add_dependency(
+                        node,
+                        reference,
+                        reference_path,
+                        expected_types={"SKILL"},
+                        allow_skill_alias=True,
+                    )
+            elif target_type == "VOCABULARY":
+                resolve(
+                    node.get("introducedBySkill"),
+                    _path(node_path, "introducedBySkill"),
+                    expected_types={"SKILL"},
+                    allow_skill_alias=True,
+                )
+                for reference, reference_path in iter_references(node, "prerequisites", node_path):
+                    add_dependency(
+                        node,
+                        reference,
+                        reference_path,
+                        expected_types=None,
+                        allow_skill_alias=True,
+                    )
+            elif target_type == "GRAMMAR":
+                for reference, reference_path in iter_references(node, "prerequisites", node_path):
+                    add_dependency(
+                        node,
+                        reference,
+                        reference_path,
+                        expected_types=None,
+                        allow_skill_alias=True,
+                    )
+            elif target_type == "CHARACTER":
+                for reference, reference_path in iter_references(node, "prerequisiteSkills", node_path):
+                    add_dependency(
+                        node,
+                        reference,
+                        reference_path,
+                        expected_types={"SKILL"},
+                        allow_skill_alias=True,
+                    )
+                writing_level = node.get("writingLevel")
+                recognition_level = node.get("recognitionLevel")
+                if writing_level is not None and recognition_level is None:
+                    add(
+                        "CHARACTER_WRITING_WITHOUT_RECOGNITION",
+                        _path(node_path, "writingLevel"),
+                        "A character cannot require writing without an explicit recognition level.",
+                    )
+                elif (
+                    isinstance(writing_level, int)
+                    and isinstance(recognition_level, int)
+                    and writing_level < recognition_level
+                ):
+                    add(
+                        "CHARACTER_WRITING_BEFORE_RECOGNITION",
+                        _path(node_path, "writingLevel"),
+                        "A character's writing level cannot precede its recognition level.",
+                    )
+
+    # Iterative traversal avoids recursion limits on malformed or oversized graphs.
+    visit_state: dict[str, int] = {}
+    cycle_signatures: set[tuple[str, ...]] = set()
+    for start_id in sorted(dependency_edges):
+        if visit_state.get(start_id, 0) != 0:
+            continue
+        active = [start_id]
+        active_index = {start_id: 0}
+        visit_state[start_id] = 1
+        frames: list[tuple[str, Any]] = [
+            (start_id, iter(sorted({edge[0] for edge in dependency_edges[start_id]})))
+        ]
+        while frames:
+            current_id, child_ids = frames[-1]
+            try:
+                dependency_id = next(child_ids)
+            except StopIteration:
+                frames.pop()
+                visit_state[current_id] = 2
+                active.pop()
+                active_index.pop(current_id, None)
+                continue
+            if dependency_id not in dependency_edges:
+                continue
+            state = visit_state.get(dependency_id, 0)
+            if state == 0:
+                visit_state[dependency_id] = 1
+                active_index[dependency_id] = len(active)
+                active.append(dependency_id)
+                frames.append(
+                    (
+                        dependency_id,
+                        iter(sorted({edge[0] for edge in dependency_edges[dependency_id]})),
+                    )
+                )
+            elif state == 1:
+                cycle = active[active_index[dependency_id] :]
+                # A DFS back-edge cycle contains unique node IDs. Rotating from
+                # its lexicographically smallest ID gives a stable signature in
+                # linear time and avoids quadratic allocations for large graphs.
+                smallest_index = cycle.index(min(cycle))
+                signature = tuple(cycle[smallest_index:] + cycle[:smallest_index])
+                if signature in cycle_signatures:
+                    continue
+                cycle_signatures.add(signature)
+                edge_paths = [
+                    path
+                    for target_id, path in dependency_edges[current_id]
+                    if target_id == dependency_id
+                ]
+                path = min(edge_paths) if edge_paths else node_paths.get(current_id, "/graph")
+                rendered_cycle = " -> ".join((*signature, signature[0]))
+                add(
+                    "GRAPH_PREREQUISITE_CYCLE",
+                    path,
+                    f"Prerequisite cycle detected: {rendered_cycle}.",
+                )
+
+    return sorted(set(issues))
+
+
 def validate_curriculum_pack(
     pack: Mapping[str, Any],
     source_registry: Mapping[str, Any] | None = None,
@@ -379,6 +606,9 @@ def validate_curriculum_pack(
     }
     nodes: dict[str, Mapping[str, Any]] = {}
     skill_aliases: dict[str, Mapping[str, Any]] = {}
+    skill_alias_paths: dict[str, str] = {}
+    ambiguous_skill_aliases: set[str] = set()
+    node_paths: dict[str, str] = {}
     for target_type, group in node_groups.items():
         if not isinstance(group, list):
             continue
@@ -394,10 +624,44 @@ def validate_curriculum_pack(
                     add("DUPLICATE_TARGET_ID", _path(node_path, "id"), f"Target ID {node_id!r} is already registered.")
                 else:
                     nodes[node_id] = node
+                    node_paths[node_id] = node_path
             if target_type == "SKILL":
                 for alias in (node_id, node.get("skillId")):
                     if isinstance(alias, str) and alias:
-                        skill_aliases[alias] = node
+                        if alias in skill_aliases and skill_aliases[alias] is not node:
+                            ambiguous_skill_aliases.add(alias)
+                            add(
+                                "SKILL_ALIAS_COLLISION",
+                                _path(node_path, "skillId" if alias == node.get("skillId") else "id"),
+                                f"Skill alias {alias!r} is already assigned to another node.",
+                            )
+                        else:
+                            skill_aliases[alias] = node
+                            skill_alias_paths[alias] = _path(
+                                node_path,
+                                "skillId" if alias == node.get("skillId") and alias != node_id else "id",
+                            )
+
+    for alias, skill_node in skill_aliases.items():
+        target_node = nodes.get(alias)
+        if target_node is not None and target_node is not skill_node:
+            ambiguous_skill_aliases.add(alias)
+            add(
+                "SKILL_ALIAS_COLLISION",
+                skill_alias_paths.get(alias, "/graph/skills"),
+                f"Skill alias {alias!r} collides with a different graph target ID.",
+            )
+
+    issues.extend(
+        _validate_graph_relationships(
+            node_groups,
+            graph_paths,
+            nodes,
+            node_paths,
+            skill_aliases,
+            ambiguous_skill_aliases,
+        )
+    )
 
     lessons = pack.get("lessons", [])
     if not isinstance(lessons, list):
@@ -647,10 +911,38 @@ def validate_curriculum_pack(
                     elif target_id not in content_target_ids | prior_knowledge_ids:
                         add("ACTIVITY_TARGET_NOT_DECLARED", _path(lesson_path, "activities", activity_index, "targetIds"), f"Activity target {target_id!r} is neither targeted nor declared as prior knowledge.")
                 if domain in {"recognition", "character_recognition"}:
-                    seen_recognition.update(
-                        target_id for target_id in activity_target_ids
-                        if target_id in nodes and nodes[target_id].get("targetType") == "CHARACTER"
-                    )
+                    for target_id in activity_target_ids:
+                        node = nodes.get(target_id)
+                        if node is None or node.get("targetType") != "CHARACTER":
+                            continue
+                        recognition_level = node.get("recognitionLevel")
+                        if recognition_level is None:
+                            add("RECOGNITION_LEVEL_UNSUPPORTED", _path(lesson_path, "activities", activity_index, "targetIds"), f"Character {target_id!r} has no registered recognition level.")
+                        else:
+                            seen_recognition.add(target_id)
+                            if isinstance(lesson_level, int) and isinstance(recognition_level, int) and recognition_level > lesson_level:
+                                add("TARGET_OUT_OF_LEVEL", _path(lesson_path, "activities", activity_index, "targetIds"), f"Character {target_id!r} recognition level {recognition_level} is above lesson level {lesson_level}.")
+                if domain in {"exposure", "character_exposure"}:
+                    for target_id in activity_target_ids:
+                        node = nodes.get(target_id)
+                        if node is None:
+                            continue
+                        if node.get("targetType") != "CHARACTER":
+                            add("EXPOSURE_TARGET_NOT_CHARACTER", _path(lesson_path, "activities", activity_index, "targetIds"), f"Character exposure activity target {target_id!r} is not a character.")
+                        elif node.get("exposureLevel") is None:
+                            add("EXPOSURE_LEVEL_UNSUPPORTED", _path(lesson_path, "activities", activity_index, "targetIds"), f"Character {target_id!r} has no registered exposure level.")
+                        elif isinstance(lesson_level, int) and isinstance(node.get("exposureLevel"), int) and node.get("exposureLevel") > lesson_level:
+                            add("TARGET_OUT_OF_LEVEL", _path(lesson_path, "activities", activity_index, "targetIds"), f"Character {target_id!r} exposure level {node.get('exposureLevel')} is above lesson level {lesson_level}.")
+                if domain in {"reading", "character_reading"}:
+                    for target_id in activity_target_ids:
+                        node = nodes.get(target_id)
+                        if node is None or node.get("targetType") != "CHARACTER":
+                            continue
+                        reading_level = node.get("readingLevel")
+                        if reading_level is None:
+                            add("READING_LEVEL_UNSUPPORTED", _path(lesson_path, "activities", activity_index, "targetIds"), f"Character {target_id!r} has no registered reading level.")
+                        elif isinstance(lesson_level, int) and isinstance(reading_level, int) and reading_level > lesson_level:
+                            add("TARGET_OUT_OF_LEVEL", _path(lesson_path, "activities", activity_index, "targetIds"), f"Character {target_id!r} reading level {reading_level} is above lesson level {lesson_level}.")
                 if domain not in {"writing", "handwriting"}:
                     continue
                 for target_id in activity_target_ids:
