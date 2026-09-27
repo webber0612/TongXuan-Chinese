@@ -1,0 +1,74 @@
+name: Open Curriculum Rights Gate
+
+on:
+  pull_request:
+    paths:
+      - "shared/content-sources/**"
+      - "shared/open-curriculum/**"
+      - "shared/lesson-packages/**"
+      - "shared/validated-curriculum-slice.json"
+      - "backend/app/open_curriculum_validator.py"
+      - "backend/app/curriculum.py"
+      - "backend/app/learning.py"
+      - "backend/app/sprint_b.py"
+      - "backend/tests/test_open_curriculum*.py"
+      - "scripts/open_curriculum_rights_gate.py"
+      - "frontend/src/data/**"
+      - "frontend/src/assets/**"
+      - "frontend/public/**"
+      - "data/**"
+      - "docs/content-rights-audit.md"
+      - "docs/open-curriculum-*.md"
+      - "docs/mainline-completeness-audit.md"
+      - "docs/project-handoff.md"
+      - "CONTENT_LICENSES.md"
+      - ".github/workflows/open-curriculum-rights-gate.yml"
+  push:
+    branches: [main]
+    paths:
+      - "shared/content-sources/**"
+      - "shared/open-curriculum/**"
+      - "shared/lesson-packages/**"
+      - "shared/validated-curriculum-slice.json"
+      - "backend/app/open_curriculum_validator.py"
+      - "backend/app/curriculum.py"
+      - "backend/app/learning.py"
+      - "backend/app/sprint_b.py"
+      - "backend/tests/test_open_curriculum*.py"
+      - "scripts/open_curriculum_rights_gate.py"
+      - "frontend/src/data/**"
+      - "frontend/src/assets/**"
+      - "frontend/public/**"
+      - "data/**"
+      - "docs/content-rights-audit.md"
+      - "docs/open-curriculum-*.md"
+      - "docs/mainline-completeness-audit.md"
+      - "docs/project-handoff.md"
+      - "CONTENT_LICENSES.md"
+      - ".github/workflows/open-curriculum-rights-gate.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fail-closed-rights-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install backend requirements
+        run: python -m pip install -r backend/requirements.txt
+
+      - name: Validate rights registry and tracked content inventory
+        run: python scripts/open_curriculum_rights_gate.py --check
+
+      - name: Run authority and rights regressions
+        working-directory: backend
+        run: python -m pytest tests/test_open_curriculum.py tests/test_open_curriculum_rights_gate.py -q

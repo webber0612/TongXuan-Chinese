@@ -23,6 +23,37 @@ SCHEMA_DIR = ROOT / "shared" / "open-curriculum" / "schemas"
 PACK_SCHEMA_PATH = SCHEMA_DIR / "open-curriculum.schema.json"
 SOURCE_SCHEMA_PATH = SCHEMA_DIR / "source-registry.schema.json"
 SOURCE_REGISTRY_PATH = ROOT / "shared" / "content-sources" / "source-registry.json"
+EVIDENCE_KIND_ALLOWED_CLAIMS = {
+    "LICENSE_NOTICE": {
+        "LICENSE_IDENTITY",
+        "COMMERCIAL_USE",
+        "MODIFICATION",
+        "REDISTRIBUTION",
+        "ATTRIBUTION",
+        "SHARE_ALIKE",
+        "RAW_INGESTION",
+        "PUBLIC_REPOSITORY",
+        "DERIVATIVE_USE",
+        "ITEM_LEVEL_LICENSE",
+        "AUDIO_LICENSE_SCOPE",
+    },
+    "TERMS_OF_USE": {
+        "LICENSE_IDENTITY",
+        "COMMERCIAL_USE",
+        "MODIFICATION",
+        "REDISTRIBUTION",
+        "ATTRIBUTION",
+        "SHARE_ALIKE",
+        "RAW_INGESTION",
+        "PUBLIC_REPOSITORY",
+        "DERIVATIVE_USE",
+        "ITEM_LEVEL_LICENSE",
+        "AUDIO_LICENSE_SCOPE",
+    },
+    "SOURCE_DESCRIPTION": {"SOURCE_DESCRIPTION"},
+    "PROJECT_POLICY": {"PROJECT_POLICY", "CONTENT_LICENSE_SEPARATION"},
+    "INACCESSIBLE_PRIMARY_SOURCE": {"SOURCE_ACCESS_STATUS"},
+}
 
 
 @dataclass(frozen=True, order=True)
@@ -69,7 +100,7 @@ def _schema_issues(
 
 
 def validate_source_registry(source_registry: Mapping[str, Any]) -> list[ValidationIssue]:
-    """Validate source registry fields and permission/status vocabulary."""
+    """Validate source registry structure, evidence links, and fail-closed decisions."""
     pack_schema = _read_json(PACK_SCHEMA_PATH)
     source_schema = _read_json(SOURCE_SCHEMA_PATH)
     registry = _registry_for(pack_schema, source_schema)
@@ -81,8 +112,10 @@ def validate_source_registry(source_registry: Mapping[str, Any]) -> list[Validat
         if not allowed_is_valid or set(allowed) != required:
             issues.append(ValidationIssue("SOURCE_STATUS_SET_INVALID", "/allowedLegalStatuses", "The source registry must support exactly GREEN, YELLOW, RED, and UNKNOWN."))
         seen: set[str] = set()
+        global_evidence_ids: set[str] = set()
         records = source_registry.get("sources", [])
         if isinstance(records, list):
+            evidence_by_source: dict[str, set[str]] = {}
             for index, source in enumerate(records):
                 if not isinstance(source, Mapping):
                     continue
@@ -93,6 +126,118 @@ def validate_source_registry(source_registry: Mapping[str, Any]) -> list[Validat
                     seen.add(source_id)
                 if isinstance(allowed, list) and source.get("legalStatus") not in allowed:
                     issues.append(ValidationIssue("SOURCE_STATUS_NOT_ALLOWED", f"/sources/{index}/legalStatus", "Each source status must appear in allowedLegalStatuses."))
+
+                source_evidence_ids: set[str] = set()
+                evidence_records = source.get("rightsEvidence", [])
+                if isinstance(evidence_records, list):
+                    for evidence_index, evidence in enumerate(evidence_records):
+                        if not isinstance(evidence, Mapping):
+                            continue
+                        evidence_id = evidence.get("evidenceId")
+                        if not isinstance(evidence_id, str) or not evidence_id:
+                            continue
+                        evidence_path = f"/sources/{index}/rightsEvidence/{evidence_index}/evidenceId"
+                        if evidence_id in global_evidence_ids:
+                            issues.append(ValidationIssue("RIGHTS_EVIDENCE_ID_DUPLICATE", evidence_path, f"Evidence ID {evidence_id!r} must be globally unique."))
+                        global_evidence_ids.add(evidence_id)
+                        source_evidence_ids.add(evidence_id)
+                        evidence_kind = evidence.get("evidenceKind")
+                        allowed_claims = EVIDENCE_KIND_ALLOWED_CLAIMS.get(evidence_kind, set()) if isinstance(evidence_kind, str) else set()
+                        claims = evidence.get("supportsClaims", [])
+                        if isinstance(claims, list) and any(
+                            not isinstance(claim, str) or claim not in allowed_claims
+                            for claim in claims
+                        ):
+                            issues.append(ValidationIssue(
+                                "RIGHTS_EVIDENCE_CLAIM_KIND_MISMATCH",
+                                f"/sources/{index}/rightsEvidence/{evidence_index}/supportsClaims",
+                                "A claim type must be supported by the recorded evidence kind; inaccessible pages cannot support permission claims.",
+                            ))
+                if isinstance(source_id, str) and source_id:
+                    evidence_by_source[source_id] = source_evidence_ids
+
+            for index, source in enumerate(records):
+                if not isinstance(source, Mapping):
+                    continue
+                source_id = source.get("sourceId")
+                status = source.get("legalStatus")
+                decision = source.get("rightsDecision")
+                outcome = decision.get("outcome") if isinstance(decision, Mapping) else None
+                linked_value = decision.get("evidenceIds", []) if isinstance(decision, Mapping) else []
+                linked_ids = linked_value if isinstance(linked_value, list) else []
+                local_evidence_ids = evidence_by_source.get(source_id, set()) if isinstance(source_id, str) else set()
+                if isinstance(linked_ids, list):
+                    for evidence_id in linked_ids:
+                        if not isinstance(evidence_id, str) or evidence_id not in local_evidence_ids:
+                            issues.append(ValidationIssue("RIGHTS_DECISION_EVIDENCE_UNRESOLVED", f"/sources/{index}/rightsDecision/evidenceIds", f"Decision evidence {evidence_id!r} must resolve to evidence recorded on the same source."))
+
+                expected_outcome = {
+                    "GREEN": "ALLOW_WITH_ITEM_CHECKS",
+                    "YELLOW": "REFERENCE_ONLY",
+                    "RED": "BLOCK",
+                    "UNKNOWN": "UNKNOWN_BLOCKED",
+                }.get(status) if isinstance(status, str) else None
+                if expected_outcome is not None and outcome != expected_outcome:
+                    issues.append(ValidationIssue("RIGHTS_STATUS_DECISION_MISMATCH", f"/sources/{index}/rightsDecision/outcome", f"{status} requires the explicit {expected_outcome} policy outcome."))
+
+                if source.get("validationOnly") is True and status == "GREEN":
+                    issues.append(ValidationIssue("VALIDATION_ONLY_SOURCE_NOT_PUBLISHABLE", f"/sources/{index}/validationOnly", "Validation-only sources cannot have GREEN publication status."))
+
+                if status == "GREEN":
+                    permission_fields = (
+                        "commercialUse",
+                        "modificationAllowed",
+                        "redistributionAllowed",
+                        "attributionRequired",
+                        "shareAlike",
+                        "rawIngestionAllowed",
+                        "publicRepoAllowed",
+                        "derivativeUseAllowed",
+                    )
+                    if any(source.get(field) in (None, "UNKNOWN", "NO", "NOT_ALLOWED") for field in permission_fields):
+                        issues.append(ValidationIssue("GREEN_RIGHTS_UNSUPPORTED", f"/sources/{index}", "GREEN requires evidence-backed known terms for each permission field. Conditional terms require item-level checks; unknown or denied source-level use remains blocked."))
+                    evidence_records = source.get("rightsEvidence", [])
+                    has_linked_terms_evidence = isinstance(evidence_records, list) and any(
+                        isinstance(item, Mapping)
+                        and item.get("evidenceKind") in {"LICENSE_NOTICE", "TERMS_OF_USE"}
+                        and item.get("evidenceId") in linked_ids
+                        for item in evidence_records
+                    )
+                    if not has_linked_terms_evidence:
+                        issues.append(ValidationIssue("GREEN_RIGHTS_EVIDENCE_MISSING", f"/sources/{index}/rightsEvidence", "GREEN requires linked evidence from a license notice or terms of use."))
+                    claim_by_permission = {
+                        "commercialUse": "COMMERCIAL_USE",
+                        "modificationAllowed": "MODIFICATION",
+                        "redistributionAllowed": "REDISTRIBUTION",
+                        "attributionRequired": "ATTRIBUTION",
+                        "shareAlike": "SHARE_ALIKE",
+                        "rawIngestionAllowed": "RAW_INGESTION",
+                        "publicRepoAllowed": "PUBLIC_REPOSITORY",
+                        "derivativeUseAllowed": "DERIVATIVE_USE",
+                    }
+                    linked_claims: set[str] = set()
+                    evidence_records = source.get("rightsEvidence", [])
+                    if isinstance(evidence_records, list):
+                        for evidence in evidence_records:
+                            if not isinstance(evidence, Mapping) or evidence.get("evidenceId") not in linked_ids:
+                                continue
+                            claims = evidence.get("supportsClaims", [])
+                            if isinstance(claims, list):
+                                evidence_kind = evidence.get("evidenceKind")
+                                allowed_claims = EVIDENCE_KIND_ALLOWED_CLAIMS.get(evidence_kind, set()) if isinstance(evidence_kind, str) else set()
+                                linked_claims.update(
+                                    claim for claim in claims
+                                    if isinstance(claim, str) and claim in allowed_claims
+                                )
+                    missing_claims = {
+                        claim
+                        for field, claim in claim_by_permission.items()
+                        if source.get(field) not in (None, "UNKNOWN") and claim not in linked_claims
+                    }
+                    if missing_claims:
+                        issues.append(ValidationIssue("GREEN_PERMISSION_EVIDENCE_MISSING", f"/sources/{index}/rightsEvidence", f"Linked evidence must explicitly support permission claims: {', '.join(sorted(missing_claims))}."))
+                    if any(source.get(field) == "CONDITIONAL" for field in permission_fields) and source.get("itemLevelRightsRequired") is not True:
+                        issues.append(ValidationIssue("GREEN_ITEM_LEVEL_GUARD_MISSING", f"/sources/{index}/itemLevelRightsRequired", "Conditional source permissions require an item-level rights gate."))
     return sorted(set(issues))
 
 
