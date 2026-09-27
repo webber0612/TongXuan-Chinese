@@ -8,6 +8,7 @@ import { Profile, ACTIVE_PROFILE_STORAGE_KEY, BackendChild, defaultProfiles, isV
 import { apiFetch, setApiCsrfToken } from "./lib/apiFetch";
 import { ANNOTATION_MODE_KEY, currentAnnotationMode, currentLearningLocale, LEARNING_LOCALE_KEY, useLocale, type AnnotationMode, type DisplayLanguage, type LearningLocale } from "./lib/i18n";
 import { GoogleParentSignIn } from "./components/GoogleParentSignIn";
+import { PlacementStatus } from "./components/PlacementStatus";
 import { parentAuthCopy } from "./lib/parentAuthCopy";
 
 const API = import.meta.env.VITE_API_BASE ?? "";
@@ -377,6 +378,7 @@ function SettingsPage({ children, activeChildId, parentSession, canManageChildre
       {childrenLoading && <p role="status" className="settings-help">{t("loading")}</p>}
       {!childrenLoading && children.length === 0 && canManageChildren && <p className="settings-help">{authCopy.noChildren}</p>}
       <div className="family-list">{children.map((child, index) => <button type="button" className="family-row family-row-button" key={child.id} aria-pressed={child.id === activeChildId} onClick={() => onSelectChild(child.id)}><span className={"avatar avatar-" + (index % 2 ? "mint" : "coral")}>{child.name.slice(-1)}</span><span><strong>{child.name}</strong><small>{child.id === activeChildId ? authCopy.selected : authCopy.chooseChild}</small></span>{child.id === activeChildId && <span aria-hidden="true">✓</span>}</button>)}</div>
+      <PlacementStatus key={activeChildId ?? "no-active-child"} childId={activeChildId} authenticatedParent={parentSession.authenticated && parentSession.role === "parent"} language={language} />
       {canManageChildren && <button type="button" className="button button-secondary" onClick={onAddChild}><Plus size={18}/>{authCopy.addChild}</button>}
       <p className="settings-help">{authCopy.childLoginNote}</p>
     </section>

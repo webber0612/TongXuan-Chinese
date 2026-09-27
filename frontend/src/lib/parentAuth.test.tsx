@@ -201,9 +201,17 @@ describe("Google parent auth UI", () => {
     window.history.pushState({}, "", "/TongXuan-Chinese/me");
     await act(async () => { window.dispatchEvent(new PopStateEvent("popstate")); });
     expect(window.location.pathname).toContain("/me");
-    await act(async () => { window.history.back(); await new Promise((resolve) => setTimeout(resolve, 10)); });
+    await act(async () => {
+      const navigated = new Promise<void>((resolve) => window.addEventListener("popstate", () => resolve(), { once: true }));
+      window.history.back();
+      await navigated;
+    });
     expect(window.location.pathname).toContain("/learning-session");
-    await act(async () => { window.history.forward(); await new Promise((resolve) => setTimeout(resolve, 10)); });
+    await act(async () => {
+      const navigated = new Promise<void>((resolve) => window.addEventListener("popstate", () => resolve(), { once: true }));
+      window.history.forward();
+      await navigated;
+    });
     expect(window.location.pathname).toContain("/me");
     await act(async () => { root.unmount(); });
     vi.unstubAllGlobals();
@@ -241,6 +249,109 @@ describe("Google parent auth UI", () => {
     expect(queueCalls).toEqual(["/api/children/22/learning-daily-queue"]);
     expect(localStorage.getItem(ACTIVE_PROFILE_STORAGE_KEY)).toBe("child-22");
     await act(async () => { refreshed.unmount(); });
+    vi.unstubAllGlobals();
+  });
+
+  it("shows the exact selected child's unassessed Starter default from the signed parent endpoint", async () => {
+    localStorage.clear();
+    localStorage.setItem(DISPLAY_LANGUAGE_KEY, "en");
+    localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify([
+      { key: "child-11", name: "Twin", role: "child", childId: 11, color: "coral" },
+      { key: "child-22", name: "Twin", role: "child", childId: 22, color: "mint" },
+      { key: "parent", name: "Parent", role: "parent", childId: null, color: "navy" },
+    ]));
+    localStorage.setItem(ACTIVE_PROFILE_STORAGE_KEY, "child-11");
+    const calls: Array<{ url: string; credentials?: RequestCredentials }> = [];
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      calls.push({ url, credentials: init?.credentials });
+      if (url.endsWith("/api/auth/session")) return new Response(JSON.stringify({ authRequired: true, authenticated: true, role: "parent", parent: { id: 9, email: "parent@example.com", displayName: "Parent" } }), { status: 200 });
+      if (url.endsWith("/api/children")) return new Response(JSON.stringify([{ id: 11, name: "Twin" }, { id: 22, name: "Twin" }]), { status: 200 });
+      if (url.endsWith("/api/children/11/placement-profile")) return new Response(JSON.stringify({ childId: 11, mainCurriculumStart: "STARTER", assessmentMethod: "NOT_ASSESSED" }), { status: 200 });
+      return new Response("{}", { status: 200 });
+    }));
+    const root = mountApp("/TongXuan-Chinese/me");
+    await act(async () => { root.render(React.createElement(AppShell)); });
+    await settle();
+
+    expect(calls.some((call) => call.url === "/api/children/11/placement-profile" && call.credentials === "include")).toBe(true);
+    expect(document.querySelector(".placement-status")?.textContent).toContain("Starter default — not assessed");
+    expect(document.querySelector(".placement-status")?.textContent).not.toContain("Assessment method");
+    await act(async () => { root.unmount(); });
+    vi.unstubAllGlobals();
+  });
+
+  it("loads configured placement for the newly selected child and ignores a late response for the previous child", async () => {
+    localStorage.clear();
+    localStorage.setItem(DISPLAY_LANGUAGE_KEY, "en");
+    localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify([
+      { key: "child-11", name: "Twin", role: "child", childId: 11, color: "coral" },
+      { key: "child-22", name: "Twin", role: "child", childId: 22, color: "mint" },
+      { key: "parent", name: "Parent", role: "parent", childId: null, color: "navy" },
+    ]));
+    localStorage.setItem(ACTIVE_PROFILE_STORAGE_KEY, "child-11");
+    const oldPlacement = deferred<Response>();
+    const calls: Array<{ url: string; credentials?: RequestCredentials }> = [];
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      calls.push({ url, credentials: init?.credentials });
+      if (url.endsWith("/api/auth/session")) return new Response(JSON.stringify({ authRequired: true, authenticated: true, role: "parent", parent: { id: 9, email: "parent@example.com", displayName: "Parent" } }), { status: 200 });
+      if (url.endsWith("/api/children")) return new Response(JSON.stringify([{ id: 11, name: "Twin" }, { id: 22, name: "Twin" }]), { status: 200 });
+      if (url.endsWith("/api/children/11/placement-profile")) return oldPlacement.promise;
+      if (url.endsWith("/api/children/22/placement-profile")) return new Response(JSON.stringify({ childId: 22, mainCurriculumStart: "BOOK_1", assessmentMethod: "DIAGNOSTIC" }), { status: 200 });
+      if (url.endsWith("/api/children/22/learning-daily-queue")) return new Response(JSON.stringify({ childId: 22, placementStart: "STARTER", review: { items: [] } }), { status: 200 });
+      return new Response("{}", { status: 200 });
+    }));
+    const root = mountApp("/TongXuan-Chinese/me");
+    await act(async () => { root.render(React.createElement(AppShell)); });
+    await settle();
+    expect(calls.some((call) => call.url === "/api/children/11/placement-profile")).toBe(true);
+
+    await act(async () => { (document.querySelectorAll(".family-row-button")[1] as HTMLButtonElement).click(); });
+    await settle();
+    expect(localStorage.getItem(ACTIVE_PROFILE_STORAGE_KEY)).toBe("child-22");
+    window.history.pushState({}, "", "/TongXuan-Chinese/me");
+    await act(async () => { window.dispatchEvent(new PopStateEvent("popstate")); await new Promise((resolve) => setTimeout(resolve, 0)); });
+    await settle();
+
+    expect(calls.some((call) => call.url === "/api/children/22/placement-profile" && call.credentials === "include")).toBe(true);
+    expect(document.querySelector(".placement-status")?.textContent).toContain("Book 1");
+    expect(document.querySelector(".placement-status")?.textContent).toContain("Diagnostic");
+    await act(async () => { oldPlacement.resolve(new Response(JSON.stringify({ childId: 11, mainCurriculumStart: "BASIC", assessmentMethod: "PARENT_OBSERVATION" }), { status: 200 })); await new Promise((resolve) => setTimeout(resolve, 10)); });
+    expect(document.querySelector(".placement-status")?.textContent).toContain("Book 1");
+    expect(document.querySelector(".placement-status")?.textContent).not.toContain("Basic");
+    await act(async () => { root.unmount(); });
+    vi.unstubAllGlobals();
+  });
+
+  it("shows an error for denied or malformed placement without fabricating assessment or blocking Daily Queue", async () => {
+    localStorage.clear();
+    localStorage.setItem(DISPLAY_LANGUAGE_KEY, "en");
+    localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify([
+      { key: "child-11", name: "Learner", role: "child", childId: 11, color: "coral" },
+      { key: "parent", name: "Parent", role: "parent", childId: null, color: "navy" },
+    ]));
+    localStorage.setItem(ACTIVE_PROFILE_STORAGE_KEY, "child-11");
+    const calls: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      calls.push(url);
+      if (url.endsWith("/api/auth/session")) return new Response(JSON.stringify({ authRequired: true, authenticated: true, role: "parent", parent: { id: 9, email: "parent@example.com", displayName: "Parent" } }), { status: 200 });
+      if (url.endsWith("/api/children")) return new Response(JSON.stringify([{ id: 11, name: "Learner" }]), { status: 200 });
+      if (url.endsWith("/api/children/11/placement-profile")) return new Response("{}", { status: 403 });
+      if (url.endsWith("/api/children/11/learning-daily-queue")) return new Response(JSON.stringify({ childId: 11, placementStart: "STARTER", review: { items: [] } }), { status: 200 });
+      return new Response("{}", { status: 200 });
+    }));
+    const root = mountApp("/TongXuan-Chinese/me");
+    await act(async () => { root.render(React.createElement(AppShell)); });
+    await settle();
+    expect(document.querySelector(".placement-status [role=alert]")?.textContent).toContain("Placement status is unavailable");
+    expect(document.querySelector(".placement-status")?.textContent).not.toContain("not assessed");
+
+    await act(async () => { (document.querySelector('[aria-label="TongXuan home"]') as HTMLButtonElement).click(); });
+    await settle();
+    expect(calls).toContain("/api/children/11/learning-daily-queue");
+    await act(async () => { root.unmount(); });
     vi.unstubAllGlobals();
   });
 

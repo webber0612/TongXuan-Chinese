@@ -90,6 +90,7 @@ def test_google_auth_identity_csrf_and_parent_owned_child_lifecycle(tmp_path, mo
         # A pre-migration learner remains present but is intentionally unowned.
         with connect() as db:
             legacy_id = int(db.execute("INSERT INTO children(name) VALUES('Legacy learner')").lastrowid)
+        assert api.get(f"/api/children/{legacy_id}/placement-profile").status_code == 401
 
         csrf = api.get("/api/auth/google/csrf", headers={"Origin": "https://family.example"})
         assert csrf.status_code == 200
@@ -171,6 +172,7 @@ def test_google_auth_identity_csrf_and_parent_owned_child_lifecycle(tmp_path, mo
         api.post("/api/auth/logout", headers={"Origin": "https://family.example"})
         assert api.get("/api/auth/session").json()["authenticated"] is False
         assert api.get("/api/children").status_code == 401
+        assert api.get(f"/api/children/{third.json()['id']}/placement-profile").status_code == 401
 
 
 def test_parent_learning_report_returns_authoritative_sessions_and_denies_other_parent(tmp_path, monkeypatch):
