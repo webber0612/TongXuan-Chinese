@@ -704,6 +704,172 @@ def validate_curriculum_pack(
             else:
                 evidence_records[evidence_id] = value
             evidence_ids.add(evidence_id)
+
+    proposal_ids: set[str] = set()
+    proposal_target_ids: dict[str, str] = {}
+    proposals = pack.get("curriculumChangeProposals", [])
+    if isinstance(proposals, list):
+        for proposal_index, proposal in enumerate(proposals):
+            if not isinstance(proposal, Mapping):
+                continue
+            proposal_path = _path("/curriculumChangeProposals", proposal_index)
+            proposal_id = proposal.get("proposalId")
+            if isinstance(proposal_id, str) and proposal_id:
+                if proposal_id in proposal_ids:
+                    add("DUPLICATE_PROPOSAL_ID", _path(proposal_path, "proposalId"), f"Proposal ID {proposal_id!r} is duplicated.")
+                proposal_ids.add(proposal_id)
+
+            if proposal.get("approvalStatus") != "PROPOSED":
+                add("PROPOSAL_APPROVAL_NOT_AUTHENTICATED", _path(proposal_path, "approvalStatus"), "Proposal records remain PROPOSED until a separate authenticated human approval transition exists.")
+
+            proposed_nodes = proposal.get("proposedNodes", [])
+            if not isinstance(proposed_nodes, list):
+                proposed_nodes = []
+            proposed_target_ids = {
+                node.get("id")
+                for node in proposed_nodes
+                if isinstance(node, Mapping) and isinstance(node.get("id"), str)
+            }
+            change_type = proposal.get("changeType")
+            for node_index, node in enumerate(proposed_nodes):
+                if not isinstance(node, Mapping):
+                    continue
+                node_path = _path(proposal_path, "proposedNodes", node_index)
+                node_id = node.get("id")
+                if node.get("approvalStatus") != "PROPOSED":
+                    add("PROPOSAL_TARGET_APPROVAL_NOT_AUTHENTICATED", _path(node_path, "approvalStatus"), "A proposed node cannot self-assert approval; human approval must use a separate authenticated transition.")
+                if change_type == "ADD_TARGET" and isinstance(node_id, str):
+                    if node_id in nodes:
+                        add("PROPOSAL_TARGET_ALREADY_REGISTERED", _path(node_path, "id"), f"New target {node_id!r} already exists in the approved graph.")
+                    elif node_id in proposal_target_ids:
+                        add("DUPLICATE_PROPOSED_TARGET_ID", _path(node_path, "id"), f"New target {node_id!r} is already proposed by {proposal_target_ids[node_id]!r}.")
+                    else:
+                        proposal_target_ids[node_id] = proposal_id if isinstance(proposal_id, str) else proposal_path
+
+            affected_ids = proposal.get("affectedTargetIds", [])
+            if not isinstance(affected_ids, list):
+                affected_ids = []
+            if change_type in {"MODIFY_TARGET", "REMOVE_TARGET", "CHANGE_PREREQUISITE", "CHANGE_SEQUENCE"} and not affected_ids:
+                add("PROPOSAL_AFFECTED_TARGET_REQUIRED", _path(proposal_path, "affectedTargetIds"), f"{change_type} proposals must identify at least one existing target.")
+            for target_index, target_id in enumerate(affected_ids):
+                if isinstance(target_id, str) and target_id not in nodes:
+                    add("PROPOSAL_AFFECTED_TARGET_NOT_REGISTERED", _path(proposal_path, "affectedTargetIds", target_index), f"Affected target {target_id!r} is not in the current graph.")
+
+            prerequisites = proposal.get("prerequisites", [])
+            if not isinstance(prerequisites, list):
+                prerequisites = []
+            for prerequisite_index, prerequisite in enumerate(prerequisites):
+                if not isinstance(prerequisite, Mapping):
+                    continue
+                target_id = prerequisite.get("targetId")
+                if isinstance(target_id, str) and target_id not in nodes and target_id not in skill_aliases:
+                    add("PROPOSAL_PREREQUISITE_NOT_REGISTERED", _path(proposal_path, "prerequisites", prerequisite_index, "targetId"), f"Prerequisite {target_id!r} is not an existing graph target or skill.")
+
+            local_evidence: dict[str, Mapping[str, Any]] = {
+                value.get("evidenceId"): value
+                for _, value in _walk(proposal)
+                if isinstance(value, Mapping)
+                and isinstance(value.get("evidenceId"), str)
+            }
+
+            def validate_proposal_evidence_refs(
+                refs: Any,
+                field_path: str,
+                expected_claim: str | None = None,
+            ) -> set[str]:
+                resolved: set[str] = set()
+                if not isinstance(refs, list):
+                    return resolved
+                for ref_index, evidence_id in enumerate(refs):
+                    ref_path = _path(field_path, ref_index)
+                    if not isinstance(evidence_id, str) or evidence_id not in local_evidence:
+                        add("PROPOSAL_EVIDENCE_NOT_LOCAL", ref_path, f"Proposal evidence {evidence_id!r} must be included in this proposal record.")
+                        continue
+                    resolved.add(evidence_id)
+                    if expected_claim is not None:
+                        claims = local_evidence[evidence_id].get("supportsClaims", [])
+                        if not isinstance(claims, list) or expected_claim not in claims:
+                            add("PROPOSAL_EVIDENCE_CLAIM_MISMATCH", ref_path, f"Proposal evidence {evidence_id!r} must declare support for {expected_claim}.")
+                return resolved
+
+            validate_proposal_evidence_refs(
+                proposal.get("whyNow", {}).get("evidenceIds") if isinstance(proposal.get("whyNow"), Mapping) else None,
+                _path(proposal_path, "whyNow", "evidenceIds"),
+            )
+            validate_proposal_evidence_refs(
+                proposal.get("authorityEvidenceIds"),
+                _path(proposal_path, "authorityEvidenceIds"),
+                "CURRICULUM_AUTHORITY",
+            )
+            difficulty_evidence_ids = validate_proposal_evidence_refs(
+                proposal.get("difficultyEvidenceIds"),
+                _path(proposal_path, "difficultyEvidenceIds"),
+                "TARGET_DIFFICULTY",
+            )
+            for node in proposed_nodes:
+                if not isinstance(node, Mapping):
+                    continue
+                difficulty = node.get("difficultyEvidence")
+                if isinstance(difficulty, Mapping):
+                    node_difficulty_ids = difficulty.get("evidenceIds", [])
+                    if not isinstance(node_difficulty_ids, list):
+                        node_difficulty_ids = []
+                    for evidence_id in node_difficulty_ids:
+                        if isinstance(evidence_id, str) and evidence_id not in difficulty_evidence_ids:
+                            add("PROPOSAL_DIFFICULTY_EVIDENCE_NOT_DECLARED", _path(proposal_path, "difficultyEvidenceIds"), f"Node difficulty evidence {evidence_id!r} must be listed in proposal difficultyEvidenceIds.")
+
+            alternatives = proposal.get("alternativesConsidered", [])
+            seen_alternative_ids: set[str] = set()
+            if isinstance(alternatives, list):
+                for alternative_index, alternative in enumerate(alternatives):
+                    if not isinstance(alternative, Mapping):
+                        continue
+                    alternative_path = _path(proposal_path, "alternativesConsidered", alternative_index)
+                    alternative_id = alternative.get("alternativeId")
+                    if isinstance(alternative_id, str) and alternative_id in seen_alternative_ids:
+                        add("DUPLICATE_PROPOSAL_ALTERNATIVE_ID", _path(alternative_path, "alternativeId"), f"Alternative ID {alternative_id!r} is duplicated within this proposal.")
+                    if isinstance(alternative_id, str):
+                        seen_alternative_ids.add(alternative_id)
+                    validate_proposal_evidence_refs(alternative.get("evidenceIds"), _path(alternative_path, "evidenceIds"))
+
+            cognitive_load = proposal.get("expectedCognitiveLoad", {})
+            dimensions = cognitive_load.get("dimensions", []) if isinstance(cognitive_load, Mapping) else []
+            if isinstance(dimensions, list):
+                referenced_targets = proposed_target_ids | {
+                    target_id for target_id in affected_ids if isinstance(target_id, str)
+                }
+                for dimension_index, dimension in enumerate(dimensions):
+                    if not isinstance(dimension, Mapping):
+                        continue
+                    dimension_path = _path(proposal_path, "expectedCognitiveLoad", "dimensions", dimension_index)
+                    dimension_target_ids = dimension.get("targetIds", [])
+                    if not isinstance(dimension_target_ids, list):
+                        dimension_target_ids = []
+                    for target_index, target_id in enumerate(dimension_target_ids):
+                        if isinstance(target_id, str) and target_id not in referenced_targets:
+                            add("PROPOSAL_LOAD_TARGET_NOT_DECLARED", _path(dimension_path, "targetIds", target_index), f"Load target {target_id!r} must be a proposed or affected target.")
+                    validate_proposal_evidence_refs(
+                        dimension.get("evidenceIds"),
+                        _path(dimension_path, "evidenceIds"),
+                        "EXPECTED_COGNITIVE_LOAD",
+                    )
+
+            confidence = proposal.get("confidence")
+            if isinstance(confidence, Mapping):
+                estimate = confidence.get("estimate")
+                if (
+                    not isinstance(estimate, (int, float))
+                    or isinstance(estimate, bool)
+                    or not 0 <= estimate <= 1
+                    or not math.isfinite(estimate)
+                ):
+                    add("PROPOSAL_CONFIDENCE_INVALID", _path(proposal_path, "confidence", "estimate"), "Proposal confidence must be a finite number between 0 and 1.")
+                validate_proposal_evidence_refs(
+                    confidence.get("evidenceIds"),
+                    _path(proposal_path, "confidence", "evidenceIds"),
+                    "PROPOSAL_CONFIDENCE",
+                )
+
     for object_path, value in _walk(pack):
         refs = value.get("evidenceIds")
         if isinstance(refs, list):

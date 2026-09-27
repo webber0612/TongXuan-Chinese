@@ -229,6 +229,7 @@ def make_pack():
         "productiveRequirement": {"required": True, "description": "fixture", "evidenceIds": ["evidence-proposal-skill"]},
         "receptiveRequirement": {"required": False, "description": "fixture", "evidenceIds": []},
     }
+    proposal_node["evidence"][0]["supportsClaims"] = ["TARGET_DIFFICULTY"]
     lesson = {
         "lessonId": "synthetic-lesson",
         "level": 1,
@@ -269,7 +270,7 @@ def make_pack():
         "approvalStatus": "ARCHITECT_APPROVED",
     }
     return {
-        "schemaVersion": "1.3",
+        "schemaVersion": "1.4",
         "documentType": "CURRICULUM_PACK",
         "packId": "synthetic-pack",
         "publicationStatus": "PUBLISHABLE",
@@ -281,8 +282,41 @@ def make_pack():
             "changeType": "ADD_TARGET",
             "affectedTargetIds": [],
             "proposedNodes": [proposal_node],
+            "whyNow": {
+                "rationale": "Synthetic rationale only; it does not select a product target.",
+                "evidenceIds": ["evidence-proposal-authority"],
+            },
+            "prerequisites": [],
+            "authorityEvidenceIds": ["evidence-proposal-authority"],
+            "difficultyEvidenceIds": ["evidence-proposal-difficulty", "evidence-proposal-skill"],
+            "alternativesConsidered": [{
+                "alternativeId": "synthetic-alternative",
+                "description": "Synthetic alternative option.",
+                "rationale": "Synthetic comparison only.",
+                "evidenceIds": ["evidence-proposal-alternative"],
+            }],
+            "expectedCognitiveLoad": {"dimensions": [{
+                "dimension": "speaking",
+                "estimatedImpact": "Synthetic estimate only.",
+                "targetIds": ["proposal-skill"],
+                "rationale": "Synthetic load note.",
+                "evidenceIds": ["evidence-proposal-load"],
+            }]},
+            "confidence": {
+                "estimate": 0.5,
+                "rationale": "Synthetic confidence estimate only.",
+                "evidenceIds": ["evidence-proposal-confidence"],
+                "limitations": ["Synthetic fixture; no learner evidence."],
+            },
+            "unresolvedQuestions": [],
             "rationale": "Synthetic schema fixture only; does not mutate the graph.",
-            "evidence": [evidence("evidence-proposal-record")],
+            "evidence": [
+                evidence("evidence-proposal-authority", ["CURRICULUM_AUTHORITY"]),
+                evidence("evidence-proposal-difficulty", ["TARGET_DIFFICULTY"]),
+                evidence("evidence-proposal-alternative", ["CURRICULUM_AUTHORITY"]),
+                evidence("evidence-proposal-load", ["EXPECTED_COGNITIVE_LOAD"]),
+                evidence("evidence-proposal-confidence", ["PROPOSAL_CONFIDENCE"]),
+            ],
             "approvalStatus": "PROPOSED",
         }],
         "validationPolicy": {
@@ -946,6 +980,97 @@ def test_approved_proposal_node_does_not_become_a_lesson_graph_skill():
     pack["lessons"][0]["availableSkillIds"] = ["proposal-skill"]
 
     assert "UNREGISTERED_SKILL" in codes(validate_curriculum_pack(pack))
+
+
+@pytest.mark.parametrize(
+    "required_field",
+    [
+        "whyNow",
+        "prerequisites",
+        "authorityEvidenceIds",
+        "difficultyEvidenceIds",
+        "alternativesConsidered",
+        "expectedCognitiveLoad",
+        "confidence",
+        "unresolvedQuestions",
+    ],
+)
+def test_proposal_contract_requires_all_explanation_fields(required_field):
+    pack = make_pack()
+    del pack["curriculumChangeProposals"][0][required_field]
+
+    assert "SCHEMA_INVALID" in codes(validate_curriculum_pack(pack))
+
+
+def test_proposal_evidence_must_be_local_and_support_the_declared_claim():
+    pack = make_pack()
+    proposal = pack["curriculumChangeProposals"][0]
+    proposal["authorityEvidenceIds"] = ["evidence-skill-recognition"]
+    assert "PROPOSAL_EVIDENCE_NOT_LOCAL" in codes(validate_curriculum_pack(pack))
+
+    proposal["authorityEvidenceIds"] = ["evidence-proposal-difficulty"]
+    assert "PROPOSAL_EVIDENCE_CLAIM_MISMATCH" in codes(validate_curriculum_pack(pack))
+
+
+def test_proposal_prerequisites_and_cognitive_load_targets_resolve():
+    pack = make_pack()
+    proposal = pack["curriculumChangeProposals"][0]
+    proposal["prerequisites"] = [{"targetId": "missing-target", "rationale": "synthetic test"}]
+    proposal["expectedCognitiveLoad"]["dimensions"][0]["targetIds"] = ["missing-target"]
+    issue_codes = codes(validate_curriculum_pack(pack))
+    assert "PROPOSAL_PREREQUISITE_NOT_REGISTERED" in issue_codes
+    assert "PROPOSAL_LOAD_TARGET_NOT_DECLARED" in issue_codes
+
+    proposal["prerequisites"] = [{"targetId": "vocab-demo", "rationale": "synthetic graph prerequisite"}]
+    proposal["expectedCognitiveLoad"]["dimensions"][0]["targetIds"] = ["proposal-skill"]
+    assert validate_curriculum_pack(pack) == []
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        lambda proposal: proposal["confidence"].pop("limitations"),
+        lambda proposal: proposal["expectedCognitiveLoad"]["dimensions"][0].pop("evidenceIds"),
+        lambda proposal: proposal["expectedCognitiveLoad"]["dimensions"][0].update({"targetIds": []}),
+    ],
+    ids=["missing-confidence-limitations", "missing-load-evidence", "empty-load-targets"],
+)
+def test_malformed_proposal_confidence_and_load_records_fail_schema(mutate):
+    pack = make_pack()
+    mutate(pack["curriculumChangeProposals"][0])
+
+    assert "SCHEMA_INVALID" in codes(validate_curriculum_pack(pack))
+
+
+@pytest.mark.parametrize("invalid_confidence", [float("nan"), float("inf"), -0.1, 1.1])
+def test_proposal_confidence_must_be_finite_and_in_range(invalid_confidence):
+    pack = make_pack()
+    pack["curriculumChangeProposals"][0]["confidence"]["estimate"] = invalid_confidence
+
+    assert "PROPOSAL_CONFIDENCE_INVALID" in codes(validate_curriculum_pack(pack))
+
+
+def test_proposal_and_proposed_nodes_cannot_self_approve_or_mutate_graph():
+    pack = make_pack()
+    graph_before = deepcopy(pack["graph"])
+    proposal = pack["curriculumChangeProposals"][0]
+    proposal["approvalStatus"] = "ARCHITECT_APPROVED"
+    proposal["proposedNodes"][0]["approvalStatus"] = "ARCHITECT_APPROVED"
+    issue_codes = codes(validate_curriculum_pack(pack))
+
+    assert "PROPOSAL_APPROVAL_NOT_AUTHENTICATED" in issue_codes
+    assert "PROPOSAL_TARGET_APPROVAL_NOT_AUTHENTICATED" in issue_codes
+    assert pack["graph"] == graph_before
+
+
+def test_multiple_proposals_with_duplicate_identity_and_new_target_fail_closed():
+    pack = make_pack()
+    duplicate = deepcopy(pack["curriculumChangeProposals"][0])
+    pack["curriculumChangeProposals"].append(duplicate)
+
+    issue_codes = codes(validate_curriculum_pack(pack))
+    assert "DUPLICATE_PROPOSAL_ID" in issue_codes
+    assert "DUPLICATE_PROPOSED_TARGET_ID" in issue_codes
 
 
 def test_source_provenance_cannot_smuggle_raw_text_as_evidence_reference():

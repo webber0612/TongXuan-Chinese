@@ -8,7 +8,7 @@ The default source registry is [`shared/content-sources/source-registry.json`](.
 
 ## Graph identity and dependency integrity
 
-Pack schema version 1.3 includes an explicit skill `capability`; distinct nullable character learning stages (`exposureLevel`, `recognitionLevel`, `readingLevel`, and `writingLevel`); vocabulary receptive/productive requirements; and grammar receptive/productive requirements plus an explicit sequence-policy state. Every non-required character stage is explicitly `null`. An activity may use a stage only when that character has an explicit level for it, and its level check uses only the stage exercised by the activity.
+Pack schema version 1.4 includes an explicit skill `capability`; distinct nullable character learning stages (`exposureLevel`, `recognitionLevel`, `readingLevel`, and `writingLevel`); vocabulary receptive/productive requirements; grammar receptive/productive requirements plus an explicit sequence-policy state; and a structured proposal-only change record. Every non-required character stage is explicitly `null`. An activity may use a stage only when that character has an explicit level for it, and its level check uses only the stage exercised by the activity.
 
 Pack-level graph validation checks identity and relationship semantics before lesson-level checks:
 
@@ -22,6 +22,12 @@ Pack-level graph validation checks identity and relationship semantics before le
 - Vocabulary and grammar separately state whether receptive and productive learning is required. Grammar records `RECEPTIVE_BEFORE_PRODUCTIVE`, `NO_ORDER_CONSTRAINT`, `NOT_APPLICABLE`, or `UNRESOLVED`; the policy must agree with the requirement records. An unresolved policy cannot be Architect-approved or published. This records an explicit decision and does not choose a decision or change lesson activity ordering.
 
 The diagnostics include `DUPLICATE_TARGET_ID`, `SKILL_ALIAS_COLLISION`, `UNREGISTERED_GRAPH_REFERENCE`, `GRAPH_REFERENCE_TYPE_MISMATCH`, `SELF_PREREQUISITE`, `GRAPH_PREREQUISITE_CYCLE`, `CROSS_NODE_GRAPH_EVIDENCE`, `GRAPH_EVIDENCE_CLAIM_MISMATCH`, `GRAPH_CLAIM_EVIDENCE_UNVERIFIED`, `GRAMMAR_SEQUENCE_POLICY_EVIDENCE_REQUIRED`, `GRAMMAR_SEQUENCE_POLICY_INCONSISTENT`, `UNRESOLVED_GRAMMAR_SEQUENCE_POLICY`, `CHARACTER_WRITING_WITHOUT_RECOGNITION`, `CHARACTER_WRITING_BEFORE_RECOGNITION`, `UNSUPPORTED_PRIOR_RECOGNITION`, `PRIOR_RECOGNITION_NOT_KNOWN`, `EXPOSURE_LEVEL_UNSUPPORTED`, `RECOGNITION_LEVEL_UNSUPPORTED`, `READING_LEVEL_UNSUPPORTED`, and `WRITING_LEVEL_UNSUPPORTED`. These checks constrain graph structure and stage evidence only. They do not approve targets, decide pedagogy, clear rights, or imply that a lesson should come next. Current regression cases use synthetic fixture nodes only.
+
+## Proposal-only change records
+
+Each `CURRICULUM_CHANGE_PROPOSAL` must state the change, why now, prerequisites, affected targets, authority and difficulty evidence, alternatives, expected cognitive-load dimensions, confidence with limitations, and unresolved questions. Evidence IDs must resolve inside the same proposal and declare the required claim (`CURRICULUM_AUTHORITY`, `TARGET_DIFFICULTY`, `EXPECTED_COGNITIVE_LOAD`, or `PROPOSAL_CONFIDENCE`). Prerequisites and affected/load targets must resolve to the registered graph or proposal. Confidence must be finite and in `[0, 1]`; malformed load/confidence records fail the schema. Duplicate proposal identities/targets and graph collisions fail closed.
+
+Proposal and proposed-node `approvalStatus` are fixed to `PROPOSED`. The validator rejects claimed approval and never copies proposals into the approved graph. This contract does not authenticate a human, provide an approval transition, choose curriculum targets, or make a proposal executable. Human approval remains a separate authority gate. Synthetic fixtures are contract examples, not target recommendations.
 
 ## Publishable-pack rules
 
@@ -49,7 +55,7 @@ The tracked-path inventory and public-artifact guard are implemented in [`script
 
 ## Verification results
 
-The repository registry passes its schema. Test-only synthetic fixtures cover composed skill/vocabulary/grammar/character schemas; approval; provenance; source rights; prerequisites; vocabulary/grammar level bounds; explicit vocabulary ratio limits; recycling; writing sequence; registered and text-matched sentence tokens; supported mastery targets; proposal/graph separation; separate vocabulary/grammar receptive and productive requirements; same-node claim evidence; checked/rejected evidence states; and resolved/unresolved grammar policy. The machine-readable [Phase 3 guard matrix](../shared/open-curriculum/validator-guard-matrix.json) maps all 15 roadmap guards to statuses and existing regressions; a regression checks that all referenced test functions remain present. These fixtures are not curriculum content and are not executable lessons. Run:
+The repository registry passes its schema. Test-only synthetic fixtures cover composed skill/vocabulary/grammar/character schemas; approval; provenance; source rights; prerequisites; vocabulary/grammar level bounds; explicit vocabulary ratio limits; recycling; writing sequence; registered and text-matched sentence tokens; supported mastery targets; proposal/graph separation; required proposal evidence fields; local claim-bound references; prerequisite/load-target resolution; confidence and load-shape failures; immutable graph and duplicate-proposal rejection; separate vocabulary/grammar receptive and productive requirements; same-node claim evidence; checked/rejected evidence states; and resolved/unresolved grammar policy. The machine-readable [Phase 3 guard matrix](../shared/open-curriculum/validator-guard-matrix.json) maps all 15 roadmap guards to statuses and existing regressions; a regression checks that all referenced test functions remain present. These fixtures are not curriculum content and are not executable lessons. Run:
 
 ```powershell
 cd backend
@@ -58,4 +64,4 @@ python -m pytest tests/test_open_curriculum.py -q
 python ../scripts/open_curriculum_rights_gate.py --check
 ```
 
-The validator and rights-gate regression counts for Issue #98 are recorded against the exact PR head in the current project handoff and PR metadata. These tests establish validator behavior only; they do not validate a real curriculum target or approve teaching policy.
+Full backend/frontend/build and validator/right-gate counts for Issues #98/#100 are recorded against each exact reviewed PR head in the current project handoff and PR metadata. These tests establish validator behavior only; they do not validate a real curriculum target or approve teaching policy.
