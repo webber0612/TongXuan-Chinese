@@ -1979,6 +1979,52 @@ def test_fast_track_listening_srs_reconciles_and_answers_exact_review_only(
             ).fetchall()] == non_listening_events_before
 
 
+def test_fast_track_listening_review_rejects_legacy_alias_without_mutation(tmp_path):
+    from app.database import connect
+
+    with make_client(tmp_path) as client:
+        child_id, session, task, phrase_id, _ = _start_fast_track_listening_review(client, "拒絕舊答案別名")
+        with connect() as db:
+            before_srs = tuple(db.execute(
+                "SELECT stage,due_at,last_result,last_assisted FROM srs_review_states "
+                "WHERE child_id=? AND skill_domain='listening' AND item_id=?",
+                (child_id, phrase_id),
+            ).fetchone())
+            before_events = [tuple(row) for row in db.execute(
+                "SELECT result,assisted,previous_stage,next_stage,interval_minutes,occurred_at "
+                "FROM srs_review_events WHERE child_id=? AND skill_domain='listening' AND item_id=? ORDER BY id",
+                (child_id, phrase_id),
+            ).fetchall()]
+
+        # `greeting` is an alias accepted by legacy authored-choice tasks, but is not a literal Fast Track package choice ID.
+        response = client.post(
+            f"/api/children/{child_id}/learning-sessions/{session['id']}/tasks/{task['id']}/answer",
+            json={"selected_option_id": "greeting"},
+        )
+        assert response.status_code == 400
+        assert response.json()["detail"] == "invalid_answer_choice"
+        with connect() as db:
+            after_srs = tuple(db.execute(
+                "SELECT stage,due_at,last_result,last_assisted FROM srs_review_states "
+                "WHERE child_id=? AND skill_domain='listening' AND item_id=?",
+                (child_id, phrase_id),
+            ).fetchone())
+            after_events = [tuple(row) for row in db.execute(
+                "SELECT result,assisted,previous_stage,next_stage,interval_minutes,occurred_at "
+                "FROM srs_review_events WHERE child_id=? AND skill_domain='listening' AND item_id=? ORDER BY id",
+                (child_id, phrase_id),
+            ).fetchall()]
+            task_row = db.execute("SELECT state,attempt_count FROM learning_flow_tasks WHERE id=?", (task["id"],)).fetchone()
+            assert after_srs == before_srs
+            assert after_events == before_events
+            assert tuple(task_row) == ("PENDING", 0)
+            assert db.execute("SELECT COUNT(*) FROM learning_flow_task_attempts WHERE task_id=?", (task["id"],)).fetchone()[0] == 0
+            assert db.execute(
+                "SELECT COUNT(*) FROM learning_flow_telemetry WHERE task_id=? AND event_type IN ('task_attempted','review_result')",
+                (task["id"],),
+            ).fetchone()[0] == 0
+
+
 def test_fast_track_listening_review_rolls_back_srs_and_flow_writes_then_retries(tmp_path):
     from app.database import connect
 

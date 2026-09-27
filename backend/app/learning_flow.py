@@ -1166,30 +1166,41 @@ def submit_learning_answer(*, child_id: int, session_id: str, task_id: str, sele
                 result = "self_report_practiced" if selected_option_id == "practiced" else "self_report_more_practice"
                 return _update_task_attempt_in_transaction(db, child_id=child_id, session_id=session_id, task=task, result=result, correct=None, assisted=assisted, scorer_version="self_reflection-v1")
             choices = {item["id"] for item in task.get("taskData", {}).get("choices", [])}
-            alias_map = {
-                "greeting": ["opt-hello", "opt-correct-order", "greeting"],
-                "name": ["opt-eat", "name"],
-                "farewell": ["opt-wrong-order", "farewell"],
-                "option-1": ["opt-hao", "option-1"],
-                "option-2": ["opt-ni", "option-2"],
-                "opt-ni": ["option-2", "opt-ni"],
-                "opt-hao": ["option-1", "opt-hao"],
-                "opt-hello": ["greeting", "opt-hello"],
-                "opt-eat": ["name", "opt-eat"],
-                "opt-correct-order": ["greeting", "opt-correct-order"],
-                "opt-wrong-order": ["farewell", "opt-wrong-order"],
-            }
-            valid_choices = set(choices)
-            for c in choices:
-                if c in alias_map:
-                    valid_choices.update(alias_map[c])
-            if selected_option_id not in valid_choices:
-                raise ValueError("invalid_answer_choice")
             answer_key = task.get("_answerKey")
-            expected_keys = {answer_key}
-            if answer_key in alias_map:
-                expected_keys.update(alias_map[answer_key])
-            correct = selected_option_id in expected_keys
+            if task_type == "REVIEW_LISTENING":
+                if (
+                    row["source_queue"] != "REVIEW" or row["skill_domain"] != "listening" or
+                    row["mastery_impact"] != "NONE" or task.get("_answerKind") != "listening" or
+                    not isinstance(answer_key, str) or answer_key not in choices
+                ):
+                    raise ValueError("learning_flow_review_listening_identity_unsupported")
+                if selected_option_id not in choices:
+                    raise ValueError("invalid_answer_choice")
+                correct = selected_option_id == answer_key
+            else:
+                alias_map = {
+                    "greeting": ["opt-hello", "opt-correct-order", "greeting"],
+                    "name": ["opt-eat", "name"],
+                    "farewell": ["opt-wrong-order", "farewell"],
+                    "option-1": ["opt-hao", "option-1"],
+                    "option-2": ["opt-ni", "option-2"],
+                    "opt-ni": ["option-2", "opt-ni"],
+                    "opt-hao": ["option-1", "opt-hao"],
+                    "opt-hello": ["greeting", "opt-hello"],
+                    "opt-eat": ["name", "opt-eat"],
+                    "opt-correct-order": ["greeting", "opt-correct-order"],
+                    "opt-wrong-order": ["farewell", "opt-wrong-order"],
+                }
+                valid_choices = set(choices)
+                for choice_id in choices:
+                    if choice_id in alias_map:
+                        valid_choices.update(alias_map[choice_id])
+                if selected_option_id not in valid_choices:
+                    raise ValueError("invalid_answer_choice")
+                expected_keys = {answer_key}
+                if answer_key in alias_map:
+                    expected_keys.update(alias_map[answer_key])
+                correct = selected_option_id in expected_keys
             result = "correct" if correct else "incorrect"
             if task.get("_answerKind") == "recognition":
                 attempt = _record_attempt_in_transaction(db, child_id, session["recognition_session_id"], row["activity_item_id"], result, assisted, row["source_queue"])
