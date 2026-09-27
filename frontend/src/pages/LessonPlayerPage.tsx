@@ -2183,7 +2183,7 @@ export function LessonPlayerPage({
 
   // Helper to render scaffold translation
   const renderScaffold = (scaffoldKey?: string) => {
-    if (!scaffoldKey) return null;
+    if (!scaffoldKey || !Object.prototype.hasOwnProperty.call(pkg.nativeLanguageSupport.entries, scaffoldKey)) return null;
     const info = getScaffoldText(pkg, scaffoldKey, scaffoldMode);
     if (!info.visibleText && scaffoldMode === "HIDDEN") return null;
 
@@ -2212,6 +2212,14 @@ export function LessonPlayerPage({
         )}
       </div>
     );
+  };
+  const renderStepScaffold = (scaffoldKey?: string) => {
+    // Preserve a legacy scaffold only when the active package actually owns
+    // that entry. Lesson-specific keys from the package always take priority.
+    const packageDefaultKey = Object.prototype.hasOwnProperty.call(pkg.nativeLanguageSupport.entries, "greeting")
+      ? "greeting"
+      : undefined;
+    return renderScaffold(scaffoldKey ?? packageDefaultKey);
   };
 
   return (
@@ -2354,7 +2362,9 @@ export function LessonPlayerPage({
             <div className="step-body step-context-body">
               <div className="context-illustration-box">
                 <div className="context-visual-scene">
-                  <span className="scene-tag">☀️ 情境：早晨遇見朋友</span>
+                  {typeof currentStep.data.sceneLabel === "string" && currentStep.data.sceneLabel.trim() && (
+                    <span className="scene-tag">{currentStep.data.sceneLabel}</span>
+                  )}
                   <button
                     type="button"
                     className="audio-play-large-btn"
@@ -2367,7 +2377,7 @@ export function LessonPlayerPage({
                 </div>
               </div>
 
-              {renderScaffold("greeting")}
+              {renderStepScaffold(currentStep.data.scaffoldKey)}
 
               <p className="interaction-prompt">{currentStep.data.prompt}</p>
 
@@ -2457,7 +2467,7 @@ export function LessonPlayerPage({
                   <div className="vocab-example-sentence">
                     <p><strong>例句：</strong> {currentStep.data.exampleSentence || "你好！我叫大衛。"}</p>
                   </div>
-                  {renderScaffold("greeting")}
+                  {renderStepScaffold(currentStep.data.scaffoldKey)}
                 </div>
 
                 <p className="interaction-prompt">{prompt}</p>

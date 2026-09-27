@@ -89,6 +89,8 @@
         "data": {
           "prompt": "聽一聽原創練習句。",
           "audioText": "我今年七歲。",
+          "sceneLabel": "情境：練習表達自己的年齡",
+          "scaffoldKey": "age_example",
           "authorship": "TONGXUAN_AUTHORED_PRACTICE"
         }
       },
@@ -107,6 +109,7 @@
           "pinyin": "qī suì",
           "zhuyin": "ㄑㄧ ㄙㄨㄟˋ",
           "exampleSentence": "我今年七歲。",
+          "scaffoldKey": "age_example",
           "choices": [
             { "id": "age-seven", "label": "我今年七歲。" },
             { "id": "age-eight", "label": "我今年八歲。" }

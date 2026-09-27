@@ -510,6 +510,61 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     await act(async () => { root.unmount(); }); container.remove(); vi.unstubAllGlobals();
   });
 
+  it("16. starter-l02 renders package-owned age context and scaffold without starter-l01 greeting remnants", async () => {
+    const session = authoritativeSessionFixture("starter-l02", "session-l2-context", { listen: "COMPLETED" });
+    const pkg = getLessonPackage("starter-l02")!;
+    const contextContract = pkg.taskBlueprint.learnSteps.find((step) => step.stepKey === "context")!;
+    const vocabularyContract = pkg.taskBlueprint.learnSteps.find((step) => step.stepKey === "vocabulary")!;
+    installPlannerSessionMock(session);
+    const container = document.createElement("div"); document.body.appendChild(container); const root = createRoot(container);
+    await act(async () => { root.render(<LessonPlayerPage lessonId="starter-l02" activeChildId={1} onBack={() => {}} initialMode="LEARN" />); });
+
+    await advanceToPlannerStep(container, "context");
+    expect(container.querySelector(".scene-tag")?.textContent).toBe(contextContract.data.sceneLabel);
+    expect(container.querySelector(".scene-tag")?.textContent).not.toContain("早晨遇見朋友");
+    const contextScaffold = container.querySelector(".step-context-body .scaffold-box");
+    expect(contextScaffold?.getAttribute("data-review-status")).toBe("REVIEWED");
+    expect(contextScaffold?.querySelector(".scaffold-text")?.textContent).toBe("I am seven years old.");
+
+    await advanceToPlannerStep(container, "vocabulary");
+    expect(container.querySelector(".vocab-hanzi")?.textContent).toContain("七歲");
+    expect(container.querySelector(".vocab-example-sentence")?.textContent).toContain("我今年七歲。");
+    const vocabularyScaffold = container.querySelector(".step-vocab-body .scaffold-box");
+    expect(vocabularyScaffold?.getAttribute("data-review-status")).toBe("REVIEWED");
+    expect(vocabularyScaffold?.querySelector(".scaffold-text")?.textContent).toBe("I am seven years old.");
+    expect(container.textContent).not.toContain("你好！我叫大衛。");
+    expect(container.querySelector('.scaffold-box[data-review-status="APPROVED"]')).toBeNull();
+    expect(contextContract.data.scaffoldKey).toBe("age_example");
+    expect(vocabularyContract.data.scaffoldKey).toBe("age_example");
+
+    await act(async () => { root.unmount(); }); container.remove(); vi.unstubAllGlobals();
+  });
+
+  it("16a. starter-l02 authoritative plan carries only its package-owned context and vocabulary scaffold", () => {
+    const pkg = getLessonPackage("starter-l02")!;
+    const plan = buildAuthoritativeLearnSteps(pkg, plannerTasksForLesson("starter-l02", false, false, 31));
+    const context = plan.steps.find((step) => step.stepKey === "context");
+    const vocabulary = plan.steps.find((step) => step.stepKey === "vocabulary");
+
+    expect(plan.valid).toBe(true);
+    expect(context?.data).toMatchObject({
+      sceneLabel: "情境：練習表達自己的年齡",
+      scaffoldKey: "age_example",
+    });
+    expect(vocabulary?.data).toMatchObject({
+      word: "七歲",
+      scaffoldKey: "age_example",
+    });
+    expect(getScaffoldText(pkg, "age_example", "FULL")).toMatchObject({
+      visibleText: "I am seven years old.",
+      reviewStatus: "REVIEWED",
+    });
+    expect(getScaffoldText(pkg, "greeting", "FULL")).toMatchObject({
+      visibleText: null,
+      reviewStatus: "GENERATED_DRAFT",
+    });
+  });
+
   it("14c. mixed-lesson REVIEW rows map by their own package and stay outside the parent LEARN plan", () => {
     const book1Pkg = getLessonPackage("book1-l01")!;
     const dueItems = [

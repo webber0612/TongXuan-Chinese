@@ -260,6 +260,83 @@ def test_starter_l02_unlocks_after_l01_and_settles_exact_child_scoped_authored_t
         assert finished_queue["currentLessonComplete"] is True
 
 
+def test_starter_l02_vocabulary_review_advances_exact_word_srs_without_settling_learn(tmp_path):
+    from app.database import connect
+    from app.learning_flow import _review_task
+
+    with client(tmp_path) as api:
+        child_id = child(api, "Starter L2 REVIEW learner")
+        place(child_id, "STARTER")
+        complete_session(api, child_id, session(api, child_id))
+
+        started = api.post(
+            f"/api/children/{child_id}/learning-sessions",
+            json={"lesson_id": "starter-l02", "target_minutes": 18, "script_mode": "TRADITIONAL", "as_of": "2026-09-20T08:00:00Z"},
+        )
+        assert started.status_code == 200, started.text
+        current = started.json()
+        vocabulary = next(task for task in current["tasks"] if task["key"] == "vocabulary")
+        current = start_task(api, child_id, current, vocabulary)
+        current = answer_task(api, child_id, current, vocabulary, "age-seven")
+        item_id = vocabulary["itemId"]
+
+        with connect() as db:
+            word_state = db.execute(
+                "SELECT item_id,stage FROM srs_review_states WHERE child_id=? AND skill_domain='word' AND item_id=?",
+                (child_id, item_id),
+            ).fetchone()
+            assert word_state and word_state["stage"] == 1
+            db.execute(
+                "UPDATE srs_review_states SET due_at='2026-09-20 07:00:00' WHERE child_id=? AND skill_domain='word' AND item_id=?",
+                (child_id, item_id),
+            )
+
+        queue = api.get(
+            f"/api/children/{child_id}/learning-daily-queue",
+            params={"as_of": "2026-09-20T08:00:00Z"},
+        ).json()
+        due_words = [item for item in queue["review"]["items"] if item["skillDomain"] == "word"]
+        assert [(item["id"], item["lessonId"], item["word"]) for item in due_words] == [(item_id, "starter-l02", "七歲")]
+
+        reconciled = api.post(
+            f"/api/children/{child_id}/learning-sessions/{current['id']}/reconcile-reviews",
+            json={"as_of": "2026-09-20T08:00:00Z"},
+        )
+        assert reconciled.status_code == 200, reconciled.text
+        current = reconciled.json()
+        reviews = [task for task in current["tasks"] if task["sourceQueue"] == "REVIEW" and task["skillDomain"] == "word"]
+        assert len(reviews) == 1
+        review = reviews[0]
+        assert review["id"] == f"{current['id']}:{review['key']}"
+        assert review["taskType"] == "REVIEW_VOCABULARY"
+        assert review["lessonId"] == "starter-l02" and review["itemId"] == item_id
+        assert review["taskData"]["word"] == "七歲"
+        assert {choice["id"] for choice in review["taskData"]["choices"]} == {"age-seven", "age-eight"}
+
+        # Keep the pre-existing Starter L1 vocabulary REVIEW answer key intact.
+        legacy_l1_review = _review_task({
+            "skill_domain": "word", "lesson_id": "starter-l01",
+            "item_id": f"lf_{child_id}_starter-l01_vocabulary", "due_at": "2026-09-20 07:00:00",
+            "word": "你好", "prompt": "選出問候語的意思。",
+            "choices": [{"id": "opt-hello", "label": "打招呼問好"}, {"id": "opt-eat", "label": "問對方吃飽沒"}],
+        }, "review-word-l1-compat")
+        assert legacy_l1_review["_answerKey"] == "opt-hello"
+
+        current = answer_task(api, child_id, current, review, "age-seven")
+        assert current["status"] == "IN_PROGRESS"
+        current_tasks = {task["id"]: task for task in current["tasks"]}
+        assert current_tasks[review["id"]]["state"] == "COMPLETED"
+        assert current_tasks[f"{current['id']}:listen"]["state"] == "PENDING"
+        with connect() as db:
+            advanced = db.execute(
+                "SELECT item_id,stage,last_result,due_at FROM srs_review_states WHERE child_id=? AND skill_domain='word' AND item_id=?",
+                (child_id, item_id),
+            ).fetchone()
+        assert advanced["item_id"] == item_id
+        assert advanced["stage"] == 2 and advanced["last_result"] == "correct"
+        assert advanced["due_at"] > "2026-09-20 08:00:00"
+
+
 def test_starter_l02_fails_closed_when_authored_package_metadata_does_not_match(tmp_path, monkeypatch):
     import copy
     import app.learning_flow as learning_flow

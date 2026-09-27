@@ -43,6 +43,7 @@ function starterL02VocabularyContract(pkg: LessonPackage) {
     !word || word.id !== "starter-l02-authored-age-word" || word.authorship !== "TONGXUAN_AUTHORED" ||
     !data || data.authorship !== "TONGXUAN_AUTHORED_PRACTICE" || data.word !== word.written ||
     typeof data.prompt !== "string" || !data.prompt.trim() ||
+    typeof data.scaffoldKey !== "string" || !pkg.nativeLanguageSupport.entries[data.scaffoldKey] ||
     typeof data.correctChoiceId !== "string" || !Array.isArray(data.choices) || data.choices.length !== 2 ||
     !data.choices.some((choice: any) => choice?.id === data.correctChoiceId) ||
     !data.choices.every((choice: any) => choice && typeof choice.id === "string" && choice.id.trim() &&
@@ -514,6 +515,8 @@ export function buildAuthoritativeLearnSteps(
     curriculumTasks.some((task) => task.childId !== starterL02ChildId || !task.sessionId || task.id !== `${task.sessionId}:${task.key}` ||
       task.taskData?.authorship !== "TONGXUAN_AUTHORED_PRACTICE") ||
     !starterL02Context || starterL02Context.data.authorship !== "TONGXUAN_AUTHORED_PRACTICE" ||
+    typeof starterL02Context.data.sceneLabel !== "string" || !starterL02Context.data.sceneLabel.trim() ||
+    typeof starterL02Context.data.scaffoldKey !== "string" || !pkg.nativeLanguageSupport.entries[starterL02Context.data.scaffoldKey] ||
     !starterL02Phonetics || starterL02Phonetics.data.authorship !== "TONGXUAN_AUTHORED_PRACTICE" ||
     !starterL02Speaking || starterL02Speaking.data.authorship !== "TONGXUAN_AUTHORED_PRACTICE" ||
     !starterL02Wrap || starterL02Wrap.data.authorship !== "TONGXUAN_AUTHORED_PRACTICE" || !starterL02Vocab
@@ -577,7 +580,12 @@ export function buildAuthoritativeLearnSteps(
     if (task.taskType === "LISTENING" && task.sourceQueue === "CURRICULUM" && task.required && task.key === "listen" && task.skillDomain === "listening") {
       if (starterL02 && (task.itemId !== `lf_${starterL02ChildId}_starter-l02_phrase` ||
           data.text !== starterL02Context?.data.audioText || data.authorship !== "TONGXUAN_AUTHORED_PRACTICE")) return { valid: false, steps: [] };
-      if (!append(task, "context", "listening", { taskId: task.id, prompt: data.prompt, audioText: data.text || data.audioText })) return { valid: false, steps: [] };
+      const contextPresentation = template("context")?.data;
+      if (!append(task, "context", "listening", {
+        taskId: task.id, prompt: data.prompt, audioText: data.text || data.audioText,
+        ...(typeof contextPresentation?.sceneLabel === "string" ? { sceneLabel: contextPresentation.sceneLabel } : {}),
+        ...(typeof contextPresentation?.scaffoldKey === "string" ? { scaffoldKey: contextPresentation.scaffoldKey } : {}),
+      })) return { valid: false, steps: [] };
       continue;
     }
     if (task.taskType === "PHONETICS" && task.sourceQueue === "CURRICULUM" && task.required && task.key === "phonetics" && task.skillDomain === "phonetics") {
@@ -610,7 +618,11 @@ export function buildAuthoritativeLearnSteps(
       )) return { valid: false, steps: [] };
       if (!append(task, "vocabulary", "vocabulary", {
         taskId: task.id, prompt: data.prompt, choices: data.choices,
-        ...(starterL02 ? { word: data.wordText, pinyin: data.pinyin, zhuyin: data.zhuyin, exampleSentence: data.exampleSentence, correctChoiceId: starterL02Vocab?.data.correctChoiceId } : {}),
+        ...(starterL02 ? {
+          word: data.wordText, pinyin: data.pinyin, zhuyin: data.zhuyin,
+          exampleSentence: data.exampleSentence, correctChoiceId: starterL02Vocab?.data.correctChoiceId,
+          scaffoldKey: starterL02Vocab?.data.scaffoldKey,
+        } : {}),
       })) return { valid: false, steps: [] };
       continue;
     }
@@ -851,7 +863,7 @@ export function getScaffoldText(
   if (!entry) {
     return {
       visibleText: null,
-      reviewStatus: "APPROVED",
+      reviewStatus: "GENERATED_DRAFT",
       isTapToReveal: false,
     };
   }
