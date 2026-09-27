@@ -755,6 +755,28 @@ def validate_curriculum_pack(
                 if isinstance(target_id, str) and target_id not in nodes:
                     add("PROPOSAL_AFFECTED_TARGET_NOT_REGISTERED", _path(proposal_path, "affectedTargetIds", target_index), f"Affected target {target_id!r} is not in the current graph.")
 
+            if change_type == "REMOVE_TARGET" and proposed_nodes:
+                add("PROPOSAL_REMOVAL_HAS_PROPOSED_NODE", _path(proposal_path, "proposedNodes"), "A removal proposal identifies the existing affected target and must not include a replacement node.")
+            elif change_type in {"MODIFY_TARGET", "CHANGE_PREREQUISITE", "CHANGE_SEQUENCE"}:
+                proposed_ids = {
+                    node.get("id")
+                    for node in proposed_nodes
+                    if isinstance(node, Mapping) and isinstance(node.get("id"), str)
+                }
+                affected_id_set = {target_id for target_id in affected_ids if isinstance(target_id, str)}
+                for node_index, node in enumerate(proposed_nodes):
+                    if not isinstance(node, Mapping):
+                        continue
+                    node_id = node.get("id")
+                    if isinstance(node_id, str) and node_id not in affected_id_set:
+                        add("PROPOSAL_NODE_NOT_AFFECTED", _path(proposal_path, "proposedNodes", node_index, "id"), f"Proposed node {node_id!r} is not declared in affectedTargetIds.")
+                    current_node = nodes.get(node_id) if isinstance(node_id, str) else None
+                    if current_node is not None and node.get("targetType") != current_node.get("targetType"):
+                        add("PROPOSAL_TARGET_TYPE_MISMATCH", _path(proposal_path, "proposedNodes", node_index, "targetType"), f"Proposed node {node_id!r} must preserve the existing target type {current_node.get('targetType')!r}.")
+                for target_index, target_id in enumerate(affected_ids):
+                    if isinstance(target_id, str) and target_id not in proposed_ids:
+                        add("PROPOSAL_AFFECTED_TARGET_NOT_PROPOSED", _path(proposal_path, "affectedTargetIds", target_index), f"Affected target {target_id!r} must have a corresponding proposed node for this change type.")
+
             prerequisites = proposal.get("prerequisites", [])
             if not isinstance(prerequisites, list):
                 prerequisites = []

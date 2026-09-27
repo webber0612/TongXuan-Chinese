@@ -1026,6 +1026,33 @@ def test_proposal_prerequisites_and_cognitive_load_targets_resolve():
     assert validate_curriculum_pack(pack) == []
 
 
+def test_non_add_proposal_nodes_match_the_affected_target_identity_and_type():
+    pack = make_pack()
+    proposal = pack["curriculumChangeProposals"][0]
+    proposal["changeType"] = "MODIFY_TARGET"
+    proposal["affectedTargetIds"] = ["vocab-demo"]
+
+    issue_codes = codes(validate_curriculum_pack(pack))
+    assert "PROPOSAL_NODE_NOT_AFFECTED" in issue_codes
+    assert "PROPOSAL_AFFECTED_TARGET_NOT_PROPOSED" in issue_codes
+
+    proposal["proposedNodes"][0]["id"] = "vocab-demo"
+    issue_codes = codes(validate_curriculum_pack(pack))
+    assert "PROPOSAL_TARGET_TYPE_MISMATCH" in issue_codes
+
+
+def test_remove_target_proposal_identifies_target_without_replacement_node():
+    pack = make_pack()
+    proposal = pack["curriculumChangeProposals"][0]
+    proposal["changeType"] = "REMOVE_TARGET"
+    proposal["affectedTargetIds"] = ["vocab-demo"]
+    proposal["proposedNodes"] = []
+    proposal["difficultyEvidenceIds"] = ["evidence-proposal-difficulty"]
+    proposal["expectedCognitiveLoad"]["dimensions"][0]["targetIds"] = ["vocab-demo"]
+
+    assert validate_curriculum_pack(pack) == []
+
+
 @pytest.mark.parametrize(
     "mutate",
     [

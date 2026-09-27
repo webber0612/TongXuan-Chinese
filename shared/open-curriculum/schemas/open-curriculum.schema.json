@@ -394,7 +394,7 @@
         "documentType": { "const": "CURRICULUM_CHANGE_PROPOSAL" },
         "changeType": { "enum": ["ADD_TARGET", "MODIFY_TARGET", "REMOVE_TARGET", "CHANGE_PREREQUISITE", "CHANGE_SEQUENCE"] },
         "affectedTargetIds": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/id" } },
-        "proposedNodes": { "type": "array", "minItems": 1, "items": { "oneOf": [{ "$ref": "#/$defs/skillNode" }, { "$ref": "#/$defs/vocabularyNode" }, { "$ref": "#/$defs/grammarNode" }, { "$ref": "#/$defs/characterNode" }] } },
+        "proposedNodes": { "type": "array", "items": { "oneOf": [{ "$ref": "#/$defs/skillNode" }, { "$ref": "#/$defs/vocabularyNode" }, { "$ref": "#/$defs/grammarNode" }, { "$ref": "#/$defs/characterNode" }] } },
         "whyNow": {
           "type": "object",
           "additionalProperties": false,
@@ -421,7 +421,17 @@
         "rationale": { "type": "string", "minLength": 1 },
         "evidence": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/evidence" } },
         "approvalStatus": { "const": "PROPOSED" }
-      }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "changeType": { "const": "REMOVE_TARGET" } }, "required": ["changeType"] },
+          "then": { "properties": { "proposedNodes": { "maxItems": 0 } } }
+        },
+        {
+          "if": { "properties": { "changeType": { "enum": ["ADD_TARGET", "MODIFY_TARGET", "CHANGE_PREREQUISITE", "CHANGE_SEQUENCE"] } }, "required": ["changeType"] },
+          "then": { "properties": { "proposedNodes": { "minItems": 1 } } }
+        }
+      ]
     }
   }
 }
