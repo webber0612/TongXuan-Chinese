@@ -21,26 +21,28 @@ AUTHORITATIVE FRAMEWORK / LEGALLY USABLE SOURCES
 
 ## Source registry
 
-[`shared/content-sources/source-registry.json`](../shared/content-sources/source-registry.json) is the source-of-truth registry for curriculum sources. Each record captures the source, authority and evidence roles, license statement and scope, use permissions, legal status, verification date, and constraints. `legalStatus` is restricted to:
+[`shared/content-sources/source-registry.json`](../shared/content-sources/source-registry.json) is the source-of-truth registry for curriculum sources. Each source record contains source/authority identity, ownership, license scope, commercial/modification/redistribution/attribution/share-alike/raw-ingestion/public-repository/derivative permissions, validation-only and item-level flags, evidence records, a policy decision, verification date, and constraints. Every rights decision links its evidence IDs to records containing the evidence URL, locator, observation date, capture method, supported claim types, a SHA-256 of the UTF-8 response-text representation when captured, and a concise claim summary. Evidence records store no third-party corpus rows or substantial source excerpts.
+
+The registry's `rightsDecision` joins the evidence to the project's operational decision. Its outcome must match `legalStatus` exactly:
 
 | Status | Pipeline behavior |
 | --- | --- |
-| `GREEN` | May be considered only within its recorded license and access conditions. Item-level checks still apply when the record says they do. |
-| `YELLOW` | Reference and cite only. No bulk ingestion or public-repository redistribution while rights are unclear. |
-| `RED` | Do not ingest or use for current product content. |
-| `UNKNOWN` | Do not ingest until status and terms are verified. |
+| `GREEN` + `ALLOW_WITH_ITEM_CHECKS` | May be considered only within evidence-backed terms and item-level conditions. This is not a blanket rights conclusion. |
+| `YELLOW` + `REFERENCE_ONLY` | Cite/reference only. No conversion to publishable content. |
+| `RED` + `BLOCK` | Do not ingest or use for current product content. |
+| `UNKNOWN` + `UNKNOWN_BLOCKED` | Fail closed; do not ingest or publish until evidence supports a different policy outcome. |
 
-Conditional licenses are represented as `GREEN` plus explicit constraints; there is no extra `GREEN_WITH_CONDITIONS` status. `GREEN` is an operational intake status, not legal advice or a blanket rights conclusion.
+Conditional licenses are represented as `GREEN` plus explicit item-level checks and constraints; there is no extra `GREEN_WITH_CONDITIONS` status. A GREEN record must have linked license/terms evidence and known source-level permissions. Missing evidence, a validation-only record, UNKNOWN permission, or a mismatched decision downgrades the registry validation result. `UNKNOWN != GREEN`.
 
 ### First registered sources
 
-- **OCAC / Let's Learn Mandarin (For Children): YELLOW.** Cite verified source metadata as needed. The public page describes downloadable textbooks and teaching aids, but this registry does not infer a public-repository, adaptation, or commercial license from availability. No new OCAC-derived authoring, textbook text, vocabulary list, exercise, image, audio, or close rewrite is allowed until the relevant permission is recorded.
-- **TBCL: YELLOW.** Use framework descriptions for reference, validation, and cited evidence. Do not mirror the full character, word, or grammar lists.
-- **TOCFL / CCCC: YELLOW.** Use level and format references. The official CCCC question-bank page says the bank is for learning and not commercial use; do not mirror test items, answer keys, audio, or images.
-- **CC-CEDICT: GREEN with CC BY-SA 4.0 conditions.** Preserve attribution and share-alike obligations and keep derived material out of the root MIT license.
-- **Tatoeba: GREEN with per-item conditions.** Verify text license per sentence and audio license separately per contributor. The corpus default for text does not determine a given item’s license, and text and audio do not necessarily share terms.
-- **Mozilla Common Voice: GREEN with access conditions.** Although datasets are offered under CC0, current terms direct access through Mozilla Data Collective and request no rehosting, distributing, or mirroring. Do not commit dataset files or rows here.
-- **TongXuan-authored material: GREEN only with item-level authorship/rights evidence.** Original-authorship provenance does not establish learning level, prerequisites, target approval, or curriculum authority.
+- **OCAC / Let's Learn Mandarin (For Children): YELLOW / `REFERENCE_ONLY`.** Cite source metadata only. The source page is not treated as a public-repository, adaptation, or commercial license. No OCAC-derived text, vocabulary, exercise, image, audio, or close rewrite enters a publishable pack without a separately recorded grant and approval.
+- **TBCL: YELLOW / `REFERENCE_ONLY`.** Framework descriptions may support cited validation only. Bulk lists are not mirrored.
+- **TOCFL / CCCC: YELLOW / `REFERENCE_ONLY`.** Keep question banks and attached media out of publishable packs. This verification did not establish a current item-level reuse grant; it also did not re-verify an earlier note about non-commercial use, so no current legal conclusion is recorded.
+- **CC-CEDICT: GREEN / `ALLOW_WITH_ITEM_CHECKS`, CC BY-SA 4.0.** Official download-page and license-deed evidence is recorded. Keep attribution, change notices, compatible share-alike terms, item/version provenance, and license scope; never apply the root MIT license to derived content.
+- **Tatoeba: GREEN / `ALLOW_WITH_ITEM_CHECKS`.** Official terms distinguish sentence text from contributor audio. Verify the license, attribution, and conditions per sentence and separately per audio contributor. No corpus-wide item clearance is implied.
+- **Mozilla Common Voice: UNKNOWN / `UNKNOWN_BLOCKED`.** The current official terms endpoint returned an application shell without extractable operative clauses in the verification capture. Earlier CC0/access claims are not carried forward as current; no data or audio may be ingested until the terms can be verified.
+- **TongXuan-authored material: UNKNOWN / `UNKNOWN_BLOCKED` at source level.** A source-wide grant is not asserted. Each content item still needs authorship/contributor rights evidence; original-authorship claims do not establish level, prerequisites, target approval, or curriculum authority.
 
 The existing [`data/license-registry.json`](../data/license-registry.json) remains for technical dependencies, assets, and commercialization tracking. It uses a different status vocabulary and must not be treated as the curriculum source registry.
 
@@ -67,15 +69,17 @@ The node schemas live in [`shared/open-curriculum/schemas/`](../shared/open-curr
 
 ## Current audit references
 
-See [`docs/content-rights-audit.md`](content-rights-audit.md) for the current tracked-tree inventory and its classification boundaries. See [`docs/open-curriculum-experiment-proposal.md`](open-curriculum-experiment-proposal.md) for the proposed five-slot experiment structure; it contains no selected official targets or executable lessons.
+See [`docs/content-rights-audit.md`](content-rights-audit.md) and machine-readable [`shared/content-sources/public-repo-audit.json`](../shared/content-sources/public-repo-audit.json) for the current tracked-tree inventory and classification boundaries. [`scripts/open_curriculum_rights_gate.py`](../scripts/open_curriculum_rights_gate.py) verifies inventory coverage, evidence references, digest drift, root-MIT separation, and publishable pack/path rejection. See [`docs/open-curriculum-experiment-proposal.md`](open-curriculum-experiment-proposal.md) for the proposed five-slot experiment structure; it contains no selected official targets or executable lessons.
 
-## Official references checked on 2026-09-27
+## Official references checked on 2026-09-28
 
 - [OCAC / HuayuWorld series page](https://www.huayuworld.org/Ebook/LearnMandarinChildren) describes textbooks, text, images, audio, and downloadable teaching material. No blanket repository license is asserted here.
 - [TBCL official site](https://bcoct.naer.edu.tw/TBCL/) describes level indicators and vocabulary/character/grammar lists. This policy does not bulk reproduce those lists.
-- [CCCC official question-bank page](https://tocfl.edu.tw/tocfl/index.php/test/cccc/list/7) states the bank is for learning use and not commercial use.
+- [CCCC official question-bank page](https://tocfl.edu.tw/tocfl/index.php/test/cccc/list/7) identifies question-bank resources. This capture did not verify item-level redistribution rights or the prior non-commercial-use note.
 - [CC-CEDICT download page](https://cc-cedict.org/editor/editor.php?handler=Download) identifies CC BY-SA 4.0; see the [license deed](https://creativecommons.org/licenses/by-sa/4.0/).
 - [Tatoeba terms](https://tatoeba.org/en/terms_of_use), [corpus reuse guidance](https://en.wiki.tatoeba.org/articles/show/using-the-tatoeba-corpus), and [audio license guidance](https://en.www.en.wiki.tatoeba.org/articles/show/faq) distinguish sentence text from contributor audio and explain item-level conditions.
-- [Mozilla Common Voice terms](https://commonvoice.mozilla.org/en/terms) describe CC0 datasets and the Mozilla Data Collective access / no-mirroring conditions.
+- [Mozilla Common Voice terms](https://commonvoice.mozilla.org/en/terms) resolved to an HTML application shell in this capture; operative dataset terms were not extracted, so the source is `UNKNOWN` and blocked.
+
+Response digests and evidence locators are in the source registry. HTTP digests cover the UTF-8 re-encoded response-text representation, not the wire bytes. They do not constitute a license, preserve the underlying page, or prove the claim summary by themselves. For the OCAC page, direct HTTP retrieval returned an access challenge, so the evidence record identifies the browser-rendered source reference and has no response digest.
 
 This is an engineering gate, not a legal opinion. Legal or commercial decisions remain outside Codex’s authority.

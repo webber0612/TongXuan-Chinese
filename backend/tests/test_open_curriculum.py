@@ -8,6 +8,7 @@ import pytest
 from jsonschema import Draft202012Validator, FormatChecker
 from referencing import Registry, Resource
 
+from app import open_curriculum_validator
 from app.open_curriculum_validator import (
     SCHEMA_DIR,
     load_default_source_registry,
@@ -17,6 +18,43 @@ from app.open_curriculum_validator import (
 
 
 SOURCE_ID = "tongxuan-original-authorship"
+
+
+@pytest.fixture(autouse=True)
+def synthetic_content_source_for_pack_fixtures(monkeypatch):
+    """Keep synthetic pack fixtures independent from real source clearance."""
+    sources = deepcopy(load_default_source_registry())
+    source = next(item for item in sources["sources"] if item["sourceId"] == SOURCE_ID)
+    source["legalStatus"] = "GREEN"
+    source["validationOnly"] = False
+    source["commercialUse"] = "CONDITIONAL"
+    source["modificationAllowed"] = "CONDITIONAL"
+    source["redistributionAllowed"] = "CONDITIONAL"
+    source["attributionRequired"] = "CONDITIONAL"
+    source["shareAlike"] = "CONDITIONAL"
+    source["rawIngestionAllowed"] = "CONDITIONAL"
+    source["publicRepoAllowed"] = "CONDITIONAL"
+    source["derivativeUseAllowed"] = "CONDITIONAL"
+    source["rightsEvidence"] = [{
+        "evidenceId": "synthetic-only-rights-evidence",
+        "evidenceKind": "LICENSE_NOTICE",
+        "evidenceUrl": "https://example.invalid/synthetic-fixture-only",
+        "locator": "Synthetic test fixture; not a real rights claim.",
+        "observedAt": "2026-09-28",
+        "captureMethod": "POLICY_TEXT",
+        "supportsClaims": [
+            "COMMERCIAL_USE", "MODIFICATION", "REDISTRIBUTION", "ATTRIBUTION",
+            "SHARE_ALIKE", "RAW_INGESTION", "PUBLIC_REPOSITORY", "DERIVATIVE_USE",
+        ],
+        "claimSummary": "Synthetic fixture only; this record is never shipped or used as product provenance.",
+    }]
+    source["rightsDecision"] = {
+        "policyId": "synthetic-test-only-policy",
+        "outcome": "ALLOW_WITH_ITEM_CHECKS",
+        "rationale": "Test-only override required to exercise successful pack validation.",
+        "evidenceIds": ["synthetic-only-rights-evidence"],
+    }
+    monkeypatch.setattr(open_curriculum_validator, "load_default_source_registry", lambda: sources)
 
 
 def evidence(evidence_id="synthetic-evidence"):

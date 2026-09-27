@@ -1,0 +1,551 @@
+{
+  "schemaVersion": "1.0",
+  "auditId": "tongxuan-public-repo-content-audit-v1",
+  "baselineCommit": "e4532a70ea03e54ce6ce797757f597259190409d",
+  "classificationVocabulary": [
+    "OPEN_LICENSED",
+    "OWNED",
+    "REFERENCE_ONLY",
+    "RIGHTS_UNCLEAR",
+    "THIRD_PARTY_RESTRICTED"
+  ],
+  "scope": {
+    "candidatePrefixes": [
+      "shared/lesson-packages/",
+      "shared/open-curriculum/packs/",
+      "shared/content-sources/imports/",
+      "shared/content-sources/raw/",
+      "frontend/src/data/",
+      "frontend/src/assets/",
+      "frontend/public/",
+      "data/"
+    ],
+    "candidateExactPaths": [
+      "backend/app/curriculum.py",
+      "backend/app/learning.py",
+      "backend/app/sprint_b.py",
+      "shared/validated-curriculum-slice.json"
+    ],
+    "method": "Enumerate tracked data, curriculum, media, and known embedded-content modules; record path, size, and SHA-256 only. No source corpus is downloaded.",
+    "limitations": [
+      "Path and digest inventory does not detect paraphrase, copying, embedded data, or authorship.",
+      "A source link or public availability is not a reuse grant.",
+      "RIGHTS_UNCLEAR is blocked for publishable artifacts; it is not a legal finding.",
+      "An empty THIRD_PARTY_RESTRICTED set would not prove the tree contains no such material."
+    ]
+  },
+  "entries": [
+    {
+      "path": "backend/app/curriculum.py",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Legacy learning/sample data has incomplete item-level source/authorship evidence; this audit does not infer TongXuan ownership.",
+      "sha256": "d3f66c0470a100f029da1b838d6624174be1f907efc079cc75f4bad80aa1a940",
+      "sizeBytes": 8737,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "EMBEDDED_CURRICULUM_OR_SEED_DATA"
+    },
+    {
+      "path": "backend/app/learning.py",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Legacy learning/sample data has incomplete item-level source/authorship evidence; this audit does not infer TongXuan ownership.",
+      "sha256": "2c0853c9f3e16acc8eee997558affa5010b0753f533995164eb5b8519945e5a9",
+      "sizeBytes": 29560,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "EMBEDDED_CURRICULUM_OR_SEED_DATA"
+    },
+    {
+      "path": "backend/app/sprint_b.py",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Legacy learning/sample data has incomplete item-level source/authorship evidence; this audit does not infer TongXuan ownership.",
+      "sha256": "9c6dd45233b7ba1b2795677db0ded10522f772ce8c01b701d275888576e3c863",
+      "sizeBytes": 27370,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "EMBEDDED_CURRICULUM_OR_SEED_DATA"
+    },
+    {
+      "path": "data/commercialization-inventory.json",
+      "classification": "REFERENCE_ONLY",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "This is a rights/license reference or inventory, not curriculum content. It does not grant rights to adjacent files.",
+      "sha256": "66ef0392753c9bdf84759040396a8549370eb965a6d8df109ff13bdc27d2cadf",
+      "sizeBytes": 3140,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "RIGHTS_POLICY_OR_LICENSE_REFERENCE"
+    },
+    {
+      "path": "data/license-registry.json",
+      "classification": "REFERENCE_ONLY",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "This is a rights/license reference or inventory, not curriculum content. It does not grant rights to adjacent files.",
+      "sha256": "5e12a43f129720d841ce63728dc8a10bc80b083d30cbb49a12bb64f14d23fc6d",
+      "sizeBytes": 18389,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "RIGHTS_POLICY_OR_LICENSE_REFERENCE"
+    },
+    {
+      "path": "frontend/public/favicon.png",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "sha256": "a099d893456c8620f00090c5d36e1a4fc5386abc0d8b4e64cface513d6b05a43",
+      "sizeBytes": 58188,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "MIXED_OR_UNDETERMINED"
+    },
+    {
+      "path": "frontend/public/icon-192.png",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "sha256": "a099d893456c8620f00090c5d36e1a4fc5386abc0d8b4e64cface513d6b05a43",
+      "sizeBytes": 58188,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "MIXED_OR_UNDETERMINED"
+    },
+    {
+      "path": "frontend/public/icon-512.png",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "sha256": "e54917c49471e6a45fd8e83f7fea3806550c8712c038c3b8a0863ee40c174c12",
+      "sizeBytes": 312669,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "MIXED_OR_UNDETERMINED"
+    },
+    {
+      "path": "frontend/src/assets/app-logo-icon.png",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "sha256": "bb9118619d17e181a0f2ae4bab05c353d229988670f8322a9ec6d7fe6e4604fc",
+      "sizeBytes": 584960,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "MIXED_OR_UNDETERMINED"
+    },
+    {
+      "path": "frontend/src/assets/app-logo-source.png",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "sha256": "8b74b3a4b70a81eb5b03d3c7d87a49585457468894345007980084a8f2a667fa",
+      "sizeBytes": 1055181,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "MIXED_OR_UNDETERMINED"
+    },
+    {
+      "path": "frontend/src/assets/fonts/GenSenRounded2TW-B.otf",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "sha256": "050f9ebf394faab3c0ba59092ae3e4b6686b349eadb3018d76d385c5829a1267",
+      "sizeBytes": 15807568,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "MIXED_OR_UNDETERMINED"
+    },
+    {
+      "path": "frontend/src/assets/fonts/GenSenRounded2TW-R.otf",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "sha256": "092285878f1d9441c790e5d6a98e806bd508602ad0a8a55511b6fb0a71a25fed",
+      "sizeBytes": 16177104,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "MIXED_OR_UNDETERMINED"
+    },
+    {
+      "path": "frontend/src/assets/fonts/SIL_Open_Font_License_1.1.txt",
+      "classification": "REFERENCE_ONLY",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "This is a rights/license reference or inventory, not curriculum content. It does not grant rights to adjacent files.",
+      "sha256": "a6e4f868df1b9eec9284d26f35808a9a08f0733b8fd96109e509d6eac29f2aca",
+      "sizeBytes": 4559,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "RIGHTS_POLICY_OR_LICENSE_REFERENCE"
+    },
+    {
+      "path": "frontend/src/assets/moon-bear-guide.webp",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "sha256": "dac336efc00c65cbe8ea0057a998cf2c7ccf5c3c90229e583e824293e896a6dc",
+      "sizeBytes": 62166,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "MIXED_OR_UNDETERMINED"
+    },
+    {
+      "path": "frontend/src/assets/pixel-ui-sprites.png",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "sha256": "3bd7627ac8621bcf1a79a95b233c35ee0df7b47358e65a25658b28e157a68d83",
+      "sizeBytes": 1627273,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "MIXED_OR_UNDETERMINED"
+    },
+    {
+      "path": "frontend/src/assets/pixel-world-background.png",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "sha256": "27417a93e082adc94452c36b061e6e723223c6998b55f75a0ee782cb6375e395",
+      "sizeBytes": 2305102,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "MIXED_OR_UNDETERMINED"
+    },
+    {
+      "path": "frontend/src/assets/reference-character-placeholder.svg",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "sha256": "e22ba509ba12589ddb7bba5fffde52a5eaaec5328a3d965ab5b773de8d466132",
+      "sizeBytes": 153,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "MIXED_OR_UNDETERMINED"
+    },
+    {
+      "path": "frontend/src/assets/reference-home.png",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "sha256": "6bf3197c9068df98afc9faee95e97a317b30b3091b81ce7567b94989dbd4f810",
+      "sizeBytes": 1509228,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "MIXED_OR_UNDETERMINED"
+    },
+    {
+      "path": "frontend/src/assets/reference-panda-placeholder.svg",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "sha256": "70e485eac7b5620ba56007a4b1f92399422bac42a82385c9f3ef2ee98dbba8b4",
+      "sizeBytes": 149,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "MIXED_OR_UNDETERMINED"
+    },
+    {
+      "path": "frontend/src/assets/soft-learning-art.png",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "sha256": "2b7874b2f627d923ad0f5d03e045a96708b8505b94c110279c64a3d5d9d21667",
+      "sizeBytes": 1412565,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "MIXED_OR_UNDETERMINED"
+    },
+    {
+      "path": "frontend/src/data/hanzi5000Database.ts",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Legacy learning/sample data has incomplete item-level source/authorship evidence; this audit does not infer TongXuan ownership.",
+      "sha256": "9b8bb03d108dc7e64f3101f96e6a2045deddfdbd1b0e8f82391b69cbb8b1c953",
+      "sizeBytes": 18947,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "LEGACY_CURRICULUM_OR_LEARNING_DATA"
+    },
+    {
+      "path": "frontend/src/data/learningPathData.ts",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [
+        "ocac-learn-mandarin-children"
+      ],
+      "evidenceIds": [
+        "evidence-ocac-learn-mandarin-children-series-page"
+      ],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Legacy data is source-bound or curriculum-like; per-item provenance and public-repository rights are not established.",
+      "sha256": "098a3fef486aeb6c7b1976e6cd70c493fcc723328f77da7f3c543ec812e29031",
+      "sizeBytes": 65890,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "LEGACY_CURRICULUM_OR_LEARNING_DATA",
+      "sourceRelationship": "This legacy path is explicitly tied to OCAC course metadata; item-level rights and content scope are unresolved."
+    },
+    {
+      "path": "frontend/src/data/lessonPackages.ts",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Legacy learning/sample data has incomplete item-level source/authorship evidence; this audit does not infer TongXuan ownership.",
+      "sha256": "14c5a7fd5423b9fe272dae5b9b5954c704aeb51511537751e316b27639f0d482",
+      "sizeBytes": 80880,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "LEGACY_CURRICULUM_OR_LEARNING_DATA"
+    },
+    {
+      "path": "frontend/src/data/ocacTextbooksData.ts",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [
+        "ocac-learn-mandarin-children"
+      ],
+      "evidenceIds": [
+        "evidence-ocac-learn-mandarin-children-series-page"
+      ],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Legacy data is source-bound or curriculum-like; per-item provenance and public-repository rights are not established.",
+      "sha256": "c9b7e390419efa75a4cf7f6654231f85b7b08517f672d7fde3fb09541ae08696",
+      "sizeBytes": 22328,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "LEGACY_CURRICULUM_OR_LEARNING_DATA",
+      "sourceRelationship": "This legacy path is explicitly tied to OCAC course metadata; item-level rights and content scope are unresolved."
+    },
+    {
+      "path": "frontend/src/data/officialCoursePath.ts",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [
+        "ocac-learn-mandarin-children"
+      ],
+      "evidenceIds": [
+        "evidence-ocac-learn-mandarin-children-series-page"
+      ],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Legacy data is source-bound or curriculum-like; per-item provenance and public-repository rights are not established.",
+      "sha256": "57b74b863496a18f06d61c949e9d5885996acdfbe187a98da0c5f149d63b848f",
+      "sizeBytes": 2900,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "LEGACY_CURRICULUM_OR_LEARNING_DATA",
+      "sourceRelationship": "This legacy path is explicitly tied to OCAC course metadata; item-level rights and content scope are unresolved."
+    },
+    {
+      "path": "frontend/src/data/rewardsShopData.ts",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Legacy learning/sample data has incomplete item-level source/authorship evidence; this audit does not infer TongXuan ownership.",
+      "sha256": "41353b23402994de759bd1ba8d1c68578fee5e92a5471f097f83acad85bd37a6",
+      "sizeBytes": 11599,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "LEGACY_CURRICULUM_OR_LEARNING_DATA"
+    },
+    {
+      "path": "shared/lesson-packages/basic-l01.json",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [
+        "ocac-learn-mandarin-children",
+        "tongxuan-original-authorship"
+      ],
+      "evidenceIds": [
+        "evidence-ocac-learn-mandarin-children-series-page",
+        "evidence-tongxuan-original-authorship-content-boundary"
+      ],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Existing lesson/source metadata includes content whose item-level author, rights, and target authority are unresolved. Preserved as a blocked engineering/regression fixture; this does not establish copying or authorship.",
+      "sha256": "6d5cf659f1be5013242e7c33cf17b641d01cee29c6f46fc592103a73d13fdf79",
+      "sizeBytes": 10470,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "CURRICULUM_TEXT_OR_SOURCE_METADATA",
+      "sourceRelationship": "Package metadata references the OCAC course/title; some packages claim TongXuan-authored tasks, but item-level content provenance remains unverified. The source association is not a finding of copying or clearance."
+    },
+    {
+      "path": "shared/lesson-packages/book1-l01.json",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [
+        "ocac-learn-mandarin-children",
+        "tongxuan-original-authorship"
+      ],
+      "evidenceIds": [
+        "evidence-ocac-learn-mandarin-children-series-page",
+        "evidence-tongxuan-original-authorship-content-boundary"
+      ],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Existing lesson/source metadata includes content whose item-level author, rights, and target authority are unresolved. Preserved as a blocked engineering/regression fixture; this does not establish copying or authorship.",
+      "sha256": "34b9e114e4302cd0822154a219f97a85224b4d310bb4cbed28a0884c593f577b",
+      "sizeBytes": 25854,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "CURRICULUM_TEXT_OR_SOURCE_METADATA",
+      "sourceRelationship": "Package metadata references the OCAC course/title; some packages claim TongXuan-authored tasks, but item-level content provenance remains unverified. The source association is not a finding of copying or clearance."
+    },
+    {
+      "path": "shared/lesson-packages/starter-l01.json",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [
+        "ocac-learn-mandarin-children",
+        "tongxuan-original-authorship"
+      ],
+      "evidenceIds": [
+        "evidence-ocac-learn-mandarin-children-series-page",
+        "evidence-tongxuan-original-authorship-content-boundary"
+      ],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Existing lesson/source metadata includes content whose item-level author, rights, and target authority are unresolved. Preserved as a blocked engineering/regression fixture; this does not establish copying or authorship.",
+      "sha256": "6b8f6e6289f206a75ef880de8738a9c9ab2f532ec2b220cc02245324ddaa1a5f",
+      "sizeBytes": 9667,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "CURRICULUM_TEXT_OR_SOURCE_METADATA",
+      "sourceRelationship": "Package metadata references the OCAC course/title; some packages claim TongXuan-authored tasks, but item-level content provenance remains unverified. The source association is not a finding of copying or clearance."
+    },
+    {
+      "path": "shared/lesson-packages/starter-l02.json",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [
+        "ocac-learn-mandarin-children",
+        "tongxuan-original-authorship"
+      ],
+      "evidenceIds": [
+        "evidence-ocac-learn-mandarin-children-series-page",
+        "evidence-tongxuan-original-authorship-content-boundary"
+      ],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Existing lesson/source metadata includes content whose item-level author, rights, and target authority are unresolved. Preserved as a blocked engineering/regression fixture; this does not establish copying or authorship.",
+      "sha256": "8f86b5f3257dacc7548b7f6bbe302f3eca1bef0681ddcbb6b6a4a3378cb3d5e8",
+      "sizeBytes": 8839,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "CURRICULUM_TEXT_OR_SOURCE_METADATA",
+      "sourceRelationship": "Package metadata references the OCAC course/title; some packages claim TongXuan-authored tasks, but item-level content provenance remains unverified. The source association is not a finding of copying or clearance."
+    },
+    {
+      "path": "shared/lesson-packages/starter-l03.json",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [
+        "ocac-learn-mandarin-children",
+        "tongxuan-original-authorship"
+      ],
+      "evidenceIds": [
+        "evidence-ocac-learn-mandarin-children-series-page",
+        "evidence-tongxuan-original-authorship-content-boundary"
+      ],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Existing lesson/source metadata includes content whose item-level author, rights, and target authority are unresolved. Preserved as a blocked engineering/regression fixture; this does not establish copying or authorship.",
+      "sha256": "63199c310ea00909b9a72f35c35b4192ae68e3d8eb4638b2b604c848a975db25",
+      "sizeBytes": 9198,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "CURRICULUM_TEXT_OR_SOURCE_METADATA",
+      "sourceRelationship": "Package metadata references the OCAC course/title; some packages claim TongXuan-authored tasks, but item-level content provenance remains unverified. The source association is not a finding of copying or clearance."
+    },
+    {
+      "path": "shared/lesson-packages/starter-l04.json",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [
+        "ocac-learn-mandarin-children",
+        "tongxuan-original-authorship"
+      ],
+      "evidenceIds": [
+        "evidence-ocac-learn-mandarin-children-series-page",
+        "evidence-tongxuan-original-authorship-content-boundary"
+      ],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Existing lesson/source metadata includes content whose item-level author, rights, and target authority are unresolved. Preserved as a blocked engineering/regression fixture; this does not establish copying or authorship.",
+      "sha256": "fcfe81f76ac26ddc1613fed6ac24323a2c157d8877f0a71f8632da4d061c261d",
+      "sizeBytes": 9375,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "CURRICULUM_TEXT_OR_SOURCE_METADATA",
+      "sourceRelationship": "Package metadata references the OCAC course/title; some packages claim TongXuan-authored tasks, but item-level content provenance remains unverified. The source association is not a finding of copying or clearance."
+    },
+    {
+      "path": "shared/lesson-packages/starter-l05.json",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [
+        "ocac-learn-mandarin-children",
+        "tongxuan-original-authorship"
+      ],
+      "evidenceIds": [
+        "evidence-ocac-learn-mandarin-children-series-page",
+        "evidence-tongxuan-original-authorship-content-boundary"
+      ],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Existing lesson/source metadata includes content whose item-level author, rights, and target authority are unresolved. Preserved as a blocked engineering/regression fixture; this does not establish copying or authorship.",
+      "sha256": "935972eb6aa157e75d8aeb450120171490b055d37cb74ac230d480e3a120c076",
+      "sizeBytes": 8520,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "CURRICULUM_TEXT_OR_SOURCE_METADATA",
+      "sourceRelationship": "Package metadata references the OCAC course/title; some packages claim TongXuan-authored tasks, but item-level content provenance remains unverified. The source association is not a finding of copying or clearance."
+    },
+    {
+      "path": "shared/validated-curriculum-slice.json",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [
+        "ocac-learn-mandarin-children"
+      ],
+      "evidenceIds": [
+        "evidence-ocac-learn-mandarin-children-series-page"
+      ],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Existing lesson/source metadata includes content whose item-level author, rights, and target authority are unresolved. Preserved as a blocked engineering/regression fixture; this does not establish copying or authorship.",
+      "sha256": "44ab4a47540dee8df987701f61511de4837ca9800f21b3985bddfeda48156c42",
+      "sizeBytes": 20386,
+      "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
+      "contentKind": "CURRICULUM_TEXT_OR_SOURCE_METADATA",
+      "sourceRelationship": "The file cites OCAC as the source of course/title metadata and summarizes objectives; reuse rights for the paraphrases are not established."
+    }
+  ],
+  "auditDate": "2026-09-28"
+}

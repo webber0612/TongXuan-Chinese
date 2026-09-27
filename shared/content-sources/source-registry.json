@@ -1,8 +1,13 @@
 {
-  "schemaVersion": "1.0",
-  "policyId": "tongxuan-content-source-policy-v1",
-  "lastVerifiedAt": "2026-09-27",
-  "allowedLegalStatuses": ["GREEN", "YELLOW", "RED", "UNKNOWN"],
+  "schemaVersion": "2.0",
+  "policyId": "tongxuan-content-source-policy-v2",
+  "lastVerifiedAt": "2026-09-28",
+  "allowedLegalStatuses": [
+    "GREEN",
+    "YELLOW",
+    "RED",
+    "UNKNOWN"
+  ],
   "sources": [
     {
       "sourceId": "ocac-learn-mandarin-children",
@@ -10,12 +15,15 @@
       "authorityLevel": "OFFICIAL_CURRICULUM_SOURCE",
       "owner": "Overseas Community Affairs Council (OCAC)",
       "officialUrl": "https://www.huayuworld.org/Ebook/LearnMandarinChildren",
-      "purpose": ["verify cited title and course metadata", "reference the published curriculum source"],
+      "purpose": [
+        "verify cited title and course metadata",
+        "reference the published curriculum source"
+      ],
       "license": {
-        "name": "No general public redistribution license identified for app ingestion",
+        "name": "No public-repository or commercial content grant recorded in the registry",
         "url": "https://www.huayuworld.org/Ebook/LearnMandarinChildren",
-        "scope": "The site describes downloadable textbooks, text, images, audio, and teaching materials; this record does not infer a public-repository or commercial license.",
-        "verifiedAt": "2026-09-27"
+        "scope": "Official series description confirms teaching materials are available; publication access is not treated as a reuse grant.",
+        "verifiedAt": "2026-09-28"
       },
       "commercialUse": "UNKNOWN",
       "modificationAllowed": "UNKNOWN",
@@ -25,12 +33,45 @@
       "rawIngestionAllowed": "NO",
       "publicRepoAllowed": "NO",
       "derivativeUseAllowed": "UNKNOWN",
-      "curriculumRole": ["REFERENCE_METADATA", "TITLE_ORDER_SOURCE"],
-      "evidenceRole": ["TITLE_ORDER_VERIFICATION"],
+      "curriculumRole": [
+        "REFERENCE_METADATA",
+        "TITLE_ORDER_SOURCE"
+      ],
+      "evidenceRole": [
+        "TITLE_ORDER_VERIFICATION"
+      ],
       "legalStatus": "YELLOW",
-      "constraints": ["Reference/citation only until the applicable permission is documented.", "Do not ingest or redistribute textbook text, vocabulary lists, questions, images, audio, or close rewrites.", "Do not treat teacher access or website availability as a license for public or commercial reuse."],
-      "lastVerifiedAt": "2026-09-27",
-      "notes": "Rights status is operationally unverified; this is not a legal conclusion. Existing repository excerpts are recorded in docs/content-rights-audit.md for Architect review."
+      "constraints": [
+        "Reference/citation only until the applicable permission is documented.",
+        "Do not ingest or redistribute textbook text, vocabulary lists, questions, images, audio, or close rewrites.",
+        "Do not treat teacher access or website availability as a license for public or commercial reuse."
+      ],
+      "lastVerifiedAt": "2026-09-28",
+      "notes": "The official source is retained for citation/reference only. The project has no verified grant for raw ingestion or public redistribution; no legal prohibition is asserted.",
+      "validationOnly": true,
+      "itemLevelRightsRequired": true,
+      "rightsEvidence": [
+        {
+          "evidenceId": "evidence-ocac-learn-mandarin-children-series-page",
+          "evidenceKind": "SOURCE_DESCRIPTION",
+          "evidenceUrl": "https://www.huayuworld.org/Ebook/LearnMandarinChildren",
+          "locator": "Rendered official series introduction and teaching-material overview; direct HTTP capture returned an access challenge.",
+          "observedAt": "2026-09-28",
+          "captureMethod": "BROWSER_RENDERED_REFERENCE",
+          "claimSummary": "Official series page describes the title and available teaching materials; this supports source identity only and grants no reuse permission.",
+          "supportsClaims": [
+            "SOURCE_DESCRIPTION"
+          ]
+        }
+      ],
+      "rightsDecision": {
+        "policyId": "tongxuan-content-source-policy-v2",
+        "outcome": "REFERENCE_ONLY",
+        "rationale": "The official source is retained for citation/reference only. The project has no verified grant for raw ingestion or public redistribution; no legal prohibition is asserted.",
+        "evidenceIds": [
+          "evidence-ocac-learn-mandarin-children-series-page"
+        ]
+      }
     },
     {
       "sourceId": "tbcl-naer",
@@ -38,27 +79,68 @@
       "authorityLevel": "OFFICIAL_LANGUAGE_FRAMEWORK",
       "owner": "National Academy for Educational Research (NAER), Taiwan",
       "officialUrl": "https://bcoct.naer.edu.tw/TBCL/",
-      "purpose": ["curriculum framework reference", "level validator", "ability benchmark"],
+      "purpose": [
+        "curriculum framework reference",
+        "level validator",
+        "ability benchmark"
+      ],
       "license": {
-        "name": "No reuse license recorded for bulk lists in this registry",
+        "name": "No bulk-data reuse grant recorded in the registry",
         "url": "https://bcoct.naer.edu.tw/TBCL/",
-        "scope": "Public framework descriptions and level references only; full character, vocabulary, and grammar tables are not mirrored.",
-        "verifiedAt": "2026-09-27"
+        "scope": "Official framework landing page is a reference only; no bulk character, vocabulary, or grammar tables are ingested.",
+        "verifiedAt": "2026-09-28"
       },
       "commercialUse": "UNKNOWN",
       "modificationAllowed": "UNKNOWN",
       "redistributionAllowed": "UNKNOWN",
-      "attributionRequired": "CONDITIONAL",
+      "attributionRequired": "UNKNOWN",
       "shareAlike": "UNKNOWN",
       "rawIngestionAllowed": "NO",
       "publicRepoAllowed": "NO",
       "derivativeUseAllowed": "UNKNOWN",
-      "curriculumRole": ["CURRICULUM_FRAMEWORK", "LEVEL_VALIDATOR", "ABILITY_BENCHMARK"],
-      "evidenceRole": ["LEVEL_REFERENCE", "CITED_VALIDATION_EVIDENCE"],
+      "curriculumRole": [
+        "CURRICULUM_FRAMEWORK",
+        "LEVEL_VALIDATOR",
+        "ABILITY_BENCHMARK"
+      ],
+      "evidenceRole": [
+        "LEVEL_REFERENCE",
+        "CITED_VALIDATION_EVIDENCE"
+      ],
       "legalStatus": "YELLOW",
-      "constraints": ["Use for reference, validation, and evidence citation only.", "Do not bulk mirror the 14,425-word or 496-grammar-point datasets or other source tables.", "A specific item may be ingested only after its reuse terms are verified and recorded."],
-      "lastVerifiedAt": "2026-09-27",
-      "notes": "Official site describes level descriptors and lists; absence of a visible license statement is not treated as permission."
+      "constraints": [
+        "Use for reference, validation, and evidence citation only.",
+        "Do not bulk mirror the 14,425-word or 496-grammar-point datasets or other source tables.",
+        "A specific item may be ingested only after its reuse terms are verified and recorded."
+      ],
+      "lastVerifiedAt": "2026-09-28",
+      "notes": "This registry permits reference/validation citations only. Bulk ingestion and redistribution remain blocked because a grant for those uses is not recorded.",
+      "validationOnly": true,
+      "itemLevelRightsRequired": true,
+      "rightsEvidence": [
+        {
+          "evidenceId": "evidence-tbcl-naer-landing-page",
+          "evidenceKind": "SOURCE_DESCRIPTION",
+          "evidenceUrl": "https://bcoct.naer.edu.tw/TBCL/",
+          "locator": "Official TBCL landing page; current HTML response captured for source reference.",
+          "observedAt": "2026-09-28",
+          "captureMethod": "HTTP_RESPONSE_TEXT_SHA256",
+          "claimSummary": "The official framework landing page was reachable. No reuse grant for bulk lists is asserted.",
+          "responseSha256": "bb85b2cf31ebe1f185f9f05dbef901e41e129cbb29125a33dbfc9822cbdf4c67",
+          "responseBytes": 5889,
+          "supportsClaims": [
+            "SOURCE_DESCRIPTION"
+          ]
+        }
+      ],
+      "rightsDecision": {
+        "policyId": "tongxuan-content-source-policy-v2",
+        "outcome": "REFERENCE_ONLY",
+        "rationale": "This registry permits reference/validation citations only. Bulk ingestion and redistribution remain blocked because a grant for those uses is not recorded.",
+        "evidenceIds": [
+          "evidence-tbcl-naer-landing-page"
+        ]
+      }
     },
     {
       "sourceId": "tocfl-cccc",
@@ -66,27 +148,67 @@
       "authorityLevel": "OFFICIAL_ASSESSMENT_REFERENCE",
       "owner": "Steering Committee for the Test Of Proficiency-Huayu (SC-TOP)",
       "officialUrl": "https://tocfl.edu.tw/tocfl/index.php/test/cccc/list/7",
-      "purpose": ["level reference", "child difficulty reference", "assessment-format reference"],
+      "purpose": [
+        "level reference",
+        "child difficulty reference",
+        "assessment-format reference"
+      ],
       "license": {
-        "name": "CCCC question bank is marked for learning use and not commercial use; no public-repository dataset license recorded",
+        "name": "No item-level public-repository or commercial grant recorded in this registry",
         "url": "https://tocfl.edu.tw/tocfl/index.php/test/cccc/list/7",
-        "scope": "The official CCCC page's question-bank use notice; individual TOCFL resources may have separate conditions.",
-        "verifiedAt": "2026-09-27"
+        "scope": "Official CCCC test-bank landing page only; individual questions and attached media have no reuse grant recorded here.",
+        "verifiedAt": "2026-09-28"
       },
-      "commercialUse": "NOT_ALLOWED",
+      "commercialUse": "UNKNOWN",
       "modificationAllowed": "UNKNOWN",
       "redistributionAllowed": "UNKNOWN",
-      "attributionRequired": "CONDITIONAL",
+      "attributionRequired": "UNKNOWN",
       "shareAlike": "UNKNOWN",
       "rawIngestionAllowed": "NO",
       "publicRepoAllowed": "NO",
       "derivativeUseAllowed": "UNKNOWN",
-      "curriculumRole": ["LEVEL_REFERENCE", "CHILD_DIFFICULTY_REFERENCE"],
-      "evidenceRole": ["ASSESSMENT_FORMAT_REFERENCE", "CITED_VALIDATION_EVIDENCE"],
+      "curriculumRole": [
+        "LEVEL_REFERENCE",
+        "CHILD_DIFFICULTY_REFERENCE"
+      ],
+      "evidenceRole": [
+        "ASSESSMENT_FORMAT_REFERENCE",
+        "CITED_VALIDATION_EVIDENCE"
+      ],
       "legalStatus": "YELLOW",
-      "constraints": ["Reference level descriptions and cite evidence only unless item-specific permissions say otherwise.", "Do not mirror question banks, test text, answer keys, audio, or images.", "The CCCC question bank page states learning use only and prohibits commercial use."],
-      "lastVerifiedAt": "2026-09-27",
-      "notes": "TOCFL and CCCC are grouped for reference tracking; each future resource must be registered at item/source granularity before ingestion."
+      "constraints": [
+        "Use the official page as a level or assessment-format reference only.",
+        "Do not copy question-bank items, answer keys, audio, or images into a publishable artifact without item-specific permission.",
+        "The prior note about non-commercial use was not re-verified in the 2026-09-28 capture and is not treated as a current rights claim."
+      ],
+      "lastVerifiedAt": "2026-09-28",
+      "notes": "Retain as assessment-format/reference only. A prior note about non-commercial use was not independently verified in this capture and is not repeated as a current legal claim.",
+      "validationOnly": true,
+      "itemLevelRightsRequired": true,
+      "rightsEvidence": [
+        {
+          "evidenceId": "evidence-tocfl-cccc-official-page",
+          "evidenceKind": "SOURCE_DESCRIPTION",
+          "evidenceUrl": "https://tocfl.edu.tw/tocfl/index.php/test/cccc/list/7",
+          "locator": "Official CCCC question-bank page and current page footer; no reuse grant recorded by this audit.",
+          "observedAt": "2026-09-28",
+          "captureMethod": "HTTP_RESPONSE_TEXT_SHA256",
+          "claimSummary": "The official page exposes CCCC question-bank resources. Current capture did not verify permission to redistribute the question-bank items.",
+          "responseSha256": "758db4db840c8c4a43e2a8a9e463642f503ced7375e6402a1a530653b309a3a6",
+          "responseBytes": 192134,
+          "supportsClaims": [
+            "SOURCE_DESCRIPTION"
+          ]
+        }
+      ],
+      "rightsDecision": {
+        "policyId": "tongxuan-content-source-policy-v2",
+        "outcome": "REFERENCE_ONLY",
+        "rationale": "Retain as assessment-format/reference only. A prior note about non-commercial use was not independently verified in this capture and is not repeated as a current legal claim.",
+        "evidenceIds": [
+          "evidence-tocfl-cccc-official-page"
+        ]
+      }
     },
     {
       "sourceId": "cc-cedict",
@@ -94,12 +216,16 @@
       "authorityLevel": "OPEN_LEXICAL_DATASET",
       "owner": "CC-CEDICT contributors; distribution page maintained by MDBG",
       "officialUrl": "https://cc-cedict.org/editor/editor.php?handler=Download",
-      "purpose": ["lexical reference", "Pinyin reference", "Traditional/Simplified mapping"],
+      "purpose": [
+        "lexical reference",
+        "Pinyin reference",
+        "Traditional/Simplified mapping"
+      ],
       "license": {
         "name": "Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)",
         "url": "https://creativecommons.org/licenses/by-sa/4.0/",
-        "scope": "CC-CEDICT dataset as identified on its official download page.",
-        "verifiedAt": "2026-09-27"
+        "scope": "CC-CEDICT dataset identified on its official download page, subject to CC BY-SA 4.0 and item/version provenance.",
+        "verifiedAt": "2026-09-28"
       },
       "commercialUse": "CONDITIONAL",
       "modificationAllowed": "CONDITIONAL",
@@ -109,12 +235,79 @@
       "rawIngestionAllowed": "YES",
       "publicRepoAllowed": "CONDITIONAL",
       "derivativeUseAllowed": "CONDITIONAL",
-      "curriculumRole": ["LEXICAL_REFERENCE"],
-      "evidenceRole": ["PINYIN_REFERENCE", "TRADITIONAL_SIMPLIFIED_REFERENCE"],
+      "curriculumRole": [
+        "LEXICAL_REFERENCE"
+      ],
+      "evidenceRole": [
+        "PINYIN_REFERENCE",
+        "TRADITIONAL_SIMPLIFIED_REFERENCE"
+      ],
       "legalStatus": "GREEN",
-      "constraints": ["Preserve CC BY-SA attribution and license notices.", "Distribute covered adaptations/database derivatives under compatible share-alike terms.", "Record source/version and changes; do not mark derived data as MIT.", "Check each release/version for additional source conditions."],
-      "lastVerifiedAt": "2026-09-27",
-      "notes": "GREEN means the named license is usable subject to its conditions; it is not a blanket commercial clearance for unrelated data."
+      "constraints": [
+        "Preserve CC BY-SA attribution and license notices.",
+        "Distribute covered adaptations/database derivatives under compatible share-alike terms.",
+        "Record source/version and changes; do not mark derived data as MIT.",
+        "Check each release/version for additional source conditions."
+      ],
+      "lastVerifiedAt": "2026-09-28",
+      "notes": "Source-level intake is allowed only within the identified dataset license. Any item/derivative must carry attribution, change notices, compatible share-alike handling, and provenance; it is never re-licensed as MIT.",
+      "validationOnly": false,
+      "itemLevelRightsRequired": true,
+      "rightsEvidence": [
+        {
+          "evidenceId": "evidence-cc-cedict-download-license",
+          "evidenceKind": "LICENSE_NOTICE",
+          "evidenceUrl": "https://cc-cedict.org/editor/editor.php?handler=Download",
+          "locator": "Official CC-CEDICT download page, license notice.",
+          "observedAt": "2026-09-28",
+          "captureMethod": "HTTP_RESPONSE_TEXT_SHA256",
+          "claimSummary": "The official download page identifies CC BY-SA 4.0 and summarizes attribution and share-alike conditions.",
+          "responseSha256": "631bc8a4dccaf163683316080c56abb422f0911dfb2d9f5eea095ac22bd64558",
+          "responseBytes": 6206,
+          "supportsClaims": [
+            "LICENSE_IDENTITY",
+            "COMMERCIAL_USE",
+            "MODIFICATION",
+            "REDISTRIBUTION",
+            "ATTRIBUTION",
+            "SHARE_ALIKE",
+            "RAW_INGESTION",
+            "PUBLIC_REPOSITORY",
+            "DERIVATIVE_USE"
+          ]
+        },
+        {
+          "evidenceId": "evidence-cc-cedict-cc-by-sa-deed",
+          "evidenceKind": "LICENSE_NOTICE",
+          "evidenceUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+          "locator": "Creative Commons deed, permissions and conditions sections.",
+          "observedAt": "2026-09-28",
+          "captureMethod": "HTTP_RESPONSE_TEXT_SHA256",
+          "claimSummary": "The license deed describes sharing/adaptation permissions and attribution/share-alike conditions; full legal code still controls.",
+          "responseSha256": "17de6b7071e8f4816b103fb45aff75f71c94821f303534fc3e21cb68bd0f7148",
+          "responseBytes": 35744,
+          "supportsClaims": [
+            "LICENSE_IDENTITY",
+            "COMMERCIAL_USE",
+            "MODIFICATION",
+            "REDISTRIBUTION",
+            "ATTRIBUTION",
+            "SHARE_ALIKE",
+            "RAW_INGESTION",
+            "PUBLIC_REPOSITORY",
+            "DERIVATIVE_USE"
+          ]
+        }
+      ],
+      "rightsDecision": {
+        "policyId": "tongxuan-content-source-policy-v2",
+        "outcome": "ALLOW_WITH_ITEM_CHECKS",
+        "rationale": "Source-level intake is allowed only within the identified dataset license. Any item/derivative must carry attribution, change notices, compatible share-alike handling, and provenance; it is never re-licensed as MIT.",
+        "evidenceIds": [
+          "evidence-cc-cedict-download-license",
+          "evidence-cc-cedict-cc-by-sa-deed"
+        ]
+      }
     },
     {
       "sourceId": "tatoeba",
@@ -122,12 +315,15 @@
       "authorityLevel": "OPEN_CORPUS",
       "owner": "Tatoeba project and individual contributors",
       "officialUrl": "https://tatoeba.org/en/terms_of_use",
-      "purpose": ["corpus reference", "sentence naturalness candidate"],
+      "purpose": [
+        "corpus reference",
+        "sentence naturalness candidate"
+      ],
       "license": {
-        "name": "Sentence text defaults to CC BY 2.0 FR; CC0 is available for eligible original sentences; audio license is contributor-specific",
+        "name": "Per-sentence license; audio terms are contributor/item-specific",
         "url": "https://en.wiki.tatoeba.org/articles/show/using-the-tatoeba-corpus",
-        "scope": "License must be resolved per sentence and separately per audio contributor/item.",
-        "verifiedAt": "2026-09-27"
+        "scope": "No corpus-wide item clearance. Sentence text and audio are resolved independently per item and contributor.",
+        "verifiedAt": "2026-09-28"
       },
       "commercialUse": "CONDITIONAL",
       "modificationAllowed": "CONDITIONAL",
@@ -137,12 +333,75 @@
       "rawIngestionAllowed": "CONDITIONAL",
       "publicRepoAllowed": "CONDITIONAL",
       "derivativeUseAllowed": "CONDITIONAL",
-      "curriculumRole": ["SENTENCE_REFERENCE"],
-      "evidenceRole": ["CORPUS_REFERENCE", "NATURALNESS_CANDIDATE"],
+      "curriculumRole": [
+        "SENTENCE_REFERENCE"
+      ],
+      "evidenceRole": [
+        "CORPUS_REFERENCE",
+        "NATURALNESS_CANDIDATE"
+      ],
       "legalStatus": "GREEN",
-      "constraints": ["Store the item ID, contributor, source license, attribution, and changes for every imported sentence.", "Never infer a sentence license from another item or from the corpus default when item metadata differs.", "Audio requires separate per-contributor license verification; do not assume text and audio terms match.", "Do not bulk import until the selected items and terms are verified."],
-      "lastVerifiedAt": "2026-09-27",
-      "notes": "Registry legalStatus is GREEN_WITH_CONDITIONS encoded as GREEN plus explicit constraints, per the project enum."
+      "constraints": [
+        "Record item ID, contributor, applicable license, attribution, and changes for each selected sentence.",
+        "Verify audio separately per contributor/item; sentence text rights do not establish audio rights.",
+        "Do not bulk import; item selection, terms verification, and curriculum approval are required."
+      ],
+      "lastVerifiedAt": "2026-09-28",
+      "notes": "GREEN is conditional on per-sentence text and per-contributor audio checks under the linked official terms; no corpus-wide item clearance is claimed.",
+      "validationOnly": false,
+      "itemLevelRightsRequired": true,
+      "rightsEvidence": [
+        {
+          "evidenceId": "evidence-tatoeba-terms",
+          "evidenceKind": "TERMS_OF_USE",
+          "evidenceUrl": "https://tatoeba.org/en/terms_of_use",
+          "locator": "Section 6, intellectual property, sentence and audio licenses, and reuse terms.",
+          "observedAt": "2026-09-28",
+          "captureMethod": "HTTP_RESPONSE_TEXT_SHA256",
+          "claimSummary": "Official terms specify that text and audio licensing can differ and that reuse obligations depend on individual contributors/items.",
+          "responseSha256": "f3e46eaac2d25bfacaab4e3cb834bd5252bb3df6367dd9da932bf46ec5ca2c22",
+          "responseBytes": 88171,
+          "supportsClaims": [
+            "LICENSE_IDENTITY",
+            "COMMERCIAL_USE",
+            "MODIFICATION",
+            "REDISTRIBUTION",
+            "ATTRIBUTION",
+            "SHARE_ALIKE",
+            "RAW_INGESTION",
+            "PUBLIC_REPOSITORY",
+            "DERIVATIVE_USE",
+            "ITEM_LEVEL_LICENSE",
+            "AUDIO_LICENSE_SCOPE"
+          ]
+        },
+        {
+          "evidenceId": "evidence-tatoeba-corpus-guidance",
+          "evidenceKind": "TERMS_OF_USE",
+          "evidenceUrl": "https://en.wiki.tatoeba.org/articles/show/using-the-tatoeba-corpus",
+          "locator": "Terms of Use and License for Audio Files sections.",
+          "observedAt": "2026-09-28",
+          "captureMethod": "HTTP_RESPONSE_TEXT_SHA256",
+          "claimSummary": "Official reuse guidance separates sentence-text terms from audio-file terms and directs item/member-specific verification.",
+          "responseSha256": "afb4a8cf001317249d833c7224ea6d8ec65917c17dcbe2143639002de432c64b",
+          "responseBytes": 7383,
+          "supportsClaims": [
+            "ATTRIBUTION",
+            "ITEM_LEVEL_LICENSE",
+            "AUDIO_LICENSE_SCOPE",
+            "SOURCE_DESCRIPTION"
+          ]
+        }
+      ],
+      "rightsDecision": {
+        "policyId": "tongxuan-content-source-policy-v2",
+        "outcome": "ALLOW_WITH_ITEM_CHECKS",
+        "rationale": "The source may be evaluated only item-by-item. Text and audio require separate rights records; no bulk import is allowed without item selection and terms verification.",
+        "evidenceIds": [
+          "evidence-tatoeba-terms",
+          "evidence-tatoeba-corpus-guidance"
+        ]
+      }
     },
     {
       "sourceId": "mozilla-common-voice",
@@ -150,27 +409,63 @@
       "authorityLevel": "OPEN_SPEECH_CORPUS",
       "owner": "Mozilla Foundation and Common Voice contributors",
       "officialUrl": "https://commonvoice.mozilla.org/en/terms",
-      "purpose": ["speech corpus reference", "ASR evaluation"],
+      "purpose": [
+        "speech corpus reference",
+        "ASR evaluation"
+      ],
       "license": {
-        "name": "CC0 1.0; dataset access and distribution are subject to Mozilla Data Collective terms",
+        "name": "Current operative dataset terms were not verified",
         "url": "https://commonvoice.mozilla.org/en/terms",
-        "scope": "Common Voice datasets and access channel, subject to current terms and any dataset-specific notice.",
-        "verifiedAt": "2026-09-27"
+        "scope": "Official terms endpoint returned an HTML application shell without extractable operative clauses in this audit.",
+        "verifiedAt": "2026-09-28"
       },
-      "commercialUse": "CONDITIONAL",
-      "modificationAllowed": "CONDITIONAL",
-      "redistributionAllowed": "NO",
-      "attributionRequired": "NO",
-      "shareAlike": "NO",
-      "rawIngestionAllowed": "NO",
-      "publicRepoAllowed": "NO",
-      "derivativeUseAllowed": "CONDITIONAL",
+      "commercialUse": "UNKNOWN",
+      "modificationAllowed": "UNKNOWN",
+      "redistributionAllowed": "UNKNOWN",
+      "attributionRequired": "UNKNOWN",
+      "shareAlike": "UNKNOWN",
+      "rawIngestionAllowed": "UNKNOWN",
+      "publicRepoAllowed": "UNKNOWN",
+      "derivativeUseAllowed": "UNKNOWN",
       "curriculumRole": [],
-      "evidenceRole": ["SPEECH_CORPUS_REFERENCE", "ASR_EVALUATION"],
-      "legalStatus": "GREEN",
-      "constraints": ["TongXuan project policy: do not post, distribute, or mirror any dataset, in whole or in part, on another platform or service.", "Access datasets through Mozilla Data Collective and follow its current access terms.", "Do not commit downloaded audio or dataset rows to this public repository."],
-      "lastVerifiedAt": "2026-09-27",
-      "notes": "CC0 dataset licensing is distinct from Mozilla Data Collective access terms. Mozilla asks users not to repost, distribute, or mirror datasets; this project follows that request as a conservative repository policy."
+      "evidenceRole": [
+        "SPEECH_CORPUS_REFERENCE",
+        "ASR_EVALUATION"
+      ],
+      "legalStatus": "UNKNOWN",
+      "constraints": [
+        "Project gate: do not ingest or publish dataset/audio until current official terms and access conditions are verifiable.",
+        "Current terms were not extractable in the 2026-09-28 capture; the source remains UNKNOWN / UNKNOWN_BLOCKED.",
+        "No prior CC0, Data Collective, or no-mirroring claim is treated as current evidence."
+      ],
+      "lastVerifiedAt": "2026-09-28",
+      "notes": "No ingestion or publication is enabled until the current official terms and access conditions can be verified. Earlier registry claims are not carried forward as current.",
+      "validationOnly": true,
+      "itemLevelRightsRequired": true,
+      "rightsEvidence": [
+        {
+          "evidenceId": "evidence-mozilla-common-voice-terms-capture",
+          "evidenceKind": "INACCESSIBLE_PRIMARY_SOURCE",
+          "evidenceUrl": "https://commonvoice.mozilla.org/en/terms",
+          "locator": "Current official terms endpoint; HTTP response was an application shell and operative clauses were not extractable.",
+          "observedAt": "2026-09-28",
+          "captureMethod": "HTTP_RESPONSE_TEXT_SHA256",
+          "claimSummary": "The official terms URL responded, but this capture did not expose current license/access terms. No rights claim is verified.",
+          "responseSha256": "746d2c8506a1438cd73e2e8c133a14c803c0907d6343cb496a18f0923b08561c",
+          "responseBytes": 10336,
+          "supportsClaims": [
+            "SOURCE_DESCRIPTION"
+          ]
+        }
+      ],
+      "rightsDecision": {
+        "policyId": "tongxuan-content-source-policy-v2",
+        "outcome": "UNKNOWN_BLOCKED",
+        "rationale": "No ingestion or publication is enabled until the current official terms and access conditions can be verified. Earlier registry claims are not carried forward as current.",
+        "evidenceIds": [
+          "evidence-mozilla-common-voice-terms-capture"
+        ]
+      }
     },
     {
       "sourceId": "tongxuan-original-authorship",
@@ -178,27 +473,62 @@
       "authorityLevel": "PROJECT_AUTHORED_SOURCE",
       "owner": "TongXuan and contributors who have granted the project rights",
       "officialUrl": "https://github.com/webber0612/TongXuan-Chinese",
-      "purpose": ["original examples and practice candidates"],
+      "purpose": [
+        "original examples and practice candidates"
+      ],
       "license": {
-        "name": "Project-owned content terms must be assigned per item; root MIT is not assumed to cover content",
+        "name": "Item-specific ownership and contributor rights are required; no source-wide grant is asserted",
         "url": "https://github.com/webber0612/TongXuan-Chinese/blob/main/CONTENT_LICENSES.md",
-        "scope": "Only content with documented project ownership or contributor grant; AI output alone is not evidence of ownership or curriculum approval.",
-        "verifiedAt": "2026-09-27"
+        "scope": "The root MIT license is for project software and does not establish rights in content or AI-generated material.",
+        "verifiedAt": "2026-09-28"
       },
-      "commercialUse": "CONDITIONAL",
-      "modificationAllowed": "CONDITIONAL",
-      "redistributionAllowed": "CONDITIONAL",
-      "attributionRequired": "CONDITIONAL",
+      "commercialUse": "UNKNOWN",
+      "modificationAllowed": "UNKNOWN",
+      "redistributionAllowed": "UNKNOWN",
+      "attributionRequired": "UNKNOWN",
       "shareAlike": "UNKNOWN",
-      "rawIngestionAllowed": "CONDITIONAL",
-      "publicRepoAllowed": "CONDITIONAL",
-      "derivativeUseAllowed": "CONDITIONAL",
-      "curriculumRole": ["CANDIDATE_CONTENT_SOURCE"],
-      "evidenceRole": ["AUTHORED_RATIONALE"],
-      "legalStatus": "GREEN",
-      "constraints": ["Record author, creation date, and rights grant for every published item.", "AI/Codex proposals do not become official targets until human/Architect approval.", "Original authorship does not substitute for level, prerequisite, difficulty, or learner-evidence rationale."],
-      "lastVerifiedAt": "2026-09-27",
-      "notes": "GREEN is conditional on item-level authorship/rights evidence and the separate curriculum approval gate."
+      "rawIngestionAllowed": "UNKNOWN",
+      "publicRepoAllowed": "UNKNOWN",
+      "derivativeUseAllowed": "UNKNOWN",
+      "curriculumRole": [
+        "CANDIDATE_CONTENT_SOURCE"
+      ],
+      "evidenceRole": [
+        "AUTHORED_RATIONALE"
+      ],
+      "legalStatus": "UNKNOWN",
+      "constraints": [
+        "Record author, creation date, and rights grant for every published item.",
+        "AI/Codex proposals do not become official targets until human/Architect approval.",
+        "Original authorship does not substitute for level, prerequisite, difficulty, or learner-evidence rationale."
+      ],
+      "lastVerifiedAt": "2026-09-28",
+      "notes": "No source-wide content permission is claimed. A specific item remains blocked until author, creation provenance, contributor grant, and publication scope are recorded and checked.",
+      "validationOnly": false,
+      "itemLevelRightsRequired": true,
+      "rightsEvidence": [
+        {
+          "evidenceId": "evidence-tongxuan-original-authorship-content-boundary",
+          "evidenceKind": "PROJECT_POLICY",
+          "evidenceUrl": "https://github.com/webber0612/TongXuan-Chinese/blob/main/CONTENT_LICENSES.md",
+          "locator": "Content license boundary; root software license and item-level content rights rules.",
+          "observedAt": "2026-09-28",
+          "captureMethod": "POLICY_TEXT",
+          "claimSummary": "Project policy separates software licensing from content rights and requires item-level authorship or grant evidence.",
+          "supportsClaims": [
+            "PROJECT_POLICY",
+            "CONTENT_LICENSE_SEPARATION"
+          ]
+        }
+      ],
+      "rightsDecision": {
+        "policyId": "tongxuan-content-source-policy-v2",
+        "outcome": "UNKNOWN_BLOCKED",
+        "rationale": "No source-wide content permission is claimed. A specific item remains blocked until author, creation provenance, contributor grant, and publication scope are recorded and checked.",
+        "evidenceIds": [
+          "evidence-tongxuan-original-authorship-content-boundary"
+        ]
+      }
     }
   ]
 }

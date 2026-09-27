@@ -4,7 +4,7 @@
 
 `backend/app/open_curriculum_validator.py` is a deterministic, offline validator for candidate graph packs. It does not draft targets, choose a next lesson, mutate curriculum, or grant source permission. It validates Draft 2020-12 structure from `shared/open-curriculum/schemas/`, then applies cross-reference, evidence, level, prerequisite, recycling, sentence-token, recognition-before-writing, mastery-target, source-rights, and explicit-policy checks.
 
-The default source registry is [`shared/content-sources/source-registry.json`](../shared/content-sources/source-registry.json). Missing/invalid registry records fail closed. Remote schema references are not fetched; repository schemas are bundled and resolved locally.
+The default source registry is [`shared/content-sources/source-registry.json`](../shared/content-sources/source-registry.json), schema version 2.0. Each rights decision links to evidence URLs, locators, observation dates, capture methods, an explicit `supportsClaims` list, and a response SHA-256 when an HTTP representation was captured. The validator checks evidence references, status/outcome consistency, and requires GREEN license/terms evidence plus linked evidence for every source-level permission claim. Conditional terms still require item-level checks. `UNKNOWN` and validation-only sources cannot become publishable. Missing/invalid registry records fail closed. Remote schema references are not fetched; repository schemas are bundled and resolved locally.
 
 ## Publishable-pack rules
 
@@ -26,7 +26,9 @@ The default source registry is [`shared/content-sources/source-registry.json`](.
 
 Structural failures use `SCHEMA_INVALID`. Semantic checks include `UNAPPROVED_TARGET`, `UNAPPROVED_LESSON`, `VALIDATION_POLICY_NOT_APPROVED`, `MISSING_PROVENANCE`, `SOURCE_NOT_REGISTERED`, `SOURCE_NOT_GREEN`, `SOURCE_REDISTRIBUTION_NOT_CLEARED`, `ITEM_LICENSE_UNVERIFIED`, `UNLICENSED_RAW_CONTENT`, `RAW_CONTENT_AS_EVIDENCE`, `UNMET_PREREQUISITE`, `TARGET_OUT_OF_LEVEL`, `TARGET_NOT_AVAILABLE`, `NEW_VOCABULARY_RATIO_EXCEEDED`, `UNMET_RECYCLING`, `WRITING_BEFORE_RECOGNITION`, `UNREGISTERED_SENTENCE_TOKEN`, `UNREGISTERED_SENTENCE_TEXT`, and `UNSUPPORTED_MASTERY_TARGET`.
 
-Diagnostics are sorted and deduplicated so identical input yields stable output. Rights-related diagnostics include `ITEM_RIGHTS_EVIDENCE_MISSING` and `CONTENT_RIGHTS_EVIDENCE_REQUIRED`. Schema validation and semantic checks do not certify pedagogical quality or replace independent review.
+Diagnostics are sorted and deduplicated so identical input yields stable output. Registry diagnostics include `RIGHTS_EVIDENCE_ID_DUPLICATE`, `RIGHTS_DECISION_EVIDENCE_UNRESOLVED`, `RIGHTS_STATUS_DECISION_MISMATCH`, `GREEN_RIGHTS_UNSUPPORTED`, `GREEN_RIGHTS_EVIDENCE_MISSING`, `GREEN_PERMISSION_EVIDENCE_MISSING`, `GREEN_ITEM_LEVEL_GUARD_MISSING`, and `VALIDATION_ONLY_SOURCE_NOT_PUBLISHABLE`. Pack diagnostics also include `ITEM_RIGHTS_EVIDENCE_MISSING` and `CONTENT_RIGHTS_EVIDENCE_REQUIRED`. Schema validation and semantic checks do not certify pedagogical quality or replace independent review.
+
+The tracked-path inventory and public-artifact guard are implemented in [`scripts/open_curriculum_rights_gate.py`](../scripts/open_curriculum_rights_gate.py). It verifies the machine-readable repository audit, required path coverage, content digests, source/evidence references, and that non-owned content is never placed under root MIT. Candidate packs can be checked with `--publishable-pack`; proposed raw paths can be checked with repeated `--publishable-path` arguments. Existing `RIGHTS_UNCLEAR` paths remain blocked from publishable artifacts.
 
 ## Verification results
 
@@ -36,6 +38,7 @@ The repository registry passes its schema. Test-only synthetic fixtures cover co
 cd backend
 python -m app.open_curriculum_validator path/to/candidate-pack.json
 python -m pytest tests/test_open_curriculum.py -q
+python ../scripts/open_curriculum_rights_gate.py --check
 ```
 
-The targeted validator suite passes **29 tests**. Full backend, frontend, and production-build results are recorded in the active project handoff snapshot and Issue #86 PR metadata.
+The authority and rights regression suites pass **43 tests**. Full backend, frontend, production-build, and exact-head review results are recorded in the active project handoff snapshot and the Phase 1 PR metadata for Issue #88.
