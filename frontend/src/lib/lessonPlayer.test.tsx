@@ -525,6 +525,7 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     const contextScaffold = container.querySelector(".step-context-body .scaffold-box");
     expect(contextScaffold?.getAttribute("data-review-status")).toBe("REVIEWED");
     expect(contextScaffold?.querySelector(".scaffold-text")?.textContent).toBe("I am seven years old.");
+    expect(contextScaffold?.querySelector(".scaffold-status-pill")?.textContent).toBe("Reviewed");
 
     await advanceToPlannerStep(container, "vocabulary");
     expect(container.querySelector(".vocab-hanzi")?.textContent).toContain("七歲");
@@ -532,6 +533,9 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     const vocabularyScaffold = container.querySelector(".step-vocab-body .scaffold-box");
     expect(vocabularyScaffold?.getAttribute("data-review-status")).toBe("REVIEWED");
     expect(vocabularyScaffold?.querySelector(".scaffold-text")?.textContent).toBe("I am seven years old.");
+    expect(vocabularyScaffold?.querySelector(".scaffold-status-pill")?.textContent).toBe("Reviewed");
+    expect(container.textContent).not.toContain("Generated draft (pending review)");
+    expect(container.textContent).not.toContain("Approved");
     expect(container.textContent).not.toContain("你好！我叫大衛。");
     expect(container.querySelector('.scaffold-box[data-review-status="APPROVED"]')).toBeNull();
     expect(contextContract.data.scaffoldKey).toBe("age_example");
