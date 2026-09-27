@@ -32,7 +32,67 @@ function plannerCharacterSet(lessonId: string): Set<string> {
   return new Set(lesson?.official.title.match(/[\u3400-\u9fff]/g) ?? []);
 }
 
-export type ReviewSkillDomain = "recognition" | "writing" | "word";
+interface FastTrackListeningContract {
+  questionId: string;
+  prompt: string;
+  audioText: string;
+  choices: Array<{ id: string; label: string }>;
+}
+
+/** Read the one exact listening question from the executable Fast Track blueprint. */
+function packageFastTrackListeningContract(pkg: unknown): FastTrackListeningContract | null {
+  if (!pkg || typeof pkg !== "object") return null;
+  const candidate = pkg as Record<string, any>;
+  if (typeof candidate.lessonId !== "string" || !candidate.lessonId.trim()) return null;
+  const source = candidate.curriculumSource;
+  const blueprint = candidate.taskBlueprint;
+  if (!source || typeof source !== "object" || typeof source.title !== "string" || !source.title.trim() ||
+      !blueprint || typeof blueprint !== "object" || !Array.isArray(blueprint.fastTrackSteps)) return null;
+
+  const exitTickets = blueprint.fastTrackSteps.filter((step: any) => step && typeof step === "object" && step.stepKey === "exit_ticket");
+  if (exitTickets.length !== 1 || !exitTickets[0].data || typeof exitTickets[0].data !== "object" ||
+      !Array.isArray(exitTickets[0].data.questions) || exitTickets[0].data.questions.length === 0) return null;
+
+  const questions = exitTickets[0].data.questions as any[];
+  if (!questions.every((question) => question && typeof question === "object" &&
+      typeof question.id === "string" && Boolean(question.id.trim()) && typeof question.domain === "string")) return null;
+  const ids = questions.map((question) => question.id);
+  if (new Set(ids).size !== ids.length) return null;
+
+  const listening = questions.filter((question) => question.domain === "listening");
+  if (listening.length !== 1) return null;
+  const question = listening[0];
+  if (question.audioText !== source.title || typeof question.prompt !== "string" || !question.prompt.trim() ||
+      !Array.isArray(question.choices) || question.choices.length !== 2 ||
+      typeof question.correctChoiceId !== "string") return null;
+
+  const choices = question.choices;
+  if (!choices.every((choice: any) => choice && typeof choice === "object" &&
+      typeof choice.id === "string" && Boolean(choice.id.trim()) &&
+      typeof choice.label === "string" && Boolean(choice.label.trim()) &&
+      (choice.isCorrect === undefined || typeof choice.isCorrect === "boolean"))) return null;
+  const choiceIds = choices.map((choice: any) => choice.id);
+  const labels = choices.map((choice: any) => choice.label);
+  if (new Set(choiceIds).size !== choices.length || new Set(labels).size !== choices.length ||
+      !choiceIds.includes(question.correctChoiceId)) return null;
+  if (choices.some((choice: any) => choice.isCorrect !== undefined) &&
+      choices.some((choice: any) => choice.isCorrect !== (choice.id === question.correctChoiceId))) return null;
+
+  return {
+    questionId: question.id,
+    prompt: question.prompt,
+    audioText: question.audioText,
+    choices: choices.map((choice: any) => ({ id: choice.id, label: choice.label })),
+  };
+}
+
+function samePublicChoices(left: unknown, right: Array<{ id: string; label: string }>): boolean {
+  if (!validPublicReviewChoices(left)) return false;
+  return left.length === right.length && left.every((choice, index) =>
+    choice.id === right[index].id && choice.label === right[index].label);
+}
+
+export type ReviewSkillDomain = "recognition" | "writing" | "word" | "listening";
 export interface ReviewDueItem {
   id: string;
   skillDomain: ReviewSkillDomain;
@@ -41,6 +101,10 @@ export interface ReviewDueItem {
   character?: string;
   scriptMode?: "TRADITIONAL" | "SIMPLIFIED";
   word?: string;
+  questionId?: string;
+  prompt?: string;
+  audioText?: string;
+  choices?: Array<{ id: string; label: string }>;
 }
 
 function reviewIdentity(domain: string, itemId: string): string {
@@ -55,7 +119,7 @@ export function validateReviewDueItems(dueItems: unknown): dueItems is ReviewDue
     if (
       !item || typeof item !== "object" ||
       typeof item.id !== "string" || !item.id.trim() ||
-      !["recognition", "writing", "word"].includes(item.skillDomain) ||
+      !["recognition", "writing", "word", "listening"].includes(item.skillDomain) ||
       typeof item.lessonId !== "string" || !getLessonPackage(item.lessonId) ||
       typeof item.dueAt !== "string" || !Number.isFinite(Date.parse(item.dueAt))
     ) return false;
@@ -66,7 +130,19 @@ export function validateReviewDueItems(dueItems: unknown): dueItems is ReviewDue
       if (typeof item.character !== "string" || !plannerCharacterSet(item.lessonId).has(item.character) ||
           !["TRADITIONAL", "SIMPLIFIED"].includes(item.scriptMode) ||
           item.id !== `${String(item.scriptMode).toLowerCase()}::${item.character}`) return false;
-    } else if (item.word !== "你好" || !new RegExp(`^lf_\\d+_${item.lessonId}_vocabulary$`).test(item.id)) return false;
+    } else if (domain === "word") {
+      if (item.word !== "你好" || !new RegExp(`^lf_\\d+_${item.lessonId}_vocabulary$`).test(item.id)) return false;
+    } else {
+      const pkg = getLessonPackage(item.lessonId);
+      const listeningContract = packageFastTrackListeningContract(pkg);
+      if (
+        !new RegExp(`^lf_\\d+_${item.lessonId}_phrase$`).test(item.id) ||
+        !listeningContract || item.questionId !== listeningContract.questionId ||
+        item.prompt !== listeningContract.prompt || item.audioText !== listeningContract.audioText ||
+        !samePublicChoices(item.choices, listeningContract.choices) ||
+        "correctChoiceId" in item
+      ) return false;
+    }
     const identity = reviewIdentity(domain, item.id);
     if (identities.has(identity)) return false;
     identities.add(identity);
@@ -107,6 +183,16 @@ export function buildReviewStepsFromDueItems(
         subtitle: `書寫「${due.taskData!.character}」`, primaryAction: "完成書寫", estimatedMinutes: 2, required: true,
         data: { taskId: due.id, dueItem: due, character: due.taskData!.character, scriptMode: due.taskData!.scriptMode },
       });
+    } else if (due.taskType === "REVIEW_LISTENING") {
+      steps.push({
+        stepNumber: stepNum++, stepKey: "mini_check", domain: "listening", title: "到期聆聽複習",
+        subtitle: `聽「${due.taskData!.audioText}」再作答`, primaryAction: "確認答案", estimatedMinutes: 2, required: true,
+        data: {
+          taskId: due.id, taskType: due.taskType, questionId: due.taskData!.questionId,
+          prompt: due.taskData!.prompt,
+          audioText: due.taskData!.audioText, choices: due.taskData!.choices,
+        },
+      });
     } else {
       steps.push({
         stepNumber: stepNum++, stepKey: "vocabulary", domain: "vocabulary", title: "到期詞語複習",
@@ -144,6 +230,8 @@ export interface LearningFlowTaskContract {
   childId?: number;
   key?: string;
   taskType?: string;
+  evidenceType?: string;
+  masteryImpact?: string;
   sourceQueue?: string;
   lessonId?: string;
   skillDomain?: string | null;
@@ -174,8 +262,8 @@ function isValidReviewTask(task: any, pkg: LessonPackage, expectedLessonId?: str
   if (!isReviewTaskCandidate(task)) return false;
   if (
     typeof task.id !== "string" || !task.id.trim() ||
-    typeof task.key !== "string" || !/^review-(recognition|writing|word)-\d+$/.test(task.key) ||
-    !["REVIEW_RECOGNITION", "REVIEW_WRITING", "REVIEW_VOCABULARY"].includes(task.taskType) || task.sourceQueue !== "REVIEW" ||
+    typeof task.key !== "string" || !/^review-(recognition|writing|word|listening)-\d+$/.test(task.key) ||
+    !["REVIEW_RECOGNITION", "REVIEW_WRITING", "REVIEW_VOCABULARY", "REVIEW_LISTENING"].includes(task.taskType) || task.sourceQueue !== "REVIEW" ||
     task.required !== true ||
     typeof task.lessonId !== "string" || !task.lessonId.trim() ||
     task.lessonId !== pkg.lessonId ||
@@ -201,6 +289,18 @@ function isValidReviewTask(task: any, pkg: LessonPackage, expectedLessonId?: str
       ["TRADITIONAL", "SIMPLIFIED"].includes(scriptMode) &&
       task.itemId === `${String(scriptMode).toLowerCase()}::${character}`;
   }
+  if (task.taskType === "REVIEW_LISTENING") {
+    const listeningContract = packageFastTrackListeningContract(pkg);
+    const exactPhraseId = typeof task.childId === "number" && Number.isSafeInteger(task.childId) && task.childId > 0
+      ? `lf_${task.childId}_${pkg.lessonId}_phrase`
+      : null;
+    return /^review-listening-\d+$/.test(task.key) && task.skillDomain === "listening" && task.masteryImpact === "NONE" &&
+      task.evidenceType === "fast_track_listening_choice" &&
+      exactPhraseId !== null && task.itemId === exactPhraseId &&
+      listeningContract !== null && data.questionId === listeningContract.questionId &&
+      data.prompt === listeningContract.prompt && data.audioText === listeningContract.audioText &&
+      !("correctChoiceId" in data) && samePublicChoices(data.choices, listeningContract.choices);
+  }
   return /^review-word-\d+$/.test(task.key) && task.skillDomain === "word" && data.word === "你好" &&
     typeof data.prompt === "string" && Boolean(data.prompt.trim()) &&
     task.childId !== undefined && task.itemId === `lf_${task.childId}_${pkg.lessonId}_vocabulary` &&
@@ -216,6 +316,17 @@ function validReviewChoices(choices: unknown, expected: string, expectedIsChoice
     typeof choice.label === "string" && Boolean(choice.label.trim())) &&
     new Set(ids).size === choices.length && new Set(labels).size === choices.length &&
     (expectedIsChoiceId ? ids.includes(expected) : labels.includes(expected) && labels.some((label: string) => label !== expected));
+}
+
+function validPublicReviewChoices(choices: unknown): choices is Array<{ id: string; label: string }> {
+  if (!Array.isArray(choices) || choices.length !== 2) return false;
+  const ids = choices.map((choice: any) => choice?.id);
+  const labels = choices.map((choice: any) => choice?.label);
+  return choices.every((choice: any) => choice && typeof choice === "object" &&
+    typeof choice.id === "string" && Boolean(choice.id.trim()) &&
+    typeof choice.label === "string" && Boolean(choice.label.trim()) &&
+    !("isCorrect" in choice) && !("correctChoiceId" in choice)) &&
+    new Set(ids).size === choices.length && new Set(labels).size === choices.length;
 }
 
 /** REVIEW steps only exist for complete, unique backend planner task rows. */
@@ -296,6 +407,7 @@ export function selectReviewTasksAcrossPackages(
   if (authoritativeTasks.some((task) => !dueIds.has(reviewIdentity(String(task.skillDomain), String(task.itemId))) && task.state !== "COMPLETED")) return null;
   const selected: LearningFlowTaskContract[] = [];
   for (const item of dueItems) {
+    if (item.skillDomain === "listening" && item.id !== `lf_${expectedChildId}_${item.lessonId}_phrase`) return null;
     const exactTask = byIdentity.get(reviewIdentity(item.skillDomain, item.id));
     if (!exactTask || !reviewTaskMatchesDueItem(exactTask, item)) return null;
     selected.push(exactTask);
@@ -315,6 +427,13 @@ function reviewTaskMatchesDueItem(task: LearningFlowTaskContract, item: ReviewDu
   if (item.skillDomain === "writing") {
     return task.taskType === "REVIEW_WRITING" && task.skillDomain === "writing" &&
       task.taskData?.character === item.character && task.taskData?.scriptMode === item.scriptMode;
+  }
+  if (item.skillDomain === "listening") {
+    return task.taskType === "REVIEW_LISTENING" && task.skillDomain === "listening" &&
+      task.evidenceType === "fast_track_listening_choice" && task.masteryImpact === "NONE" &&
+      task.taskData?.questionId === item.questionId && task.taskData?.prompt === item.prompt &&
+      task.taskData?.audioText === item.audioText &&
+      JSON.stringify(task.taskData?.choices) === JSON.stringify(item.choices);
   }
   return task.taskType === "REVIEW_VOCABULARY" && task.skillDomain === "word" && task.taskData?.word === item.word;
 }

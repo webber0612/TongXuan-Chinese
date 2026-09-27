@@ -5,11 +5,11 @@ from fastapi.testclient import TestClient
 from app.lesson_packages import get_lesson_package, list_lesson_packages, validate_package_review_status
 
 
-def make_client(tmp_path: Path):
+def make_client(tmp_path: Path, *, raise_server_exceptions: bool = True):
     import os
     os.environ["TONGXUAN_DB_PATH"] = str(tmp_path / "lesson_player.sqlite3")
     from app.main import app
-    return TestClient(app)
+    return TestClient(app, raise_server_exceptions=raise_server_exceptions)
 
 
 def _start_book1_listening_task(client: TestClient, name: str) -> tuple[int, dict, dict, dict]:
@@ -1771,4 +1771,376 @@ def test_review_writing_retry_cap_deferred_reconciles_exactly_and_keeps_parent_a
             assert db.execute("SELECT COUNT(*) FROM learning_flow_tasks WHERE session_id=? AND source_queue='REVIEW'", (session_id,)).fetchone()[0] == 1
             assert db.execute("SELECT COUNT(*) FROM learning_flow_task_attempts WHERE task_id=?", (task["id"],)).fetchone()[0] == 2
             assert db.execute("SELECT COUNT(*) FROM curriculum_skill_gates WHERE child_id=? AND skill_domain='writing' AND evidence_ref LIKE ?", (child_id, f"flow-writing:{session_id}:{task['id']}:%")).fetchone()[0] == 0
+
+
+def _start_fast_track_listening_review(client: TestClient, name: str) -> tuple[int, dict, dict, str, str]:
+    """Create a listening SRS row through the real Fast Track API, then make it due."""
+    from app.auth import issue_session
+    from app.database import connect
+
+    child_resp = client.post("/api/children", json={"name": name})
+    assert child_resp.status_code == 200, child_resp.text
+    child_id = child_resp.json()["id"]
+    token = issue_session(subject="parent", role="parent", child_ids=[child_id])
+    placement = client.put(
+        f"/api/children/{child_id}/placement-profile",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"domain_levels": {"listening": "BOOK_1", "recognition": "BOOK_1", "speaking": "BOOK_1", "writing": "STARTER"}},
+    )
+    assert placement.status_code == 200, placement.text
+
+    fast_track_parent = client.post(
+        f"/api/children/{child_id}/learning-sessions",
+        json={"target_minutes": 18, "lesson_id": "book1-l01", "as_of": "2026-09-01T00:00:00Z"},
+    )
+    assert fast_track_parent.status_code == 200, fast_track_parent.text
+    fast_track_session_id = fast_track_parent.json()["id"]
+    fast_track = client.post(
+        f"/api/children/{child_id}/lesson-packages/book1-l01/fast-track",
+        json={"session_id": fast_track_session_id, "answers": {"ft-q1": "c1", "ft-q2": "c1", "ft-q3": "c1", "ft-q4": "c1"}},
+    )
+    assert fast_track.status_code == 200, fast_track.text
+    assert fast_track.json()["passed"] is True
+
+    phrase_id = f"lf_{child_id}_book1-l01_phrase"
+    as_of = "2026-09-05T00:00:00Z"
+    with connect() as db:
+        listening_srs = db.execute(
+            "SELECT stage FROM srs_review_states WHERE child_id=? AND skill_domain='listening' AND item_id=?",
+            (child_id, phrase_id),
+        ).fetchone()
+        phrase_link = db.execute(
+            "SELECT lesson_id FROM curriculum_item_links WHERE child_id=? AND skill_domain='listening' AND item_id=?",
+            (child_id, phrase_id),
+        ).fetchone()
+        assert listening_srs is not None and listening_srs["stage"] == 1
+        assert phrase_link is not None and phrase_link["lesson_id"] == "book1-l01"
+        db.execute(
+            "UPDATE srs_review_states SET due_at=? WHERE child_id=? AND skill_domain='listening' AND item_id=?",
+            ("2026-09-02T00:00:00Z", child_id, phrase_id),
+        )
+        db.execute(
+            "UPDATE srs_review_states SET due_at=? WHERE child_id=? AND skill_domain='recognition'",
+            ("2099-01-01T00:00:00Z", child_id),
+        )
+
+    plan = client.post(
+        f"/api/children/{child_id}/learning-sessions/plan",
+        json={"target_minutes": 18, "lesson_id": "book1-l01", "as_of": as_of},
+    )
+    assert plan.status_code == 200, plan.text
+    plan_review = [task for task in plan.json()["tasks"] if task["sourceQueue"] == "REVIEW"]
+    assert len(plan_review) == 1
+
+    started = client.post(
+        f"/api/children/{child_id}/learning-sessions",
+        json={"target_minutes": 18, "lesson_id": "book1-l01", "as_of": as_of},
+    )
+    assert started.status_code == 200, started.text
+    session = started.json()
+    task = next(task for task in session["tasks"] if task["sourceQueue"] == "REVIEW")
+    assert task["taskType"] == "REVIEW_LISTENING"
+    assert task["itemId"] == phrase_id
+    assert task["lessonId"] == "book1-l01"
+    assert plan_review[0]["taskType"] == task["taskType"] and plan_review[0]["itemId"] == task["itemId"]
+
+    queue = client.get(f"/api/children/{child_id}/learning-daily-queue?as_of={as_of}")
+    assert queue.status_code == 200, queue.text
+    due_items = queue.json()["review"]["items"]
+    assert {(item["skillDomain"], item["id"], item["lessonId"]) for item in due_items} == {
+        ("listening", phrase_id, "book1-l01")
+    }
+    assert due_items[0]["questionId"] == "ft-q1"
+    assert due_items[0]["audioText"] == "你好"
+    assert due_items[0]["prompt"] == task["taskData"]["prompt"]
+    assert due_items[0]["choices"] == task["taskData"]["choices"]
+    assert "correctChoiceId" not in due_items[0]
+    assert all("isCorrect" not in choice for choice in task["taskData"]["choices"])
+
+    reconciled = client.post(
+        f"/api/children/{child_id}/learning-sessions/{session['id']}/reconcile-reviews?as_of={as_of}"
+    )
+    assert reconciled.status_code == 200, reconciled.text
+    reconciled_task = next(item for item in reconciled.json()["tasks"] if item["sourceQueue"] == "REVIEW")
+    assert reconciled_task["id"] == task["id"]
+    assert reconciled_task["taskData"] == task["taskData"]
+    assert reconciled.json()["status"] == "IN_PROGRESS"
+    pending = next(item for item in session["tasks"] if item["sourceQueue"] == "CURRICULUM" and item["required"] and item["state"] == "PENDING")
+    assert next(item for item in reconciled.json()["tasks"] if item["id"] == pending["id"])["state"] == "PENDING"
+    return child_id, reconciled.json(), reconciled_task, phrase_id, as_of
+
+
+@pytest.mark.parametrize(
+    ("answer_sequence", "assisted_final", "expected_stage", "expected_result", "expected_assisted"),
+    [
+        (["c2", "c1"], False, 1, "correct", 0),
+        (["c1"], False, 2, "correct", 0),
+        (["c1"], True, 1, "correct", 1),
+    ],
+)
+def test_fast_track_listening_srs_reconciles_and_answers_exact_review_only(
+    tmp_path, answer_sequence, assisted_final, expected_stage, expected_result, expected_assisted,
+):
+    from datetime import datetime, timedelta, timezone
+    from app.database import connect
+
+    with make_client(tmp_path) as client:
+        child_id, session, task, phrase_id, _ = _start_fast_track_listening_review(client, "聆聽複習")
+        pending = next(item for item in session["tasks"] if item["sourceQueue"] == "CURRICULUM" and item["required"] and item["state"] == "PENDING")
+        assert task["masteryImpact"] == "NONE"
+        assert "correctChoiceId" not in task["taskData"]
+        with connect() as db:
+            non_listening_states_before = [tuple(row) for row in db.execute(
+                "SELECT skill_domain,item_id,stage,due_at,last_result,last_assisted FROM srs_review_states "
+                "WHERE child_id=? AND skill_domain IN ('recognition','word','writing') ORDER BY skill_domain,item_id",
+                (child_id,),
+            ).fetchall()]
+            non_listening_events_before = [tuple(row) for row in db.execute(
+                "SELECT skill_domain,item_id,result,assisted,previous_stage,next_stage,interval_minutes,occurred_at "
+                "FROM srs_review_events WHERE child_id=? AND skill_domain IN ('recognition','word','writing') ORDER BY id",
+                (child_id,),
+            ).fetchall()]
+
+        for index, answer_id in enumerate(answer_sequence):
+            answer = client.post(
+                f"/api/children/{child_id}/learning-sessions/{session['id']}/tasks/{task['id']}/answer",
+                json={"selected_option_id": answer_id, "assisted": assisted_final if index == len(answer_sequence) - 1 else False},
+            )
+            assert answer.status_code == 200, answer.text
+            answer_session = answer.json()
+            task_state = next(item for item in answer_session["tasks"] if item["id"] == task["id"])["state"]
+            if index < len(answer_sequence) - 1:
+                assert task_state == "IN_PROGRESS"
+                fresh_as_of = (datetime.now(timezone.utc) + timedelta(minutes=1)).isoformat().replace("+00:00", "Z")
+                queue = client.get(f"/api/children/{child_id}/learning-daily-queue?as_of={fresh_as_of}")
+                assert queue.status_code == 200, queue.text
+                current_due = next(item for item in queue.json()["review"]["items"] if item["skillDomain"] == "listening")
+                retry = client.post(
+                    f"/api/children/{child_id}/learning-sessions/{session['id']}/reconcile-reviews?as_of={fresh_as_of}"
+                )
+                assert retry.status_code == 200, retry.text
+                retry_task = next(item for item in retry.json()["tasks"] if item["id"] == task["id"])
+                assert retry_task["taskData"]["dueAt"] == current_due["dueAt"]
+                assert retry_task["id"] == task["id"]
+            else:
+                assert task_state == "COMPLETED"
+                assert answer_session["status"] == "IN_PROGRESS"
+                assert next(item for item in answer_session["tasks"] if item["id"] == pending["id"])["state"] == "PENDING"
+
+        replay = client.post(
+            f"/api/children/{child_id}/learning-sessions/{session['id']}/tasks/{task['id']}/answer",
+            json={"selected_option_id": "c1", "assisted": assisted_final},
+        )
+        assert replay.status_code == 200, replay.text
+        assert replay.json()["status"] == "IN_PROGRESS"
+        with connect() as db:
+            srs = db.execute(
+                "SELECT stage,due_at,last_result,last_assisted FROM srs_review_states WHERE child_id=? AND skill_domain='listening' AND item_id=?",
+                (child_id, phrase_id),
+            ).fetchone()
+            events = db.execute(
+                "SELECT result,assisted FROM srs_review_events WHERE child_id=? AND skill_domain='listening' AND item_id=? ORDER BY occurred_at,id",
+                (child_id, phrase_id),
+            ).fetchall()
+            flow_attempts = db.execute(
+                "SELECT task_id,result,assisted,evidence_ref,scorer_version FROM learning_flow_task_attempts WHERE session_id=? AND task_id=?",
+                (session["id"], task["id"]),
+            ).fetchall()
+            telemetry = db.execute(
+                "SELECT COUNT(*) FROM learning_flow_telemetry WHERE session_id=? AND task_id=? AND event_type='review_result'",
+                (session["id"], task["id"]),
+            ).fetchone()[0]
+            assert srs is not None
+            assert (srs["stage"], srs["last_result"], srs["last_assisted"]) == (expected_stage, expected_result, expected_assisted)
+            assert len(events) == len(answer_sequence) + 1  # Fast Track event plus actual REVIEW submissions.
+            assert len(flow_attempts) == len(answer_sequence)
+            assert telemetry == len(answer_sequence)
+            assert all(row["scorer_version"] == "fast-track-listening-choice-v1" for row in flow_attempts)
+            assert all(row["evidence_ref"] for row in flow_attempts)
+            assert db.execute(
+                "SELECT COUNT(*) FROM curriculum_skill_evidence WHERE child_id=? AND skill_domain='listening' AND lesson_id='book1-l01'",
+                (child_id,),
+            ).fetchone()[0] == 0
+            assert db.execute(
+                "SELECT COUNT(*) FROM curriculum_skill_gates WHERE child_id=? AND skill_domain='listening' AND evidence_item_id=?",
+                (child_id, phrase_id),
+            ).fetchone()[0] == 0
+            assert db.execute("SELECT status FROM learning_flow_sessions WHERE id=?", (session["id"],)).fetchone()[0] == "IN_PROGRESS"
+            assert db.execute("SELECT state FROM learning_flow_tasks WHERE id=?", (pending["id"],)).fetchone()[0] == "PENDING"
+            assert [tuple(row) for row in db.execute(
+                "SELECT skill_domain,item_id,stage,due_at,last_result,last_assisted FROM srs_review_states "
+                "WHERE child_id=? AND skill_domain IN ('recognition','word','writing') ORDER BY skill_domain,item_id",
+                (child_id,),
+            ).fetchall()] == non_listening_states_before
+            assert [tuple(row) for row in db.execute(
+                "SELECT skill_domain,item_id,result,assisted,previous_stage,next_stage,interval_minutes,occurred_at "
+                "FROM srs_review_events WHERE child_id=? AND skill_domain IN ('recognition','word','writing') ORDER BY id",
+                (child_id,),
+            ).fetchall()] == non_listening_events_before
+
+
+def test_fast_track_listening_review_rolls_back_srs_and_flow_writes_then_retries(tmp_path):
+    from app.database import connect
+
+    with make_client(tmp_path, raise_server_exceptions=False) as client:
+        child_id, session, task, phrase_id, _ = _start_fast_track_listening_review(client, "聆聽原子性")
+        with connect() as db:
+            event_count_before = db.execute(
+                "SELECT COUNT(*) FROM srs_review_events WHERE child_id=? AND skill_domain='listening' AND item_id=?",
+                (child_id, phrase_id),
+            ).fetchone()[0]
+            stage_before = db.execute(
+                "SELECT stage FROM srs_review_states WHERE child_id=? AND skill_domain='listening' AND item_id=?",
+                (child_id, phrase_id),
+            ).fetchone()[0]
+            db.execute(
+                f"""CREATE TRIGGER fail_listening_review_telemetry
+                    BEFORE INSERT ON learning_flow_telemetry
+                    WHEN NEW.task_id='{task['id']}' AND NEW.event_type='task_attempted'
+                    BEGIN SELECT RAISE(ABORT, 'forced listening review failure'); END"""
+            )
+
+        failed = client.post(
+            f"/api/children/{child_id}/learning-sessions/{session['id']}/tasks/{task['id']}/answer",
+            json={"selected_option_id": "c1"},
+        )
+        assert failed.status_code == 500
+        with connect() as db:
+            assert db.execute(
+                "SELECT COUNT(*) FROM srs_review_events WHERE child_id=? AND skill_domain='listening' AND item_id=?",
+                (child_id, phrase_id),
+            ).fetchone()[0] == event_count_before
+            assert db.execute(
+                "SELECT stage FROM srs_review_states WHERE child_id=? AND skill_domain='listening' AND item_id=?",
+                (child_id, phrase_id),
+            ).fetchone()[0] == stage_before
+            row = db.execute("SELECT state,attempt_count,evidence_ref FROM learning_flow_tasks WHERE id=?", (task["id"],)).fetchone()
+            assert (row["state"], row["attempt_count"], row["evidence_ref"]) == ("PENDING", 0, None)
+            assert db.execute("SELECT COUNT(*) FROM learning_flow_task_attempts WHERE task_id=?", (task["id"],)).fetchone()[0] == 0
+            assert db.execute("SELECT COUNT(*) FROM learning_flow_telemetry WHERE task_id=? AND event_type='task_attempted'", (task["id"],)).fetchone()[0] == 0
+            db.execute("DROP TRIGGER fail_listening_review_telemetry")
+
+        retried = client.post(
+            f"/api/children/{child_id}/learning-sessions/{session['id']}/tasks/{task['id']}/answer",
+            json={"selected_option_id": "c1"},
+        )
+        assert retried.status_code == 200, retried.text
+        assert next(item for item in retried.json()["tasks"] if item["id"] == task["id"])["state"] == "COMPLETED"
+        replay = client.post(
+            f"/api/children/{child_id}/learning-sessions/{session['id']}/tasks/{task['id']}/answer",
+            json={"selected_option_id": "c1"},
+        )
+        assert replay.status_code == 200, replay.text
+        with connect() as db:
+            assert db.execute(
+                "SELECT COUNT(*) FROM srs_review_events WHERE child_id=? AND skill_domain='listening' AND item_id=?",
+                (child_id, phrase_id),
+            ).fetchone()[0] == event_count_before + 1
+            assert db.execute("SELECT COUNT(*) FROM learning_flow_task_attempts WHERE task_id=?", (task["id"],)).fetchone()[0] == 1
+            assert db.execute("SELECT COUNT(*) FROM learning_flow_telemetry WHERE task_id=? AND event_type='review_result'", (task["id"],)).fetchone()[0] == 1
+
+
+def test_unsupported_listening_review_mapping_fails_before_partial_reconciliation(tmp_path):
+    from app.auth import issue_session
+    from app.database import connect
+    from app.learning_flow import _ensure_lesson_materials, _lesson_map
+
+    with make_client(tmp_path) as client:
+        child = client.post("/api/children", json={"name": "不支援聆聽列"})
+        child_id = child.json()["id"]
+        other_child = client.post("/api/children", json={"name": "隔離聆聽列"})
+        other_child_id = other_child.json()["id"]
+        token = issue_session(subject="parent", role="parent", child_ids=[child_id])
+        client.put(
+            f"/api/children/{child_id}/placement-profile",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"domain_levels": {"listening": "BOOK_1", "recognition": "BOOK_1", "speaking": "BOOK_1", "writing": "STARTER"}},
+        )
+        started = client.post(
+            f"/api/children/{child_id}/learning-sessions",
+            json={"target_minutes": 18, "lesson_id": "book1-l01", "as_of": "2026-09-01T00:00:00Z"},
+        )
+        assert started.status_code == 200, started.text
+        session_id = started.json()["id"]
+        other_token = issue_session(subject="parent", role="parent", child_ids=[other_child_id])
+        other_placement = client.put(
+            f"/api/children/{other_child_id}/placement-profile",
+            headers={"Authorization": f"Bearer {other_token}"},
+            json={"domain_levels": {"listening": "BOOK_1", "recognition": "BOOK_1", "speaking": "BOOK_1", "writing": "STARTER"}},
+        )
+        assert other_placement.status_code == 200, other_placement.text
+        other_session = client.post(
+            f"/api/children/{other_child_id}/learning-sessions",
+            json={"target_minutes": 18, "lesson_id": "book1-l01", "as_of": "2026-09-01T00:00:00Z"},
+        )
+        assert other_session.status_code == 200, other_session.text
+        with connect() as db:
+            supported_phrase = _ensure_lesson_materials(db, child_id, _lesson_map()["book1-l01"])["phrase"]
+            unsupported_phrase = _ensure_lesson_materials(db, child_id, _lesson_map()["basic-l01"])["phrase"]
+            db.execute(
+                "INSERT INTO srs_review_states(child_id,skill_domain,item_id,stage,due_at,last_result,last_assisted,updated_at) VALUES(?, 'listening', ?,1,'2026-09-02T00:00:00Z','correct',0,'2026-09-01T00:00:00Z'), (?, 'listening', ?,1,'2026-09-02T00:00:00Z','correct',0,'2026-09-01T00:00:00Z')",
+                (child_id, supported_phrase, child_id, unsupported_phrase),
+            )
+        as_of = "2026-09-05T00:00:00Z"
+        queue = client.get(f"/api/children/{child_id}/learning-daily-queue?as_of={as_of}")
+        assert queue.status_code == 400
+        assert queue.json()["detail"] == "learning_flow_review_listening_identity_unsupported"
+        reconcile = client.post(f"/api/children/{child_id}/learning-sessions/{session_id}/reconcile-reviews?as_of={as_of}")
+        assert reconcile.status_code == 400
+        assert reconcile.json()["detail"] == "learning_flow_review_listening_identity_unsupported"
+        other_queue = client.get(f"/api/children/{other_child_id}/learning-daily-queue?as_of={as_of}")
+        assert other_queue.status_code == 200, other_queue.text
+        assert other_queue.json()["review"]["items"] == []
+        assert other_queue.json()["review"]["dueCount"] == 0
+        other_review = [item for item in other_session.json()["tasks"] if item["sourceQueue"] == "REVIEW"]
+        assert other_review == []
+        with connect() as db:
+            assert db.execute("SELECT COUNT(*) FROM learning_flow_tasks WHERE session_id=? AND source_queue='REVIEW'", (session_id,)).fetchone()[0] == 0
+            assert db.execute("SELECT status FROM learning_flow_sessions WHERE id=?", (session_id,)).fetchone()[0] == "IN_PROGRESS"
+            assert db.execute(
+                "SELECT COUNT(*) FROM srs_review_states WHERE child_id=? AND skill_domain='listening'",
+                (other_child_id,),
+            ).fetchone()[0] == 0
+            other_listening_links = db.execute(
+                "SELECT item_id,lesson_id FROM curriculum_item_links WHERE child_id=? AND skill_domain='listening'",
+                (other_child_id,),
+            ).fetchall()
+            assert all(row["item_id"] != supported_phrase and row["item_id"] != unsupported_phrase for row in other_listening_links)
+            assert all(row["item_id"] == f"lf_{other_child_id}_book1-l01_phrase" for row in other_listening_links)
+
+
+def test_ambiguous_fast_track_listening_question_is_not_retrieved_for_review(tmp_path, monkeypatch):
+    import copy
+    from app.auth import issue_session
+    from app.database import connect
+    from app.lesson_packages import get_lesson_package as get_package
+
+    with make_client(tmp_path) as client:
+        child = client.post("/api/children", json={"name": "歧義聆聽列"})
+        child_id = child.json()["id"]
+        token = issue_session(subject="parent", role="parent", child_ids=[child_id])
+        client.put(
+            f"/api/children/{child_id}/placement-profile",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"domain_levels": {"listening": "BOOK_1", "recognition": "BOOK_1", "speaking": "BOOK_1", "writing": "STARTER"}},
+        )
+        started = client.post(
+            f"/api/children/{child_id}/learning-sessions",
+            json={"target_minutes": 18, "lesson_id": "book1-l01", "as_of": "2026-09-01T00:00:00Z"},
+        )
+        assert started.status_code == 200, started.text
+        phrase_id = f"lf_{child_id}_book1-l01_phrase"
+        with connect() as db:
+            db.execute(
+                "INSERT INTO srs_review_states(child_id,skill_domain,item_id,stage,due_at,last_result,last_assisted,updated_at) VALUES(?, 'listening', ?,1,'2026-09-02T00:00:00Z','correct',0,'2026-09-01T00:00:00Z')",
+                (child_id, phrase_id),
+            )
+        package = copy.deepcopy(get_package("book1-l01"))
+        exit_ticket = next(step for step in package["taskBlueprint"]["fastTrackSteps"] if step["stepKey"] == "exit_ticket")
+        exit_ticket["data"]["questions"].append(copy.deepcopy(exit_ticket["data"]["questions"][0]))
+        monkeypatch.setattr("app.lesson_packages.get_lesson_package", lambda lesson_id: package if lesson_id == "book1-l01" else get_package(lesson_id))
+
+        queue = client.get(f"/api/children/{child_id}/learning-daily-queue?as_of=2026-09-05T00:00:00Z")
+        assert queue.status_code == 400
+        assert queue.json()["detail"] == "learning_flow_review_listening_identity_unsupported"
 
