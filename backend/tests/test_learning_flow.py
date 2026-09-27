@@ -66,9 +66,7 @@ def complete_session(api: TestClient, child_id: int, current: dict, assisted_sco
         current = start_task(api, child_id, current, task)
         if task["taskType"] == "LISTENING":
             attempt = api.post(f"/api/children/{child_id}/listening-attempts", json={"item_id": task["itemId"]}).json()
-            complete = api.post(f"/api/children/{child_id}/listening-attempts/{attempt['id']}/complete", json={"duration_ms": 500})
-            assert complete.status_code == 200, complete.text
-            response = api.post(f"/api/children/{child_id}/learning-sessions/{current['id']}/tasks/{task['id']}/evidence", json={"evidence_ref": attempt["id"]})
+            response = api.post(f"/api/children/{child_id}/learning-sessions/{current['id']}/tasks/{task['id']}/evidence", json={"evidence_ref": attempt["id"], "duration_ms": 500})
             assert response.status_code == 200, response.text
         elif task["taskType"] in {"SPEAKING_ATTEMPT", "PRONUNCIATION_ATTEMPT"}:
             domain = "pronunciation" if task["taskType"] == "PRONUNCIATION_ATTEMPT" else "speaking"

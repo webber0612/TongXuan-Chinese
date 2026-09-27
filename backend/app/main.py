@@ -300,6 +300,7 @@ class ReadingAloudCompleteRequest(BaseModel):
 
 class ListeningStartRequest(BaseModel):
     item_id: str = Field(min_length=1, max_length=255)
+    lesson_id: str | None = Field(default=None, min_length=1, max_length=128)
 
 
 class ListeningCompleteRequest(BaseModel):
@@ -602,10 +603,10 @@ def post_validated_listening_start(child_id: int, lesson_id: str, request: Liste
 @app.post("/api/children/{child_id}/listening-attempts")
 def post_listening_start(child_id: int, request: ListeningStartRequest) -> dict[str, object]:
     try:
-        return start_listening_attempt(child_id=child_id, item_id=request.item_id)
+        return start_listening_attempt(child_id=child_id, item_id=request.item_id, lesson_id=request.lesson_id)
     except ValueError as error:
         detail = str(error)
-        raise HTTPException(status_code=409 if detail == "prerequisite_not_mastered" else 404, detail=detail) from error
+        raise HTTPException(status_code=409 if detail in {"prerequisite_not_mastered", "learning_session_not_in_progress"} else 404, detail=detail) from error
 
 
 @app.post("/api/children/{child_id}/listening-attempts/{attempt_id}/complete")
@@ -614,7 +615,8 @@ def post_validated_listening_complete(child_id: int, attempt_id: str, request: L
         return complete_listening_attempt(child_id=child_id, attempt_id=attempt_id, duration_ms=request.duration_ms)
     except ValueError as error:
         detail = str(error)
-        raise HTTPException(status_code=400 if detail.startswith(("invalid_", "listening_attempt_already")) else 404, detail=detail) from error
+        status_code = 400 if detail.startswith(("invalid_", "listening_attempt_already")) else 409 if detail == "listening_attempt_bound_to_active_learning_task" else 404
+        raise HTTPException(status_code=status_code, detail=detail) from error
 
 
 @app.post("/api/children/{child_id}/listening-attempts/{attempt_id}/abort")
