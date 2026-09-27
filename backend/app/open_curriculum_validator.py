@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 import unicodedata
 from dataclasses import asdict, dataclass
@@ -63,8 +64,15 @@ class ValidationIssue:
     message: str
 
 
+def _reject_nonstandard_json_constant(value: str) -> None:
+    raise ValueError(f"Non-standard JSON numeric constant {value!r} is not allowed.")
+
+
 def _read_json(path: Path) -> dict[str, Any]:
-    return json.loads(path.read_text(encoding="utf-8"))
+    return json.loads(
+        path.read_text(encoding="utf-8"),
+        parse_constant=_reject_nonstandard_json_constant,
+    )
 
 
 def _registry_for(*schemas: Mapping[str, Any]) -> Registry:
@@ -1009,6 +1017,26 @@ def validate_curriculum_pack(
         new_vocabulary_ids = id_set("newVocabularyIds")
         recycled_ids = id_set("recycledTargetIds")
         vocabulary_targets = id_set("targetVocabularyIds")
+        new_vocabulary_ratio_limit = (
+            policy.get("maxNewVocabularyRatio") if isinstance(policy, Mapping) else None
+        )
+        has_valid_new_vocabulary_ratio_limit = (
+            isinstance(new_vocabulary_ratio_limit, (int, float))
+            and not isinstance(new_vocabulary_ratio_limit, bool)
+            and 0 <= new_vocabulary_ratio_limit <= 1
+            and math.isfinite(new_vocabulary_ratio_limit)
+        )
+        if publishable and new_vocabulary_ids and not has_valid_new_vocabulary_ratio_limit:
+            limit_code = (
+                "NEW_VOCABULARY_LIMIT_REQUIRED"
+                if new_vocabulary_ratio_limit is None
+                else "NEW_VOCABULARY_LIMIT_INVALID"
+            )
+            add(
+                limit_code,
+                "/validationPolicy/maxNewVocabularyRatio",
+                "A publishable lesson with new vocabulary requires an explicitly approved finite maxNewVocabularyRatio between 0 and 1; the validator does not choose a threshold.",
+            )
         for target_id in new_vocabulary_ids:
             if target_id not in vocabulary_targets:
                 add("NEW_VOCABULARY_NOT_TARGETED", _path(lesson_path, "newVocabularyIds"), f"New vocabulary {target_id!r} must also be a lesson target.")
@@ -1030,11 +1058,11 @@ def validate_curriculum_pack(
             if isinstance(node, Mapping) and node.get("requiresRecycling") is True and target_id in prior_knowledge_ids and target_id not in recycled_ids:
                 add("RECYCLING_REQUIRED", _path(lesson_path, "recycledTargetIds"), f"Vocabulary {target_id!r} requires an explicit recycling mark.")
 
-        if approved_policy and isinstance(policy, Mapping) and isinstance(policy.get("maxNewVocabularyRatio"), (int, float)):
+        if approved_policy and has_valid_new_vocabulary_ratio_limit:
             denominator = len(vocabulary_targets)
             ratio = len(new_vocabulary_ids) / denominator if denominator else 0.0
-            if ratio > policy["maxNewVocabularyRatio"]:
-                add("NEW_VOCABULARY_RATIO_EXCEEDED", _path(lesson_path, "newVocabularyIds"), f"New vocabulary ratio {ratio:.3f} exceeds the explicitly approved limit {policy['maxNewVocabularyRatio']:.3f}.")
+            if ratio > new_vocabulary_ratio_limit:
+                add("NEW_VOCABULARY_RATIO_EXCEEDED", _path(lesson_path, "newVocabularyIds"), f"New vocabulary ratio {ratio:.3f} exceeds the explicitly approved limit {new_vocabulary_ratio_limit:.3f}.")
 
         # Sentences are built only from registered graph tokens and must match those tokens.
         sentences = lesson.get("sentences", [])
@@ -1173,7 +1201,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         pack = _read_json(args.pack)
         sources = _read_json(args.source_registry)
-    except (OSError, json.JSONDecodeError) as exc:
+    except (OSError, ValueError) as exc:
         print(json.dumps([{"code": "INPUT_UNREADABLE", "path": "/", "message": str(exc)}], ensure_ascii=False, indent=2))
         return 2
     results = validate_curriculum_pack(pack, sources)

@@ -1,0 +1,192 @@
+{
+  "matrixVersion": "1.0",
+  "auditIssue": 98,
+  "baselineCommit": "bd62bb2f23ea75061db39a3b7751b45b2f1bbb0d",
+  "guards": [
+    {
+      "id": 1,
+      "name": "Unapproved target",
+      "status": "COMPLETE",
+      "priority": "P0",
+      "rule": ["UNAPPROVED_TARGET", "UNAPPROVED_LESSON"],
+      "tests": [{"file": "backend/tests/test_open_curriculum.py", "name": "test_publishable_pack_rejects_unapproved_target_and_policy"}],
+      "remainingGap": "The validator checks declared approval state; it does not approve any target.",
+      "ownerDecision": false
+    },
+    {
+      "id": 2,
+      "name": "Missing source provenance",
+      "status": "COMPLETE",
+      "priority": "P0",
+      "rule": ["MISSING_PROVENANCE"],
+      "tests": [
+        {"file": "backend/tests/test_open_curriculum.py", "name": "test_publishable_pack_rejects_missing_provenance"},
+        {"file": "backend/tests/test_open_curriculum.py", "name": "test_publishable_content_cannot_be_marked_as_evidence_reference_only"}
+      ],
+      "remainingGap": "Real content still needs accurate item-level source and rights evidence.",
+      "ownerDecision": false
+    },
+    {
+      "id": 3,
+      "name": "Missing item-level rights evidence",
+      "status": "COMPLETE",
+      "priority": "P0",
+      "rule": ["ITEM_LICENSE_UNVERIFIED", "ITEM_RIGHTS_EVIDENCE_MISSING", "CONTENT_RIGHTS_EVIDENCE_REQUIRED"],
+      "tests": [
+        {"file": "backend/tests/test_open_curriculum.py", "name": "test_content_source_requires_registered_green_item_license_and_public_rights"},
+        {"file": "backend/tests/test_open_curriculum.py", "name": "test_conditional_publication_rights_require_item_level_yes"}
+      ],
+      "remainingGap": "The rights status of flagged existing repository paths remains unresolved.",
+      "ownerDecision": true
+    },
+    {
+      "id": 4,
+      "name": "Blocked-status raw data in publishable output",
+      "status": "COMPLETE",
+      "priority": "P0",
+      "rule": ["SOURCE_NOT_GREEN", "UNLICENSED_RAW_CONTENT", "PUBLIC_ARTIFACT_RESTRICTED_CONTENT"],
+      "tests": [
+        {"file": "backend/tests/test_open_curriculum.py", "name": "test_content_source_requires_registered_green_item_license_and_public_rights"},
+        {"file": "backend/tests/test_open_curriculum_rights_gate.py", "name": "test_unknown_and_reference_only_content_cannot_enter_publishable_artifact"}
+      ],
+      "remainingGap": "No YELLOW, RED, UNKNOWN, or REFERENCE_ONLY material is cleared by these tests.",
+      "ownerDecision": false
+    },
+    {
+      "id": 5,
+      "name": "Unmet prerequisite",
+      "status": "COMPLETE",
+      "priority": "P1",
+      "rule": ["UNMET_PREREQUISITE", "SELF_PREREQUISITE", "GRAPH_PREREQUISITE_CYCLE"],
+      "tests": [
+        {"file": "backend/tests/test_open_curriculum.py", "name": "test_unmet_prerequisite_and_out_of_level_targets_fail_closed"},
+        {"file": "backend/tests/test_open_curriculum.py", "name": "test_prior_knowledge_accumulates_between_pack_lessons"},
+        {"file": "backend/tests/test_open_curriculum.py", "name": "test_graph_rejects_self_prerequisite_and_cross_target_cycles"}
+      ],
+      "remainingGap": "The validator enforces declared edges but does not invent sequencing.",
+      "ownerDecision": false
+    },
+    {
+      "id": 6,
+      "name": "Out-of-level vocabulary",
+      "status": "COMPLETE",
+      "priority": "P1",
+      "rule": ["TARGET_OUT_OF_LEVEL"],
+      "tests": [{"file": "backend/tests/test_open_curriculum.py", "name": "test_vocabulary_and_grammar_targets_above_lesson_level_fail_closed"}],
+      "remainingGap": "Real level assignments need checked evidence and approval.",
+      "ownerDecision": false
+    },
+    {
+      "id": 7,
+      "name": "Out-of-level grammar",
+      "status": "COMPLETE",
+      "priority": "P1",
+      "rule": ["TARGET_OUT_OF_LEVEL"],
+      "tests": [{"file": "backend/tests/test_open_curriculum.py", "name": "test_vocabulary_and_grammar_targets_above_lesson_level_fail_closed"}],
+      "remainingGap": "Grammar level and sequence decisions still need evidence and approval.",
+      "ownerDecision": false
+    },
+    {
+      "id": 8,
+      "name": "Writing before required recognition",
+      "status": "COMPLETE",
+      "priority": "P1",
+      "rule": ["CHARACTER_WRITING_WITHOUT_RECOGNITION", "CHARACTER_WRITING_BEFORE_RECOGNITION", "WRITING_BEFORE_RECOGNITION"],
+      "tests": [
+        {"file": "backend/tests/test_open_curriculum.py", "name": "test_character_writing_requires_a_recognition_stage_and_cannot_precede_it"},
+        {"file": "backend/tests/test_open_curriculum.py", "name": "test_writing_activity_requires_recognition_first"},
+        {"file": "backend/tests/test_open_curriculum.py", "name": "test_exposure_in_one_lesson_does_not_satisfy_later_writing_recognition_gate"}
+      ],
+      "remainingGap": "No separate issue found in the current validator contract.",
+      "ownerDecision": false
+    },
+    {
+      "id": 9,
+      "name": "Unsupported mastery requirement",
+      "status": "COMPLETE",
+      "priority": "P1",
+      "rule": ["UNSUPPORTED_MASTERY_TARGET", "UNSUPPORTED_MASTERY_DOMAIN", "UNSUPPORTED_ACTIVITY_MASTERY_TARGET"],
+      "tests": [
+        {"file": "backend/tests/test_open_curriculum.py", "name": "test_mastery_targets_must_map_to_registered_lesson_skill"},
+        {"file": "backend/tests/test_open_curriculum.py", "name": "test_mastery_target_domain_must_match_registered_skill"},
+        {"file": "backend/tests/test_open_curriculum.py", "name": "test_each_lesson_gets_activity_and_mastery_validation"}
+      ],
+      "remainingGap": "No new mastery threshold or target is selected.",
+      "ownerDecision": false
+    },
+    {
+      "id": 10,
+      "name": "Excessive new-target load",
+      "status": "NEEDS_PRODUCT_DECISION",
+      "priority": "P1",
+      "rule": ["NEW_VOCABULARY_LIMIT_REQUIRED", "NEW_VOCABULARY_LIMIT_INVALID", "NEW_VOCABULARY_RATIO_EXCEEDED"],
+      "tests": [
+        {"file": "backend/tests/test_open_curriculum.py", "name": "test_new_vocabulary_ratio_is_checked_only_with_explicit_approved_limit"},
+        {"file": "backend/tests/test_open_curriculum.py", "name": "test_non_finite_new_vocabulary_limit_fails_closed"}
+      ],
+      "remainingGap": "Publishable lessons with new vocabulary require an explicitly approved finite ratio in [0, 1], but this repository has no approved numeric threshold or cross-domain cognitive-load definition.",
+      "ownerDecision": true
+    },
+    {
+      "id": 11,
+      "name": "Unknown-word leakage",
+      "status": "PARTIAL",
+      "priority": "P1",
+      "rule": ["UNREGISTERED_SENTENCE_TOKEN", "SENTENCE_TOKEN_TEXT_MISMATCH", "UNREGISTERED_SENTENCE_TEXT"],
+      "tests": [
+        {"file": "backend/tests/test_open_curriculum.py", "name": "test_sentence_tokens_must_be_registered_and_match_sentence_text"},
+        {"file": "backend/tests/test_open_curriculum.py", "name": "test_sentence_rejects_mismatched_registered_token_and_uncovered_text"},
+        {"file": "backend/tests/test_open_curriculum.py", "name": "test_grammar_examples_also_require_registered_character_tokens"}
+      ],
+      "remainingGap": "The validator cannot infer whether a sequence of individually registered characters forms an unregistered lexical item; tokenization and character-only exceptions need an explicit policy.",
+      "ownerDecision": true
+    },
+    {
+      "id": 12,
+      "name": "Missing recycling for required core targets",
+      "status": "COMPLETE",
+      "priority": "P1",
+      "rule": ["RECYCLING_REQUIRED", "UNMET_RECYCLING", "RECYCLED_TARGET_NOT_USED", "NEW_TARGET_MARKED_RECYCLED"],
+      "tests": [
+        {"file": "backend/tests/test_open_curriculum.py", "name": "test_recycling_must_be_known_used_and_not_marked_new"},
+        {"file": "backend/tests/test_open_curriculum.py", "name": "test_required_recycling_cannot_be_omitted_for_known_vocabulary"}
+      ],
+      "remainingGap": "The rule applies only when an approved graph target says recycling is required.",
+      "ownerDecision": false
+    },
+    {
+      "id": 13,
+      "name": "AI proposal cannot directly create or approve a formal target",
+      "status": "PARTIAL",
+      "priority": "P1",
+      "rule": ["UNREGISTERED_SKILL", "UNREGISTERED_TARGET"],
+      "tests": [{"file": "backend/tests/test_open_curriculum.py", "name": "test_approved_proposal_node_does_not_become_a_lesson_graph_skill"}],
+      "remainingGap": "Proposal nodes do not become graph nodes, but a future proposal application path must enforce a distinct human approval transition; static JSON cannot authenticate who wrote approval status.",
+      "ownerDecision": false
+    },
+    {
+      "id": 14,
+      "name": "Incompatible source/license combination",
+      "status": "COMPLETE",
+      "priority": "P0",
+      "rule": ["GREEN_PERMISSION_EVIDENCE_MISSING", "RIGHTS_EVIDENCE_CLAIM_KIND_MISMATCH", "SOURCE_REDISTRIBUTION_NOT_CLEARED"],
+      "tests": [
+        {"file": "backend/tests/test_open_curriculum_rights_gate.py", "name": "test_green_permission_claims_must_resolve_to_linked_evidence"},
+        {"file": "backend/tests/test_open_curriculum_rights_gate.py", "name": "test_evidence_kind_must_be_capable_of_supporting_declared_rights_claims"},
+        {"file": "backend/tests/test_open_curriculum.py", "name": "test_conditional_publication_rights_require_item_level_yes"}
+      ],
+      "remainingGap": "No source or license classification is changed by validator tests.",
+      "ownerDecision": false
+    },
+    {
+      "id": 15,
+      "name": "Third-party content cannot inherit root MIT",
+      "status": "COMPLETE",
+      "priority": "P0",
+      "rule": ["ROOT_MIT_RELICENSES_EXTERNAL_CONTENT"],
+      "tests": [{"file": "backend/tests/test_open_curriculum_rights_gate.py", "name": "test_third_party_content_cannot_inherit_root_mit"}],
+      "remainingGap": "Flagged third-party content remains blocked from publishable artifact paths.",
+      "ownerDecision": false
+    }
+  ]
+}
