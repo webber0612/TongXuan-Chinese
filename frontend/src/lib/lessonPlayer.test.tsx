@@ -379,16 +379,17 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
   });
 
   // Test 13
-  it("13. Starter / Basic / Book 1 Lesson 1 can each render from the common schema", () => {
+  it("13. Supported lesson packages preserve the common schema and original-authored starter lesson contracts", () => {
     const packages = getAllLessonPackages();
-    expect(packages.length).toBe(4);
+    expect(packages.length).toBe(5);
 
     const ids = packages.map((p) => p.lessonId);
     expect(ids).toContain("starter-l01");
     expect(ids).toContain("basic-l01");
     expect(ids).toContain("book1-l01");
+    expect(ids).toContain("starter-l03");
 
-    for (const p of packages.filter((item) => item.lessonId !== "starter-l02")) {
+    for (const p of packages.filter((item) => !["starter-l02", "starter-l03"].includes(item.lessonId))) {
       expect(p.schemaVersion).toBe("v2.0");
       expect(p.taskBlueprint.learnSteps.length).toBe(9);
       expect(p.taskBlueprint.fastTrackSteps.length).toBeGreaterThanOrEqual(2);
@@ -402,17 +403,27 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     expect(starterL02.characters.map((item) => item.char)).toEqual(["我", "七"]);
     expect(starterL02.textBlocks.every((item) => item.authorship === "TONGXUAN_AUTHORED_PRACTICE")).toBe(true);
     expect(starterL02.vocabulary.every((item) => item.authorship === "TONGXUAN_AUTHORED")).toBe(true);
+    const starterL03 = getLessonPackage("starter-l03")!;
+    expect(starterL03.curriculumSource).toMatchObject({
+      title: "爸爸媽媽", lesson: "第3課", licenseStatus: "PERMISSION_REQUIRED", commercialReady: false,
+    });
+    expect(starterL03.characters.map((item) => item.char)).toEqual(["爸", "媽"]);
+    expect(starterL03.textBlocks.map((item) => item.text)).toEqual(["我有爸爸媽媽。"]);
+    expect(starterL03.textBlocks.every((item) => item.authorship === "TONGXUAN_AUTHORED_PRACTICE")).toBe(true);
+    expect(starterL03.vocabulary.map((item) => item.written)).toEqual(["爸爸媽媽"]);
+    expect(starterL03.vocabulary.every((item) => item.authorship === "TONGXUAN_AUTHORED")).toBe(true);
   });
 
   it("14. Each supported authoritative planner task maps once to an exact reachable Lesson Player step", () => {
     const expectedKeys: Record<string, string[]> = {
       "starter-l01": ["context", "exit_ticket", "speaking", "mini_check", "wrap_up"],
       "starter-l02": ["context", "vocabulary", "exit_ticket", "speaking", "mini_check", "wrap_up"],
+      "starter-l03": ["context", "vocabulary", "exit_ticket", "speaking", "mini_check", "wrap_up"],
       "basic-l01": ["context", "characters", "characters", "vocabulary", "speaking", "mini_check", "wrap_up"],
       "book1-l01": ["context", "characters", "characters", "sentence_pattern", "speaking", "mini_check", "wrap_up"],
     };
 
-    for (const lessonId of ["starter-l01", "starter-l02", "basic-l01", "book1-l01"] as const) {
+    for (const lessonId of ["starter-l01", "starter-l02", "starter-l03", "basic-l01", "book1-l01"] as const) {
       const pkg = getLessonPackage(lessonId);
       expect(pkg).not.toBeNull();
       if (!pkg) continue;
@@ -442,6 +453,31 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
         expect(buildAuthoritativeLearnSteps(pkg, invalidSentenceSource).valid).toBe(false);
         const invalidSentenceId = plannedTasks.map((task) => task.key === "speaking" ? { ...task, itemId: "lf_1_starter-l02_phrase" } : task);
         expect(buildAuthoritativeLearnSteps(pkg, invalidSentenceId).valid).toBe(false);
+      }
+      if (lessonId === "starter-l03") {
+        const vocabTask = plannedTasks.find((task) => task.key === "vocabulary")!;
+        expect(plan.steps.find((step) => step.stepKey === "context")?.data).toMatchObject({
+          taskId: plannedTasks.find((task) => task.key === "listen")?.id,
+          audioText: "我有爸爸媽媽。", sceneLabel: "情境：介紹自己的家人", scaffoldKey: "family_example",
+        });
+        expect(plan.steps.find((step) => step.stepKey === "vocabulary")?.data).toMatchObject({
+          taskId: vocabTask.id, word: "爸爸媽媽", pinyin: "bàba māma", zhuyin: "ㄅㄚˋ ㄅㄚ˙ ㄇㄚ ㄇㄚ˙",
+          exampleSentence: "我有爸爸媽媽。", correctChoiceId: "family-parents", scaffoldKey: "family_example",
+        });
+        expect(plan.steps.find((step) => step.stepKey === "exit_ticket")?.data.questions).toHaveLength(4);
+        expect(plan.steps.find((step) => step.stepKey === "speaking")?.data.speakingPrompt?.expectedText).toBe("我有爸爸媽媽。");
+        const missingVocabulary = plannedTasks.filter((task) => task.key !== "vocabulary");
+        expect(buildAuthoritativeLearnSteps(pkg, missingVocabulary).valid).toBe(false);
+        const wrongChild = plannedTasks.map((task) => task.key === "listen" ? { ...task, itemId: "lf_2_starter-l03_phrase" } : task);
+        expect(buildAuthoritativeLearnSteps(pkg, wrongChild).valid).toBe(false);
+        const wrongVocabMap = plannedTasks.map((task) => task.key === "vocabulary"
+          ? { ...task, taskData: { ...task.taskData, wordText: "你好" } }
+          : task);
+        expect(buildAuthoritativeLearnSteps(pkg, wrongVocabMap).valid).toBe(false);
+        const missingPhonetic = plannedTasks.map((task) => task.key === "phonetics"
+          ? { ...task, taskData: { ...task.taskData, questions: task.taskData.questions.slice(1) } }
+          : task);
+        expect(buildAuthoritativeLearnSteps(pkg, missingPhonetic).valid).toBe(false);
       }
     }
   });
@@ -3970,6 +4006,65 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     expect(session.status).toBe("IN_PROGRESS");
     expect(curriculumTask.state).toBe("PENDING");
     writerSpy.mockRestore(); root.unmount(); container.remove(); vi.unstubAllGlobals();
+  });
+
+  it("78a. Canonical REVIEW maps the exact starter-l03 family vocabulary task and preserves pending LEARN work", async () => {
+    const dueAt = "2026-09-20T07:00:00Z";
+    const dueId = "lf_33_starter-l03_vocabulary";
+    const reviewTask: any = {
+      id: "s-l3-review:review-word-1", sessionId: "s-l3-review", childId: 33, key: "review-word-1",
+      taskType: "REVIEW_VOCABULARY", sourceQueue: "REVIEW", lessonId: "starter-l03", skillDomain: "word",
+      itemId: dueId, state: "PENDING", required: true, masteryImpact: "NONE", evidenceType: "learning_session_vocabulary_choice",
+      taskData: {
+        word: "爸爸媽媽", prompt: "「爸爸媽媽」指的是誰？",
+        choices: [{ id: "family-parents", label: "父親和母親" }, { id: "family-friends", label: "朋友和同學" }],
+        dueAt,
+      },
+    };
+    const pendingCurriculum: any = {
+      id: "s-l3-review:listen", sessionId: "s-l3-review", childId: 33, key: "listen", taskType: "LISTENING",
+      sourceQueue: "CURRICULUM", lessonId: "starter-l03", skillDomain: "listening", itemId: "lf_33_starter-l03_phrase",
+      state: "PENDING", required: true, taskData: { text: "我有爸爸媽媽。", authorship: "TONGXUAN_AUTHORED_PRACTICE" },
+    };
+    const session: any = {
+      id: "s-l3-review", sessionId: "s-l3-review", childId: 33, status: "IN_PROGRESS", lessonId: "starter-l03",
+      curriculumContext: { lessonId: "starter-l03", lessonMasteredBeforeSession: false, official: { title: "爸爸媽媽" } },
+      tasks: [reviewTask, pendingCurriculum],
+    };
+    const dueItems = [{ id: dueId, skillDomain: "word", word: "爸爸媽媽", lessonId: "starter-l03", dueAt }];
+    const requests: Array<{ url: string; method: string; body?: any }> = [];
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      const method = init?.method ?? "GET";
+      const body = init?.body ? JSON.parse(init.body as string) : undefined;
+      requests.push({ url, method, body });
+      if (url.includes("/learning-sessions/current")) return new Response(JSON.stringify(session), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.includes("/learning-daily-queue")) return new Response(JSON.stringify({ childId: 33, review: { sourceQueue: "REVIEW", dueCount: 1, items: dueItems } }), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.endsWith(`/tasks/${reviewTask.id}/answer`) && method === "POST") {
+        expect(body).toMatchObject({ selected_option_id: "family-parents", assisted: false });
+        reviewTask.state = "COMPLETED";
+        return new Response(JSON.stringify(session), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(session), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+    const back = vi.fn();
+    const container = document.createElement("div"); document.body.appendChild(container); const root = createRoot(container);
+    await act(async () => { root.render(<LessonPlayerPage lessonId="starter-l03" activeChildId={33} onBack={back} initialMode="REVIEW" />); await new Promise((resolve) => setTimeout(resolve, 0)); });
+    expect(container.querySelector(".vocab-hanzi")?.textContent).toBe("爸爸媽媽");
+    expect(container.textContent).toContain("bàba māma");
+    expect(container.textContent).toContain("我有爸爸媽媽。");
+    await act(async () => { (container.querySelector(".step-vocab-body .choice-card-btn") as HTMLButtonElement).click(); await new Promise((resolve) => setTimeout(resolve, 0)); });
+    expect(reviewTask.state).toBe("COMPLETED");
+    expect(pendingCurriculum.state).toBe("PENDING");
+    expect(requests.find((request) => request.url.endsWith(`/tasks/${reviewTask.id}/answer`))?.body).toMatchObject({ selected_option_id: "family-parents" });
+    expect(requests.some((request) => request.url.endsWith(`/tasks/s-l3-review:review-word-1/answer`))).toBe(true);
+    await act(async () => { (container.querySelector(".next-step-cta-btn") as HTMLButtonElement).click(); });
+    expect(container.querySelector("[data-step-key='wrap_up']")).toBeTruthy();
+    await act(async () => { (container.querySelector(".finish-session-cta-btn") as HTMLButtonElement).click(); });
+    expect(back).toHaveBeenCalledTimes(1);
+    expect(session.status).toBe("IN_PROGRESS");
+    expect(pendingCurriculum.state).toBe("PENDING");
+    expect(requests.some((request) => request.url.endsWith("/learning-sessions/s-l3-review/complete"))).toBe(false);
+    root.unmount(); container.remove(); vi.unstubAllGlobals();
   });
 
   it("79. Exact REVIEW_WRITING retry-cap deferral survives due-date refresh and allows REVIEW-only wrap-up", async () => {
