@@ -14,6 +14,7 @@ from scripts import open_curriculum_rights_gate as rights_gate
 from scripts.open_curriculum_rights_gate import (
     AUDIT_PATH,
     _content_snapshot,
+    _is_dynamic_text_candidate,
     _is_candidate,
     validate_inventory,
     validate_publishable_paths,
@@ -32,6 +33,8 @@ NEW_CURRICULUM_CONTENT_PATHS = (
     "docs/frontend-rebuild-plan.md",
     "docs/learning-path-v2.md",
     "docs/learning-session-policy-v1.md",
+    "docs/frontend-reference-library.md",
+    "docs/learning-session-ui-review-v1.md",
     "frontend/src/pages/ChildPortalPage.tsx",
     "frontend/src/pages/CourseZeroPage.tsx",
     "frontend/src/pages/FirstLessonPage.tsx",
@@ -44,6 +47,10 @@ NEW_CURRICULUM_CONTENT_PATHS = (
     "frontend/src/lib/curriculum.test.ts",
     "frontend/src/lib/learning.test.ts",
     "frontend/src/lib/adaptiveWriting.test.ts",
+    "frontend/src/lib/analytics.ts",
+    "frontend/src/lib/i18n.tsx",
+    "frontend/src/lib/chinesePhonetics.tsx",
+    "frontend/src/pages/DiagnosticsPage.tsx",
 )
 OCAC_SOURCE_LINKED_CONTENT_PATHS = frozenset({
     "backend/app/learning_flow.py",
@@ -84,6 +91,138 @@ def test_future_pack_raw_import_and_discovered_content_paths_enter_the_audit_sco
     assert all(_is_candidate(path) for path in NEW_CURRICULUM_CONTENT_PATHS)
 
 
+def test_unregistered_cjk_and_media_candidates_are_discovered_fail_closed():
+    assert _is_dynamic_text_candidate("docs/future-lesson.md", "Example: 你好")
+    assert _is_dynamic_text_candidate("frontend/src/future.tsx", r"const target = '\u4f60\u597d';")
+    assert _is_dynamic_text_candidate("backend/app/future.py", "label = '&#x4F60;&#x597D;'")
+    assert _is_dynamic_text_candidate("docs/future-lesson.md", chr(0x31350))
+    assert _is_dynamic_text_candidate("docs/future-lesson.md", chr(0x323B0))
+    assert _is_dynamic_text_candidate("docs/future-lesson.md", r"escaped = '\U000323B0'")
+    assert _is_dynamic_text_candidate("docs/future-lesson.md", r"escaped = '\uD840\uDC00'")
+    assert _is_dynamic_text_candidate("frontend/src/future.css", r".label::after { content: '\4f60 \597d'; }")
+    assert _is_dynamic_text_candidate("frontend/src/future.css", r".label::after { content: '\4f60\597d'; }")
+    assert _is_dynamic_text_candidate("frontend/src/future.css", r".label::after { content: '\003400A'; }")
+    assert _is_dynamic_text_candidate("docs/future-lesson.md", "entity = '&#x323B0;'")
+    assert not _is_dynamic_text_candidate("docs/future-lesson.md", "English-only text")
+    assert _is_candidate("new-asset/lesson-audio.wav")
+    assert not _is_candidate(rights_gate.AUDIT_RELATIVE_PATH)
+
+
+def test_non_curriculum_cjk_files_remain_blocked_with_digest_and_reason():
+    audit = load_audit()
+    entries = {entry["path"]: entry for entry in audit["entries"]}
+    for path in (
+        "frontend/src/lib/i18n.tsx",
+        "frontend/src/lib/chinesePhonetics.tsx",
+        "frontend/src/pages/DiagnosticsPage.tsx",
+    ):
+        entry = entries[path]
+        assert entry["classification"] == "RIGHTS_UNCLEAR"
+        assert entry["publishableArtifactAllowed"] is False
+        assert entry["reason"].strip()
+        assert entry["sha256"] and entry["sizeBytes"] >= 0
+
+
+def test_manifest_self_exclusion_has_a_required_scope_reason():
+    audit = load_audit()
+    assert not any(entry["path"] == rights_gate.AUDIT_RELATIVE_PATH for entry in audit["entries"])
+    assert "The public-repository audit manifest is intentionally not one of its own digest entries; the gate validates its structure and scope directly." in audit["scope"]["limitations"]
+
+    audit["scope"]["limitations"].remove(
+        "The public-repository audit manifest is intentionally not one of its own digest entries; the gate validates its structure and scope directly."
+    )
+    assert "AUDIT_SCOPE_LIMITATIONS_STALE" in validate_inventory(audit)
+
+
+def test_scope_method_and_limitations_cannot_drift_silently():
+    audit = load_audit()
+    audit["scope"]["method"] = "exact path list only"
+    audit["scope"]["limitations"] = ["none"]
+    errors = validate_inventory(audit)
+    assert "AUDIT_SCOPE_METHOD_STALE" in errors
+    assert "AUDIT_SCOPE_LIMITATIONS_STALE" in errors
+
+
+def test_invalid_utf8_without_nul_does_not_bypass_path_discovery(tmp_path, monkeypatch):
+    relative_path = "docs/future-lesson.md"
+    path = tmp_path / relative_path
+    path.parent.mkdir(parents=True)
+    path.write_bytes(b"\xff\xe4\xbd\xa0")
+    monkeypatch.setattr(rights_gate, "ROOT", tmp_path)
+
+    assert _is_candidate(relative_path)
+
+
+def test_nul_in_declared_text_path_is_an_ambiguous_candidate(tmp_path, monkeypatch):
+    relative_path = "docs/future-lesson.md"
+    path = tmp_path / relative_path
+    path.parent.mkdir(parents=True)
+    path.write_bytes(b"text\x00payload")
+    monkeypatch.setattr(rights_gate, "ROOT", tmp_path)
+
+    assert _is_candidate(relative_path)
+
+
+def test_unreadable_declared_text_path_is_not_omitted(tmp_path, monkeypatch):
+    relative_path = "docs/future-lesson.md"
+    path = tmp_path / relative_path
+    path.parent.mkdir(parents=True)
+    path.write_text("candidate", encoding="utf-8")
+    monkeypatch.setattr(rights_gate, "ROOT", tmp_path)
+    monkeypatch.setattr(rights_gate, "REGISTRY_PATH", tmp_path / "source-registry.json")
+    (tmp_path / "source-registry.json").write_text('{"sources": []}', encoding="utf-8")
+    monkeypatch.setattr(rights_gate, "_tracked_paths", lambda: [relative_path])
+
+    def deny_read(_path):
+        raise PermissionError("test unreadable path")
+
+    monkeypatch.setattr(Path, "read_bytes", deny_read)
+
+    assert _is_candidate(relative_path)
+    audit = load_audit()
+    audit["entries"] = [{
+        "path": relative_path,
+        "classification": "RIGHTS_UNCLEAR",
+        "sourceIds": [],
+        "evidenceIds": [],
+        "rootMitApplies": False,
+        "publishableArtifactAllowed": False,
+        "reason": "Unreadable paths remain blocked.",
+        "digestMode": "TEXT_LF_NORMALIZED",
+        "sha256": "unavailable",
+        "sizeBytes": 0,
+    }]
+
+    assert "AUDIT_CONTENT_UNREADABLE: docs/future-lesson.md" in validate_inventory(audit)
+
+
+def test_new_tracked_cjk_path_without_inventory_entry_fails_closed(tmp_path, monkeypatch):
+    relative_path = "docs/future-lesson.md"
+    path = tmp_path / relative_path
+    path.parent.mkdir(parents=True)
+    path.write_text("Lesson prompt: 你好", encoding="utf-8")
+    registry_path = tmp_path / "source-registry.json"
+    registry_path.write_text('{"sources": []}', encoding="utf-8")
+    monkeypatch.setattr(rights_gate, "ROOT", tmp_path)
+    monkeypatch.setattr(rights_gate, "REGISTRY_PATH", registry_path)
+    monkeypatch.setattr(rights_gate, "_tracked_paths", lambda: [relative_path])
+    audit = {
+        "schemaVersion": "1.0",
+        "classificationVocabulary": sorted(rights_gate.CLASSIFICATIONS),
+        "scope": {
+            "candidatePrefixes": list(rights_gate.SCOPE_PREFIXES),
+            "candidateExactPaths": sorted(rights_gate.SCOPE_FILES),
+            "dynamicCjkTextExtensions": sorted(rights_gate.CJK_TEXT_EXTENSIONS),
+            "dynamicMediaExtensions": sorted(rights_gate.MEDIA_EXTENSIONS),
+            "method": rights_gate.SCOPE_METHOD,
+            "limitations": list(rights_gate.SCOPE_LIMITATIONS),
+        },
+        "entries": [],
+    }
+
+    assert validate_inventory(audit) == [f"AUDIT_PATH_UNREGISTERED: {relative_path}"]
+
+
 def test_embedded_curriculum_and_reference_paths_are_inventoried_and_blocked():
     audit = load_audit()
     paths = NEW_CURRICULUM_CONTENT_PATHS
@@ -104,7 +243,12 @@ def test_embedded_curriculum_and_reference_paths_are_inventoried_and_blocked():
 
 
 def test_embedded_curriculum_inventory_omission_and_digest_drift_fail_closed():
-    for path in ("backend/app/learning_flow.py", "frontend/src/pages/LessonPlayerPage.tsx"):
+    for path in (
+        "backend/app/learning_flow.py",
+        "frontend/src/pages/LessonPlayerPage.tsx",
+        "frontend/src/lib/analytics.ts",
+        "docs/frontend-reference-library.md",
+    ):
         audit = load_audit()
         audit["entries"] = [entry for entry in audit["entries"] if entry["path"] != path]
         assert f"AUDIT_PATH_UNREGISTERED: {path}" in validate_inventory(audit)
@@ -131,8 +275,33 @@ def test_newly_discovered_content_cannot_be_cleared_by_status_flip_without_right
 
 def test_rights_workflow_runs_when_embedded_curriculum_sources_change():
     workflow = (REPOSITORY_ROOT / ".github/workflows/open-curriculum-rights-gate.yml").read_text(encoding="utf-8")
-    for path in NEW_CURRICULUM_CONTENT_PATHS:
+    dynamic_paths = {
+        "docs/frontend-reference-library.md",
+        "docs/learning-session-ui-review-v1.md",
+        "frontend/src/lib/analytics.ts",
+        "frontend/src/lib/i18n.tsx",
+        "frontend/src/lib/chinesePhonetics.tsx",
+        "frontend/src/pages/DiagnosticsPage.tsx",
+    }
+    for path in set(NEW_CURRICULUM_CONTENT_PATHS) - dynamic_paths:
         assert workflow.count(f'"{path}"') == 2
+
+
+def test_rights_workflow_runs_when_dynamic_text_or_media_paths_change():
+    workflow = (REPOSITORY_ROOT / ".github/workflows/open-curriculum-rights-gate.yml").read_text(encoding="utf-8")
+    for extension in ("md", "py", "ts", "tsx", "json", "png", "mp3", "pdf", "woff2"):
+        assert workflow.count(f'"**/*.{extension}"') == 2
+    for path in (
+        "docs/frontend-reference-library.md",
+        "docs/learning-session-ui-review-v1.md",
+        "frontend/src/lib/analytics.ts",
+        "frontend/src/lib/i18n.tsx",
+        "frontend/src/lib/chinesePhonetics.tsx",
+        "frontend/src/pages/DiagnosticsPage.tsx",
+    ):
+        extension = Path(path).suffix
+        assert _is_candidate(path)
+        assert workflow.count(f'"**/*{extension}"') == 2
 
 
 def test_unknown_and_reference_only_content_cannot_enter_publishable_artifact():

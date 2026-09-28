@@ -10,7 +10,9 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import html
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -19,6 +21,7 @@ from typing import Any, Mapping, Sequence
 
 ROOT = Path(__file__).resolve().parents[1]
 AUDIT_PATH = ROOT / "shared" / "content-sources" / "public-repo-audit.json"
+AUDIT_RELATIVE_PATH = "shared/content-sources/public-repo-audit.json"
 REGISTRY_PATH = ROOT / "shared" / "content-sources" / "source-registry.json"
 BACKEND_PATH = ROOT / "backend"
 SCOPE_PREFIXES = (
@@ -30,6 +33,43 @@ SCOPE_PREFIXES = (
     "frontend/src/assets/",
     "frontend/public/",
     "data/",
+)
+CJK_TEXT_EXTENSIONS = frozenset({
+    ".py", ".ts", ".tsx", ".js", ".jsx", ".md", ".json", ".html",
+    ".css", ".txt", ".yaml", ".yml", ".csv", ".sql",
+})
+MEDIA_EXTENSIONS = frozenset({
+    ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".avif",
+    ".mp3", ".wav", ".ogg", ".m4a", ".mp4", ".webm", ".mov",
+    ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
+    ".ttf", ".otf", ".woff", ".woff2",
+})
+CJK_PATTERN = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\U00020000-\U0003347f]")
+UNICODE_ESCAPE_PATTERN = re.compile(r"\\u([0-9a-fA-F]{4})|\\U([0-9a-fA-F]{8})|\\u\{([0-9a-fA-F]{1,6})\}")
+HTML_CODEPOINT_PATTERN = re.compile(r"&#(?:x([0-9a-fA-F]+)|([0-9]+));", re.IGNORECASE)
+CSS_CODEPOINT_PATTERN = re.compile(r"\\([0-9a-fA-F]{1,6})")
+SCOPE_METHOD = (
+    "Enumerate tracked data, curriculum, media, and known embedded-content modules. "
+    "Also treat every tracked UTF-8 text file in the declared text extensions "
+    "with literal CJK, Unicode escapes, numeric HTML entities, or CSS hexadecimal "
+    "escapes as a candidate. Treat undecodable or NUL-containing text-extension "
+    "files as ambiguous candidates; retain unreadable tracked paths and fail validation "
+    "if they cannot be hashed. Include every file in the declared media extensions "
+    "as a candidate. Record path, classification, "
+    "source/evidence links where supported, canonical size, digest mode, and SHA-256 "
+    "only. Text uses UTF-8 with LF-normalized line endings; binary is hashed "
+    "byte-for-byte. No source corpus is downloaded."
+)
+SCOPE_LIMITATIONS = (
+    "Path and digest inventory does not detect paraphrase, copying, embedded data, or authorship.",
+    "CJK detection is a conservative path-discovery signal; it can include interface, technical, and reference text and does not establish that a path contains curriculum content.",
+    "The text scan recognizes literal CJK through the Unicode 18 Extension J block boundary (U+3347F), Unicode escapes including UTF-16 surrogate pairs, numeric HTML entities, and CSS hexadecimal escapes only in the declared text extensions; future Unicode blocks require an explicit scanner-range update, and the scan does not detect English paraphrase or semantic similarity.",
+    "Declared text paths that are not valid UTF-8 or contain NUL bytes are included as ambiguous blocked candidates; their contents are not decoded for CJK matching. Unreadable tracked paths remain candidates and cause inventory hashing to fail rather than silently disappearing.",
+    "The media scan is extension-based and does not inspect or identify the contents of a binary file.",
+    "The public-repository audit manifest is intentionally not one of its own digest entries; the gate validates its structure and scope directly.",
+    "A source link or public availability is not a reuse grant.",
+    "RIGHTS_UNCLEAR is blocked for publishable artifacts; it is not a legal finding.",
+    "An empty THIRD_PARTY_RESTRICTED set would not prove the tree contains no such material.",
 )
 SCOPE_FILES = {
     "shared/validated-curriculum-slice.json",
@@ -87,10 +127,76 @@ def _tracked_paths() -> list[str]:
     return [path for path in result.stdout.decode("utf-8").split("\0") if path]
 
 
+def _is_cjk_codepoint(value: int) -> bool:
+    return bool(CJK_PATTERN.fullmatch(chr(value))) if 0 <= value <= 0x10FFFF else False
+
+
+def _contains_cjk(text: str) -> bool:
+    """Recognize literal CJK, Unicode/HTML escapes, and CSS hex escapes."""
+    decoded = html.unescape(text)
+    if CJK_PATTERN.search(decoded):
+        return True
+    escaped_codepoints: list[int] = []
+    for match in UNICODE_ESCAPE_PATTERN.finditer(decoded):
+        encoded = next((group for group in match.groups() if group is not None), None)
+        if encoded is not None and _is_cjk_codepoint(int(encoded, 16)):
+            return True
+        if encoded is not None:
+            escaped_codepoints.append(int(encoded, 16))
+    index = 0
+    while index + 1 < len(escaped_codepoints):
+        high, low = escaped_codepoints[index:index + 2]
+        if 0xD800 <= high <= 0xDBFF and 0xDC00 <= low <= 0xDFFF:
+            codepoint = 0x10000 + ((high - 0xD800) << 10) + (low - 0xDC00)
+            if _is_cjk_codepoint(codepoint):
+                return True
+            index += 2
+        else:
+            index += 1
+    for match in HTML_CODEPOINT_PATTERN.finditer(decoded):
+        encoded = match.group(1) or match.group(2)
+        radix = 16 if match.group(1) else 10
+        if encoded is not None and _is_cjk_codepoint(int(encoded, radix)):
+            return True
+    for match in CSS_CODEPOINT_PATTERN.finditer(decoded):
+        if _is_cjk_codepoint(int(match.group(1), 16)):
+            return True
+    return False
+
+
+def _is_dynamic_text_candidate(path: str, text: str) -> bool:
+    return Path(path).suffix.lower() in CJK_TEXT_EXTENSIONS and _contains_cjk(text)
+
+
 def _is_candidate(path: str) -> bool:
     if path.endswith("/.gitkeep") or path == ".gitkeep":
         return False
-    return path in SCOPE_FILES or path.startswith(SCOPE_PREFIXES)
+    if path == AUDIT_RELATIVE_PATH:
+        # The manifest validates its own structure and cannot safely hash itself.
+        return False
+    if path in SCOPE_FILES or path.startswith(SCOPE_PREFIXES):
+        return True
+
+    suffix = Path(path).suffix.lower()
+    if suffix in MEDIA_EXTENSIONS:
+        return True
+    if suffix not in CJK_TEXT_EXTENSIONS:
+        return False
+
+    try:
+        content = (ROOT / Path(path)).read_bytes()
+        if b"\x00" in content:
+            # A declared text path with unexpected binary bytes is ambiguous;
+            # keep it in the blocked inventory instead of treating it as safe.
+            return True
+        text = content.decode("utf-8")
+    except UnicodeDecodeError:
+        # Do not let a non-UTF-8 payload with a text extension bypass discovery.
+        return True
+    except OSError:
+        # A tracked text path that cannot be read is ambiguous; never omit it.
+        return True
+    return _is_dynamic_text_candidate(path, text)
 
 
 def _content_snapshot(path: Path) -> tuple[str, int, str]:
@@ -139,18 +245,15 @@ def seed_inventory_template() -> dict[str, Any]:
     return {
         "schemaVersion": "1.0",
         "auditId": "tongxuan-public-repo-content-audit-v1",
-        "baselineCommit": "e4532a70ea03e54ce6ce797757f597259190409d",
+        "baselineCommit": "4777c699412cfc49f7cef0e7a007143813d8b652",
         "classificationVocabulary": sorted(CLASSIFICATIONS),
         "scope": {
             "candidatePrefixes": list(SCOPE_PREFIXES),
             "candidateExactPaths": sorted(SCOPE_FILES),
-            "method": "Enumerate tracked data, curriculum, media, and known embedded-content modules; record path, canonical size, digest mode, and SHA-256 only. Text uses UTF-8 with LF-normalized line endings; binary is hashed byte-for-byte. No source corpus is downloaded.",
-            "limitations": [
-                "Path and digest inventory does not detect paraphrase, copying, embedded data, or authorship.",
-                "A source link or public availability is not a reuse grant.",
-                "RIGHTS_UNCLEAR is blocked for publishable artifacts; it is not a legal finding.",
-                "An empty THIRD_PARTY_RESTRICTED set would not prove the tree contains no such material.",
-            ],
+            "dynamicCjkTextExtensions": sorted(CJK_TEXT_EXTENSIONS),
+            "dynamicMediaExtensions": sorted(MEDIA_EXTENSIONS),
+            "method": SCOPE_METHOD,
+            "limitations": list(SCOPE_LIMITATIONS),
         },
         "entries": entries,
     }
@@ -168,10 +271,18 @@ def validate_inventory(audit: Mapping[str, Any]) -> list[str]:
     elif not isinstance(scope.get("limitations"), list) or not scope["limitations"]:
         errors.append("AUDIT_SCOPE_LIMITATIONS_MISSING")
     if isinstance(scope, Mapping):
+        if scope.get("method") != SCOPE_METHOD:
+            errors.append("AUDIT_SCOPE_METHOD_STALE")
+        if scope.get("limitations") != list(SCOPE_LIMITATIONS):
+            errors.append("AUDIT_SCOPE_LIMITATIONS_STALE")
         if scope.get("candidatePrefixes") != list(SCOPE_PREFIXES):
             errors.append("AUDIT_SCOPE_PREFIXES_STALE")
         if scope.get("candidateExactPaths") != sorted(SCOPE_FILES):
             errors.append("AUDIT_SCOPE_EXACT_PATHS_STALE")
+        if scope.get("dynamicCjkTextExtensions") != sorted(CJK_TEXT_EXTENSIONS):
+            errors.append("AUDIT_CJK_TEXT_SCOPE_STALE")
+        if scope.get("dynamicMediaExtensions") != sorted(MEDIA_EXTENSIONS):
+            errors.append("AUDIT_MEDIA_SCOPE_STALE")
     entries = audit.get("entries")
     if not isinstance(entries, list):
         return ["AUDIT_ENTRIES_INVALID: entries must be an array"]
@@ -244,7 +355,11 @@ def validate_inventory(audit: Mapping[str, Any]) -> list[str]:
             errors.append(f"BLOCKED_AUDIT_ENTRY_MARKED_PUBLISHABLE: {path}")
 
         source_path = ROOT / Path(path)
-        actual_digest, actual_size, actual_mode = _content_snapshot(source_path)
+        try:
+            actual_digest, actual_size, actual_mode = _content_snapshot(source_path)
+        except OSError:
+            errors.append(f"AUDIT_CONTENT_UNREADABLE: {path}")
+            continue
         digest_mode = entry.get("digestMode")
         if not isinstance(digest_mode, str) or digest_mode not in {"TEXT_LF_NORMALIZED", "BINARY_RAW"}:
             errors.append(f"AUDIT_DIGEST_MODE_INVALID: {path}")
