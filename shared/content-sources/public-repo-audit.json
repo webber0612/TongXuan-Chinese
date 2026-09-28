@@ -794,8 +794,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Owner-directed product architecture reference; this path-level signal is not a curriculum authority or a clearance decision. The document is blocked from publishable curriculum artifacts.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "b260acead563112feada730d06224b1672ba0d206efb45b1b18cfb8563f4091d",
-      "sizeBytes": 32194,
+      "sha256": "7565a02c1195cd877f3b937aa1248559fc7f5f246713e9450827807b5cf23432",
+      "sizeBytes": 32260,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "TRACKED_CJK_TEXT_FAIL_CLOSED"
     },
@@ -822,8 +822,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Tracked UTF-8 text contains literal or escaped CJK and is included conservatively for review. This path signal does not establish curriculum authorship, source, or reuse rights.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "79d7e8be804cf471784013482605f34c201f57605f62aa8cba6e5ffca310e7c0",
-      "sizeBytes": 44568,
+      "sha256": "da2757a8e0f9fe3b6dd391aca8c42a3ca7969a90e34e7488dfef8e852ebd345f",
+      "sizeBytes": 44614,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "TRACKED_CJK_TEXT_FAIL_CLOSED"
     },
@@ -1877,8 +1877,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Technical implementation documentation includes schema/API examples; inventory classification does not authorize curriculum publication.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "2b66543dfcaf30ce4ff904cf40a3f11f6010e6a95cdba7015db7e52421a0449c",
-      "sizeBytes": 16446
+      "sha256": "3f10ff2bc57cf97b0e92dab351dc707384390679158e4da72e5b7489307b64a1",
+      "sizeBytes": 16529
     },
     {
       "path": "frontend/src/lib/learnerEvidence.test.ts",

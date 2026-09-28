@@ -109,11 +109,11 @@ The frontend exports typed read models for summary, target history, orthographic
 
 The canonical architecture's design principles remain in [learning-system-architecture-v1.md](learning-system-architecture-v1.md). This implementation does not build its Progression Engine, curriculum promotion, lessons, dashboard UI, or Adaptive selection policy.
 
-## Verification before push
+## Local verification record
 
 - Backend full pytest: **333 passed**; 93 existing SQLite datetime-adapter deprecation warnings.
 - Frontend full Vitest: **181/181 across 16 files**.
 - Production build: **PASS**; canonical frontend import check: **PASS, 38 production modules**. Vite reports the repository's existing large-chunk advisory.
 - Clean and populated migration coverage: **PASS** for clean initialization, populated v5→v7 without legacy backfill, v6→v7 column addition, and repeat initialization. Migration-specific subset: **4 passed**.
 - `compileall`, rights gate, production artifact check, root final smoke, and `git diff --check`: **PASS**. The fail-closed inventory contains 117 paths (110 `RIGHTS_UNCLEAR`, 7 `REFERENCE_ONLY`); no rights classification was cleared.
-- GitHub Actions and independent Architect review remain **pending** until the pushed exact PR head exists. The PR must remain Draft and unmerged.
+- GitHub Actions and Architect review are tracked against the current exact PR head in PR metadata; a run on an earlier SHA does not verify a later push. This implementation does not self-approve. Keep the PR Draft and unmerged.
