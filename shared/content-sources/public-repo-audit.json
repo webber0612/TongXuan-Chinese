@@ -13,6 +13,7 @@
     "candidatePrefixes": [
       "shared/lesson-packages/",
       "shared/open-curriculum/packs/",
+      "shared/open-curriculum/proposals/",
       "shared/content-sources/imports/",
       "shared/content-sources/raw/",
       "frontend/src/data/",
@@ -34,6 +35,7 @@
       "docs/frontend-rebuild-plan.md",
       "docs/learning-path-v2.md",
       "docs/learning-session-policy-v1.md",
+      "docs/open-curriculum-5-lesson-experiment-proposal.md",
       "frontend/src/components/PlacementStatus.tsx",
       "frontend/src/lib/adaptiveWriting.test.ts",
       "frontend/src/lib/childFirst.test.tsx",
@@ -437,8 +439,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Tracked UTF-8 text contains literal or escaped CJK and is included conservatively for review. This path signal does not establish curriculum authorship, source, or reuse rights.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "1aeca7ebf665ae5db6f82beac77a7c733eaacc766b0ff1b166885676ca407050",
-      "sizeBytes": 23734,
+      "sha256": "ac2e433290b0fb478dbe7210e021eee8eaeab3e1b8b50ab98a742c95c8e433e9",
+      "sizeBytes": 24603,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "TRACKED_CJK_TEXT_FAIL_CLOSED"
     },
@@ -794,10 +796,34 @@
       "publishableArtifactAllowed": false,
       "reason": "Tracked UTF-8 text contains literal or escaped CJK and is included conservatively for review. This path signal does not establish curriculum authorship, source, or reuse rights.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "1cc58253d7fe9dc2bde94408a3064190229883192a7717430a8788e2e99821f8",
-      "sizeBytes": 71971,
+      "sha256": "b204272e7575fe8adcd50a29ddadb3125a81aa903fde18ee2165ccc9409faf8a",
+      "sizeBytes": 73205,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "TRACKED_CJK_TEXT_FAIL_CLOSED"
+    },
+    {
+      "path": "docs/open-curriculum-5-lesson-experiment-proposal.md",
+      "classification": "REFERENCE_ONLY",
+      "sourceIds": [
+        "cc-cedict",
+        "tbcl-naer",
+        "tocfl-cccc"
+      ],
+      "evidenceIds": [
+        "evidence-cc-cedict-download-license",
+        "evidence-cc-cedict-cc-by-sa-deed",
+        "evidence-tbcl-naer-landing-page",
+        "evidence-tocfl-cccc-official-page"
+      ],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Proposal-only planning artifact records selected CC-CEDICT item-level forms/Pinyin with a CC BY-SA 4.0 notice and cites TBCL/CCCC only as references. Candidate targets remain PROPOSED; this file is blocked from publishable curriculum artifacts. This path classification is not a legal/ownership determination and changes no source status.",
+      "digestMode": "TEXT_LF_NORMALIZED",
+      "sha256": "49f2799f60c28d3d446540746c1724e699946df287542754d7ec9a27004b5500",
+      "sizeBytes": 14873,
+      "repositoryStatus": "PROPOSED_PUBLIC_REPO_CHANGE_REQUIRES_REVIEW",
+      "contentKind": "CURRICULUM_REFERENCE_DOCUMENT",
+      "sourceRelationship": "This proposal cites CC-CEDICT/MDBG for selected item-level forms and Pinyin and records the required CC BY-SA 4.0 attribution/share-alike boundary. TBCL/CCCC are cited only as reference evidence; no raw tables, question items, or source sequence is included. The candidate remains PROPOSED, and this path is blocked from publishable curriculum artifacts."
     },
     {
       "path": "docs/project-handoff.md",
@@ -808,8 +834,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Tracked UTF-8 text contains literal or escaped CJK and is included conservatively for review. This path signal does not establish curriculum authorship, source, or reuse rights.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "c24daa0c67be19f5adf9d75c531a5820759e0f529912dd37e220786e6cf6193b",
-      "sizeBytes": 44674,
+      "sha256": "d06b4cbefc04fa3c6c0d0d09797e6b97a4df2efef715dea756f4fc4a4ef93305",
+      "sizeBytes": 44200,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "TRACKED_CJK_TEXT_FAIL_CLOSED"
     },
@@ -1587,8 +1613,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Rights-gate implementation contains Unicode escape ranges used by the conservative CJK path detector; this is policy/tooling metadata, not lesson content or a source-rights claim.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "801ea352fcab3d5160a89ce17857a8e7e6175a0187fc91c4a3af6cff6784abc1",
-      "sizeBytes": 24911,
+      "sha256": "da3595c1aaa306fde76fb4271c9b7630826443c09fde97fa70d640327fd12fe3",
+      "sizeBytes": 25012,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "RIGHTS_GATE_POLICY_TOOLING"
     },
@@ -1738,6 +1764,30 @@
       "contentKind": "CURRICULUM_TEXT_OR_SOURCE_METADATA",
       "sourceRelationship": "Package metadata references the OCAC course/title; some packages claim TongXuan-authored tasks, but item-level content provenance remains unverified. The source association is not a finding of copying or clearance.",
       "digestMode": "TEXT_LF_NORMALIZED"
+    },
+    {
+      "path": "shared/open-curriculum/proposals/prototype-five-weekday-2026-09.json",
+      "classification": "REFERENCE_ONLY",
+      "sourceIds": [
+        "cc-cedict",
+        "tbcl-naer",
+        "tocfl-cccc"
+      ],
+      "evidenceIds": [
+        "evidence-cc-cedict-download-license",
+        "evidence-cc-cedict-cc-by-sa-deed",
+        "evidence-tbcl-naer-landing-page",
+        "evidence-tocfl-cccc-official-page"
+      ],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Proposal-only planning artifact records selected CC-CEDICT item-level forms/Pinyin with a CC BY-SA 4.0 notice and cites TBCL/CCCC only as references. Candidate targets remain PROPOSED; this file is blocked from publishable curriculum artifacts. This path classification is not a legal/ownership determination and changes no source status.",
+      "digestMode": "TEXT_LF_NORMALIZED",
+      "sha256": "72f9a0c252307ddc2da185b8e2b956851d8700b7317bc8d9c68e94ccbeb73c40",
+      "sizeBytes": 73158,
+      "repositoryStatus": "PROPOSED_PUBLIC_REPO_CHANGE_REQUIRES_REVIEW",
+      "contentKind": "OPEN_CURRICULUM_PROPOSAL_PLAN",
+      "sourceRelationship": "This proposal cites CC-CEDICT/MDBG for selected item-level forms and Pinyin and records the required CC BY-SA 4.0 attribution/share-alike boundary. TBCL/CCCC are cited only as reference evidence; no raw tables, question items, or source sequence is included. The candidate remains PROPOSED, and this path is blocked from publishable curriculum artifacts."
     },
     {
       "path": "shared/validated-curriculum-slice.json",

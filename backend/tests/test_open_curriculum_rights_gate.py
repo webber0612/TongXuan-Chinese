@@ -84,6 +84,25 @@ def test_machine_inventory_covers_current_tracked_content_sensitive_paths():
     assert all(entry["sha256"] and entry["sizeBytes"] >= 0 for entry in audit["entries"])
 
 
+def test_issue109_proposal_artifacts_are_reference_only_not_publishable():
+    audit = load_audit()
+    proposal_paths = {
+        "docs/open-curriculum-5-lesson-experiment-proposal.md",
+        "shared/open-curriculum/proposals/prototype-five-weekday-2026-09.json",
+    }
+    entries = {entry["path"]: entry for entry in audit["entries"]}
+
+    assert proposal_paths <= entries.keys()
+    for path in proposal_paths:
+        entry = entries[path]
+        assert entry["classification"] == "REFERENCE_ONLY"
+        assert entry["publishableArtifactAllowed"] is False
+        assert entry["rootMitApplies"] is False
+        assert {"cc-cedict", "tbcl-naer", "tocfl-cccc"} <= set(entry["sourceIds"])
+    errors = validate_publishable_paths(sorted(proposal_paths), audit)
+    assert all(f"PUBLIC_ARTIFACT_RESTRICTED_CONTENT: {path}" in errors for path in proposal_paths)
+
+
 def test_future_pack_raw_import_and_discovered_content_paths_enter_the_audit_scope():
     assert _is_candidate("shared/open-curriculum/packs/candidate.json")
     assert _is_candidate("shared/content-sources/imports/corpus.csv")

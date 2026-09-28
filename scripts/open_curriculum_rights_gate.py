@@ -27,6 +27,7 @@ BACKEND_PATH = ROOT / "backend"
 SCOPE_PREFIXES = (
     "shared/lesson-packages/",
     "shared/open-curriculum/packs/",
+    "shared/open-curriculum/proposals/",
     "shared/content-sources/imports/",
     "shared/content-sources/raw/",
     "frontend/src/data/",
@@ -86,6 +87,7 @@ SCOPE_FILES = {
     "docs/frontend-rebuild-plan.md",
     "docs/learning-path-v2.md",
     "docs/learning-session-policy-v1.md",
+    "docs/open-curriculum-5-lesson-experiment-proposal.md",
     "frontend/src/pages/ChildPortalPage.tsx",
     "frontend/src/pages/CourseZeroPage.tsx",
     "frontend/src/pages/FirstLessonPage.tsx",
