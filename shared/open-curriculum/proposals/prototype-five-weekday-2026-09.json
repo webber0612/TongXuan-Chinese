@@ -1,0 +1,1872 @@
+{
+  "schemaVersion": "1.0",
+  "documentType": "PROTOTYPE_CURRICULUM_EXPERIMENT_PROPOSAL",
+  "proposalId": "prototype-five-weekday-2026-09-v1",
+  "approvalStatus": "PROPOSED",
+  "authority": {
+    "proposer": "CODEX_AI_PROPOSER",
+    "advisoryReviewer": "ADVERSARIAL_ARCHITECT_REVIEW_ADVISORY_ONLY",
+    "finalHumanApprover": "WEBBER_FINAL_HUMAN_CURRICULUM_APPROVER"
+  },
+  "scope": {
+    "experimentType": "FEASIBILITY_PROTOTYPE_ONLY",
+    "formalCourseClaim": false,
+    "executableLessonsCreated": false,
+    "approvedGraphMutated": false,
+    "ocacMaterialConsulted": false,
+    "contaminationAssessment": "No OCAC lesson, title, text, exercise, sequence, or teacher material was consulted or used as a seed. The generic calendar topic can occur in many beginner curricula; exact overlap has not been checked or claimed. Treat contamination risk as UNVERIFIED until an Owner-authorized later benchmark.",
+    "writingTargets": []
+  },
+  "licenseNotice": {
+    "cedictLicense": "CC BY-SA 4.0",
+    "attribution": "CC-CEDICT contributors; distributed through MDBG. Source release page: https://cc-cedict.org/editor/editor.php?handler=Download",
+    "changes": "Selected headwords and Pinyin were normalized into proposal fields; derived character targets and the sequencing analysis were added for this proposal. No raw dictionary database, example sentences, audio, or images are included.",
+    "mitAppliesToCedictData": false
+  },
+  "sourceCatalog": [
+    {
+      "sourceId": "cc-cedict",
+      "status": "GREEN",
+      "useMode": "CONTENT_SOURCE",
+      "rawDatasetIngested": false,
+      "license": "CC BY-SA 4.0, conditional on attribution, change notices, and share-alike",
+      "permittedUse": "The selected headwords and Pinyin are recorded as limited item-level data under the source license, with attribution and this proposal's CC BY-SA 4.0 notice.",
+      "prohibitedUse": "Do not remove the source-specific license, relabel the derived data as MIT, or redistribute the raw database through this proposal."
+    },
+    {
+      "sourceId": "tbcl-naer",
+      "status": "YELLOW",
+      "useMode": "REFERENCE_ONLY",
+      "rawDatasetIngested": false,
+      "license": null,
+      "permittedUse": "Cite individual framework lookup results and broad capability descriptors as reference evidence.",
+      "prohibitedUse": "Do not bulk copy, ingest, redistribute, or treat a lookup result as a grant to reuse TBCL tables."
+    },
+    {
+      "sourceId": "tocfl-cccc",
+      "status": "YELLOW",
+      "useMode": "REFERENCE_ONLY",
+      "rawDatasetIngested": false,
+      "license": null,
+      "permittedUse": "Cite broad child-age and topic-scope descriptions as reference evidence only.",
+      "prohibitedUse": "Do not copy question-bank items, answers, audio, images, or lesson sequence."
+    },
+    {
+      "sourceId": "tongxuan-proposal",
+      "status": "UNKNOWN",
+      "useMode": "REFERENCE_ONLY",
+      "rawDatasetIngested": false,
+      "license": null,
+      "permittedUse": "Identify the planning hypothesis recorded in Issue 109.",
+      "prohibitedUse": "Do not treat a TongXuan hypothesis as external authority or a curriculum approval."
+    },
+    {
+      "sourceId": "tongxuan-system",
+      "status": "UNKNOWN",
+      "useMode": "REFERENCE_ONLY",
+      "rawDatasetIngested": false,
+      "license": null,
+      "permittedUse": "Cite a narrow engineering boundary for capability separation.",
+      "prohibitedUse": "Do not treat system behavior as curriculum authority or content rights evidence."
+    }
+  ],
+  "evidenceCatalog": [
+    {
+      "evidenceId": "ev-tbcl-l1-scope",
+      "sourceId": "tbcl-naer",
+      "category": "OFFICIAL_LEVEL_FRAMEWORK",
+      "reference": "https://coct.naer.edu.tw/page.jsp?ID=11",
+      "claim": "TBCL Level 1 describes understanding and using simple words and phrases relating to daily life; its listening and speaking descriptors include simple personal-life information and time/quantity language. This supports a broad capability comparison, not the exact proposal sequence.",
+      "useMode": "REFERENCE_ONLY",
+      "rawContentIncluded": false
+    },
+    {
+      "evidenceId": "ev-tbcl-l1-vocabulary",
+      "sourceId": "tbcl-naer",
+      "category": "OFFICIAL_LEVEL_FRAMEWORK",
+      "reference": "https://coct.naer.edu.tw/file/files/TBCL%E8%A9%9E%E8%AA%9E%E8%A1%A8_14420.pdf",
+      "claim": "The official Level 1 vocabulary reference lists the candidate forms 今天 and 星期一. This is a one-item-at-a-time reference lookup only; no vocabulary table, definition, or example is reproduced.",
+      "useMode": "REFERENCE_ONLY",
+      "rawContentIncluded": false
+    },
+    {
+      "evidenceId": "ev-tbcl-l1-grammar",
+      "sourceId": "tbcl-naer",
+      "category": "OFFICIAL_GRAMMAR_FRAMEWORK",
+      "reference": "https://coct.naer.edu.tw/grammar.jsp",
+      "claim": "The official Level 1 grammar lookup classifies a copula point at Level 1. It supports considering a copula candidate, not this target's productivity or placement.",
+      "useMode": "REFERENCE_ONLY",
+      "rawContentIncluded": false
+    },
+    {
+      "evidenceId": "ev-cccc-child-time",
+      "sourceId": "tocfl-cccc",
+      "category": "CHILD_CONTEXT_REFERENCE",
+      "reference": "https://tocfl.edu.tw/tocfl/index.php/test/cccc/list/1",
+      "claim": "CCCC is designed for mostly non-Chinese-speaking children aged 7–12 and lists time/space among broad child-life topics. This does not establish an item-level vocabulary list, lesson order, or rights to test content.",
+      "useMode": "REFERENCE_ONLY",
+      "rawContentIncluded": false
+    },
+    {
+      "evidenceId": "ev-cedict-download",
+      "sourceId": "cc-cedict",
+      "category": "OPEN_LEXICAL_ITEM",
+      "reference": "https://cc-cedict.org/editor/editor.php?handler=Download",
+      "claim": "The official download page identifies CC BY-SA 4.0 and requires attribution and share-alike for modified data. The latest release page observed for this proposal is dated 2026-09-10.",
+      "useMode": "CONTENT_SOURCE",
+      "rawContentIncluded": false
+    },
+    {
+      "evidenceId": "ev-cedict-today",
+      "sourceId": "cc-cedict",
+      "category": "OPEN_LEXICAL_ITEM",
+      "reference": "https://www.mdbg.net/chinese/dictionary?page=worddict&wdqb=today&wdrst=0",
+      "claim": "CC-CEDICT-backed MDBG lookup for 今天, Pinyin jīntiān, glossed as today.",
+      "useMode": "CONTENT_SOURCE",
+      "rawContentIncluded": false
+    },
+    {
+      "evidenceId": "ev-cedict-weekday",
+      "sourceId": "cc-cedict",
+      "category": "OPEN_LEXICAL_ITEM",
+      "reference": "https://www.mdbg.net/chinese/dictionary?page=worddict&wdqb=Monday&wdrst=1",
+      "claim": "CC-CEDICT-backed MDBG lookup for 星期一, Pinyin Xīngqīyī, glossed as Monday.",
+      "useMode": "CONTENT_SOURCE",
+      "rawContentIncluded": false
+    },
+    {
+      "evidenceId": "ev-cedict-copula",
+      "sourceId": "cc-cedict",
+      "category": "OPEN_LEXICAL_ITEM",
+      "reference": "https://www.mdbg.net/chinese/dictionary?dss=1&wdqdef=to+be&wdqdefm=0&wdrst=1",
+      "claim": "CC-CEDICT-backed MDBG lookup for 是 with Pinyin shì and a to-be gloss. No entry examples are copied.",
+      "useMode": "CONTENT_SOURCE",
+      "rawContentIncluded": false
+    },
+    {
+      "evidenceId": "ev-hypothesis-communication",
+      "sourceId": "tongxuan-proposal",
+      "category": "TONGXUAN_HYPOTHESIS",
+      "reference": "https://github.com/webber0612/TongXuan-Chinese/issues/109",
+      "claim": "A learner may benefit from hearing and communicating one calendar statement, then mapping its words visually, then recognizing the script. This sequence is a testable TongXuan hypothesis, not a framework requirement.",
+      "useMode": "AUTHORED_HYPOTHESIS",
+      "rawContentIncluded": false
+    },
+    {
+      "evidenceId": "ev-hypothesis-srs",
+      "sourceId": "tongxuan-proposal",
+      "category": "TONGXUAN_HYPOTHESIS",
+      "reference": "https://github.com/webber0612/TongXuan-Chinese/issues/109",
+      "claim": "Per-character recognition review is a candidate SRS grain for this experiment. Exact backend linkage, intervals, and mastery effects require separate checks and remain unimplemented.",
+      "useMode": "AUTHORED_HYPOTHESIS",
+      "rawContentIncluded": false
+    },
+    {
+      "evidenceId": "ev-skill-contract",
+      "sourceId": "tongxuan-system",
+      "category": "ENGINEERING_CONTRACT_REFERENCE",
+      "reference": "https://github.com/webber0612/TongXuan-Chinese/blob/3ca711e7ec2b2e912c50630ff6466278b1a76171/docs/mainline-completeness-audit.md",
+      "claim": "The current graph distinguishes listening, pronunciation, speaking, character recognition, and writing; exposure does not imply a writing requirement. This proposal tests no executable task or mastery rule.",
+      "useMode": "REFERENCE_ONLY",
+      "rawContentIncluded": false
+    }
+  ],
+  "skillCatalog": [
+    {
+      "id": "skill-listening-comprehension",
+      "approvalStatus": "PROPOSED",
+      "capability": "Understand the spoken meaning of a short calendar expression or the candidate calendar statement.",
+      "whyThis": "Listening is an explicit capability in TBCL; a brief everyday time expression is a bounded candidate context.",
+      "evidenceIds": [
+        "ev-tbcl-l1-scope",
+        "ev-cccc-child-time",
+        "ev-hypothesis-communication"
+      ],
+      "sourceProvenance": [
+        {
+          "sourceId": "tbcl-naer",
+          "evidenceId": "ev-tbcl-l1-scope",
+          "useMode": "REFERENCE_ONLY",
+          "reference": "https://coct.naer.edu.tw/page.jsp?ID=11",
+          "rawContentIncluded": false,
+          "license": null,
+          "attribution": null,
+          "shareAlike": null
+        }
+      ],
+      "prerequisites": [],
+      "receptiveRequirement": {
+        "required": true,
+        "description": "Match a heard target expression to its broad calendar meaning.",
+        "evidenceIds": [
+          "ev-tbcl-l1-scope"
+        ]
+      },
+      "productiveRequirement": {
+        "required": false,
+        "description": "Listening comprehension alone does not require speaking or writing.",
+        "evidenceIds": [
+          "ev-tbcl-l1-scope"
+        ]
+      },
+      "writingRequired": false,
+      "confidence": {
+        "rating": "MEDIUM",
+        "rationale": "The capability is named by TBCL, but learner difficulty for this exact item is not established.",
+        "limitations": [
+          "No learner/device observation exists for this proposal."
+        ]
+      }
+    },
+    {
+      "id": "skill-pronunciation",
+      "approvalStatus": "PROPOSED",
+      "capability": "Perceive and optionally imitate the sourced Pinyin syllables for target words.",
+      "whyThis": "Pronunciation is a distinct proposed capability and the selected lexical source provides Pinyin; this does not select a child-facing notation or audio asset.",
+      "evidenceIds": [
+        "ev-cedict-download",
+        "ev-hypothesis-communication"
+      ],
+      "sourceProvenance": [
+        {
+          "sourceId": "cc-cedict",
+          "evidenceId": "ev-cedict-download",
+          "useMode": "CONTENT_SOURCE",
+          "reference": "https://cc-cedict.org/editor/editor.php?handler=Download",
+          "rawContentIncluded": false,
+          "license": "CC BY-SA 4.0",
+          "attribution": "CC-CEDICT contributors; MDBG distribution; changes listed in licenseNotice.",
+          "shareAlike": true
+        }
+      ],
+      "prerequisites": [
+        "skill-listening-comprehension"
+      ],
+      "receptiveRequirement": {
+        "required": true,
+        "description": "Perceive the sourced syllable and tone sequence in a clear spoken model.",
+        "evidenceIds": [
+          "ev-cedict-download"
+        ]
+      },
+      "productiveRequirement": {
+        "required": false,
+        "description": "Imitation is a candidate optional spoken outcome, not a scored mastery threshold.",
+        "evidenceIds": [
+          "ev-hypothesis-communication"
+        ]
+      },
+      "writingRequired": false,
+      "confidence": {
+        "rating": "LOW",
+        "rationale": "Pinyin readings are sourced, but phonetic sequencing, child-facing notation, and scoring are not validated.",
+        "limitations": [
+          "No Zhuyin source is included.",
+          "No audio or pronunciation scoring is proposed."
+        ]
+      }
+    },
+    {
+      "id": "skill-visual-meaning-recognition",
+      "approvalStatus": "PROPOSED",
+      "capability": "Match a known spoken vocabulary item to a visual calendar meaning without requiring Chinese print recognition.",
+      "whyThis": "This separates visual meaning comprehension from character recognition, which is a distinct capability in the requested experiment.",
+      "evidenceIds": [
+        "ev-cccc-child-time",
+        "ev-hypothesis-communication"
+      ],
+      "sourceProvenance": [
+        {
+          "sourceId": "tocfl-cccc",
+          "evidenceId": "ev-cccc-child-time",
+          "useMode": "REFERENCE_ONLY",
+          "reference": "https://tocfl.edu.tw/tocfl/index.php/test/cccc/list/1",
+          "rawContentIncluded": false,
+          "license": null,
+          "attribution": null,
+          "shareAlike": null
+        }
+      ],
+      "prerequisites": [
+        "skill-listening-comprehension"
+      ],
+      "receptiveRequirement": {
+        "required": true,
+        "description": "Choose the corresponding calendar concept from a visual cue; Chinese characters are withheld until the recognition slot.",
+        "evidenceIds": [
+          "ev-hypothesis-communication"
+        ]
+      },
+      "productiveRequirement": {
+        "required": false,
+        "description": "No spoken production is required in visual matching.",
+        "evidenceIds": [
+          "ev-hypothesis-communication"
+        ]
+      },
+      "writingRequired": false,
+      "confidence": {
+        "rating": "LOW",
+        "rationale": "The separation of semantic picture matching from script recognition is an experiment design choice.",
+        "limitations": [
+          "No visual asset is created.",
+          "Calendar conventions may require localization."
+        ]
+      }
+    },
+    {
+      "id": "skill-copular-speaking",
+      "approvalStatus": "PROPOSED",
+      "capability": "Produce the candidate TIME + 是 + WEEKDAY frame orally after receptive preparation.",
+      "whyThis": "The source framework lists a Level 1 copula and simple personal-time communication, but it does not prescribe this exact utterance or productivity order.",
+      "evidenceIds": [
+        "ev-tbcl-l1-scope",
+        "ev-tbcl-l1-grammar",
+        "ev-hypothesis-communication"
+      ],
+      "sourceProvenance": [
+        {
+          "sourceId": "tbcl-naer",
+          "evidenceId": "ev-tbcl-l1-grammar",
+          "useMode": "REFERENCE_ONLY",
+          "reference": "https://coct.naer.edu.tw/grammar.jsp",
+          "rawContentIncluded": false,
+          "license": null,
+          "attribution": null,
+          "shareAlike": null
+        }
+      ],
+      "prerequisites": [
+        "vocab-today",
+        "vocab-weekday-monday",
+        "grammar-copula-is"
+      ],
+      "receptiveRequirement": {
+        "required": true,
+        "description": "Understand the relation between the two calendar phrases in the candidate frame.",
+        "evidenceIds": [
+          "ev-tbcl-l1-grammar",
+          "ev-hypothesis-communication"
+        ]
+      },
+      "productiveRequirement": {
+        "required": true,
+        "description": "Produce the candidate frame orally with known vocabulary; no written production.",
+        "evidenceIds": [
+          "ev-hypothesis-communication"
+        ]
+      },
+      "writingRequired": false,
+      "confidence": {
+        "rating": "LOW",
+        "rationale": "The framework supports a copula point, but the precise frame and productive sequencing are hypotheses.",
+        "limitations": [
+          "Requires curriculum-owner confirmation.",
+          "No speaking rubric or learner validation."
+        ]
+      }
+    },
+    {
+      "id": "skill-character-recognition",
+      "approvalStatus": "PROPOSED",
+      "capability": "Recognize the traditional character forms used by the candidate lexical items and grammar target.",
+      "whyThis": "The prototype must distinguish character recognition from visual meaning recognition and from writing.",
+      "evidenceIds": [
+        "ev-tbcl-l1-scope",
+        "ev-skill-contract",
+        "ev-hypothesis-srs"
+      ],
+      "sourceProvenance": [
+        {
+          "sourceId": "tbcl-naer",
+          "evidenceId": "ev-tbcl-l1-scope",
+          "useMode": "REFERENCE_ONLY",
+          "reference": "https://coct.naer.edu.tw/page.jsp?ID=11",
+          "rawContentIncluded": false,
+          "license": null,
+          "attribution": null,
+          "shareAlike": null
+        }
+      ],
+      "prerequisites": [
+        "vocab-today",
+        "vocab-weekday-monday",
+        "grammar-copula-is"
+      ],
+      "receptiveRequirement": {
+        "required": true,
+        "description": "Identify each target character in its already-heard lexical item or grammar form.",
+        "evidenceIds": [
+          "ev-skill-contract",
+          "ev-hypothesis-srs"
+        ]
+      },
+      "productiveRequirement": {
+        "required": false,
+        "description": "No handwriting, stroke production, or independent oral reading is required by character recognition.",
+        "evidenceIds": [
+          "ev-skill-contract"
+        ]
+      },
+      "writingRequired": false,
+      "confidence": {
+        "rating": "LOW",
+        "rationale": "Recognition-only load is countable, but the learner-appropriate character grain and SRS contract are unresolved.",
+        "limitations": [
+          "No real-child evidence.",
+          "Exact character-level SRS integration is not validated by this planning artifact."
+        ]
+      }
+    },
+    {
+      "id": "skill-integrated-learn-review-repair",
+      "approvalStatus": "PROPOSED",
+      "capability": "Revisit the approved experiment targets through LEARN, REVIEW, and REPAIR task categories.",
+      "whyThis": "This is the required integrated-flow capability slot, not a proposal for new content or mastery policy.",
+      "evidenceIds": [
+        "ev-skill-contract",
+        "ev-hypothesis-srs"
+      ],
+      "sourceProvenance": [
+        {
+          "sourceId": "tongxuan-system",
+          "evidenceId": "ev-skill-contract",
+          "useMode": "REFERENCE_ONLY",
+          "reference": "https://github.com/webber0612/TongXuan-Chinese/blob/3ca711e7ec2b2e912c50630ff6466278b1a76171/docs/mainline-completeness-audit.md",
+          "rawContentIncluded": false,
+          "license": null,
+          "attribution": null,
+          "shareAlike": null
+        }
+      ],
+      "prerequisites": [
+        "skill-listening-comprehension",
+        "skill-visual-meaning-recognition",
+        "skill-copular-speaking",
+        "skill-character-recognition"
+      ],
+      "receptiveRequirement": {
+        "required": true,
+        "description": "Review the same approved target identities without creating new targets.",
+        "evidenceIds": [
+          "ev-skill-contract"
+        ]
+      },
+      "productiveRequirement": {
+        "required": false,
+        "description": "Repair may replay or scaffold an existing target; no new production policy is assumed.",
+        "evidenceIds": [
+          "ev-skill-contract"
+        ]
+      },
+      "writingRequired": false,
+      "confidence": {
+        "rating": "LOW",
+        "rationale": "The contract is a capability hypothesis; no tasks or lesson implementation are created here.",
+        "limitations": [
+          "Exact REVIEW/REPAIR task contracts are not specified.",
+          "No SRS interval or mastery effect is proposed."
+        ]
+      }
+    }
+  ],
+  "candidateTargetCatalog": [
+    {
+      "id": "vocab-today",
+      "targetType": "VOCABULARY",
+      "approvalStatus": "PROPOSED",
+      "candidateForm": "今天",
+      "pinyin": "jīn tiān",
+      "zhuyinStatus": "SOURCE_INSUFFICIENT",
+      "meaning": "today",
+      "whyThis": "It is one of the two lexical anchors needed for a short calendar statement and is listed in the official TBCL Level 1 word reference. The educational value of teaching it here remains a proposal.",
+      "evidenceIds": [
+        "ev-tbcl-l1-vocabulary",
+        "ev-cedict-today",
+        "ev-hypothesis-communication"
+      ],
+      "sourceProvenance": [
+        {
+          "sourceId": "cc-cedict",
+          "evidenceId": "ev-cedict-today",
+          "useMode": "CONTENT_SOURCE",
+          "reference": "https://www.mdbg.net/chinese/dictionary?page=worddict&wdqb=today&wdrst=0",
+          "rawContentIncluded": false,
+          "license": "CC BY-SA 4.0",
+          "attribution": "CC-CEDICT contributors; MDBG distribution; adapted as a selected candidate record.",
+          "shareAlike": true
+        },
+        {
+          "sourceId": "tbcl-naer",
+          "evidenceId": "ev-tbcl-l1-vocabulary",
+          "useMode": "REFERENCE_ONLY",
+          "reference": "https://coct.naer.edu.tw/file/files/TBCL%E8%A9%9E%E8%AA%9E%E8%A1%A8_14420.pdf",
+          "rawContentIncluded": false,
+          "license": null,
+          "attribution": null,
+          "shareAlike": null
+        }
+      ],
+      "prerequisites": [],
+      "receptiveRequirement": {
+        "required": true,
+        "description": "Understand the spoken and visual calendar meaning of the word.",
+        "evidenceIds": [
+          "ev-tbcl-l1-scope",
+          "ev-hypothesis-communication"
+        ]
+      },
+      "productiveRequirement": {
+        "required": true,
+        "description": "Say the word as a calendar-time phrase; this is not an accuracy threshold.",
+        "evidenceIds": [
+          "ev-hypothesis-communication"
+        ]
+      },
+      "writingRequired": false,
+      "alternatives": [
+        "Use only 星期一, which would remove the temporal anchor but weaken the candidate sentence frame.",
+        "Use weather vocabulary, which changes the language function and requires a separate proposal."
+      ],
+      "confidence": {
+        "rating": "MEDIUM",
+        "rationale": "The reference supports the lexical form and broad level listing; it does not prove child utility or order.",
+        "limitations": [
+          "TBCL is YELLOW and reference-only.",
+          "No item-frequency evidence or child validation."
+        ]
+      },
+      "whyNow": "Both variants introduce this word in Slot A as the first calendar anchor, so later visual mapping and the sentence frame reuse a heard item rather than adding vocabulary."
+    },
+    {
+      "id": "vocab-weekday-monday",
+      "targetType": "VOCABULARY",
+      "approvalStatus": "PROPOSED",
+      "candidateForm": "星期一",
+      "pinyin": "xīng qī yī",
+      "zhuyinStatus": "SOURCE_INSUFFICIENT",
+      "meaning": "Monday",
+      "whyThis": "It supplies a single, concrete weekday for the candidate calendar statement and appears in the official TBCL Level 1 word reference. This proposes one representative day, not a weekday sequence.",
+      "evidenceIds": [
+        "ev-tbcl-l1-vocabulary",
+        "ev-cedict-weekday",
+        "ev-cccc-child-time",
+        "ev-hypothesis-communication"
+      ],
+      "sourceProvenance": [
+        {
+          "sourceId": "cc-cedict",
+          "evidenceId": "ev-cedict-weekday",
+          "useMode": "CONTENT_SOURCE",
+          "reference": "https://www.mdbg.net/chinese/dictionary?page=worddict&wdqb=Monday&wdrst=1",
+          "rawContentIncluded": false,
+          "license": "CC BY-SA 4.0",
+          "attribution": "CC-CEDICT contributors; MDBG distribution; syllable spacing adapted for load analysis.",
+          "shareAlike": true
+        },
+        {
+          "sourceId": "tbcl-naer",
+          "evidenceId": "ev-tbcl-l1-vocabulary",
+          "useMode": "REFERENCE_ONLY",
+          "reference": "https://coct.naer.edu.tw/file/files/TBCL%E8%A9%9E%E8%AA%9E%E8%A1%A8_14420.pdf",
+          "rawContentIncluded": false,
+          "license": null,
+          "attribution": null,
+          "shareAlike": null
+        }
+      ],
+      "prerequisites": [
+        "vocab-today"
+      ],
+      "receptiveRequirement": {
+        "required": true,
+        "description": "Understand the word when heard and associate it with one weekday concept.",
+        "evidenceIds": [
+          "ev-cccc-child-time",
+          "ev-hypothesis-communication"
+        ]
+      },
+      "productiveRequirement": {
+        "required": true,
+        "description": "Say this one weekday as part of the proposed sentence frame.",
+        "evidenceIds": [
+          "ev-hypothesis-communication"
+        ]
+      },
+      "writingRequired": false,
+      "alternatives": [
+        "Use 星期 as a broad week term, which would not provide a single concrete referent.",
+        "Choose a different weekday only after checking the calendar convention and learner context."
+      ],
+      "confidence": {
+        "rating": "LOW",
+        "rationale": "The lexical entry and Level 1 reference are traceable, but choosing Monday and a calendar orientation are curriculum/product hypotheses.",
+        "limitations": [
+          "No frequency comparison among weekdays.",
+          "No child or localization validation."
+        ]
+      },
+      "whyNow": "Both variants pair one weekday with 今天 in Slot A to test a bounded calendar statement; this is one representative weekday, not a proposed weekday sequence."
+    },
+    {
+      "id": "grammar-copula-is",
+      "targetType": "GRAMMAR",
+      "approvalStatus": "PROPOSED",
+      "candidateForm": "是",
+      "pinyin": "shì",
+      "zhuyinStatus": "SOURCE_INSUFFICIENT",
+      "meaning": "copula used to identify one noun phrase with another",
+      "whyThis": "The official TBCL Level 1 grammar reference lists a copula point; this is a candidate for the requested sentence-and-speaking contract, not evidence that the exact frame must be taught now.",
+      "evidenceIds": [
+        "ev-tbcl-l1-grammar",
+        "ev-cedict-copula",
+        "ev-hypothesis-communication"
+      ],
+      "sourceProvenance": [
+        {
+          "sourceId": "cc-cedict",
+          "evidenceId": "ev-cedict-copula",
+          "useMode": "CONTENT_SOURCE",
+          "reference": "https://www.mdbg.net/chinese/dictionary?dss=1&wdqdef=to+be&wdqdefm=0&wdrst=1",
+          "rawContentIncluded": false,
+          "license": "CC BY-SA 4.0",
+          "attribution": "CC-CEDICT contributors; MDBG distribution; selected as a candidate grammar form.",
+          "shareAlike": true
+        },
+        {
+          "sourceId": "tbcl-naer",
+          "evidenceId": "ev-tbcl-l1-grammar",
+          "useMode": "REFERENCE_ONLY",
+          "reference": "https://coct.naer.edu.tw/grammar.jsp",
+          "rawContentIncluded": false,
+          "license": null,
+          "attribution": null,
+          "shareAlike": null
+        }
+      ],
+      "prerequisites": [
+        "vocab-today",
+        "vocab-weekday-monday"
+      ],
+      "receptiveRequirement": {
+        "required": true,
+        "description": "Understand the identifying relation in TIME + 是 + WEEKDAY.",
+        "evidenceIds": [
+          "ev-tbcl-l1-grammar",
+          "ev-hypothesis-communication"
+        ]
+      },
+      "productiveRequirement": {
+        "required": true,
+        "description": "Use 是 orally in this one candidate frame after receptive preparation.",
+        "evidenceIds": [
+          "ev-hypothesis-communication"
+        ]
+      },
+      "writingRequired": false,
+      "alternatives": [
+        "Use a non-copular weather predicate, which would require a different lexical set and grammar review.",
+        "Keep the five-slot experiment receptive-only, which would not test a speaking contract."
+      ],
+      "confidence": {
+        "rating": "LOW",
+        "rationale": "The framework and lexical reference support the candidate form; target productivity and schedule are not established by those sources.",
+        "limitations": [
+          "The exact frame requires a curriculum reviewer.",
+          "No independent grammar example or child validation was used."
+        ]
+      },
+      "whyNow": "Variant A defers this candidate to Slot C to isolate lexical listening first; Variant B places it receptively in Slot A to compare a phonetic/recognition-balanced order. Neither sequence is externally prescribed."
+    },
+    {
+      "id": "char-jin",
+      "targetType": "CHARACTER",
+      "approvalStatus": "PROPOSED",
+      "candidateForm": "今",
+      "pinyin": null,
+      "zhuyinStatus": "SOURCE_INSUFFICIENT",
+      "meaning": "recognize within 今天 only",
+      "whyThis": "This is a character-level recognition candidate derived from an already sourced word; no independent character reading or writing is inferred.",
+      "evidenceIds": [
+        "ev-cedict-today",
+        "ev-skill-contract",
+        "ev-hypothesis-srs"
+      ],
+      "sourceProvenance": [
+        {
+          "sourceId": "cc-cedict",
+          "evidenceId": "ev-cedict-today",
+          "useMode": "CONTENT_SOURCE",
+          "reference": "https://www.mdbg.net/chinese/dictionary?page=worddict&wdqb=today&wdrst=0",
+          "rawContentIncluded": false,
+          "license": "CC BY-SA 4.0",
+          "attribution": "Derived from selected CC-CEDICT headword 今天; CC-CEDICT contributors; MDBG distribution.",
+          "shareAlike": true
+        }
+      ],
+      "prerequisites": [
+        "vocab-today"
+      ],
+      "receptiveRequirement": {
+        "required": true,
+        "description": "Recognize the form 今 within the previously heard target word 今天.",
+        "evidenceIds": [
+          "ev-skill-contract"
+        ]
+      },
+      "productiveRequirement": {
+        "required": false,
+        "description": "No independent spoken reading or handwriting is required.",
+        "evidenceIds": [
+          "ev-skill-contract"
+        ]
+      },
+      "writingRequired": false,
+      "alternatives": [
+        "Track the whole word 今天 as the recognition item instead of an individual character; this changes the SRS grain."
+      ],
+      "confidence": {
+        "rating": "LOW",
+        "rationale": "This is an explicit prototype SRS-grain hypothesis, not a validated learner requirement.",
+        "limitations": [
+          "No character-item SRS contract is implemented by this proposal.",
+          "No child validation."
+        ]
+      },
+      "whyNow": "Both variants defer script recognition to Slot D after the containing word has been heard; the character remains scoped to recognition within 今天."
+    },
+    {
+      "id": "char-tian",
+      "targetType": "CHARACTER",
+      "approvalStatus": "PROPOSED",
+      "candidateForm": "天",
+      "pinyin": null,
+      "zhuyinStatus": "SOURCE_INSUFFICIENT",
+      "meaning": "recognize within 今天 only",
+      "whyThis": "This is the second character in the sourced 今天 target; the proposal scopes it to recognition in that word.",
+      "evidenceIds": [
+        "ev-cedict-today",
+        "ev-skill-contract",
+        "ev-hypothesis-srs"
+      ],
+      "sourceProvenance": [
+        {
+          "sourceId": "cc-cedict",
+          "evidenceId": "ev-cedict-today",
+          "useMode": "CONTENT_SOURCE",
+          "reference": "https://www.mdbg.net/chinese/dictionary?page=worddict&wdqb=today&wdrst=0",
+          "rawContentIncluded": false,
+          "license": "CC BY-SA 4.0",
+          "attribution": "Derived from selected CC-CEDICT headword 今天; CC-CEDICT contributors; MDBG distribution.",
+          "shareAlike": true
+        }
+      ],
+      "prerequisites": [
+        "vocab-today"
+      ],
+      "receptiveRequirement": {
+        "required": true,
+        "description": "Recognize the form 天 within the previously heard target word 今天.",
+        "evidenceIds": [
+          "ev-skill-contract"
+        ]
+      },
+      "productiveRequirement": {
+        "required": false,
+        "description": "No independent spoken reading or handwriting is required.",
+        "evidenceIds": [
+          "ev-skill-contract"
+        ]
+      },
+      "writingRequired": false,
+      "alternatives": [
+        "Track the whole word 今天 as the recognition item instead of an individual character; this changes the SRS grain."
+      ],
+      "confidence": {
+        "rating": "LOW",
+        "rationale": "This is an explicit prototype SRS-grain hypothesis, not a validated learner requirement.",
+        "limitations": [
+          "No character-item SRS contract is implemented by this proposal.",
+          "No child validation."
+        ]
+      },
+      "whyNow": "Both variants defer script recognition to Slot D after the containing word has been heard; the character remains scoped to recognition within 今天."
+    },
+    {
+      "id": "char-xing",
+      "targetType": "CHARACTER",
+      "approvalStatus": "PROPOSED",
+      "candidateForm": "星",
+      "pinyin": null,
+      "zhuyinStatus": "SOURCE_INSUFFICIENT",
+      "meaning": "recognize within 星期一 only",
+      "whyThis": "This character is a component of the sourced target word 星期一; no stand-alone meaning or reading is proposed.",
+      "evidenceIds": [
+        "ev-cedict-weekday",
+        "ev-skill-contract",
+        "ev-hypothesis-srs"
+      ],
+      "sourceProvenance": [
+        {
+          "sourceId": "cc-cedict",
+          "evidenceId": "ev-cedict-weekday",
+          "useMode": "CONTENT_SOURCE",
+          "reference": "https://www.mdbg.net/chinese/dictionary?page=worddict&wdqb=Monday&wdrst=1",
+          "rawContentIncluded": false,
+          "license": "CC BY-SA 4.0",
+          "attribution": "Derived from selected CC-CEDICT headword 星期一; CC-CEDICT contributors; MDBG distribution.",
+          "shareAlike": true
+        }
+      ],
+      "prerequisites": [
+        "vocab-weekday-monday"
+      ],
+      "receptiveRequirement": {
+        "required": true,
+        "description": "Recognize the form 星 within the previously heard target word 星期一.",
+        "evidenceIds": [
+          "ev-skill-contract"
+        ]
+      },
+      "productiveRequirement": {
+        "required": false,
+        "description": "No independent spoken reading or handwriting is required.",
+        "evidenceIds": [
+          "ev-skill-contract"
+        ]
+      },
+      "writingRequired": false,
+      "alternatives": [
+        "Track the whole word 星期一 as the recognition item instead of its individual characters; this changes the SRS grain."
+      ],
+      "confidence": {
+        "rating": "LOW",
+        "rationale": "This is an explicit prototype SRS-grain hypothesis, not a validated learner requirement.",
+        "limitations": [
+          "No character-item SRS contract is implemented by this proposal.",
+          "No child validation."
+        ]
+      },
+      "whyNow": "Both variants defer script recognition to Slot D after the containing word has been heard; the character remains scoped to recognition within 星期一."
+    },
+    {
+      "id": "char-qi",
+      "targetType": "CHARACTER",
+      "approvalStatus": "PROPOSED",
+      "candidateForm": "期",
+      "pinyin": null,
+      "zhuyinStatus": "SOURCE_INSUFFICIENT",
+      "meaning": "recognize within 星期一 only",
+      "whyThis": "This character is a component of the sourced target word 星期一; no stand-alone meaning or reading is proposed.",
+      "evidenceIds": [
+        "ev-cedict-weekday",
+        "ev-skill-contract",
+        "ev-hypothesis-srs"
+      ],
+      "sourceProvenance": [
+        {
+          "sourceId": "cc-cedict",
+          "evidenceId": "ev-cedict-weekday",
+          "useMode": "CONTENT_SOURCE",
+          "reference": "https://www.mdbg.net/chinese/dictionary?page=worddict&wdqb=Monday&wdrst=1",
+          "rawContentIncluded": false,
+          "license": "CC BY-SA 4.0",
+          "attribution": "Derived from selected CC-CEDICT headword 星期一; CC-CEDICT contributors; MDBG distribution.",
+          "shareAlike": true
+        }
+      ],
+      "prerequisites": [
+        "vocab-weekday-monday"
+      ],
+      "receptiveRequirement": {
+        "required": true,
+        "description": "Recognize the form 期 within the previously heard target word 星期一.",
+        "evidenceIds": [
+          "ev-skill-contract"
+        ]
+      },
+      "productiveRequirement": {
+        "required": false,
+        "description": "No independent spoken reading or handwriting is required.",
+        "evidenceIds": [
+          "ev-skill-contract"
+        ]
+      },
+      "writingRequired": false,
+      "alternatives": [
+        "Track the whole word 星期一 as the recognition item instead of its individual characters; this changes the SRS grain."
+      ],
+      "confidence": {
+        "rating": "LOW",
+        "rationale": "This is an explicit prototype SRS-grain hypothesis, not a validated learner requirement.",
+        "limitations": [
+          "No character-item SRS contract is implemented by this proposal.",
+          "No child validation."
+        ]
+      },
+      "whyNow": "Both variants defer script recognition to Slot D after the containing word has been heard; the character remains scoped to recognition within 星期一."
+    },
+    {
+      "id": "char-yi",
+      "targetType": "CHARACTER",
+      "approvalStatus": "PROPOSED",
+      "candidateForm": "一",
+      "pinyin": null,
+      "zhuyinStatus": "SOURCE_INSUFFICIENT",
+      "meaning": "recognize within 星期一 only",
+      "whyThis": "This character is the final form in the sourced target word 星期一; no independent number lesson or writing target is proposed.",
+      "evidenceIds": [
+        "ev-cedict-weekday",
+        "ev-skill-contract",
+        "ev-hypothesis-srs"
+      ],
+      "sourceProvenance": [
+        {
+          "sourceId": "cc-cedict",
+          "evidenceId": "ev-cedict-weekday",
+          "useMode": "CONTENT_SOURCE",
+          "reference": "https://www.mdbg.net/chinese/dictionary?page=worddict&wdqb=Monday&wdrst=1",
+          "rawContentIncluded": false,
+          "license": "CC BY-SA 4.0",
+          "attribution": "Derived from selected CC-CEDICT headword 星期一; CC-CEDICT contributors; MDBG distribution.",
+          "shareAlike": true
+        }
+      ],
+      "prerequisites": [
+        "vocab-weekday-monday"
+      ],
+      "receptiveRequirement": {
+        "required": true,
+        "description": "Recognize the form 一 within the previously heard target word 星期一.",
+        "evidenceIds": [
+          "ev-skill-contract"
+        ]
+      },
+      "productiveRequirement": {
+        "required": false,
+        "description": "No independent spoken reading or handwriting is required.",
+        "evidenceIds": [
+          "ev-skill-contract"
+        ]
+      },
+      "writingRequired": false,
+      "alternatives": [
+        "Track the whole word 星期一 as the recognition item instead of its individual characters; this changes the SRS grain."
+      ],
+      "confidence": {
+        "rating": "LOW",
+        "rationale": "This is an explicit prototype SRS-grain hypothesis, not a validated learner requirement.",
+        "limitations": [
+          "No character-item SRS contract is implemented by this proposal.",
+          "No child validation."
+        ]
+      },
+      "whyNow": "Both variants defer script recognition to Slot D after the containing word has been heard; the character remains scoped to recognition within 星期一, without a separate number or writing target."
+    },
+    {
+      "id": "char-shi",
+      "targetType": "CHARACTER",
+      "approvalStatus": "PROPOSED",
+      "candidateForm": "是",
+      "pinyin": null,
+      "zhuyinStatus": "SOURCE_INSUFFICIENT",
+      "meaning": "recognize within the candidate grammar form only",
+      "whyThis": "This is a character-level recognition candidate derived from the CC-CEDICT-backed grammar form 是; no handwriting or isolated-character reading is inferred.",
+      "evidenceIds": [
+        "ev-cedict-copula",
+        "ev-skill-contract",
+        "ev-hypothesis-srs"
+      ],
+      "sourceProvenance": [
+        {
+          "sourceId": "cc-cedict",
+          "evidenceId": "ev-cedict-copula",
+          "useMode": "CONTENT_SOURCE",
+          "reference": "https://www.mdbg.net/chinese/dictionary?dss=1&wdqdef=to+be&wdqdefm=0&wdrst=1",
+          "rawContentIncluded": false,
+          "license": "CC BY-SA 4.0",
+          "attribution": "Derived from selected CC-CEDICT headword 是; CC-CEDICT contributors; MDBG distribution.",
+          "shareAlike": true
+        }
+      ],
+      "prerequisites": [
+        "grammar-copula-is"
+      ],
+      "receptiveRequirement": {
+        "required": true,
+        "description": "Recognize 是 within the already-heard candidate copular frame.",
+        "evidenceIds": [
+          "ev-skill-contract"
+        ]
+      },
+      "productiveRequirement": {
+        "required": false,
+        "description": "No independent spoken reading or handwriting is required.",
+        "evidenceIds": [
+          "ev-skill-contract"
+        ]
+      },
+      "writingRequired": false,
+      "alternatives": [
+        "Use the whole copular phrase as an SRS target instead of a single character; this changes the SRS grain."
+      ],
+      "confidence": {
+        "rating": "LOW",
+        "rationale": "This is an explicit prototype SRS-grain hypothesis, not a validated learner requirement.",
+        "limitations": [
+          "No character-item SRS contract is implemented by this proposal.",
+          "No child validation."
+        ]
+      },
+      "whyNow": "Both variants defer script recognition to Slot D after the candidate form 是 has been heard; it is not an independent reading or handwriting target."
+    }
+  ],
+  "variants": [
+    {
+      "variantId": "A",
+      "label": "Communication-first",
+      "sequence": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E"
+      ],
+      "lessons": [
+        {
+          "slot": "A",
+          "title": "Prototype A — Listening + pronunciation",
+          "skillTargets": [
+            "skill-listening-comprehension",
+            "skill-pronunciation"
+          ],
+          "vocabularyTargets": [
+            "vocab-today",
+            "vocab-weekday-monday"
+          ],
+          "grammarTargets": [],
+          "characterTargets": [],
+          "newVocabularyTargets": [
+            "vocab-today",
+            "vocab-weekday-monday"
+          ],
+          "newGrammarTargets": [],
+          "newCharacterTargets": [],
+          "recycledTargetIds": [],
+          "listeningComprehensionTargets": [
+            "vocab-today",
+            "vocab-weekday-monday"
+          ],
+          "visualMeaningComprehensionTargets": [],
+          "spokenProductionTargets": [
+            "vocab-today",
+            "vocab-weekday-monday"
+          ],
+          "characterRecognitionTargets": [],
+          "scriptReadingTargets": [],
+          "writingTargets": [],
+          "phoneticTargetSyllables": [
+            "jīn",
+            "tiān",
+            "xīng",
+            "qī",
+            "yī"
+          ],
+          "srsReviewTargets": [],
+          "prerequisites": [],
+          "whyNow": "Start by hearing and saying only the two time labels. The calendar meaning and copular sentence are deferred so this proposal has an observable oral-first stage.",
+          "orderRationale": "Communication-first introduces the two selected Level 1 lexical candidates in speech before visual matching or grammar production.",
+          "alternatives": [
+            "Introduce only 今天 first and move 星期一 to Prototype B; this lowers first-slot lexical load but weakens a paired oral comparison."
+          ],
+          "confidence": {
+            "rating": "LOW",
+            "rationale": "This ordering is a hypothesis, not an official level sequence.",
+            "limitations": [
+              "No learner data.",
+              "No measured load threshold."
+            ]
+          },
+          "adaptiveLearningFit": "A future authoritative queue could keep both lexical prerequisites in order and allow only policy-approved repetition; adaptive ranking must not reorder or select a next lesson autonomously.",
+          "load": {
+            "newVocabularyCount": 2,
+            "newGrammarCount": 0,
+            "newCharacterRecognitionCount": 0,
+            "newWritingCount": 0,
+            "newPhoneticSyllableCount": 5,
+            "riskFlags": [
+              "Two new words and five syllables arrive in the first slot; no threshold is inferred."
+            ]
+          }
+        },
+        {
+          "slot": "B",
+          "title": "Prototype B — Vocabulary + visual recognition",
+          "skillTargets": [
+            "skill-visual-meaning-recognition"
+          ],
+          "vocabularyTargets": [
+            "vocab-today",
+            "vocab-weekday-monday"
+          ],
+          "grammarTargets": [],
+          "characterTargets": [],
+          "newVocabularyTargets": [],
+          "newGrammarTargets": [],
+          "newCharacterTargets": [],
+          "recycledTargetIds": [
+            "vocab-today",
+            "vocab-weekday-monday"
+          ],
+          "listeningComprehensionTargets": [],
+          "visualMeaningComprehensionTargets": [
+            "vocab-today",
+            "vocab-weekday-monday"
+          ],
+          "spokenProductionTargets": [],
+          "characterRecognitionTargets": [],
+          "scriptReadingTargets": [],
+          "writingTargets": [],
+          "phoneticTargetSyllables": [],
+          "srsReviewTargets": [],
+          "prerequisites": [
+            "vocab-today",
+            "vocab-weekday-monday"
+          ],
+          "whyNow": "The child has already heard both labels, so this slot asks whether the meanings can be mapped visually without also requiring Chinese script recognition.",
+          "orderRationale": "Visual-semantic matching follows oral introduction and precedes productive sentence work.",
+          "alternatives": [
+            "Show Chinese word forms in this slot; that would mix semantic visual matching with character recognition and is excluded from this variant."
+          ],
+          "confidence": {
+            "rating": "LOW",
+            "rationale": "Separating visual meaning from character recognition is a proposal design choice.",
+            "limitations": [
+              "No image is authored.",
+              "Calendar layout conventions require localization."
+            ]
+          },
+          "adaptiveLearningFit": "Repeat a visual meaning task only against these two fixed targets; no new target is inferred from success or error.",
+          "load": {
+            "newVocabularyCount": 0,
+            "newGrammarCount": 0,
+            "newCharacterRecognitionCount": 0,
+            "newWritingCount": 0,
+            "newPhoneticSyllableCount": 0,
+            "riskFlags": []
+          }
+        },
+        {
+          "slot": "C",
+          "title": "Prototype C — Sentence pattern + speaking",
+          "skillTargets": [
+            "skill-copular-speaking"
+          ],
+          "vocabularyTargets": [
+            "vocab-today",
+            "vocab-weekday-monday"
+          ],
+          "grammarTargets": [
+            "grammar-copula-is"
+          ],
+          "characterTargets": [],
+          "newVocabularyTargets": [],
+          "newGrammarTargets": [
+            "grammar-copula-is"
+          ],
+          "newCharacterTargets": [],
+          "recycledTargetIds": [
+            "vocab-today",
+            "vocab-weekday-monday"
+          ],
+          "listeningComprehensionTargets": [
+            "grammar-copula-is"
+          ],
+          "visualMeaningComprehensionTargets": [],
+          "spokenProductionTargets": [
+            "grammar-copula-is"
+          ],
+          "characterRecognitionTargets": [],
+          "scriptReadingTargets": [],
+          "writingTargets": [],
+          "phoneticTargetSyllables": [
+            "shì"
+          ],
+          "srsReviewTargets": [],
+          "prerequisites": [
+            "vocab-today",
+            "vocab-weekday-monday"
+          ],
+          "whyNow": "Only after the two lexical meanings are familiar does this proposal add a receptive and productive copular relation.",
+          "orderRationale": "This is the key communication-first decision: speaking occurs before the separate character-recognition/SRS slot.",
+          "alternatives": [
+            "Move the copula into Prototype A as listening-only and require speaking after character recognition, as in Variant B."
+          ],
+          "confidence": {
+            "rating": "LOW",
+            "rationale": "TBCL supports considering a Level 1 copula but does not select this frame or productive timing.",
+            "limitations": [
+              "Needs Owner curriculum judgment.",
+              "No learner validation."
+            ]
+          },
+          "adaptiveLearningFit": "The queue must verify both vocabulary prerequisites before this candidate speaking task; adaptive ranking cannot bypass that dependency.",
+          "load": {
+            "newVocabularyCount": 0,
+            "newGrammarCount": 1,
+            "newCharacterRecognitionCount": 0,
+            "newWritingCount": 0,
+            "newPhoneticSyllableCount": 1,
+            "riskFlags": [
+              "The copula's spoken production requirement is a major unresolved teaching choice."
+            ]
+          }
+        },
+        {
+          "slot": "D",
+          "title": "Prototype D — Character recognition + SRS",
+          "skillTargets": [
+            "skill-character-recognition"
+          ],
+          "vocabularyTargets": [],
+          "grammarTargets": [],
+          "characterTargets": [
+            "char-jin",
+            "char-tian",
+            "char-xing",
+            "char-qi",
+            "char-yi",
+            "char-shi"
+          ],
+          "newVocabularyTargets": [],
+          "newGrammarTargets": [],
+          "newCharacterTargets": [
+            "char-jin",
+            "char-tian",
+            "char-xing",
+            "char-qi",
+            "char-yi",
+            "char-shi"
+          ],
+          "recycledTargetIds": [
+            "vocab-today",
+            "vocab-weekday-monday",
+            "grammar-copula-is"
+          ],
+          "listeningComprehensionTargets": [],
+          "visualMeaningComprehensionTargets": [],
+          "spokenProductionTargets": [],
+          "characterRecognitionTargets": [
+            "char-jin",
+            "char-tian",
+            "char-xing",
+            "char-qi",
+            "char-yi",
+            "char-shi"
+          ],
+          "scriptReadingTargets": [],
+          "writingTargets": [],
+          "phoneticTargetSyllables": [],
+          "srsReviewTargets": [
+            "char-jin",
+            "char-tian",
+            "char-xing",
+            "char-qi",
+            "char-yi",
+            "char-shi"
+          ],
+          "prerequisites": [
+            "vocab-today",
+            "vocab-weekday-monday",
+            "grammar-copula-is"
+          ],
+          "whyNow": "After oral sentence work, this slot introduces the six visible characters as recognition-only candidates and explores one-character SRS items.",
+          "orderRationale": "Recognition and SRS follow communication so script exposure does not delay the oral experiment.",
+          "alternatives": [
+            "Use whole-word SRS items instead of six individual characters; this may reduce item count but changes the SRS contract."
+          ],
+          "confidence": {
+            "rating": "LOW",
+            "rationale": "Neither six-character load nor character-level SRS is validated by real learners.",
+            "limitations": [
+              "Character-level SRS identity and intervals are not implemented here.",
+              "No writing requirement."
+            ]
+          },
+          "adaptiveLearningFit": "If ever approved, REVIEW must address only exact character targets and remain separate from new curriculum selection; no interval or mastery effect is proposed.",
+          "load": {
+            "newVocabularyCount": 0,
+            "newGrammarCount": 0,
+            "newCharacterRecognitionCount": 6,
+            "newWritingCount": 0,
+            "newPhoneticSyllableCount": 0,
+            "riskFlags": [
+              "Six new character forms in one slot may be high load; no threshold is available."
+            ]
+          }
+        },
+        {
+          "slot": "E",
+          "title": "Prototype E — Integrated LEARN + REVIEW + REPAIR",
+          "skillTargets": [
+            "skill-integrated-learn-review-repair"
+          ],
+          "vocabularyTargets": [
+            "vocab-today",
+            "vocab-weekday-monday"
+          ],
+          "grammarTargets": [
+            "grammar-copula-is"
+          ],
+          "characterTargets": [
+            "char-jin",
+            "char-tian",
+            "char-xing",
+            "char-qi",
+            "char-yi",
+            "char-shi"
+          ],
+          "newVocabularyTargets": [],
+          "newGrammarTargets": [],
+          "newCharacterTargets": [],
+          "recycledTargetIds": [
+            "vocab-today",
+            "vocab-weekday-monday",
+            "grammar-copula-is",
+            "char-jin",
+            "char-tian",
+            "char-xing",
+            "char-qi",
+            "char-yi",
+            "char-shi"
+          ],
+          "listeningComprehensionTargets": [
+            "vocab-today",
+            "vocab-weekday-monday",
+            "grammar-copula-is"
+          ],
+          "visualMeaningComprehensionTargets": [
+            "vocab-today",
+            "vocab-weekday-monday"
+          ],
+          "spokenProductionTargets": [
+            "vocab-today",
+            "vocab-weekday-monday",
+            "grammar-copula-is"
+          ],
+          "characterRecognitionTargets": [
+            "char-jin",
+            "char-tian",
+            "char-xing",
+            "char-qi",
+            "char-yi",
+            "char-shi"
+          ],
+          "scriptReadingTargets": [],
+          "writingTargets": [],
+          "phoneticTargetSyllables": [
+            "jīn",
+            "tiān",
+            "shì",
+            "xīng",
+            "qī",
+            "yī"
+          ],
+          "srsReviewTargets": [
+            "char-jin",
+            "char-tian",
+            "char-xing",
+            "char-qi",
+            "char-yi",
+            "char-shi"
+          ],
+          "prerequisites": [
+            "vocab-today",
+            "vocab-weekday-monday",
+            "grammar-copula-is",
+            "char-jin",
+            "char-tian",
+            "char-xing",
+            "char-qi",
+            "char-yi",
+            "char-shi"
+          ],
+          "whyNow": "The final slot reuses only the proposal's prior targets to test the integrated mode contract; it adds no new curriculum target.",
+          "orderRationale": "Integration is last so REVIEW and REPAIR can refer to an exact earlier target set.",
+          "alternatives": [
+            "End after Prototype D; that would not test the required integrated LEARN/REVIEW/REPAIR capability."
+          ],
+          "confidence": {
+            "rating": "LOW",
+            "rationale": "The mode mix is a feasibility hypothesis, not a validated review policy.",
+            "limitations": [
+              "No actual tasks are authored.",
+              "No SRS interval, mastery settlement, or reward policy."
+            ]
+          },
+          "adaptiveLearningFit": "A future queue may surface only approved due items for these exact targets; repair must reuse prior approved targets and cannot autonomously choose new content.",
+          "load": {
+            "newVocabularyCount": 0,
+            "newGrammarCount": 0,
+            "newCharacterRecognitionCount": 0,
+            "newWritingCount": 0,
+            "newPhoneticSyllableCount": 0,
+            "riskFlags": [
+              "Mixed-mode task and review policy requires a separate executable contract audit."
+            ]
+          }
+        }
+      ],
+      "strengths": [
+        "Separates oral introduction, visual meaning, productive grammar, script recognition, and later review.",
+        "Makes the speaking-before-script sequencing decision visible."
+      ],
+      "risks": [
+        "C delays script support until after productive speaking.",
+        "Six character targets are introduced together.",
+        "No real-child or device validation."
+      ],
+      "cognitiveLoadSummary": "New load by order A→E: vocabulary 2, 0, 0, 0, 0; grammar 0, 0, 1, 0, 0; character recognition 0, 0, 0, 6, 0; writing 0 in every slot; phonetic syllables 5, 0, 1, 0, 0. No universal load threshold is asserted.",
+      "adaptiveLearningFit": "A conservative authoritative queue can enforce the declared prerequisites and modes. Adaptive recommendation remains read-only and cannot choose or reorder the next target; this plan does not change that policy.",
+      "confidence": {
+        "rating": "LOW",
+        "rationale": "The target identities have traceable source evidence, but variant superiority and learner outcomes are unknown.",
+        "limitations": [
+          "No real-child validation.",
+          "No formal content graph promotion.",
+          "No UI/audio assets."
+        ]
+      }
+    },
+    {
+      "variantId": "B",
+      "label": "Phonetic/recognition-balanced",
+      "sequence": [
+        "A",
+        "B",
+        "D",
+        "C",
+        "E"
+      ],
+      "lessons": [
+        {
+          "slot": "A",
+          "title": "Prototype A — Listening + pronunciation",
+          "skillTargets": [
+            "skill-listening-comprehension",
+            "skill-pronunciation"
+          ],
+          "vocabularyTargets": [
+            "vocab-today",
+            "vocab-weekday-monday"
+          ],
+          "grammarTargets": [
+            "grammar-copula-is"
+          ],
+          "characterTargets": [],
+          "newVocabularyTargets": [
+            "vocab-today",
+            "vocab-weekday-monday"
+          ],
+          "newGrammarTargets": [
+            "grammar-copula-is"
+          ],
+          "newCharacterTargets": [],
+          "recycledTargetIds": [],
+          "listeningComprehensionTargets": [
+            "vocab-today",
+            "vocab-weekday-monday",
+            "grammar-copula-is"
+          ],
+          "visualMeaningComprehensionTargets": [],
+          "spokenProductionTargets": [
+            "vocab-today",
+            "vocab-weekday-monday"
+          ],
+          "characterRecognitionTargets": [],
+          "scriptReadingTargets": [],
+          "writingTargets": [],
+          "phoneticTargetSyllables": [
+            "jīn",
+            "tiān",
+            "shì",
+            "xīng",
+            "qī",
+            "yī"
+          ],
+          "srsReviewTargets": [],
+          "prerequisites": [],
+          "whyNow": "The copular form is heard and understood receptively with the two words in the first slot; speaking the full frame is deliberately deferred.",
+          "orderRationale": "This variant balances phonetic and grammatical listening input early, then schedules character recognition before productive sentence use.",
+          "alternatives": [
+            "Delay 是 until Prototype C as in Variant A; that lowers first-slot load but leaves no receptive grammar preparation."
+          ],
+          "confidence": {
+            "rating": "LOW",
+            "rationale": "This is an intentional sequencing comparison, not a level requirement.",
+            "limitations": [
+              "Three target units and six syllables appear in the first slot.",
+              "No learner data."
+            ]
+          },
+          "adaptiveLearningFit": "A queue could allow recognition support before the speaking prerequisite only if the Owner approves this order; adaptive ranking must not invent or reorder it.",
+          "load": {
+            "newVocabularyCount": 2,
+            "newGrammarCount": 1,
+            "newCharacterRecognitionCount": 0,
+            "newWritingCount": 0,
+            "newPhoneticSyllableCount": 6,
+            "riskFlags": [
+              "Highest first-slot oral/phonetic load across the variants.",
+              "Grammar is receptive only here."
+            ]
+          }
+        },
+        {
+          "slot": "B",
+          "title": "Prototype B — Vocabulary + visual recognition",
+          "skillTargets": [
+            "skill-visual-meaning-recognition"
+          ],
+          "vocabularyTargets": [
+            "vocab-today",
+            "vocab-weekday-monday"
+          ],
+          "grammarTargets": [],
+          "characterTargets": [],
+          "newVocabularyTargets": [],
+          "newGrammarTargets": [],
+          "newCharacterTargets": [],
+          "recycledTargetIds": [
+            "vocab-today",
+            "vocab-weekday-monday"
+          ],
+          "listeningComprehensionTargets": [],
+          "visualMeaningComprehensionTargets": [
+            "vocab-today",
+            "vocab-weekday-monday"
+          ],
+          "spokenProductionTargets": [],
+          "characterRecognitionTargets": [],
+          "scriptReadingTargets": [],
+          "writingTargets": [],
+          "phoneticTargetSyllables": [],
+          "srsReviewTargets": [],
+          "prerequisites": [
+            "vocab-today",
+            "vocab-weekday-monday"
+          ],
+          "whyNow": "The two meanings are already known aurally, so the same visual-semantic mapping as Variant A can be compared before script recognition.",
+          "orderRationale": "This preserves a separate non-script visual vocabulary slot and prevents visual meaning from being conflated with reading.",
+          "alternatives": [
+            "Display the Chinese forms here; that would add character exposure before the explicitly tracked character-recognition/SRS slot."
+          ],
+          "confidence": {
+            "rating": "LOW",
+            "rationale": "Separating visual meaning from script recognition is a proposal design choice.",
+            "limitations": [
+              "No image is authored.",
+              "Calendar conventions may require localization."
+            ]
+          },
+          "adaptiveLearningFit": "Repeat only the two fixed meaning targets; no new vocabulary is selected from visual success or failure.",
+          "load": {
+            "newVocabularyCount": 0,
+            "newGrammarCount": 0,
+            "newCharacterRecognitionCount": 0,
+            "newWritingCount": 0,
+            "newPhoneticSyllableCount": 0,
+            "riskFlags": []
+          }
+        },
+        {
+          "slot": "D",
+          "title": "Prototype D — Character recognition + SRS",
+          "skillTargets": [
+            "skill-character-recognition"
+          ],
+          "vocabularyTargets": [],
+          "grammarTargets": [],
+          "characterTargets": [
+            "char-jin",
+            "char-tian",
+            "char-xing",
+            "char-qi",
+            "char-yi",
+            "char-shi"
+          ],
+          "newVocabularyTargets": [],
+          "newGrammarTargets": [],
+          "newCharacterTargets": [
+            "char-jin",
+            "char-tian",
+            "char-xing",
+            "char-qi",
+            "char-yi",
+            "char-shi"
+          ],
+          "recycledTargetIds": [
+            "vocab-today",
+            "vocab-weekday-monday",
+            "grammar-copula-is"
+          ],
+          "listeningComprehensionTargets": [],
+          "visualMeaningComprehensionTargets": [],
+          "spokenProductionTargets": [],
+          "characterRecognitionTargets": [
+            "char-jin",
+            "char-tian",
+            "char-xing",
+            "char-qi",
+            "char-yi",
+            "char-shi"
+          ],
+          "scriptReadingTargets": [],
+          "writingTargets": [],
+          "phoneticTargetSyllables": [],
+          "srsReviewTargets": [
+            "char-jin",
+            "char-tian",
+            "char-xing",
+            "char-qi",
+            "char-yi",
+            "char-shi"
+          ],
+          "prerequisites": [
+            "vocab-today",
+            "vocab-weekday-monday",
+            "grammar-copula-is"
+          ],
+          "whyNow": "The child has already heard the full sentence relation, then receives script recognition/SRS support before being asked to produce the full sentence.",
+          "orderRationale": "This is the balanced variant's key choice: receptive grammar and character recognition both precede speaking.",
+          "alternatives": [
+            "Move this slot after Prototype C, as in Variant A, so all character recognition follows productive communication."
+          ],
+          "confidence": {
+            "rating": "LOW",
+            "rationale": "The sequence is designed for comparison; the six-character load and SRS grain are unvalidated.",
+            "limitations": [
+              "No exact backend character-SRS contract.",
+              "No child validation.",
+              "No handwriting."
+            ]
+          },
+          "adaptiveLearningFit": "If approved, queue only these exact recognition candidates before the speaking task; this is a fixed plan, not a recommendation engine change.",
+          "load": {
+            "newVocabularyCount": 0,
+            "newGrammarCount": 0,
+            "newCharacterRecognitionCount": 6,
+            "newWritingCount": 0,
+            "newPhoneticSyllableCount": 0,
+            "riskFlags": [
+              "Six new character forms arrive in one slot.",
+              "The recognition-before-speaking benefit is unverified."
+            ]
+          }
+        },
+        {
+          "slot": "C",
+          "title": "Prototype C — Sentence pattern + speaking",
+          "skillTargets": [
+            "skill-copular-speaking"
+          ],
+          "vocabularyTargets": [
+            "vocab-today",
+            "vocab-weekday-monday"
+          ],
+          "grammarTargets": [
+            "grammar-copula-is"
+          ],
+          "characterTargets": [],
+          "newVocabularyTargets": [],
+          "newGrammarTargets": [],
+          "newCharacterTargets": [],
+          "recycledTargetIds": [
+            "vocab-today",
+            "vocab-weekday-monday",
+            "grammar-copula-is"
+          ],
+          "listeningComprehensionTargets": [
+            "grammar-copula-is"
+          ],
+          "visualMeaningComprehensionTargets": [],
+          "spokenProductionTargets": [
+            "grammar-copula-is"
+          ],
+          "characterRecognitionTargets": [],
+          "scriptReadingTargets": [],
+          "writingTargets": [],
+          "phoneticTargetSyllables": [],
+          "srsReviewTargets": [],
+          "prerequisites": [
+            "vocab-today",
+            "vocab-weekday-monday",
+            "grammar-copula-is",
+            "char-jin",
+            "char-tian",
+            "char-xing",
+            "char-qi",
+            "char-yi",
+            "char-shi"
+          ],
+          "whyNow": "After the same receptive vocabulary, grammar, and character candidates, the learner now tries the one oral frame.",
+          "orderRationale": "Speaking is deliberately delayed until both phonetic input and character-recognition/SRS exposure have occurred.",
+          "alternatives": [
+            "Allow speaking after only receptive word and grammar input, as in Variant A."
+          ],
+          "confidence": {
+            "rating": "LOW",
+            "rationale": "No evidence here proves character recognition improves or should precede speaking.",
+            "limitations": [
+              "Needs Owner curriculum judgment.",
+              "No learner comparison data."
+            ]
+          },
+          "adaptiveLearningFit": "The authoritative sequence must enforce all listed prerequisites; adaptive recommendation may not skip recognition because of a model score.",
+          "load": {
+            "newVocabularyCount": 0,
+            "newGrammarCount": 0,
+            "newCharacterRecognitionCount": 0,
+            "newWritingCount": 0,
+            "newPhoneticSyllableCount": 0,
+            "riskFlags": [
+              "Possible interference: recognizing six script forms before producing a sentence could increase load."
+            ]
+          }
+        },
+        {
+          "slot": "E",
+          "title": "Prototype E — Integrated LEARN + REVIEW + REPAIR",
+          "skillTargets": [
+            "skill-integrated-learn-review-repair"
+          ],
+          "vocabularyTargets": [
+            "vocab-today",
+            "vocab-weekday-monday"
+          ],
+          "grammarTargets": [
+            "grammar-copula-is"
+          ],
+          "characterTargets": [
+            "char-jin",
+            "char-tian",
+            "char-xing",
+            "char-qi",
+            "char-yi",
+            "char-shi"
+          ],
+          "newVocabularyTargets": [],
+          "newGrammarTargets": [],
+          "newCharacterTargets": [],
+          "recycledTargetIds": [
+            "vocab-today",
+            "vocab-weekday-monday",
+            "grammar-copula-is",
+            "char-jin",
+            "char-tian",
+            "char-xing",
+            "char-qi",
+            "char-yi",
+            "char-shi"
+          ],
+          "listeningComprehensionTargets": [
+            "vocab-today",
+            "vocab-weekday-monday",
+            "grammar-copula-is"
+          ],
+          "visualMeaningComprehensionTargets": [
+            "vocab-today",
+            "vocab-weekday-monday"
+          ],
+          "spokenProductionTargets": [
+            "vocab-today",
+            "vocab-weekday-monday",
+            "grammar-copula-is"
+          ],
+          "characterRecognitionTargets": [
+            "char-jin",
+            "char-tian",
+            "char-xing",
+            "char-qi",
+            "char-yi",
+            "char-shi"
+          ],
+          "scriptReadingTargets": [],
+          "writingTargets": [],
+          "phoneticTargetSyllables": [
+            "jīn",
+            "tiān",
+            "shì",
+            "xīng",
+            "qī",
+            "yī"
+          ],
+          "srsReviewTargets": [
+            "char-jin",
+            "char-tian",
+            "char-xing",
+            "char-qi",
+            "char-yi",
+            "char-shi"
+          ],
+          "prerequisites": [
+            "vocab-today",
+            "vocab-weekday-monday",
+            "grammar-copula-is",
+            "char-jin",
+            "char-tian",
+            "char-xing",
+            "char-qi",
+            "char-yi",
+            "char-shi"
+          ],
+          "whyNow": "Integration comes last and only reuses the exact target identities from the earlier slots.",
+          "orderRationale": "This preserves the same integrated-flow experiment while keeping order difference isolated to speaking and character support.",
+          "alternatives": [
+            "Do not include a mixed LEARN/REVIEW/REPAIR slot; that fails to test the required integrated capability."
+          ],
+          "confidence": {
+            "rating": "LOW",
+            "rationale": "The task-mode sequence is not implemented or child-validated.",
+            "limitations": [
+              "No mode/task implementation.",
+              "No SRS interval, mastery settlement, or reward policy."
+            ]
+          },
+          "adaptiveLearningFit": "Only exact approved due items may be reviewed; repair reuses already approved candidates and never generates the next lesson.",
+          "load": {
+            "newVocabularyCount": 0,
+            "newGrammarCount": 0,
+            "newCharacterRecognitionCount": 0,
+            "newWritingCount": 0,
+            "newPhoneticSyllableCount": 0,
+            "riskFlags": [
+              "Mixed-mode contract needs a separate technical review."
+            ]
+          }
+        }
+      ],
+      "strengths": [
+        "Presents receptive grammar early and character recognition before productive speaking.",
+        "Makes phonetic, semantic-visual, and script recognition loads separately countable."
+      ],
+      "risks": [
+        "Prototype A has the highest first-slot lexical, grammar, and phonetic load.",
+        "Six character candidates are clustered before speaking.",
+        "No empirical evidence says this order is better."
+      ],
+      "cognitiveLoadSummary": "New load by order A→B→D→C→E: vocabulary 2, 0, 0, 0, 0; grammar 1 receptive, 0, 0, 0 productive, 0; character recognition 0, 0, 6, 0, 0; writing 0 in every slot; phonetic syllables 6, 0, 0, 0, 0. No universal load threshold is asserted.",
+      "adaptiveLearningFit": "A conservative queue can enforce the fixed prerequisites after an Owner decision. A recommendation score cannot autonomously choose the next slot or alter the order.",
+      "confidence": {
+        "rating": "LOW",
+        "rationale": "The targets have traceable source evidence, but no learner comparison can rank the variants.",
+        "limitations": [
+          "No real-child validation.",
+          "No content graph promotion.",
+          "No UI/audio assets."
+        ]
+      }
+    }
+  ],
+  "ownerDecision": null
+}

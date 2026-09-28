@@ -19,6 +19,8 @@ AUTHORITATIVE FRAMEWORK / LEGALLY USABLE SOURCES
 
 `NO_AUTONOMOUS_NEXT_LESSON`: completing lesson N never authorizes Codex to choose lesson N+1. The next targets must come from an approved Curriculum Graph and plan.
 
+The current proposal-only five-lesson experiment is `prototype-peer-exchange-2026-09-v3`. Its L3 noun remains `OWNER_LEXICAL_DECISION_REQUIRED`; typed `HARD_PREREQUISITE` edges are distinct from pedagogical order, recycled context, and scaffoldable assumptions. These proposal corrections do not promote graph nodes or change executable learning behavior.
+
 ## Source registry
 
 [`shared/content-sources/source-registry.json`](../shared/content-sources/source-registry.json) is the source-of-truth registry for curriculum sources. Each source record contains source/authority identity, ownership, license scope, commercial/modification/redistribution/attribution/share-alike/raw-ingestion/public-repository/derivative permissions, validation-only and item-level flags, evidence records, a policy decision, verification date, and constraints. Every rights decision links its evidence IDs to records containing the evidence URL, locator, observation date, capture method, supported claim types, a SHA-256 of the UTF-8 response-text representation when captured, and a concise claim summary. Evidence records store no third-party corpus rows or substantial source excerpts.
@@ -71,7 +73,7 @@ The node schemas live in [`shared/open-curriculum/schemas/`](../shared/open-curr
 
 ## Current audit references
 
-See [`docs/content-rights-audit.md`](content-rights-audit.md) and machine-readable [`shared/content-sources/public-repo-audit.json`](../shared/content-sources/public-repo-audit.json) for the current tracked-tree inventory and classification boundaries. [`scripts/open_curriculum_rights_gate.py --check`](../scripts/open_curriculum_rights_gate.py) verifies inventory coverage, evidence references, digest drift, root-MIT separation, and automatically validates every tracked JSON pack under `shared/open-curriculum/packs/`; a `PUBLISHABLE` pack must also have an individually cleared inventory path. `--publishable-pack` combines curriculum validation with its tracked path clearance check. See [`docs/open-curriculum-experiment-proposal.md`](open-curriculum-experiment-proposal.md) for the proposed five-slot experiment structure; it contains no selected official targets or executable lessons.
+See [`docs/content-rights-audit.md`](content-rights-audit.md) and machine-readable [`shared/content-sources/public-repo-audit.json`](../shared/content-sources/public-repo-audit.json) for the current tracked-tree inventory and classification boundaries. [`scripts/open_curriculum_rights_gate.py --check`](../scripts/open_curriculum_rights_gate.py) verifies inventory coverage, evidence references, digest drift, root-MIT separation, and automatically validates every tracked JSON pack under `shared/open-curriculum/packs/`; a `PUBLISHABLE` pack must also have an individually cleared inventory path. `--publishable-pack` combines curriculum validation with its tracked path clearance check. [`docs/open-curriculum-experiment-proposal.md`](open-curriculum-experiment-proposal.md) points to the current v4 cumulative Issue #109 proposal, records the exact-hash Owner REVISE decisions for v1–v3, and preserves the v4 `玩具` selection as an Owner curriculum hypothesis rather than a source-established ranking.
 
 ## Official references checked on 2026-09-28
 

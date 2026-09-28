@@ -1,0 +1,3665 @@
+{
+  "schemaVersion": "2.0",
+  "documentType": "PROTOTYPE_CURRICULUM_EXPERIMENT_PROPOSAL",
+  "proposalId": "prototype-peer-exchange-2026-09-v3",
+  "approvalStatus": "PROPOSED",
+  "authority": {
+    "proposer": "CODEX_AI_PROPOSER",
+    "advisoryReviewer": "ADVERSARIAL_ARCHITECT_REVIEW_ADVISORY_ONLY",
+    "finalHumanApprover": "WEBBER_FINAL_HUMAN_CURRICULUM_APPROVER"
+  },
+  "scope": {
+    "experimentType": "FEASIBILITY_PROTOTYPE_ONLY",
+    "formalCourseClaim": false,
+    "executableLessonsCreated": false,
+    "approvedGraphMutated": false,
+    "ocacMaterialConsulted": false,
+    "contaminationAssessment": "This v3 changes only the L3 lexical-choice gate and proposal relationship semantics. No OCAC lesson, title, target list, sequence, teacher material, or test item was consulted or used. Research is limited to official TBCL/CCCC capability/context references, item-level CC-CEDICT lookups, and TongXuan authority contracts. Non-contamination has not been benchmarked or certified; no later OCAC benchmark is authorized until the TongXuan prototype is frozen.",
+    "writingTargets": []
+  },
+  "licenseNotice": {
+    "cedictLicense": "CC BY-SA 4.0",
+    "attribution": "CC-CEDICT contributors; item-level lookup distributed through MDBG; CC BY-SA 4.0.",
+    "changes": "Selected traditional item forms, Pinyin, and short glosses were normalized into proposal fields. Lesson targets, grammar frames, recognition timing, sequence, and rationales are TongXuan-authored hypotheses. No raw dictionary database, example sentences, test questions, audio, or images are included.",
+    "mitAppliesToCedictData": false
+  },
+  "sourceCatalog": [
+    {
+      "sourceId": "cc-cedict",
+      "status": "GREEN",
+      "useMode": "CONTENT_SOURCE",
+      "rawDatasetIngested": false,
+      "license": "CC BY-SA 4.0",
+      "permittedUse": "Selected item-level traditional/simplified forms, Mandarin Pinyin, and basic glosses, with attribution, changes stated, and share-alike maintained.",
+      "prohibitedUse": "No raw-dataset ingestion in this proposal; no frequency or sequence claims; never relicense CC-CEDICT-derived data under MIT."
+    },
+    {
+      "sourceId": "tbcl-naer",
+      "status": "YELLOW",
+      "useMode": "REFERENCE_ONLY",
+      "rawDatasetIngested": false,
+      "license": null,
+      "permittedUse": "Cite broad official beginner receptive/productive capability descriptors and level context.",
+      "prohibitedUse": "No copied tables or items; no reuse authorization; does not prescribe these targets, exact wording, or lesson order."
+    },
+    {
+      "sourceId": "tocfl-cccc",
+      "status": "YELLOW",
+      "useMode": "REFERENCE_ONLY",
+      "rawDatasetIngested": false,
+      "license": null,
+      "permittedUse": "Cite public child-age, child-centered context and broad everyday/leisure topic scope.",
+      "prohibitedUse": "No test item, question, answer, audio, image, content, or sequence reuse."
+    }
+  ],
+  "evidenceCatalog": [
+    {
+      "evidenceId": "ev-tbcl-l1",
+      "sourceId": "tbcl-naer",
+      "category": "OFFICIAL_LEVEL_FRAMEWORK",
+      "reference": "https://coct.naer.edu.tw/page.jsp?ID=11",
+      "claim": "TBCL Level 1 describes simple words and phrases for personal life; Listening L-1-3 covers everyday greetings and short phrases; Speaking S-1-2 covers personal information and S-1-3 greetings/thanks. This supports broad capability scope only, not this proposal's exact expressions or sequence.",
+      "useMode": "REFERENCE_ONLY",
+      "rawContentIncluded": false
+    },
+    {
+      "evidenceId": "ev-tbcl-l2",
+      "sourceId": "tbcl-naer",
+      "category": "OFFICIAL_LEVEL_FRAMEWORK",
+      "reference": "https://coct.naer.edu.tw/page.jsp?ID=12",
+      "claim": "TBCL Level 2 describes simple words/phrases and short sentences for daily life; Speaking S-2-2 covers expressing self/friends' interests and interacting; Listening L-2-1 covers personal questions. This supports a possible progression endpoint, not an official five-lesson sequence or required mastery threshold.",
+      "useMode": "REFERENCE_ONLY",
+      "rawContentIncluded": false
+    },
+    {
+      "evidenceId": "ev-cccc-child-context",
+      "sourceId": "tocfl-cccc",
+      "category": "CHILD_CONTEXT_REFERENCE",
+      "reference": "https://tocfl.edu.tw/tocfl/index.php/test/cccc/list/1",
+      "claim": "CCCC is designed for non-native Chinese-speaking children ages 7–12, considers child cognitive/language development, and uses child-life contexts including leisure activities. This informs age/context relevance only; no CCCC task, target order, item, or expected load is copied.",
+      "useMode": "REFERENCE_ONLY",
+      "rawContentIncluded": false
+    },
+    {
+      "evidenceId": "ev-cedict-license",
+      "sourceId": "cc-cedict",
+      "category": "OPEN_LEXICAL_ITEM",
+      "reference": "https://cc-cedict.org/editor/editor.php?handler=Download",
+      "claim": "CC-CEDICT item data is licensed CC BY-SA 4.0. Attribution, change indication, and share-alike apply. This source is not relicensed under TongXuan repository MIT.",
+      "useMode": "CONTENT_SOURCE",
+      "rawContentIncluded": false
+    },
+    {
+      "evidenceId": "ev-tongxuan-hypothesis",
+      "sourceId": "tongxuan-proposal",
+      "category": "TONGXUAN_HYPOTHESIS",
+      "reference": "https://github.com/webber0612/TongXuan-Chinese/issues/109",
+      "claim": "The peer-introduction-to-preference-exchange theme, candidate targets, target load, typed relationship distinctions, recycling, and sequence are TongXuan hypotheses. TBCL/CCCC do not mandate them. Frequency evidence is unavailable in the cited lexical source and remains UNVERIFIED.",
+      "useMode": "AUTHORED_HYPOTHESIS",
+      "rawContentIncluded": false
+    },
+    {
+      "evidenceId": "ev-character-srs-unresolved",
+      "sourceId": "tongxuan-proposal",
+      "category": "TONGXUAN_HYPOTHESIS",
+      "reference": "https://github.com/webber0612/TongXuan-Chinese/issues/109",
+      "claim": "Character-level SRS is UNRESOLVED. Character recognition is proposed separately; no character ID is placed in srsReviewTargets because the cited framework and lexical references do not support a character-level review/mastery unit.",
+      "useMode": "AUTHORED_HYPOTHESIS",
+      "rawContentIncluded": false
+    },
+    {
+      "evidenceId": "ev-lex-nihao",
+      "sourceId": "cc-cedict",
+      "category": "OPEN_LEXICAL_ITEM",
+      "reference": "https://www.mdbg.net/chinese/dictionary?page=worddict&wdqb=%E4%BD%A0%E5%A5%BD",
+      "claim": "Manual item lookup supports selected traditional form 你好, Pinyin nǐhǎo, and basic sense 'hello; greeting'. It does not establish learner frequency, child suitability, or instructional order.",
+      "useMode": "CONTENT_SOURCE",
+      "rawContentIncluded": false
+    },
+    {
+      "evidenceId": "ev-lex-wo",
+      "sourceId": "cc-cedict",
+      "category": "OPEN_LEXICAL_ITEM",
+      "reference": "https://www.mdbg.net/chinese/dictionary?page=worddict&wdqb=%E6%88%91",
+      "claim": "Manual item lookup supports selected traditional form 我, Pinyin wǒ, and basic sense 'I; me; my'. It does not establish learner frequency, child suitability, or instructional order.",
+      "useMode": "CONTENT_SOURCE",
+      "rawContentIncluded": false
+    },
+    {
+      "evidenceId": "ev-lex-jiao",
+      "sourceId": "cc-cedict",
+      "category": "OPEN_LEXICAL_ITEM",
+      "reference": "https://www.mdbg.net/chinese/dictionary?page=worddict&wdqb=%E6%88%91%E5%8F%AB",
+      "claim": "Manual item lookup supports selected traditional form 叫, Pinyin jiào, and basic sense 'to be called; to call'. It does not establish learner frequency, child suitability, or instructional order.",
+      "useMode": "CONTENT_SOURCE",
+      "rawContentIncluded": false
+    },
+    {
+      "evidenceId": "ev-lex-ni",
+      "sourceId": "cc-cedict",
+      "category": "OPEN_LEXICAL_ITEM",
+      "reference": "https://www.mdbg.net/chinese/dictionary?page=worddict&wdqb=%E4%BD%A0",
+      "claim": "Manual item lookup supports selected traditional form 你, Pinyin nǐ, and basic sense 'you (informal)'. It does not establish learner frequency, child suitability, or instructional order.",
+      "useMode": "CONTENT_SOURCE",
+      "rawContentIncluded": false
+    },
+    {
+      "evidenceId": "ev-lex-shenme",
+      "sourceId": "cc-cedict",
+      "category": "OPEN_LEXICAL_ITEM",
+      "reference": "https://www.mdbg.net/chinese/dictionary?page=worddict&wdqb=%E4%BB%80%E9%BA%BC",
+      "claim": "Manual item lookup supports selected traditional form 什麼, Pinyin shénme, and basic sense 'what; something'. It does not establish learner frequency, child suitability, or instructional order.",
+      "useMode": "CONTENT_SOURCE",
+      "rawContentIncluded": false
+    },
+    {
+      "evidenceId": "ev-lex-mingzi",
+      "sourceId": "cc-cedict",
+      "category": "OPEN_LEXICAL_ITEM",
+      "reference": "https://www.mdbg.net/chinese/dictionary?page=worddict&wdqb=%E5%90%8D%E5%AD%97",
+      "claim": "Manual item lookup supports selected traditional form 名字, Pinyin míngzi, and basic sense 'name'. It does not establish learner frequency, child suitability, or instructional order.",
+      "useMode": "CONTENT_SOURCE",
+      "rawContentIncluded": false
+    },
+    {
+      "evidenceId": "ev-lex-xihuan",
+      "sourceId": "cc-cedict",
+      "category": "OPEN_LEXICAL_ITEM",
+      "reference": "https://www.mdbg.net/chinese/dictionary?page=worddict&wdqb=like",
+      "claim": "Manual item lookup supports selected traditional form 喜歡, Pinyin xǐhuan, and basic sense 'to like; to be fond of'. It does not establish learner frequency, child suitability, or instructional order.",
+      "useMode": "CONTENT_SOURCE",
+      "rawContentIncluded": false
+    },
+    {
+      "evidenceId": "ev-lex-qiu",
+      "sourceId": "cc-cedict",
+      "category": "OPEN_LEXICAL_ITEM",
+      "reference": "https://www.mdbg.net/chinese/dictionary?page=worddict&wdqb=%E7%90%83",
+      "claim": "Manual item lookup supports selected traditional form 球, Pinyin qiú, and basic sense 'ball; sphere'. It does not establish learner frequency, child suitability, or instructional order.",
+      "useMode": "CONTENT_SOURCE",
+      "rawContentIncluded": false
+    },
+    {
+      "evidenceId": "ev-lex-ne",
+      "sourceId": "cc-cedict",
+      "category": "OPEN_LEXICAL_ITEM",
+      "reference": "https://www.mdbg.net/chinese/dictionary?page=worddict&wdqb=%E4%BD%A0%E5%91%A2",
+      "claim": "Manual item lookup supports 呢 (ne) in the reciprocal-question particle sense. It does not establish beginner sequencing, productivity, or cognitive load.",
+      "useMode": "CONTENT_SOURCE",
+      "rawContentIncluded": false
+    },
+    {
+      "evidenceId": "ev-grammar-self-name",
+      "sourceId": "tongxuan-proposal",
+      "category": "TONGXUAN_HYPOTHESIS",
+      "reference": "https://github.com/webber0612/TongXuan-Chinese/issues/109",
+      "claim": "TBCL Level 1 personal-information and greeting descriptors support the broad capability; the exact pattern and its sequencing are TongXuan hypotheses.",
+      "useMode": "AUTHORED_HYPOTHESIS",
+      "rawContentIncluded": false
+    },
+    {
+      "evidenceId": "ev-grammar-name-question",
+      "sourceId": "tongxuan-proposal",
+      "category": "TONGXUAN_HYPOTHESIS",
+      "reference": "https://github.com/webber0612/TongXuan-Chinese/issues/109",
+      "claim": "TBCL Level 1 personal information and Level 2 personal-question descriptors support capability scope; this exact question frame is a TongXuan hypothesis.",
+      "useMode": "AUTHORED_HYPOTHESIS",
+      "rawContentIncluded": false
+    },
+    {
+      "evidenceId": "ev-grammar-state-preference",
+      "sourceId": "tongxuan-proposal",
+      "category": "TONGXUAN_HYPOTHESIS",
+      "reference": "https://github.com/webber0612/TongXuan-Chinese/issues/109",
+      "claim": "TBCL Level 2 S-2-2 supports talking about self/friends' interests; CCCC supports child-life/leisure context. The exact frame/order is a TongXuan hypothesis.",
+      "useMode": "AUTHORED_HYPOTHESIS",
+      "rawContentIncluded": false
+    },
+    {
+      "evidenceId": "ev-grammar-ask-preference",
+      "sourceId": "tongxuan-proposal",
+      "category": "TONGXUAN_HYPOTHESIS",
+      "reference": "https://github.com/webber0612/TongXuan-Chinese/issues/109",
+      "claim": "TBCL Level 2 S-2-2 and L-2-1 support interest interaction and personal questions; transfer from the name question to this frame is a TongXuan hypothesis.",
+      "useMode": "AUTHORED_HYPOTHESIS",
+      "rawContentIncluded": false
+    },
+    {
+      "evidenceId": "ev-char-wo",
+      "sourceId": "tongxuan-proposal",
+      "category": "TONGXUAN_HYPOTHESIS",
+      "reference": "https://github.com/webber0612/TongXuan-Chinese/issues/109",
+      "claim": "Whether and when to recognize 我 is a TongXuan hypothesis. The linked CC-CEDICT item supports form/Pinyin context only; it does not establish character-teaching order, mastery grain, or SRS policy.",
+      "useMode": "AUTHORED_HYPOTHESIS",
+      "rawContentIncluded": false
+    },
+    {
+      "evidenceId": "ev-char-ni",
+      "sourceId": "tongxuan-proposal",
+      "category": "TONGXUAN_HYPOTHESIS",
+      "reference": "https://github.com/webber0612/TongXuan-Chinese/issues/109",
+      "claim": "Whether and when to recognize 你 is a TongXuan hypothesis. The linked CC-CEDICT item supports form/Pinyin context only; it does not establish character-teaching order, mastery grain, or SRS policy.",
+      "useMode": "AUTHORED_HYPOTHESIS",
+      "rawContentIncluded": false
+    },
+    {
+      "evidenceId": "ev-char-ming",
+      "sourceId": "tongxuan-proposal",
+      "category": "TONGXUAN_HYPOTHESIS",
+      "reference": "https://github.com/webber0612/TongXuan-Chinese/issues/109",
+      "claim": "Whether and when to recognize 名 is a TongXuan hypothesis. The linked CC-CEDICT item supports form/Pinyin context only; it does not establish character-teaching order, mastery grain, or SRS policy.",
+      "useMode": "AUTHORED_HYPOTHESIS",
+      "rawContentIncluded": false
+    },
+    {
+      "evidenceId": "ev-char-zi",
+      "sourceId": "tongxuan-proposal",
+      "category": "TONGXUAN_HYPOTHESIS",
+      "reference": "https://github.com/webber0612/TongXuan-Chinese/issues/109",
+      "claim": "Whether and when to recognize 字 is a TongXuan hypothesis. The linked CC-CEDICT item supports form/Pinyin context only; it does not establish character-teaching order, mastery grain, or SRS policy.",
+      "useMode": "AUTHORED_HYPOTHESIS",
+      "rawContentIncluded": false
+    },
+    {
+      "evidenceId": "ev-char-xi",
+      "sourceId": "tongxuan-proposal",
+      "category": "TONGXUAN_HYPOTHESIS",
+      "reference": "https://github.com/webber0612/TongXuan-Chinese/issues/109",
+      "claim": "Whether and when to recognize 喜 is a TongXuan hypothesis. The linked CC-CEDICT item supports form/Pinyin context only; it does not establish character-teaching order, mastery grain, or SRS policy.",
+      "useMode": "AUTHORED_HYPOTHESIS",
+      "rawContentIncluded": false
+    },
+    {
+      "evidenceId": "ev-char-huan",
+      "sourceId": "tongxuan-proposal",
+      "category": "TONGXUAN_HYPOTHESIS",
+      "reference": "https://github.com/webber0612/TongXuan-Chinese/issues/109",
+      "claim": "Whether and when to recognize 歡 is a TongXuan hypothesis. The linked CC-CEDICT item supports form/Pinyin context only; it does not establish character-teaching order, mastery grain, or SRS policy.",
+      "useMode": "AUTHORED_HYPOTHESIS",
+      "rawContentIncluded": false
+    },
+    {
+      "evidenceId": "ev-char-ne",
+      "sourceId": "tongxuan-proposal",
+      "category": "TONGXUAN_HYPOTHESIS",
+      "reference": "https://github.com/webber0612/TongXuan-Chinese/issues/109",
+      "claim": "Whether and when to recognize 呢 is a TongXuan hypothesis. The linked CC-CEDICT item supports form/Pinyin context only; it does not establish character-teaching order, mastery grain, or SRS policy.",
+      "useMode": "AUTHORED_HYPOTHESIS",
+      "rawContentIncluded": false
+    },
+    {
+      "evidenceId": "ev-lex-wanju",
+      "sourceId": "cc-cedict",
+      "category": "OPEN_LEXICAL_ITEM",
+      "reference": "https://www.mdbg.net/chinese/dictionary?wdqb=%E7%8E%A9%E5%85%B7",
+      "claim": "CC-CEDICT/MDBG item lookup identifies 玩具 (wánjù) with the basic sense “toy”. This lookup does not establish direct-frame naturalness, child familiarity, frequency, or curriculum sequence.",
+      "useMode": "CONTENT_SOURCE",
+      "rawContentIncluded": false
+    },
+    {
+      "evidenceId": "ev-lex-shu",
+      "sourceId": "cc-cedict",
+      "category": "OPEN_LEXICAL_ITEM",
+      "reference": "https://www.mdbg.net/chinese/dictionary?wdqb=%E6%9B%B8",
+      "claim": "CC-CEDICT/MDBG item lookup identifies 書 (shū) with the basic sense “book”. This lookup does not establish direct-frame naturalness, child familiarity, frequency, or curriculum sequence.",
+      "useMode": "CONTENT_SOURCE",
+      "rawContentIncluded": false
+    },
+    {
+      "evidenceId": "ev-lex-youxi",
+      "sourceId": "cc-cedict",
+      "category": "OPEN_LEXICAL_ITEM",
+      "reference": "https://www.mdbg.net/chinese/dictionary?wdqb=%E9%81%8A%E6%88%B2",
+      "claim": "CC-CEDICT/MDBG item lookup identifies 遊戲 (yóuxì) with the basic sense “game”. This lookup does not establish direct-frame naturalness, child familiarity, frequency, or curriculum sequence.",
+      "useMode": "CONTENT_SOURCE",
+      "rawContentIncluded": false
+    },
+    {
+      "evidenceId": "ev-lex-dianying",
+      "sourceId": "cc-cedict",
+      "category": "OPEN_LEXICAL_ITEM",
+      "reference": "https://www.mdbg.net/chinese/dictionary?wdqb=%E9%9B%BB%E5%BD%B1",
+      "claim": "CC-CEDICT/MDBG item lookup identifies 電影 (diànyǐng) with the basic sense “movie; film”. This lookup does not establish direct-frame naturalness, child familiarity, frequency, or curriculum sequence.",
+      "useMode": "CONTENT_SOURCE",
+      "rawContentIncluded": false
+    }
+  ],
+  "skillCatalog": [
+    {
+      "id": "skill-greet-self-name",
+      "approvalStatus": "PROPOSED",
+      "capability": "Respond to a greeting and identify oneself with one's own name.",
+      "whyThis": "Return a greeting and say one's own name in a short exchange.",
+      "evidenceIds": [
+        "ev-tbcl-l1",
+        "ev-tongxuan-hypothesis"
+      ],
+      "sourceProvenance": [
+        {
+          "sourceId": "tbcl-naer",
+          "evidenceId": "ev-tbcl-l1",
+          "useMode": "REFERENCE_ONLY",
+          "reference": "https://coct.naer.edu.tw/page.jsp?ID=11",
+          "rawContentIncluded": false
+        },
+        {
+          "sourceId": "tongxuan-proposal",
+          "evidenceId": "ev-tongxuan-hypothesis",
+          "useMode": "AUTHORED_HYPOTHESIS",
+          "reference": "https://github.com/webber0612/TongXuan-Chinese/issues/109",
+          "rawContentIncluded": false
+        }
+      ],
+      "receptiveRequirement": {
+        "required": true,
+        "description": "Understand a slow, clear partner turn in the proposed social exchange.",
+        "evidenceIds": [
+          "ev-tbcl-l1",
+          "ev-tongxuan-hypothesis"
+        ]
+      },
+      "productiveRequirement": {
+        "required": true,
+        "description": "Complete the short communicative move with the proposed lexical and grammar targets.",
+        "evidenceIds": [
+          "ev-tbcl-l1",
+          "ev-tongxuan-hypothesis"
+        ]
+      },
+      "writingRequired": false,
+      "confidence": {
+        "rating": "LOW",
+        "rationale": "Broad framework capability is relevant; exact interaction and progression are TongXuan hypotheses.",
+        "limitations": [
+          "No five-lesson sequencing or child-performance data is supplied by TBCL/CCCC."
+        ]
+      },
+      "hardPrerequisites": []
+    },
+    {
+      "id": "skill-ask-answer-name",
+      "approvalStatus": "PROPOSED",
+      "capability": "Ask and answer a peer's name in a short exchange.",
+      "whyThis": "Ask a peer for their name and understand a short answer.",
+      "evidenceIds": [
+        "ev-tbcl-l1",
+        "ev-tbcl-l2",
+        "ev-tongxuan-hypothesis"
+      ],
+      "sourceProvenance": [
+        {
+          "sourceId": "tbcl-naer",
+          "evidenceId": "ev-tbcl-l1",
+          "useMode": "REFERENCE_ONLY",
+          "reference": "https://coct.naer.edu.tw/page.jsp?ID=11",
+          "rawContentIncluded": false
+        },
+        {
+          "sourceId": "tbcl-naer",
+          "evidenceId": "ev-tbcl-l2",
+          "useMode": "REFERENCE_ONLY",
+          "reference": "https://coct.naer.edu.tw/page.jsp?ID=12",
+          "rawContentIncluded": false
+        },
+        {
+          "sourceId": "tongxuan-proposal",
+          "evidenceId": "ev-tongxuan-hypothesis",
+          "useMode": "AUTHORED_HYPOTHESIS",
+          "reference": "https://github.com/webber0612/TongXuan-Chinese/issues/109",
+          "rawContentIncluded": false
+        }
+      ],
+      "receptiveRequirement": {
+        "required": true,
+        "description": "Understand a slow, clear partner turn in the proposed social exchange.",
+        "evidenceIds": [
+          "ev-tbcl-l1",
+          "ev-tbcl-l2",
+          "ev-tongxuan-hypothesis"
+        ]
+      },
+      "productiveRequirement": {
+        "required": true,
+        "description": "Complete the short communicative move with the proposed lexical and grammar targets.",
+        "evidenceIds": [
+          "ev-tbcl-l1",
+          "ev-tbcl-l2",
+          "ev-tongxuan-hypothesis"
+        ]
+      },
+      "writingRequired": false,
+      "confidence": {
+        "rating": "LOW",
+        "rationale": "Broad framework capability is relevant; exact interaction and progression are TongXuan hypotheses.",
+        "limitations": [
+          "No five-lesson sequencing or child-performance data is supplied by TBCL/CCCC."
+        ]
+      },
+      "hardPrerequisites": []
+    },
+    {
+      "id": "skill-state-preference",
+      "approvalStatus": "PROPOSED",
+      "capability": "State one personal preference to an identified peer.",
+      "whyThis": "Tell a known peer one concrete preference in a short sentence.",
+      "evidenceIds": [
+        "ev-tbcl-l2",
+        "ev-cccc-child-context",
+        "ev-tongxuan-hypothesis"
+      ],
+      "sourceProvenance": [
+        {
+          "sourceId": "tbcl-naer",
+          "evidenceId": "ev-tbcl-l2",
+          "useMode": "REFERENCE_ONLY",
+          "reference": "https://coct.naer.edu.tw/page.jsp?ID=12",
+          "rawContentIncluded": false
+        },
+        {
+          "sourceId": "tocfl-cccc",
+          "evidenceId": "ev-cccc-child-context",
+          "useMode": "REFERENCE_ONLY",
+          "reference": "https://tocfl.edu.tw/tocfl/index.php/test/cccc/list/1",
+          "rawContentIncluded": false
+        },
+        {
+          "sourceId": "tongxuan-proposal",
+          "evidenceId": "ev-tongxuan-hypothesis",
+          "useMode": "AUTHORED_HYPOTHESIS",
+          "reference": "https://github.com/webber0612/TongXuan-Chinese/issues/109",
+          "rawContentIncluded": false
+        }
+      ],
+      "receptiveRequirement": {
+        "required": true,
+        "description": "Understand a slow, clear partner turn in the proposed social exchange.",
+        "evidenceIds": [
+          "ev-tbcl-l2",
+          "ev-cccc-child-context",
+          "ev-tongxuan-hypothesis"
+        ]
+      },
+      "productiveRequirement": {
+        "required": true,
+        "description": "Complete the short communicative move with the proposed lexical and grammar targets.",
+        "evidenceIds": [
+          "ev-tbcl-l2",
+          "ev-cccc-child-context",
+          "ev-tongxuan-hypothesis"
+        ]
+      },
+      "writingRequired": false,
+      "confidence": {
+        "rating": "LOW",
+        "rationale": "Broad framework capability is relevant; exact interaction and progression are TongXuan hypotheses.",
+        "limitations": [
+          "No five-lesson sequencing or child-performance data is supplied by TBCL/CCCC."
+        ]
+      },
+      "hardPrerequisites": []
+    },
+    {
+      "id": "skill-ask-answer-preference",
+      "approvalStatus": "PROPOSED",
+      "capability": "Ask a peer what they like and understand one short preference answer.",
+      "whyThis": "Ask and understand a peer's simple preference.",
+      "evidenceIds": [
+        "ev-tbcl-l2",
+        "ev-tongxuan-hypothesis"
+      ],
+      "sourceProvenance": [
+        {
+          "sourceId": "tbcl-naer",
+          "evidenceId": "ev-tbcl-l2",
+          "useMode": "REFERENCE_ONLY",
+          "reference": "https://coct.naer.edu.tw/page.jsp?ID=12",
+          "rawContentIncluded": false
+        },
+        {
+          "sourceId": "tongxuan-proposal",
+          "evidenceId": "ev-tongxuan-hypothesis",
+          "useMode": "AUTHORED_HYPOTHESIS",
+          "reference": "https://github.com/webber0612/TongXuan-Chinese/issues/109",
+          "rawContentIncluded": false
+        }
+      ],
+      "receptiveRequirement": {
+        "required": true,
+        "description": "Understand a slow, clear partner turn in the proposed social exchange.",
+        "evidenceIds": [
+          "ev-tbcl-l2",
+          "ev-tongxuan-hypothesis"
+        ]
+      },
+      "productiveRequirement": {
+        "required": true,
+        "description": "Complete the short communicative move with the proposed lexical and grammar targets.",
+        "evidenceIds": [
+          "ev-tbcl-l2",
+          "ev-tongxuan-hypothesis"
+        ]
+      },
+      "writingRequired": false,
+      "confidence": {
+        "rating": "LOW",
+        "rationale": "Broad framework capability is relevant; exact interaction and progression are TongXuan hypotheses.",
+        "limitations": [
+          "No five-lesson sequencing or child-performance data is supplied by TBCL/CCCC."
+        ]
+      },
+      "hardPrerequisites": []
+    },
+    {
+      "id": "skill-sustain-peer-exchange",
+      "approvalStatus": "PROPOSED",
+      "capability": "Use a reciprocal prompt to sustain an introduction-and-preference exchange across turns.",
+      "whyThis": "Combine greeting, names, and preferences in an orderly reciprocal interaction.",
+      "evidenceIds": [
+        "ev-tbcl-l2",
+        "ev-tongxuan-hypothesis"
+      ],
+      "sourceProvenance": [
+        {
+          "sourceId": "tbcl-naer",
+          "evidenceId": "ev-tbcl-l2",
+          "useMode": "REFERENCE_ONLY",
+          "reference": "https://coct.naer.edu.tw/page.jsp?ID=12",
+          "rawContentIncluded": false
+        },
+        {
+          "sourceId": "tongxuan-proposal",
+          "evidenceId": "ev-tongxuan-hypothesis",
+          "useMode": "AUTHORED_HYPOTHESIS",
+          "reference": "https://github.com/webber0612/TongXuan-Chinese/issues/109",
+          "rawContentIncluded": false
+        }
+      ],
+      "receptiveRequirement": {
+        "required": true,
+        "description": "Understand a slow, clear partner turn in the proposed social exchange.",
+        "evidenceIds": [
+          "ev-tbcl-l2",
+          "ev-tongxuan-hypothesis"
+        ]
+      },
+      "productiveRequirement": {
+        "required": true,
+        "description": "Complete the short communicative move with the proposed lexical and grammar targets.",
+        "evidenceIds": [
+          "ev-tbcl-l2",
+          "ev-tongxuan-hypothesis"
+        ]
+      },
+      "writingRequired": false,
+      "confidence": {
+        "rating": "LOW",
+        "rationale": "Broad framework capability is relevant; exact interaction and progression are TongXuan hypotheses.",
+        "limitations": [
+          "No five-lesson sequencing or child-performance data is supplied by TBCL/CCCC."
+        ]
+      },
+      "hardPrerequisites": [
+        {
+          "targetId": "skill-ask-answer-name",
+          "rationale": "The integrated exchange must include the learner asking and answering about names."
+        },
+        {
+          "targetId": "skill-state-preference",
+          "rationale": "The integrated exchange must include the learner stating a preference."
+        },
+        {
+          "targetId": "skill-ask-answer-preference",
+          "rationale": "The integrated exchange must include the learner asking and responding about a peer preference."
+        }
+      ]
+    }
+  ],
+  "candidateTargetCatalog": [
+    {
+      "id": "vocab-nihao",
+      "targetType": "VOCABULARY",
+      "approvalStatus": "PROPOSED",
+      "candidateForm": "你好",
+      "pinyin": "nǐhǎo",
+      "zhuyinStatus": "SOURCE_INSUFFICIENT",
+      "meaning": "hello; greeting",
+      "whyThis": "Greeting is inside TBCL L1's everyday greeting capability; exact prioritization remains a TongXuan hypothesis. CC-CEDICT supplies item-level form/Pinyin/basic sense only; its entry is not evidence of frequency or sequence.",
+      "whyNow": "Introduced only when the prerequisite communicative capability first needs this reusable word. Its place here is a hypothesis, not a frequency ranking.",
+      "evidenceIds": [
+        "ev-lex-nihao",
+        "ev-tbcl-l1",
+        "ev-tongxuan-hypothesis"
+      ],
+      "sourceProvenance": [
+        {
+          "sourceId": "cc-cedict",
+          "evidenceId": "ev-lex-nihao",
+          "useMode": "CONTENT_SOURCE",
+          "reference": "https://www.mdbg.net/chinese/dictionary?page=worddict&wdqb=%E4%BD%A0%E5%A5%BD",
+          "rawContentIncluded": false,
+          "license": "CC BY-SA 4.0",
+          "attribution": "CC-CEDICT contributors; item-level lookup distributed through MDBG; CC BY-SA 4.0.",
+          "shareAlike": true
+        },
+        {
+          "sourceId": "tbcl-naer",
+          "evidenceId": "ev-tbcl-l1",
+          "useMode": "REFERENCE_ONLY",
+          "reference": "https://coct.naer.edu.tw/page.jsp?ID=11",
+          "rawContentIncluded": false
+        },
+        {
+          "sourceId": "tongxuan-proposal",
+          "evidenceId": "ev-tongxuan-hypothesis",
+          "useMode": "AUTHORED_HYPOTHESIS",
+          "reference": "https://github.com/webber0612/TongXuan-Chinese/issues/109",
+          "rawContentIncluded": false
+        }
+      ],
+      "receptiveRequirement": {
+        "required": true,
+        "description": "Understand this whole lexical item in a slow, clear, familiar personal-information or preference exchange.",
+        "evidenceIds": [
+          "ev-lex-nihao",
+          "ev-tbcl-l1",
+          "ev-tongxuan-hypothesis"
+        ]
+      },
+      "productiveRequirement": {
+        "required": true,
+        "description": "Use this whole lexical item in the proposed short exchange; no spelling or handwriting is required.",
+        "evidenceIds": [
+          "ev-lex-nihao",
+          "ev-tbcl-l1",
+          "ev-tongxuan-hypothesis"
+        ]
+      },
+      "writingRequired": false,
+      "alternatives": [
+        "Defer this item until an approved target-selection process supplies stronger child/frequency evidence."
+      ],
+      "confidence": {
+        "rating": "LOW",
+        "rationale": "Dictionary sense and pronunciation are identifiable; curriculum utility, age familiarity, and timing remain hypotheses.",
+        "limitations": [
+          "No cited frequency table or real-child validation establishes priority."
+        ]
+      },
+      "hardPrerequisites": []
+    },
+    {
+      "id": "vocab-wo",
+      "targetType": "VOCABULARY",
+      "approvalStatus": "PROPOSED",
+      "candidateForm": "我",
+      "pinyin": "wǒ",
+      "zhuyinStatus": "SOURCE_INSUFFICIENT",
+      "meaning": "I; me; my",
+      "whyThis": "A short, reusable first-person referent for personal information and the self-introduction frame. CC-CEDICT supplies item-level form/Pinyin/basic sense only; its entry is not evidence of frequency or sequence.",
+      "whyNow": "Introduced only when the prerequisite communicative capability first needs this reusable word. Its place here is a hypothesis, not a frequency ranking.",
+      "evidenceIds": [
+        "ev-lex-wo",
+        "ev-tbcl-l1",
+        "ev-tongxuan-hypothesis"
+      ],
+      "sourceProvenance": [
+        {
+          "sourceId": "cc-cedict",
+          "evidenceId": "ev-lex-wo",
+          "useMode": "CONTENT_SOURCE",
+          "reference": "https://www.mdbg.net/chinese/dictionary?page=worddict&wdqb=%E6%88%91",
+          "rawContentIncluded": false,
+          "license": "CC BY-SA 4.0",
+          "attribution": "CC-CEDICT contributors; item-level lookup distributed through MDBG; CC BY-SA 4.0.",
+          "shareAlike": true
+        },
+        {
+          "sourceId": "tbcl-naer",
+          "evidenceId": "ev-tbcl-l1",
+          "useMode": "REFERENCE_ONLY",
+          "reference": "https://coct.naer.edu.tw/page.jsp?ID=11",
+          "rawContentIncluded": false
+        },
+        {
+          "sourceId": "tongxuan-proposal",
+          "evidenceId": "ev-tongxuan-hypothesis",
+          "useMode": "AUTHORED_HYPOTHESIS",
+          "reference": "https://github.com/webber0612/TongXuan-Chinese/issues/109",
+          "rawContentIncluded": false
+        }
+      ],
+      "receptiveRequirement": {
+        "required": true,
+        "description": "Understand this whole lexical item in a slow, clear, familiar personal-information or preference exchange.",
+        "evidenceIds": [
+          "ev-lex-wo",
+          "ev-tbcl-l1",
+          "ev-tongxuan-hypothesis"
+        ]
+      },
+      "productiveRequirement": {
+        "required": true,
+        "description": "Use this whole lexical item in the proposed short exchange; no spelling or handwriting is required.",
+        "evidenceIds": [
+          "ev-lex-wo",
+          "ev-tbcl-l1",
+          "ev-tongxuan-hypothesis"
+        ]
+      },
+      "writingRequired": false,
+      "alternatives": [
+        "Defer this item until an approved target-selection process supplies stronger child/frequency evidence."
+      ],
+      "confidence": {
+        "rating": "LOW",
+        "rationale": "Dictionary sense and pronunciation are identifiable; curriculum utility, age familiarity, and timing remain hypotheses.",
+        "limitations": [
+          "No cited frequency table or real-child validation establishes priority."
+        ]
+      },
+      "hardPrerequisites": []
+    },
+    {
+      "id": "vocab-jiao",
+      "targetType": "VOCABULARY",
+      "approvalStatus": "PROPOSED",
+      "candidateForm": "叫",
+      "pinyin": "jiào",
+      "zhuyinStatus": "SOURCE_INSUFFICIENT",
+      "meaning": "to be called; to call",
+      "whyThis": "Pairs with the learner's own name in a useful self-identification move; the name placeholder is not a fixed target. CC-CEDICT supplies item-level form/Pinyin/basic sense only; its entry is not evidence of frequency or sequence.",
+      "whyNow": "Introduced only when the prerequisite communicative capability first needs this reusable word. Its place here is a hypothesis, not a frequency ranking.",
+      "evidenceIds": [
+        "ev-lex-jiao",
+        "ev-tbcl-l1",
+        "ev-tongxuan-hypothesis"
+      ],
+      "sourceProvenance": [
+        {
+          "sourceId": "cc-cedict",
+          "evidenceId": "ev-lex-jiao",
+          "useMode": "CONTENT_SOURCE",
+          "reference": "https://www.mdbg.net/chinese/dictionary?page=worddict&wdqb=%E6%88%91%E5%8F%AB",
+          "rawContentIncluded": false,
+          "license": "CC BY-SA 4.0",
+          "attribution": "CC-CEDICT contributors; item-level lookup distributed through MDBG; CC BY-SA 4.0.",
+          "shareAlike": true
+        },
+        {
+          "sourceId": "tbcl-naer",
+          "evidenceId": "ev-tbcl-l1",
+          "useMode": "REFERENCE_ONLY",
+          "reference": "https://coct.naer.edu.tw/page.jsp?ID=11",
+          "rawContentIncluded": false
+        },
+        {
+          "sourceId": "tongxuan-proposal",
+          "evidenceId": "ev-tongxuan-hypothesis",
+          "useMode": "AUTHORED_HYPOTHESIS",
+          "reference": "https://github.com/webber0612/TongXuan-Chinese/issues/109",
+          "rawContentIncluded": false
+        }
+      ],
+      "receptiveRequirement": {
+        "required": true,
+        "description": "Understand this whole lexical item in a slow, clear, familiar personal-information or preference exchange.",
+        "evidenceIds": [
+          "ev-lex-jiao",
+          "ev-tbcl-l1",
+          "ev-tongxuan-hypothesis"
+        ]
+      },
+      "productiveRequirement": {
+        "required": true,
+        "description": "Use this whole lexical item in the proposed short exchange; no spelling or handwriting is required.",
+        "evidenceIds": [
+          "ev-lex-jiao",
+          "ev-tbcl-l1",
+          "ev-tongxuan-hypothesis"
+        ]
+      },
+      "writingRequired": false,
+      "alternatives": [
+        "Defer this item until an approved target-selection process supplies stronger child/frequency evidence."
+      ],
+      "confidence": {
+        "rating": "LOW",
+        "rationale": "Dictionary sense and pronunciation are identifiable; curriculum utility, age familiarity, and timing remain hypotheses.",
+        "limitations": [
+          "No cited frequency table or real-child validation establishes priority."
+        ]
+      },
+      "hardPrerequisites": []
+    },
+    {
+      "id": "vocab-ni",
+      "targetType": "VOCABULARY",
+      "approvalStatus": "PROPOSED",
+      "candidateForm": "你",
+      "pinyin": "nǐ",
+      "zhuyinStatus": "SOURCE_INSUFFICIENT",
+      "meaning": "you (informal)",
+      "whyThis": "Adds an addressee after the learner can identify themself, making peer interaction possible. CC-CEDICT supplies item-level form/Pinyin/basic sense only; its entry is not evidence of frequency or sequence.",
+      "whyNow": "Introduced only when the prerequisite communicative capability first needs this reusable word. Its place here is a hypothesis, not a frequency ranking.",
+      "evidenceIds": [
+        "ev-lex-ni",
+        "ev-tbcl-l1",
+        "ev-tbcl-l2",
+        "ev-tongxuan-hypothesis"
+      ],
+      "sourceProvenance": [
+        {
+          "sourceId": "cc-cedict",
+          "evidenceId": "ev-lex-ni",
+          "useMode": "CONTENT_SOURCE",
+          "reference": "https://www.mdbg.net/chinese/dictionary?page=worddict&wdqb=%E4%BD%A0",
+          "rawContentIncluded": false,
+          "license": "CC BY-SA 4.0",
+          "attribution": "CC-CEDICT contributors; item-level lookup distributed through MDBG; CC BY-SA 4.0.",
+          "shareAlike": true
+        },
+        {
+          "sourceId": "tbcl-naer",
+          "evidenceId": "ev-tbcl-l1",
+          "useMode": "REFERENCE_ONLY",
+          "reference": "https://coct.naer.edu.tw/page.jsp?ID=11",
+          "rawContentIncluded": false
+        },
+        {
+          "sourceId": "tbcl-naer",
+          "evidenceId": "ev-tbcl-l2",
+          "useMode": "REFERENCE_ONLY",
+          "reference": "https://coct.naer.edu.tw/page.jsp?ID=12",
+          "rawContentIncluded": false
+        },
+        {
+          "sourceId": "tongxuan-proposal",
+          "evidenceId": "ev-tongxuan-hypothesis",
+          "useMode": "AUTHORED_HYPOTHESIS",
+          "reference": "https://github.com/webber0612/TongXuan-Chinese/issues/109",
+          "rawContentIncluded": false
+        }
+      ],
+      "receptiveRequirement": {
+        "required": true,
+        "description": "Understand this whole lexical item in a slow, clear, familiar personal-information or preference exchange.",
+        "evidenceIds": [
+          "ev-lex-ni",
+          "ev-tbcl-l1",
+          "ev-tbcl-l2",
+          "ev-tongxuan-hypothesis"
+        ]
+      },
+      "productiveRequirement": {
+        "required": true,
+        "description": "Use this whole lexical item in the proposed short exchange; no spelling or handwriting is required.",
+        "evidenceIds": [
+          "ev-lex-ni",
+          "ev-tbcl-l1",
+          "ev-tbcl-l2",
+          "ev-tongxuan-hypothesis"
+        ]
+      },
+      "writingRequired": false,
+      "alternatives": [
+        "Defer this item until an approved target-selection process supplies stronger child/frequency evidence."
+      ],
+      "confidence": {
+        "rating": "LOW",
+        "rationale": "Dictionary sense and pronunciation are identifiable; curriculum utility, age familiarity, and timing remain hypotheses.",
+        "limitations": [
+          "No cited frequency table or real-child validation establishes priority."
+        ]
+      },
+      "hardPrerequisites": []
+    },
+    {
+      "id": "vocab-shenme",
+      "targetType": "VOCABULARY",
+      "approvalStatus": "PROPOSED",
+      "candidateForm": "什麼",
+      "pinyin": "shénme",
+      "zhuyinStatus": "SOURCE_INSUFFICIENT",
+      "meaning": "what; something",
+      "whyThis": "Lets the learner ask a personal-information question and later transfer it to preferences. CC-CEDICT supplies item-level form/Pinyin/basic sense only; its entry is not evidence of frequency or sequence.",
+      "whyNow": "Introduced only when the prerequisite communicative capability first needs this reusable word. Its place here is a hypothesis, not a frequency ranking.",
+      "evidenceIds": [
+        "ev-lex-shenme",
+        "ev-tbcl-l2",
+        "ev-tongxuan-hypothesis"
+      ],
+      "sourceProvenance": [
+        {
+          "sourceId": "cc-cedict",
+          "evidenceId": "ev-lex-shenme",
+          "useMode": "CONTENT_SOURCE",
+          "reference": "https://www.mdbg.net/chinese/dictionary?page=worddict&wdqb=%E4%BB%80%E9%BA%BC",
+          "rawContentIncluded": false,
+          "license": "CC BY-SA 4.0",
+          "attribution": "CC-CEDICT contributors; item-level lookup distributed through MDBG; CC BY-SA 4.0.",
+          "shareAlike": true
+        },
+        {
+          "sourceId": "tbcl-naer",
+          "evidenceId": "ev-tbcl-l2",
+          "useMode": "REFERENCE_ONLY",
+          "reference": "https://coct.naer.edu.tw/page.jsp?ID=12",
+          "rawContentIncluded": false
+        },
+        {
+          "sourceId": "tongxuan-proposal",
+          "evidenceId": "ev-tongxuan-hypothesis",
+          "useMode": "AUTHORED_HYPOTHESIS",
+          "reference": "https://github.com/webber0612/TongXuan-Chinese/issues/109",
+          "rawContentIncluded": false
+        }
+      ],
+      "receptiveRequirement": {
+        "required": true,
+        "description": "Understand this whole lexical item in a slow, clear, familiar personal-information or preference exchange.",
+        "evidenceIds": [
+          "ev-lex-shenme",
+          "ev-tbcl-l2",
+          "ev-tongxuan-hypothesis"
+        ]
+      },
+      "productiveRequirement": {
+        "required": true,
+        "description": "Use this whole lexical item in the proposed short exchange; no spelling or handwriting is required.",
+        "evidenceIds": [
+          "ev-lex-shenme",
+          "ev-tbcl-l2",
+          "ev-tongxuan-hypothesis"
+        ]
+      },
+      "writingRequired": false,
+      "alternatives": [
+        "Defer this item until an approved target-selection process supplies stronger child/frequency evidence."
+      ],
+      "confidence": {
+        "rating": "LOW",
+        "rationale": "Dictionary sense and pronunciation are identifiable; curriculum utility, age familiarity, and timing remain hypotheses.",
+        "limitations": [
+          "No cited frequency table or real-child validation establishes priority."
+        ]
+      },
+      "hardPrerequisites": []
+    },
+    {
+      "id": "vocab-mingzi",
+      "targetType": "VOCABULARY",
+      "approvalStatus": "PROPOSED",
+      "candidateForm": "名字",
+      "pinyin": "míngzi",
+      "zhuyinStatus": "SOURCE_INSUFFICIENT",
+      "meaning": "name",
+      "whyThis": "A concrete personal-information target in a peer name exchange; exact beginner sequencing is not set by TBCL. CC-CEDICT supplies item-level form/Pinyin/basic sense only; its entry is not evidence of frequency or sequence.",
+      "whyNow": "Introduced only when the prerequisite communicative capability first needs this reusable word. Its place here is a hypothesis, not a frequency ranking.",
+      "evidenceIds": [
+        "ev-lex-mingzi",
+        "ev-tbcl-l1",
+        "ev-tbcl-l2",
+        "ev-tongxuan-hypothesis"
+      ],
+      "sourceProvenance": [
+        {
+          "sourceId": "cc-cedict",
+          "evidenceId": "ev-lex-mingzi",
+          "useMode": "CONTENT_SOURCE",
+          "reference": "https://www.mdbg.net/chinese/dictionary?page=worddict&wdqb=%E5%90%8D%E5%AD%97",
+          "rawContentIncluded": false,
+          "license": "CC BY-SA 4.0",
+          "attribution": "CC-CEDICT contributors; item-level lookup distributed through MDBG; CC BY-SA 4.0.",
+          "shareAlike": true
+        },
+        {
+          "sourceId": "tbcl-naer",
+          "evidenceId": "ev-tbcl-l1",
+          "useMode": "REFERENCE_ONLY",
+          "reference": "https://coct.naer.edu.tw/page.jsp?ID=11",
+          "rawContentIncluded": false
+        },
+        {
+          "sourceId": "tbcl-naer",
+          "evidenceId": "ev-tbcl-l2",
+          "useMode": "REFERENCE_ONLY",
+          "reference": "https://coct.naer.edu.tw/page.jsp?ID=12",
+          "rawContentIncluded": false
+        },
+        {
+          "sourceId": "tongxuan-proposal",
+          "evidenceId": "ev-tongxuan-hypothesis",
+          "useMode": "AUTHORED_HYPOTHESIS",
+          "reference": "https://github.com/webber0612/TongXuan-Chinese/issues/109",
+          "rawContentIncluded": false
+        }
+      ],
+      "receptiveRequirement": {
+        "required": true,
+        "description": "Understand this whole lexical item in a slow, clear, familiar personal-information or preference exchange.",
+        "evidenceIds": [
+          "ev-lex-mingzi",
+          "ev-tbcl-l1",
+          "ev-tbcl-l2",
+          "ev-tongxuan-hypothesis"
+        ]
+      },
+      "productiveRequirement": {
+        "required": true,
+        "description": "Use this whole lexical item in the proposed short exchange; no spelling or handwriting is required.",
+        "evidenceIds": [
+          "ev-lex-mingzi",
+          "ev-tbcl-l1",
+          "ev-tbcl-l2",
+          "ev-tongxuan-hypothesis"
+        ]
+      },
+      "writingRequired": false,
+      "alternatives": [
+        "Defer this item until an approved target-selection process supplies stronger child/frequency evidence."
+      ],
+      "confidence": {
+        "rating": "LOW",
+        "rationale": "Dictionary sense and pronunciation are identifiable; curriculum utility, age familiarity, and timing remain hypotheses.",
+        "limitations": [
+          "No cited frequency table or real-child validation establishes priority."
+        ]
+      },
+      "hardPrerequisites": []
+    },
+    {
+      "id": "vocab-xihuan",
+      "targetType": "VOCABULARY",
+      "approvalStatus": "PROPOSED",
+      "candidateForm": "喜歡",
+      "pinyin": "xǐhuan",
+      "zhuyinStatus": "SOURCE_INSUFFICIENT",
+      "meaning": "to like; to be fond of",
+      "whyThis": "Adds one personally meaningful preference verb so name exchange can progress to conversation about interests. CC-CEDICT supplies item-level form/Pinyin/basic sense only; its entry is not evidence of frequency or sequence.",
+      "whyNow": "Introduced only when the prerequisite communicative capability first needs this reusable word. Its place here is a hypothesis, not a frequency ranking.",
+      "evidenceIds": [
+        "ev-lex-xihuan",
+        "ev-tbcl-l2",
+        "ev-cccc-child-context",
+        "ev-tongxuan-hypothesis"
+      ],
+      "sourceProvenance": [
+        {
+          "sourceId": "cc-cedict",
+          "evidenceId": "ev-lex-xihuan",
+          "useMode": "CONTENT_SOURCE",
+          "reference": "https://www.mdbg.net/chinese/dictionary?page=worddict&wdqb=like",
+          "rawContentIncluded": false,
+          "license": "CC BY-SA 4.0",
+          "attribution": "CC-CEDICT contributors; item-level lookup distributed through MDBG; CC BY-SA 4.0.",
+          "shareAlike": true
+        },
+        {
+          "sourceId": "tbcl-naer",
+          "evidenceId": "ev-tbcl-l2",
+          "useMode": "REFERENCE_ONLY",
+          "reference": "https://coct.naer.edu.tw/page.jsp?ID=12",
+          "rawContentIncluded": false
+        },
+        {
+          "sourceId": "tocfl-cccc",
+          "evidenceId": "ev-cccc-child-context",
+          "useMode": "REFERENCE_ONLY",
+          "reference": "https://tocfl.edu.tw/tocfl/index.php/test/cccc/list/1",
+          "rawContentIncluded": false
+        },
+        {
+          "sourceId": "tongxuan-proposal",
+          "evidenceId": "ev-tongxuan-hypothesis",
+          "useMode": "AUTHORED_HYPOTHESIS",
+          "reference": "https://github.com/webber0612/TongXuan-Chinese/issues/109",
+          "rawContentIncluded": false
+        }
+      ],
+      "receptiveRequirement": {
+        "required": true,
+        "description": "Understand this whole lexical item in a slow, clear, familiar personal-information or preference exchange.",
+        "evidenceIds": [
+          "ev-lex-xihuan",
+          "ev-tbcl-l2",
+          "ev-cccc-child-context",
+          "ev-tongxuan-hypothesis"
+        ]
+      },
+      "productiveRequirement": {
+        "required": true,
+        "description": "Use this whole lexical item in the proposed short exchange; no spelling or handwriting is required.",
+        "evidenceIds": [
+          "ev-lex-xihuan",
+          "ev-tbcl-l2",
+          "ev-cccc-child-context",
+          "ev-tongxuan-hypothesis"
+        ]
+      },
+      "writingRequired": false,
+      "alternatives": [
+        "Defer this item until an approved target-selection process supplies stronger child/frequency evidence."
+      ],
+      "confidence": {
+        "rating": "LOW",
+        "rationale": "Dictionary sense and pronunciation are identifiable; curriculum utility, age familiarity, and timing remain hypotheses.",
+        "limitations": [
+          "No cited frequency table or real-child validation establishes priority."
+        ]
+      },
+      "hardPrerequisites": []
+    },
+    {
+      "id": "grammar-self-name",
+      "targetType": "GRAMMAR",
+      "approvalStatus": "PROPOSED",
+      "candidateForm": "我叫＋[own name]",
+      "pinyin": null,
+      "zhuyinStatus": "SOURCE_INSUFFICIENT",
+      "meaning": "Name introduction using the first-person subject and 叫 pattern.",
+      "whyThis": "TBCL Level 1 personal-information and greeting descriptors support the broad capability; the exact pattern and its sequencing are TongXuan hypotheses.",
+      "whyNow": "This pattern is introduced only after its spoken lexical ingredients and preceding interaction move are available.",
+      "evidenceIds": [
+        "ev-tbcl-l1",
+        "ev-tongxuan-hypothesis",
+        "ev-grammar-self-name"
+      ],
+      "sourceProvenance": [
+        {
+          "sourceId": "tbcl-naer",
+          "evidenceId": "ev-tbcl-l1",
+          "useMode": "REFERENCE_ONLY",
+          "reference": "https://coct.naer.edu.tw/page.jsp?ID=11",
+          "rawContentIncluded": false
+        },
+        {
+          "sourceId": "tongxuan-proposal",
+          "evidenceId": "ev-tongxuan-hypothesis",
+          "useMode": "AUTHORED_HYPOTHESIS",
+          "reference": "https://github.com/webber0612/TongXuan-Chinese/issues/109",
+          "rawContentIncluded": false
+        }
+      ],
+      "receptiveRequirement": {
+        "required": true,
+        "description": "Understand the proposed short question/response in a slow, clear familiar exchange.",
+        "evidenceIds": [
+          "ev-tbcl-l1",
+          "ev-tongxuan-hypothesis",
+          "ev-grammar-self-name"
+        ]
+      },
+      "productiveRequirement": {
+        "required": true,
+        "description": "Use the proposed spoken pattern in the stated communicative move; no written production is required.",
+        "evidenceIds": [
+          "ev-tbcl-l1",
+          "ev-tongxuan-hypothesis",
+          "ev-grammar-self-name"
+        ]
+      },
+      "writingRequired": false,
+      "alternatives": [
+        "Begin with greetings only and defer names.",
+        "Use a non-verbal name card outside this language target set."
+      ],
+      "confidence": {
+        "rating": "LOW",
+        "rationale": "The framework supports broad capability and CC-CEDICT supports the particle gloss where relevant; this exact expression and teaching order are proposed hypotheses.",
+        "limitations": [
+          "No cited source prescribes the selected sentence frame, discourse move, or load."
+        ]
+      },
+      "hardPrerequisites": [
+        {
+          "targetId": "vocab-wo",
+          "rationale": "The first-person subject is needed to identify the speaker."
+        },
+        {
+          "targetId": "vocab-jiao",
+          "rationale": "The naming predicate is needed to express the proposed self-name frame."
+        }
+      ]
+    },
+    {
+      "id": "grammar-name-question",
+      "targetType": "GRAMMAR",
+      "approvalStatus": "PROPOSED",
+      "candidateForm": "你叫什麼名字？",
+      "pinyin": null,
+      "zhuyinStatus": "SOURCE_INSUFFICIENT",
+      "meaning": "Ask a peer's name with a personal-information question.",
+      "whyThis": "TBCL Level 1 personal information and Level 2 personal-question descriptors support capability scope; this exact question frame is a TongXuan hypothesis.",
+      "whyNow": "This pattern is introduced only after its spoken lexical ingredients and preceding interaction move are available.",
+      "evidenceIds": [
+        "ev-tbcl-l1",
+        "ev-tbcl-l2",
+        "ev-tongxuan-hypothesis",
+        "ev-grammar-name-question"
+      ],
+      "sourceProvenance": [
+        {
+          "sourceId": "tbcl-naer",
+          "evidenceId": "ev-tbcl-l1",
+          "useMode": "REFERENCE_ONLY",
+          "reference": "https://coct.naer.edu.tw/page.jsp?ID=11",
+          "rawContentIncluded": false
+        },
+        {
+          "sourceId": "tbcl-naer",
+          "evidenceId": "ev-tbcl-l2",
+          "useMode": "REFERENCE_ONLY",
+          "reference": "https://coct.naer.edu.tw/page.jsp?ID=12",
+          "rawContentIncluded": false
+        },
+        {
+          "sourceId": "tongxuan-proposal",
+          "evidenceId": "ev-tongxuan-hypothesis",
+          "useMode": "AUTHORED_HYPOTHESIS",
+          "reference": "https://github.com/webber0612/TongXuan-Chinese/issues/109",
+          "rawContentIncluded": false
+        }
+      ],
+      "receptiveRequirement": {
+        "required": true,
+        "description": "Understand the proposed short question/response in a slow, clear familiar exchange.",
+        "evidenceIds": [
+          "ev-tbcl-l1",
+          "ev-tbcl-l2",
+          "ev-tongxuan-hypothesis",
+          "ev-grammar-name-question"
+        ]
+      },
+      "productiveRequirement": {
+        "required": true,
+        "description": "Use the proposed spoken pattern in the stated communicative move; no written production is required.",
+        "evidenceIds": [
+          "ev-tbcl-l1",
+          "ev-tbcl-l2",
+          "ev-tongxuan-hypothesis",
+          "ev-grammar-name-question"
+        ]
+      },
+      "writingRequired": false,
+      "alternatives": [
+        "Teach only a fixed name-response frame and defer the question word.",
+        "Ask for one-word responses before productive question forms."
+      ],
+      "confidence": {
+        "rating": "LOW",
+        "rationale": "The framework supports broad capability and CC-CEDICT supports the particle gloss where relevant; this exact expression and teaching order are proposed hypotheses.",
+        "limitations": [
+          "No cited source prescribes the selected sentence frame, discourse move, or load."
+        ]
+      },
+      "hardPrerequisites": [
+        {
+          "targetId": "vocab-ni",
+          "rationale": "The question addresses a peer."
+        },
+        {
+          "targetId": "vocab-jiao",
+          "rationale": "The construction asks for the peer name using the naming predicate."
+        },
+        {
+          "targetId": "vocab-shenme",
+          "rationale": "The interrogative identifies the requested information."
+        },
+        {
+          "targetId": "vocab-mingzi",
+          "rationale": "The requested object is a name."
+        }
+      ]
+    },
+    {
+      "id": "grammar-state-preference",
+      "targetType": "GRAMMAR",
+      "approvalStatus": "PROPOSED",
+      "candidateForm": "我喜歡＋[直接名詞補語；L3 詞彙決策待 Owner 確認]",
+      "pinyin": null,
+      "zhuyinStatus": "SOURCE_INSUFFICIENT",
+      "meaning": "State one personal preference in a short sentence.",
+      "whyThis": "TBCL Level 2 S-2-2 supports discussing self/friends’ interests. The proposed frame is a TongXuan hypothesis. Its object remains an open direct nominal slot until an Owner-approved lexical candidate has evidence for naturalness, child familiarity, low semantic burden, and suitable beginner difficulty.",
+      "whyNow": "The preference capability is proposed here as its own communicative move; it does not require the learner to have completed the name-question lesson.",
+      "evidenceIds": [
+        "ev-tbcl-l2",
+        "ev-cccc-child-context",
+        "ev-tongxuan-hypothesis",
+        "ev-grammar-state-preference"
+      ],
+      "sourceProvenance": [
+        {
+          "sourceId": "tbcl-naer",
+          "evidenceId": "ev-tbcl-l2",
+          "useMode": "REFERENCE_ONLY",
+          "reference": "https://coct.naer.edu.tw/page.jsp?ID=12",
+          "rawContentIncluded": false
+        },
+        {
+          "sourceId": "tongxuan-proposal",
+          "evidenceId": "ev-cccc-child-context",
+          "useMode": "AUTHORED_HYPOTHESIS",
+          "reference": "https://github.com/webber0612/TongXuan-Chinese/issues/109",
+          "rawContentIncluded": false
+        },
+        {
+          "sourceId": "tongxuan-proposal",
+          "evidenceId": "ev-tongxuan-hypothesis",
+          "useMode": "AUTHORED_HYPOTHESIS",
+          "reference": "https://github.com/webber0612/TongXuan-Chinese/issues/109",
+          "rawContentIncluded": false
+        }
+      ],
+      "receptiveRequirement": {
+        "required": true,
+        "description": "Understand the proposed short question/response in a slow, clear familiar exchange.",
+        "evidenceIds": [
+          "ev-tbcl-l2",
+          "ev-cccc-child-context",
+          "ev-tongxuan-hypothesis",
+          "ev-grammar-state-preference"
+        ]
+      },
+      "productiveRequirement": {
+        "required": true,
+        "description": "Use the proposed spoken pattern in the stated communicative move; no written production is required.",
+        "evidenceIds": [
+          "ev-tbcl-l2",
+          "ev-cccc-child-context",
+          "ev-tongxuan-hypothesis",
+          "ev-grammar-state-preference"
+        ]
+      },
+      "writingRequired": false,
+      "alternatives": [
+        "Keep the direct nominal slot unresolved until a candidate passes the stated language-fit and learner-familiarity criteria.",
+        "Remove the fixed noun from the experiment if evidence cannot support a suitable child-beginner candidate."
+      ],
+      "confidence": {
+        "rating": "LOW",
+        "rationale": "The framework supports broad capability and CC-CEDICT supports the particle gloss where relevant; this exact expression and teaching order are proposed hypotheses.",
+        "limitations": [
+          "No cited source prescribes the selected sentence frame, discourse move, or load."
+        ]
+      },
+      "hardPrerequisites": [
+        {
+          "targetId": "vocab-wo",
+          "rationale": "The proposed first-person statement needs a speaker reference."
+        },
+        {
+          "targetId": "vocab-xihuan",
+          "rationale": "The proposed preference statement needs its preference predicate."
+        }
+      ]
+    },
+    {
+      "id": "grammar-ask-preference",
+      "targetType": "GRAMMAR",
+      "approvalStatus": "PROPOSED",
+      "candidateForm": "你喜歡什麼？",
+      "pinyin": null,
+      "zhuyinStatus": "SOURCE_INSUFFICIENT",
+      "meaning": "Ask what a peer likes, then listen to one short preference response.",
+      "whyThis": "TBCL Level 2 S-2-2 and L-2-1 support interest interaction and personal questions; transfer from the name question to this frame is a TongXuan hypothesis.",
+      "whyNow": "This pattern is introduced only after its spoken lexical ingredients and preceding interaction move are available.",
+      "evidenceIds": [
+        "ev-tbcl-l2",
+        "ev-tongxuan-hypothesis",
+        "ev-grammar-ask-preference"
+      ],
+      "sourceProvenance": [
+        {
+          "sourceId": "tbcl-naer",
+          "evidenceId": "ev-tbcl-l2",
+          "useMode": "REFERENCE_ONLY",
+          "reference": "https://coct.naer.edu.tw/page.jsp?ID=12",
+          "rawContentIncluded": false
+        },
+        {
+          "sourceId": "tongxuan-proposal",
+          "evidenceId": "ev-tongxuan-hypothesis",
+          "useMode": "AUTHORED_HYPOTHESIS",
+          "reference": "https://github.com/webber0612/TongXuan-Chinese/issues/109",
+          "rawContentIncluded": false
+        }
+      ],
+      "receptiveRequirement": {
+        "required": true,
+        "description": "Understand the proposed short question/response in a slow, clear familiar exchange.",
+        "evidenceIds": [
+          "ev-tbcl-l2",
+          "ev-tongxuan-hypothesis",
+          "ev-grammar-ask-preference"
+        ]
+      },
+      "productiveRequirement": {
+        "required": true,
+        "description": "Use the proposed spoken pattern in the stated communicative move; no written production is required.",
+        "evidenceIds": [
+          "ev-tbcl-l2",
+          "ev-tongxuan-hypothesis",
+          "ev-grammar-ask-preference"
+        ]
+      },
+      "writingRequired": false,
+      "alternatives": [
+        "Keep only statements and postpone questions about interests.",
+        "A yes/no question would require a separate negative-response policy."
+      ],
+      "confidence": {
+        "rating": "LOW",
+        "rationale": "The framework supports broad capability and CC-CEDICT supports the particle gloss where relevant; this exact expression and teaching order are proposed hypotheses.",
+        "limitations": [
+          "No cited source prescribes the selected sentence frame, discourse move, or load."
+        ]
+      },
+      "hardPrerequisites": [
+        {
+          "targetId": "vocab-ni",
+          "rationale": "The question addresses the peer."
+        },
+        {
+          "targetId": "vocab-xihuan",
+          "rationale": "The question asks about a preference."
+        },
+        {
+          "targetId": "vocab-shenme",
+          "rationale": "The question asks which preference object is liked."
+        }
+      ]
+    },
+    {
+      "id": "grammar-reciprocal-ne",
+      "targetType": "GRAMMAR",
+      "approvalStatus": "PROPOSED",
+      "candidateForm": "你呢？",
+      "pinyin": null,
+      "zhuyinStatus": "SOURCE_INSUFFICIENT",
+      "meaning": "Return a just-answered personal question to the other speaker with 呢 (ne).",
+      "whyThis": "CC-CEDICT supports the particle's Pinyin/contextual gloss; TBCL Level 2 interaction supports broad conversation capability. Teaching this discourse move in Lesson 5 is a TongXuan hypothesis.",
+      "whyNow": "This pattern is introduced only after its spoken lexical ingredients and preceding interaction move are available.",
+      "evidenceIds": [
+        "ev-lex-ne",
+        "ev-tbcl-l2",
+        "ev-tongxuan-hypothesis"
+      ],
+      "sourceProvenance": [
+        {
+          "sourceId": "cc-cedict",
+          "evidenceId": "ev-lex-ne",
+          "useMode": "CONTENT_SOURCE",
+          "reference": "https://www.mdbg.net/chinese/dictionary?page=worddict&wdqb=%E4%BD%A0%E5%91%A2",
+          "rawContentIncluded": false,
+          "license": "CC BY-SA 4.0",
+          "attribution": "CC-CEDICT contributors; item-level lookup distributed through MDBG; CC BY-SA 4.0.",
+          "shareAlike": true
+        },
+        {
+          "sourceId": "tbcl-naer",
+          "evidenceId": "ev-tbcl-l2",
+          "useMode": "REFERENCE_ONLY",
+          "reference": "https://coct.naer.edu.tw/page.jsp?ID=12",
+          "rawContentIncluded": false
+        },
+        {
+          "sourceId": "tongxuan-proposal",
+          "evidenceId": "ev-tongxuan-hypothesis",
+          "useMode": "AUTHORED_HYPOTHESIS",
+          "reference": "https://github.com/webber0612/TongXuan-Chinese/issues/109",
+          "rawContentIncluded": false
+        }
+      ],
+      "receptiveRequirement": {
+        "required": true,
+        "description": "Understand the proposed short question/response in a slow, clear familiar exchange.",
+        "evidenceIds": [
+          "ev-lex-ne",
+          "ev-tbcl-l2",
+          "ev-tongxuan-hypothesis"
+        ]
+      },
+      "productiveRequirement": {
+        "required": true,
+        "description": "Use the proposed spoken pattern in the stated communicative move; no written production is required.",
+        "evidenceIds": [
+          "ev-lex-ne",
+          "ev-tbcl-l2",
+          "ev-tongxuan-hypothesis"
+        ]
+      },
+      "writingRequired": false,
+      "alternatives": [
+        "Integrate L1–L4 without 呢; that would make L5 consolidation rather than a new discourse capability.",
+        "Use another sourced reciprocal-turn device after evidence review."
+      ],
+      "confidence": {
+        "rating": "LOW",
+        "rationale": "The framework supports broad capability and CC-CEDICT supports the particle gloss where relevant; this exact expression and teaching order are proposed hypotheses.",
+        "limitations": [
+          "No cited source prescribes the selected sentence frame, discourse move, or load."
+        ]
+      },
+      "hardPrerequisites": [
+        {
+          "targetId": "vocab-ni",
+          "rationale": "The return prompt names the peer as the person invited to answer."
+        }
+      ]
+    },
+    {
+      "id": "char-wo",
+      "targetType": "CHARACTER",
+      "approvalStatus": "PROPOSED",
+      "candidateForm": "我",
+      "pinyin": "wǒ",
+      "zhuyinStatus": "SOURCE_INSUFFICIENT",
+      "meaning": "Recognize this glyph only in the already heard self-reference.",
+      "whyThis": "A small optional visual-recognition candidate attached to an already heard word; this does not imply independent character vocabulary, reading mastery, SRS, or writing.",
+      "whyNow": "Variant-specific only: Variant A defers selected forms until oral exchange is established; Variant B recognizes a small number alongside familiar oral forms.",
+      "evidenceIds": [
+        "ev-lex-wo",
+        "ev-char-wo",
+        "ev-tbcl-l1",
+        "ev-tongxuan-hypothesis",
+        "ev-character-srs-unresolved"
+      ],
+      "sourceProvenance": [
+        {
+          "sourceId": "cc-cedict",
+          "evidenceId": "ev-lex-wo",
+          "useMode": "CONTENT_SOURCE",
+          "reference": "https://www.mdbg.net/chinese/dictionary?page=worddict&wdqb=%E6%88%91",
+          "rawContentIncluded": false,
+          "license": "CC BY-SA 4.0",
+          "attribution": "CC-CEDICT contributors; item-level lookup distributed through MDBG; CC BY-SA 4.0.",
+          "shareAlike": true
+        },
+        {
+          "sourceId": "tongxuan-proposal",
+          "evidenceId": "ev-char-wo",
+          "useMode": "AUTHORED_HYPOTHESIS",
+          "reference": "https://github.com/webber0612/TongXuan-Chinese/issues/109",
+          "rawContentIncluded": false
+        },
+        {
+          "sourceId": "tbcl-naer",
+          "evidenceId": "ev-tbcl-l1",
+          "useMode": "REFERENCE_ONLY",
+          "reference": "https://coct.naer.edu.tw/page.jsp?ID=11",
+          "rawContentIncluded": false
+        }
+      ],
+      "receptiveRequirement": {
+        "required": true,
+        "description": "Recognize this glyph in its already-heard word or particle context; do not infer isolated mastery.",
+        "evidenceIds": [
+          "ev-lex-wo",
+          "ev-char-wo"
+        ]
+      },
+      "productiveRequirement": {
+        "required": false,
+        "description": "No isolated spoken production target; use the corresponding whole-word/grammar target for speech.",
+        "evidenceIds": [
+          "ev-char-wo"
+        ]
+      },
+      "writingRequired": false,
+      "alternatives": [
+        "Omit individual glyph recognition and keep only an oral word-level experiment until a sourced recognition pathway exists."
+      ],
+      "confidence": {
+        "rating": "LOW",
+        "rationale": "The linked item identifies a form/Pinyin context; the proposed character-recognition grain and timing are unvalidated.",
+        "limitations": [
+          "No evidence establishes character-level difficulty, independent character mastery, or learning benefit."
+        ]
+      },
+      "hardPrerequisites": []
+    },
+    {
+      "id": "char-ni",
+      "targetType": "CHARACTER",
+      "approvalStatus": "PROPOSED",
+      "candidateForm": "你",
+      "pinyin": "nǐ",
+      "zhuyinStatus": "SOURCE_INSUFFICIENT",
+      "meaning": "Recognize this glyph only in the already heard peer address.",
+      "whyThis": "A small optional visual-recognition candidate attached to an already heard word; this does not imply independent character vocabulary, reading mastery, SRS, or writing.",
+      "whyNow": "Variant-specific only: Variant A defers selected forms until oral exchange is established; Variant B recognizes a small number alongside familiar oral forms.",
+      "evidenceIds": [
+        "ev-lex-ni",
+        "ev-char-ni",
+        "ev-tbcl-l1",
+        "ev-tbcl-l2",
+        "ev-tongxuan-hypothesis",
+        "ev-character-srs-unresolved"
+      ],
+      "sourceProvenance": [
+        {
+          "sourceId": "cc-cedict",
+          "evidenceId": "ev-lex-ni",
+          "useMode": "CONTENT_SOURCE",
+          "reference": "https://www.mdbg.net/chinese/dictionary?page=worddict&wdqb=%E4%BD%A0",
+          "rawContentIncluded": false,
+          "license": "CC BY-SA 4.0",
+          "attribution": "CC-CEDICT contributors; item-level lookup distributed through MDBG; CC BY-SA 4.0.",
+          "shareAlike": true
+        },
+        {
+          "sourceId": "tongxuan-proposal",
+          "evidenceId": "ev-char-ni",
+          "useMode": "AUTHORED_HYPOTHESIS",
+          "reference": "https://github.com/webber0612/TongXuan-Chinese/issues/109",
+          "rawContentIncluded": false
+        },
+        {
+          "sourceId": "tbcl-naer",
+          "evidenceId": "ev-tbcl-l1",
+          "useMode": "REFERENCE_ONLY",
+          "reference": "https://coct.naer.edu.tw/page.jsp?ID=11",
+          "rawContentIncluded": false
+        },
+        {
+          "sourceId": "tbcl-naer",
+          "evidenceId": "ev-tbcl-l2",
+          "useMode": "REFERENCE_ONLY",
+          "reference": "https://coct.naer.edu.tw/page.jsp?ID=12",
+          "rawContentIncluded": false
+        }
+      ],
+      "receptiveRequirement": {
+        "required": true,
+        "description": "Recognize this glyph in its already-heard word or particle context; do not infer isolated mastery.",
+        "evidenceIds": [
+          "ev-lex-ni",
+          "ev-char-ni"
+        ]
+      },
+      "productiveRequirement": {
+        "required": false,
+        "description": "No isolated spoken production target; use the corresponding whole-word/grammar target for speech.",
+        "evidenceIds": [
+          "ev-char-ni"
+        ]
+      },
+      "writingRequired": false,
+      "alternatives": [
+        "Omit individual glyph recognition and keep only an oral word-level experiment until a sourced recognition pathway exists."
+      ],
+      "confidence": {
+        "rating": "LOW",
+        "rationale": "The linked item identifies a form/Pinyin context; the proposed character-recognition grain and timing are unvalidated.",
+        "limitations": [
+          "No evidence establishes character-level difficulty, independent character mastery, or learning benefit."
+        ]
+      },
+      "hardPrerequisites": []
+    },
+    {
+      "id": "char-ming",
+      "targetType": "CHARACTER",
+      "approvalStatus": "PROPOSED",
+      "candidateForm": "名",
+      "pinyin": "míng",
+      "zhuyinStatus": "SOURCE_INSUFFICIENT",
+      "meaning": "Recognize this glyph as a component of the previously heard word 名字; no isolated character mastery is implied.",
+      "whyThis": "A small optional visual-recognition candidate attached to an already heard word; this does not imply independent character vocabulary, reading mastery, SRS, or writing.",
+      "whyNow": "Variant-specific only: Variant A defers selected forms until oral exchange is established; Variant B recognizes a small number alongside familiar oral forms.",
+      "evidenceIds": [
+        "ev-lex-mingzi",
+        "ev-char-ming",
+        "ev-tbcl-l1",
+        "ev-tbcl-l2",
+        "ev-tongxuan-hypothesis",
+        "ev-character-srs-unresolved"
+      ],
+      "sourceProvenance": [
+        {
+          "sourceId": "cc-cedict",
+          "evidenceId": "ev-lex-mingzi",
+          "useMode": "CONTENT_SOURCE",
+          "reference": "https://www.mdbg.net/chinese/dictionary?page=worddict&wdqb=%E5%90%8D%E5%AD%97",
+          "rawContentIncluded": false,
+          "license": "CC BY-SA 4.0",
+          "attribution": "CC-CEDICT contributors; item-level lookup distributed through MDBG; CC BY-SA 4.0.",
+          "shareAlike": true
+        },
+        {
+          "sourceId": "tongxuan-proposal",
+          "evidenceId": "ev-char-ming",
+          "useMode": "AUTHORED_HYPOTHESIS",
+          "reference": "https://github.com/webber0612/TongXuan-Chinese/issues/109",
+          "rawContentIncluded": false
+        },
+        {
+          "sourceId": "tbcl-naer",
+          "evidenceId": "ev-tbcl-l1",
+          "useMode": "REFERENCE_ONLY",
+          "reference": "https://coct.naer.edu.tw/page.jsp?ID=11",
+          "rawContentIncluded": false
+        },
+        {
+          "sourceId": "tbcl-naer",
+          "evidenceId": "ev-tbcl-l2",
+          "useMode": "REFERENCE_ONLY",
+          "reference": "https://coct.naer.edu.tw/page.jsp?ID=12",
+          "rawContentIncluded": false
+        }
+      ],
+      "receptiveRequirement": {
+        "required": true,
+        "description": "Recognize this glyph in its already-heard word or particle context; do not infer isolated mastery.",
+        "evidenceIds": [
+          "ev-lex-mingzi",
+          "ev-char-ming"
+        ]
+      },
+      "productiveRequirement": {
+        "required": false,
+        "description": "No isolated spoken production target; use the corresponding whole-word/grammar target for speech.",
+        "evidenceIds": [
+          "ev-char-ming"
+        ]
+      },
+      "writingRequired": false,
+      "alternatives": [
+        "Omit individual glyph recognition and keep only an oral word-level experiment until a sourced recognition pathway exists."
+      ],
+      "confidence": {
+        "rating": "LOW",
+        "rationale": "The linked item identifies a form/Pinyin context; the proposed character-recognition grain and timing are unvalidated.",
+        "limitations": [
+          "No evidence establishes character-level difficulty, independent character mastery, or learning benefit."
+        ]
+      },
+      "hardPrerequisites": []
+    },
+    {
+      "id": "char-zi",
+      "targetType": "CHARACTER",
+      "approvalStatus": "PROPOSED",
+      "candidateForm": "字",
+      "pinyin": "zì",
+      "zhuyinStatus": "SOURCE_INSUFFICIENT",
+      "meaning": "Recognize this glyph as a component of the previously heard word 名字; no isolated character mastery is implied.",
+      "whyThis": "A small optional visual-recognition candidate attached to an already heard word; this does not imply independent character vocabulary, reading mastery, SRS, or writing.",
+      "whyNow": "Variant-specific only: Variant A defers selected forms until oral exchange is established; Variant B recognizes a small number alongside familiar oral forms.",
+      "evidenceIds": [
+        "ev-lex-mingzi",
+        "ev-char-zi",
+        "ev-tbcl-l1",
+        "ev-tbcl-l2",
+        "ev-tongxuan-hypothesis",
+        "ev-character-srs-unresolved"
+      ],
+      "sourceProvenance": [
+        {
+          "sourceId": "cc-cedict",
+          "evidenceId": "ev-lex-mingzi",
+          "useMode": "CONTENT_SOURCE",
+          "reference": "https://www.mdbg.net/chinese/dictionary?page=worddict&wdqb=%E5%90%8D%E5%AD%97",
+          "rawContentIncluded": false,
+          "license": "CC BY-SA 4.0",
+          "attribution": "CC-CEDICT contributors; item-level lookup distributed through MDBG; CC BY-SA 4.0.",
+          "shareAlike": true
+        },
+        {
+          "sourceId": "tongxuan-proposal",
+          "evidenceId": "ev-char-zi",
+          "useMode": "AUTHORED_HYPOTHESIS",
+          "reference": "https://github.com/webber0612/TongXuan-Chinese/issues/109",
+          "rawContentIncluded": false
+        },
+        {
+          "sourceId": "tbcl-naer",
+          "evidenceId": "ev-tbcl-l1",
+          "useMode": "REFERENCE_ONLY",
+          "reference": "https://coct.naer.edu.tw/page.jsp?ID=11",
+          "rawContentIncluded": false
+        },
+        {
+          "sourceId": "tbcl-naer",
+          "evidenceId": "ev-tbcl-l2",
+          "useMode": "REFERENCE_ONLY",
+          "reference": "https://coct.naer.edu.tw/page.jsp?ID=12",
+          "rawContentIncluded": false
+        }
+      ],
+      "receptiveRequirement": {
+        "required": true,
+        "description": "Recognize this glyph in its already-heard word or particle context; do not infer isolated mastery.",
+        "evidenceIds": [
+          "ev-lex-mingzi",
+          "ev-char-zi"
+        ]
+      },
+      "productiveRequirement": {
+        "required": false,
+        "description": "No isolated spoken production target; use the corresponding whole-word/grammar target for speech.",
+        "evidenceIds": [
+          "ev-char-zi"
+        ]
+      },
+      "writingRequired": false,
+      "alternatives": [
+        "Omit individual glyph recognition and keep only an oral word-level experiment until a sourced recognition pathway exists."
+      ],
+      "confidence": {
+        "rating": "LOW",
+        "rationale": "The linked item identifies a form/Pinyin context; the proposed character-recognition grain and timing are unvalidated.",
+        "limitations": [
+          "No evidence establishes character-level difficulty, independent character mastery, or learning benefit."
+        ]
+      },
+      "hardPrerequisites": []
+    },
+    {
+      "id": "char-xi",
+      "targetType": "CHARACTER",
+      "approvalStatus": "PROPOSED",
+      "candidateForm": "喜",
+      "pinyin": "xǐ",
+      "zhuyinStatus": "SOURCE_INSUFFICIENT",
+      "meaning": "Recognize this glyph only as part of the already heard whole word 喜歡.",
+      "whyThis": "A small optional visual-recognition candidate attached to an already heard word; this does not imply independent character vocabulary, reading mastery, SRS, or writing.",
+      "whyNow": "Variant-specific only: Variant A defers selected forms until oral exchange is established; Variant B recognizes a small number alongside familiar oral forms.",
+      "evidenceIds": [
+        "ev-lex-xihuan",
+        "ev-char-xi",
+        "ev-tbcl-l2",
+        "ev-tongxuan-hypothesis",
+        "ev-character-srs-unresolved"
+      ],
+      "sourceProvenance": [
+        {
+          "sourceId": "cc-cedict",
+          "evidenceId": "ev-lex-xihuan",
+          "useMode": "CONTENT_SOURCE",
+          "reference": "https://www.mdbg.net/chinese/dictionary?page=worddict&wdqb=like",
+          "rawContentIncluded": false,
+          "license": "CC BY-SA 4.0",
+          "attribution": "CC-CEDICT contributors; item-level lookup distributed through MDBG; CC BY-SA 4.0.",
+          "shareAlike": true
+        },
+        {
+          "sourceId": "tongxuan-proposal",
+          "evidenceId": "ev-char-xi",
+          "useMode": "AUTHORED_HYPOTHESIS",
+          "reference": "https://github.com/webber0612/TongXuan-Chinese/issues/109",
+          "rawContentIncluded": false
+        },
+        {
+          "sourceId": "tbcl-naer",
+          "evidenceId": "ev-tbcl-l2",
+          "useMode": "REFERENCE_ONLY",
+          "reference": "https://coct.naer.edu.tw/page.jsp?ID=12",
+          "rawContentIncluded": false
+        }
+      ],
+      "receptiveRequirement": {
+        "required": true,
+        "description": "Recognize this glyph in its already-heard word or particle context; do not infer isolated mastery.",
+        "evidenceIds": [
+          "ev-lex-xihuan",
+          "ev-char-xi"
+        ]
+      },
+      "productiveRequirement": {
+        "required": false,
+        "description": "No isolated spoken production target; use the corresponding whole-word/grammar target for speech.",
+        "evidenceIds": [
+          "ev-char-xi"
+        ]
+      },
+      "writingRequired": false,
+      "alternatives": [
+        "Omit individual glyph recognition and keep only an oral word-level experiment until a sourced recognition pathway exists."
+      ],
+      "confidence": {
+        "rating": "LOW",
+        "rationale": "The linked item identifies a form/Pinyin context; the proposed character-recognition grain and timing are unvalidated.",
+        "limitations": [
+          "No evidence establishes character-level difficulty, independent character mastery, or learning benefit."
+        ]
+      },
+      "hardPrerequisites": []
+    },
+    {
+      "id": "char-huan",
+      "targetType": "CHARACTER",
+      "approvalStatus": "PROPOSED",
+      "candidateForm": "歡",
+      "pinyin": "huān",
+      "zhuyinStatus": "SOURCE_INSUFFICIENT",
+      "meaning": "Recognize this glyph only as part of the already heard whole word 喜歡.",
+      "whyThis": "A small optional visual-recognition candidate attached to an already heard word; this does not imply independent character vocabulary, reading mastery, SRS, or writing.",
+      "whyNow": "Variant-specific only: Variant A defers selected forms until oral exchange is established; Variant B recognizes a small number alongside familiar oral forms.",
+      "evidenceIds": [
+        "ev-lex-xihuan",
+        "ev-char-huan",
+        "ev-tbcl-l2",
+        "ev-tongxuan-hypothesis",
+        "ev-character-srs-unresolved"
+      ],
+      "sourceProvenance": [
+        {
+          "sourceId": "cc-cedict",
+          "evidenceId": "ev-lex-xihuan",
+          "useMode": "CONTENT_SOURCE",
+          "reference": "https://www.mdbg.net/chinese/dictionary?page=worddict&wdqb=like",
+          "rawContentIncluded": false,
+          "license": "CC BY-SA 4.0",
+          "attribution": "CC-CEDICT contributors; item-level lookup distributed through MDBG; CC BY-SA 4.0.",
+          "shareAlike": true
+        },
+        {
+          "sourceId": "tongxuan-proposal",
+          "evidenceId": "ev-char-huan",
+          "useMode": "AUTHORED_HYPOTHESIS",
+          "reference": "https://github.com/webber0612/TongXuan-Chinese/issues/109",
+          "rawContentIncluded": false
+        },
+        {
+          "sourceId": "tbcl-naer",
+          "evidenceId": "ev-tbcl-l2",
+          "useMode": "REFERENCE_ONLY",
+          "reference": "https://coct.naer.edu.tw/page.jsp?ID=12",
+          "rawContentIncluded": false
+        }
+      ],
+      "receptiveRequirement": {
+        "required": true,
+        "description": "Recognize this glyph in its already-heard word or particle context; do not infer isolated mastery.",
+        "evidenceIds": [
+          "ev-lex-xihuan",
+          "ev-char-huan"
+        ]
+      },
+      "productiveRequirement": {
+        "required": false,
+        "description": "No isolated spoken production target; use the corresponding whole-word/grammar target for speech.",
+        "evidenceIds": [
+          "ev-char-huan"
+        ]
+      },
+      "writingRequired": false,
+      "alternatives": [
+        "Omit individual glyph recognition and keep only an oral word-level experiment until a sourced recognition pathway exists."
+      ],
+      "confidence": {
+        "rating": "LOW",
+        "rationale": "The linked item identifies a form/Pinyin context; the proposed character-recognition grain and timing are unvalidated.",
+        "limitations": [
+          "No evidence establishes character-level difficulty, independent character mastery, or learning benefit."
+        ]
+      },
+      "hardPrerequisites": []
+    },
+    {
+      "id": "char-ne",
+      "targetType": "CHARACTER",
+      "approvalStatus": "PROPOSED",
+      "candidateForm": "呢",
+      "pinyin": "ne",
+      "zhuyinStatus": "SOURCE_INSUFFICIENT",
+      "meaning": "Recognize this glyph only in the taught reciprocal prompt; distinguish this from independent character reading, SRS, or writing.",
+      "whyThis": "A small optional visual-recognition candidate attached to an already heard word; this does not imply independent character vocabulary, reading mastery, SRS, or writing.",
+      "whyNow": "Variant-specific only: Variant A defers selected forms until oral exchange is established; Variant B recognizes a small number alongside familiar oral forms.",
+      "evidenceIds": [
+        "ev-lex-ne",
+        "ev-char-ne",
+        "ev-tbcl-l2",
+        "ev-tongxuan-hypothesis",
+        "ev-character-srs-unresolved"
+      ],
+      "sourceProvenance": [
+        {
+          "sourceId": "cc-cedict",
+          "evidenceId": "ev-lex-ne",
+          "useMode": "CONTENT_SOURCE",
+          "reference": "https://www.mdbg.net/chinese/dictionary?page=worddict&wdqb=%E4%BD%A0%E5%91%A2",
+          "rawContentIncluded": false,
+          "license": "CC BY-SA 4.0",
+          "attribution": "CC-CEDICT contributors; item-level lookup distributed through MDBG; CC BY-SA 4.0.",
+          "shareAlike": true
+        },
+        {
+          "sourceId": "tongxuan-proposal",
+          "evidenceId": "ev-char-ne",
+          "useMode": "AUTHORED_HYPOTHESIS",
+          "reference": "https://github.com/webber0612/TongXuan-Chinese/issues/109",
+          "rawContentIncluded": false
+        },
+        {
+          "sourceId": "tbcl-naer",
+          "evidenceId": "ev-tbcl-l2",
+          "useMode": "REFERENCE_ONLY",
+          "reference": "https://coct.naer.edu.tw/page.jsp?ID=12",
+          "rawContentIncluded": false
+        }
+      ],
+      "receptiveRequirement": {
+        "required": true,
+        "description": "Recognize this glyph in its already-heard word or particle context; do not infer isolated mastery.",
+        "evidenceIds": [
+          "ev-lex-ne",
+          "ev-char-ne"
+        ]
+      },
+      "productiveRequirement": {
+        "required": false,
+        "description": "No isolated spoken production target; use the corresponding whole-word/grammar target for speech.",
+        "evidenceIds": [
+          "ev-char-ne"
+        ]
+      },
+      "writingRequired": false,
+      "alternatives": [
+        "Omit individual glyph recognition and keep only an oral word-level experiment until a sourced recognition pathway exists."
+      ],
+      "confidence": {
+        "rating": "LOW",
+        "rationale": "The linked item identifies a form/Pinyin context; the proposed character-recognition grain and timing are unvalidated.",
+        "limitations": [
+          "No evidence establishes character-level difficulty, independent character mastery, or learning benefit."
+        ]
+      },
+      "hardPrerequisites": []
+    }
+  ],
+  "variants": [
+    {
+      "variantId": "A",
+      "label": "Communication-first; delay selected script recognition",
+      "sequence": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E"
+      ],
+      "lessons": [
+        {
+          "slot": "A",
+          "title": "L1 — Greet and say your own name",
+          "skillTargets": [
+            "skill-greet-self-name"
+          ],
+          "vocabularyTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao"
+          ],
+          "grammarTargets": [
+            "grammar-self-name"
+          ],
+          "characterTargets": [],
+          "newVocabularyTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao"
+          ],
+          "newGrammarTargets": [
+            "grammar-self-name"
+          ],
+          "newCharacterTargets": [],
+          "recycledTargetIds": [],
+          "listeningComprehensionTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "grammar-self-name"
+          ],
+          "visualMeaningComprehensionTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao"
+          ],
+          "spokenProductionTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "grammar-self-name"
+          ],
+          "characterRecognitionTargets": [],
+          "scriptReadingTargets": [],
+          "writingTargets": [],
+          "phoneticTargetSyllables": [
+            "nǐ",
+            "hǎo",
+            "wǒ",
+            "jiào"
+          ],
+          "srsReviewTargets": [],
+          "whyNow": "First proposed capability in this experiment; no prior target is assumed.",
+          "orderRationale": "Establishes the first peer-facing move in both variants.",
+          "alternatives": [
+            "Begin with greetings only and defer names.",
+            "Use a non-verbal name card outside this language target set."
+          ],
+          "confidence": {
+            "rating": "LOW",
+            "rationale": "This five-lesson progression is explicit and evidence-constrained, but the framework supports broad capability rather than the selected order.",
+            "limitations": [
+              "No comparison study, frequency-corpus evidence, classroom observation, or real-child load data is available."
+            ]
+          },
+          "adaptiveLearningFit": "Only lesson hardPrerequisites may block entry. Pedagogical predecessors, recycled context, and assumed-known targets guide recommendation or scaffolding only. A future authoritative selector may skip lessons when the exact hard-prerequisite skills are authoritative; this proposal does not implement a selector or authorize Lesson 6.",
+          "load": {
+            "newVocabularyCount": 3,
+            "newGrammarCount": 1,
+            "newCharacterRecognitionCount": 0,
+            "newWritingCount": 0,
+            "newPhoneticSyllableCount": 4,
+            "riskFlags": [
+              "No frequency evidence supports target ranking; this target is selected for proposed communicative utility."
+            ]
+          },
+          "hardPrerequisites": [],
+          "pedagogicalPredecessors": [],
+          "recycledContext": [],
+          "assumedKnown": []
+        },
+        {
+          "slot": "B",
+          "title": "L2 — Ask and answer a peer's name",
+          "skillTargets": [
+            "skill-greet-self-name",
+            "skill-ask-answer-name"
+          ],
+          "vocabularyTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "vocab-ni",
+            "vocab-shenme",
+            "vocab-mingzi"
+          ],
+          "grammarTargets": [
+            "grammar-self-name",
+            "grammar-name-question"
+          ],
+          "characterTargets": [],
+          "newVocabularyTargets": [
+            "vocab-ni",
+            "vocab-shenme",
+            "vocab-mingzi"
+          ],
+          "newGrammarTargets": [
+            "grammar-name-question"
+          ],
+          "newCharacterTargets": [],
+          "recycledTargetIds": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "grammar-self-name"
+          ],
+          "listeningComprehensionTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "vocab-ni",
+            "vocab-shenme",
+            "vocab-mingzi",
+            "grammar-self-name",
+            "grammar-name-question"
+          ],
+          "visualMeaningComprehensionTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "vocab-ni",
+            "vocab-shenme",
+            "vocab-mingzi"
+          ],
+          "spokenProductionTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "vocab-ni",
+            "vocab-shenme",
+            "vocab-mingzi",
+            "grammar-self-name",
+            "grammar-name-question"
+          ],
+          "characterRecognitionTargets": [],
+          "scriptReadingTargets": [],
+          "writingTargets": [],
+          "phoneticTargetSyllables": [
+            "shén",
+            "me",
+            "míng",
+            "zi"
+          ],
+          "srsReviewTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao"
+          ],
+          "whyNow": "A name exchange is placed after self-introduction as a pedagogical sequence choice. The lesson has no lesson-entry hard prerequisite; missing components may be scaffolded.",
+          "orderRationale": "Follows L1 in the proposed communication-first sequence; placement or authoritative mastery may bypass that sequence.",
+          "alternatives": [
+            "Teach only a fixed name-response frame and defer the question word.",
+            "Ask for one-word responses before productive question forms."
+          ],
+          "confidence": {
+            "rating": "LOW",
+            "rationale": "This five-lesson progression is explicit and evidence-constrained, but the framework supports broad capability rather than the selected order.",
+            "limitations": [
+              "No comparison study, frequency-corpus evidence, classroom observation, or real-child load data is available."
+            ]
+          },
+          "adaptiveLearningFit": "Only lesson hardPrerequisites may block entry. Pedagogical predecessors, recycled context, and assumed-known targets guide recommendation or scaffolding only. A future authoritative selector may skip lessons when the exact hard-prerequisite skills are authoritative; this proposal does not implement a selector or authorize Lesson 6.",
+          "load": {
+            "newVocabularyCount": 3,
+            "newGrammarCount": 1,
+            "newCharacterRecognitionCount": 0,
+            "newWritingCount": 0,
+            "newPhoneticSyllableCount": 4,
+            "riskFlags": [
+              "Lesson 2 combines a name question, three lexical targets, and four new phonetic syllables; validate load with children."
+            ]
+          },
+          "hardPrerequisites": [],
+          "pedagogicalPredecessors": [
+            {
+              "lessonSlot": "A",
+              "rationale": "Chosen to follow self-introduction in the experiment; the order is a teaching preference, not a language-comprehension gate."
+            }
+          ],
+          "recycledContext": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "grammar-self-name",
+            "skill-greet-self-name"
+          ],
+          "assumedKnown": [
+            {
+              "targetId": "vocab-nihao",
+              "scaffoldIfMissing": "Offer the spoken greeting with an audio model and allow immediate echoing."
+            },
+            {
+              "targetId": "vocab-wo",
+              "scaffoldIfMissing": "Show a first-person speaker cue and model the word aloud."
+            },
+            {
+              "targetId": "vocab-jiao",
+              "scaffoldIfMissing": "Model the name phrase before asking the learner to answer."
+            },
+            {
+              "targetId": "grammar-self-name",
+              "scaffoldIfMissing": "Provide a complete self-name phrase strip; do not make prior mastery a lesson-entry gate."
+            }
+          ]
+        },
+        {
+          "slot": "C",
+          "title": "L3 — Tell a peer one preference",
+          "skillTargets": [
+            "skill-greet-self-name",
+            "skill-ask-answer-name",
+            "skill-state-preference"
+          ],
+          "vocabularyTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "vocab-ni",
+            "vocab-shenme",
+            "vocab-mingzi",
+            "vocab-xihuan"
+          ],
+          "grammarTargets": [
+            "grammar-self-name",
+            "grammar-name-question",
+            "grammar-state-preference"
+          ],
+          "characterTargets": [],
+          "newVocabularyTargets": [
+            "vocab-xihuan"
+          ],
+          "newGrammarTargets": [
+            "grammar-state-preference"
+          ],
+          "newCharacterTargets": [],
+          "recycledTargetIds": [
+            "vocab-ni",
+            "vocab-wo",
+            "grammar-self-name"
+          ],
+          "listeningComprehensionTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "vocab-ni",
+            "vocab-shenme",
+            "vocab-mingzi",
+            "vocab-xihuan",
+            "grammar-self-name",
+            "grammar-name-question",
+            "grammar-state-preference"
+          ],
+          "visualMeaningComprehensionTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "vocab-ni",
+            "vocab-shenme",
+            "vocab-mingzi",
+            "vocab-xihuan"
+          ],
+          "spokenProductionTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "vocab-ni",
+            "vocab-shenme",
+            "vocab-mingzi",
+            "vocab-xihuan",
+            "grammar-self-name",
+            "grammar-name-question",
+            "grammar-state-preference"
+          ],
+          "characterRecognitionTargets": [],
+          "scriptReadingTargets": [],
+          "writingTargets": [],
+          "phoneticTargetSyllables": [
+            "xǐ",
+            "huan",
+            "qiú"
+          ],
+          "srsReviewTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "vocab-ni",
+            "vocab-shenme",
+            "vocab-mingzi"
+          ],
+          "whyNow": "Preference expression is a separate communicative capability. L2 name exchange is a pedagogical predecessor only, not a language prerequisite.",
+          "orderRationale": "Moves into preference expression while preserving a path that does not require name-question mastery.",
+          "alternatives": [
+            "Use a learner-selected noun only after its provenance and load are reviewed.",
+            "Omit the fixed leisure noun until child validation."
+          ],
+          "confidence": {
+            "rating": "LOW",
+            "rationale": "This five-lesson progression is explicit and evidence-constrained, but the framework supports broad capability rather than the selected order.",
+            "limitations": [
+              "No comparison study, frequency-corpus evidence, classroom observation, or real-child load data is available."
+            ]
+          },
+          "adaptiveLearningFit": "Only lesson hardPrerequisites may block entry. Pedagogical predecessors, recycled context, and assumed-known targets guide recommendation or scaffolding only. A future authoritative selector may skip lessons when the exact hard-prerequisite skills are authoritative; this proposal does not implement a selector or authorize Lesson 6.",
+          "load": {
+            "newVocabularyCount": 1,
+            "newGrammarCount": 1,
+            "newCharacterRecognitionCount": 0,
+            "newWritingCount": 0,
+            "newPhoneticSyllableCount": 3,
+            "riskFlags": [
+              "No frequency evidence supports target ranking; this target is selected for proposed communicative utility."
+            ]
+          },
+          "hardPrerequisites": [],
+          "pedagogicalPredecessors": [
+            {
+              "lessonSlot": "B",
+              "rationale": "Chosen to move from introductions into personal interests; asking/answering names is not linguistically required to state a preference."
+            }
+          ],
+          "recycledContext": [
+            "vocab-ni",
+            "vocab-wo",
+            "grammar-self-name",
+            "skill-ask-answer-name"
+          ],
+          "assumedKnown": [
+            {
+              "targetId": "skill-ask-answer-name",
+              "scaffoldIfMissing": "Introduce the peer by name or provide a name card; the preference statement remains available without prior name-exchange mastery."
+            },
+            {
+              "targetId": "vocab-wo",
+              "scaffoldIfMissing": "If missing, cue the learner as the speaker, model 我 with audio, then model and echo 我喜歡 before asking for preference production."
+            }
+          ]
+        },
+        {
+          "slot": "D",
+          "title": "L4 — Ask what a peer likes",
+          "skillTargets": [
+            "skill-greet-self-name",
+            "skill-ask-answer-name",
+            "skill-state-preference",
+            "skill-ask-answer-preference"
+          ],
+          "vocabularyTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "vocab-ni",
+            "vocab-shenme",
+            "vocab-mingzi",
+            "vocab-xihuan"
+          ],
+          "grammarTargets": [
+            "grammar-self-name",
+            "grammar-name-question",
+            "grammar-state-preference",
+            "grammar-ask-preference"
+          ],
+          "characterTargets": [
+            "char-wo",
+            "char-ni"
+          ],
+          "newVocabularyTargets": [],
+          "newGrammarTargets": [
+            "grammar-ask-preference"
+          ],
+          "newCharacterTargets": [
+            "char-wo",
+            "char-ni"
+          ],
+          "recycledTargetIds": [
+            "vocab-ni",
+            "vocab-shenme",
+            "vocab-xihuan",
+            "grammar-state-preference"
+          ],
+          "listeningComprehensionTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "vocab-ni",
+            "vocab-shenme",
+            "vocab-mingzi",
+            "vocab-xihuan",
+            "grammar-self-name",
+            "grammar-name-question",
+            "grammar-state-preference",
+            "grammar-ask-preference"
+          ],
+          "visualMeaningComprehensionTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "vocab-ni",
+            "vocab-shenme",
+            "vocab-mingzi",
+            "vocab-xihuan"
+          ],
+          "spokenProductionTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "vocab-ni",
+            "vocab-shenme",
+            "vocab-mingzi",
+            "vocab-xihuan",
+            "grammar-self-name",
+            "grammar-name-question",
+            "grammar-state-preference",
+            "grammar-ask-preference"
+          ],
+          "characterRecognitionTargets": [
+            "char-wo",
+            "char-ni"
+          ],
+          "scriptReadingTargets": [
+            "vocab-wo",
+            "vocab-ni"
+          ],
+          "writingTargets": [],
+          "phoneticTargetSyllables": [],
+          "srsReviewTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "vocab-ni",
+            "vocab-shenme",
+            "vocab-mingzi",
+            "vocab-xihuan"
+          ],
+          "whyNow": "Preference questions reuse relevant words but do not require the learner to have mastered preference statements; a model line can scaffold that context.",
+          "orderRationale": "Adds a peer-directed preference question; an earlier preference statement is useful recycled context, not a blocking skill gate.",
+          "alternatives": [
+            "Keep only the statement pattern and postpone asking about interests.",
+            "A yes/no question would require a separate negative-response policy."
+          ],
+          "confidence": {
+            "rating": "LOW",
+            "rationale": "This five-lesson progression is explicit and evidence-constrained, but the framework supports broad capability rather than the selected order.",
+            "limitations": [
+              "No comparison study, frequency-corpus evidence, classroom observation, or real-child load data is available."
+            ]
+          },
+          "adaptiveLearningFit": "Only lesson hardPrerequisites may block entry. Pedagogical predecessors, recycled context, and assumed-known targets guide recommendation or scaffolding only. A future authoritative selector may skip lessons when the exact hard-prerequisite skills are authoritative; this proposal does not implement a selector or authorize Lesson 6.",
+          "load": {
+            "newVocabularyCount": 0,
+            "newGrammarCount": 1,
+            "newCharacterRecognitionCount": 2,
+            "newWritingCount": 0,
+            "newPhoneticSyllableCount": 0,
+            "riskFlags": [
+              "Recognition load is a hypothesis, not a validated cognitive-capacity threshold."
+            ]
+          },
+          "hardPrerequisites": [],
+          "pedagogicalPredecessors": [
+            {
+              "lessonSlot": "C",
+              "rationale": "Chosen to open the same topic to a peer after introducing preference language; stating one’s own preference is useful context, not a hard gate."
+            }
+          ],
+          "recycledContext": [
+            "vocab-ni",
+            "vocab-shenme",
+            "vocab-xihuan",
+            "grammar-state-preference",
+            "skill-state-preference"
+          ],
+          "assumedKnown": [
+            {
+              "targetId": "skill-state-preference",
+              "scaffoldIfMissing": "Model one preference statement before the peer-question turn; lack of prior preference-statement mastery does not block the new question target."
+            },
+            {
+              "targetId": "vocab-ni",
+              "scaffoldIfMissing": "If missing, point to the peer as “you,” model 你 with audio, and rehearse addressing the peer before the question turn."
+            },
+            {
+              "targetId": "vocab-xihuan",
+              "scaffoldIfMissing": "If missing, replay and model 喜歡 in 我喜歡, let the learner identify the preference action, then model 你喜歡什麼."
+            },
+            {
+              "targetId": "vocab-shenme",
+              "scaffoldIfMissing": "If missing, model 什麼 as the question for what/which and offer a simple visual choice set before the learner attempts the question."
+            }
+          ]
+        },
+        {
+          "slot": "E",
+          "title": "L5 — Sustain a reciprocal introduction-and-preference exchange",
+          "skillTargets": [
+            "skill-greet-self-name",
+            "skill-ask-answer-name",
+            "skill-state-preference",
+            "skill-ask-answer-preference",
+            "skill-sustain-peer-exchange"
+          ],
+          "vocabularyTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "vocab-ni",
+            "vocab-shenme",
+            "vocab-mingzi",
+            "vocab-xihuan"
+          ],
+          "grammarTargets": [
+            "grammar-self-name",
+            "grammar-name-question",
+            "grammar-state-preference",
+            "grammar-ask-preference",
+            "grammar-reciprocal-ne"
+          ],
+          "characterTargets": [
+            "char-wo",
+            "char-ni",
+            "char-ming",
+            "char-zi",
+            "char-ne"
+          ],
+          "newVocabularyTargets": [],
+          "newGrammarTargets": [
+            "grammar-reciprocal-ne"
+          ],
+          "newCharacterTargets": [
+            "char-ming",
+            "char-zi",
+            "char-ne"
+          ],
+          "recycledTargetIds": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "vocab-ni",
+            "vocab-shenme",
+            "vocab-mingzi",
+            "vocab-xihuan",
+            "grammar-self-name",
+            "grammar-name-question",
+            "grammar-state-preference",
+            "grammar-ask-preference"
+          ],
+          "listeningComprehensionTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "vocab-ni",
+            "vocab-shenme",
+            "vocab-mingzi",
+            "vocab-xihuan",
+            "grammar-self-name",
+            "grammar-name-question",
+            "grammar-state-preference",
+            "grammar-ask-preference",
+            "grammar-reciprocal-ne"
+          ],
+          "visualMeaningComprehensionTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "vocab-ni",
+            "vocab-shenme",
+            "vocab-mingzi",
+            "vocab-xihuan"
+          ],
+          "spokenProductionTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "vocab-ni",
+            "vocab-shenme",
+            "vocab-mingzi",
+            "vocab-xihuan",
+            "grammar-self-name",
+            "grammar-name-question",
+            "grammar-state-preference",
+            "grammar-ask-preference",
+            "grammar-reciprocal-ne"
+          ],
+          "characterRecognitionTargets": [
+            "char-wo",
+            "char-ni",
+            "char-ming",
+            "char-zi",
+            "char-ne"
+          ],
+          "scriptReadingTargets": [
+            "vocab-wo",
+            "vocab-ni",
+            "vocab-mingzi",
+            "grammar-reciprocal-ne"
+          ],
+          "writingTargets": [],
+          "phoneticTargetSyllables": [
+            "ne"
+          ],
+          "srsReviewTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "vocab-ni",
+            "vocab-shenme",
+            "vocab-mingzi",
+            "vocab-xihuan"
+          ],
+          "whyNow": "This integrated exchange is offered only when its three explicitly named component skills are authoritative; A–D order is a preference, not an automatic prerequisite chain.",
+          "orderRationale": "Integrates name and preference turns; only the three required communicative skills block this lesson, regardless of how the learner acquired them.",
+          "alternatives": [
+            "Integrate Lessons 1–4 without 呢; that would make Lesson 5 consolidation rather than a new discourse capability.",
+            "Use another sourced reciprocal-turn device after evidence review."
+          ],
+          "confidence": {
+            "rating": "LOW",
+            "rationale": "This five-lesson progression is explicit and evidence-constrained, but the framework supports broad capability rather than the selected order.",
+            "limitations": [
+              "No comparison study, frequency-corpus evidence, classroom observation, or real-child load data is available."
+            ]
+          },
+          "adaptiveLearningFit": "Only lesson hardPrerequisites may block entry. Pedagogical predecessors, recycled context, and assumed-known targets guide recommendation or scaffolding only. A future authoritative selector may skip lessons when the exact hard-prerequisite skills are authoritative; this proposal does not implement a selector or authorize Lesson 6.",
+          "load": {
+            "newVocabularyCount": 0,
+            "newGrammarCount": 1,
+            "newCharacterRecognitionCount": 3,
+            "newWritingCount": 0,
+            "newPhoneticSyllableCount": 1,
+            "riskFlags": [
+              "Recognition load is a hypothesis, not a validated cognitive-capacity threshold."
+            ]
+          },
+          "hardPrerequisites": [
+            {
+              "targetId": "skill-ask-answer-name",
+              "rationale": "The integrated exchange must include the learner asking and answering about names."
+            },
+            {
+              "targetId": "skill-state-preference",
+              "rationale": "The integrated exchange must include the learner stating a preference."
+            },
+            {
+              "targetId": "skill-ask-answer-preference",
+              "rationale": "The integrated exchange must include the learner asking and responding about a peer preference."
+            }
+          ],
+          "pedagogicalPredecessors": [
+            {
+              "lessonSlot": "A",
+              "rationale": "Chosen to integrate the earlier communication moves; lesson order does not itself require mastery when the explicit hard skills are already met."
+            },
+            {
+              "lessonSlot": "B",
+              "rationale": "Chosen to integrate the earlier communication moves; lesson order does not itself require mastery when the explicit hard skills are already met."
+            },
+            {
+              "lessonSlot": "C",
+              "rationale": "Chosen to integrate the earlier communication moves; lesson order does not itself require mastery when the explicit hard skills are already met."
+            },
+            {
+              "lessonSlot": "D",
+              "rationale": "Chosen to integrate the earlier communication moves; lesson order does not itself require mastery when the explicit hard skills are already met."
+            }
+          ],
+          "recycledContext": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "vocab-ni",
+            "vocab-shenme",
+            "vocab-mingzi",
+            "vocab-xihuan",
+            "grammar-self-name",
+            "grammar-name-question",
+            "grammar-state-preference",
+            "grammar-ask-preference",
+            "skill-greet-self-name",
+            "skill-ask-answer-name",
+            "skill-state-preference",
+            "skill-ask-answer-preference"
+          ],
+          "assumedKnown": []
+        }
+      ],
+      "strengths": [
+        "Every lesson's primary new capability is oral and usable in a peer exchange.",
+        "Print recognition is deferred until learners have heard the language in context.",
+        "Only five selected character forms are proposed, and none becomes an SRS unit."
+      ],
+      "risks": [
+        "Some learners may benefit from earlier stable print links; this hypothesis has no learner comparison.",
+        "Lesson 5 introduces three character-recognition candidates in one day; this is not a validated threshold."
+      ],
+      "cognitiveLoadSummary": "The five-lesson oral target path is shared: new vocabulary 3/3/1/0/0; one new grammar target per lesson; phonetic syllables 4/4/3/0/1. Character recognition candidates by lesson are [0, 0, 0, 2, 3]; maximum is 3. Counts are not evidence-backed child-capacity thresholds; Lesson 2 and integrated Lesson 5 need real-child validation.",
+      "adaptiveLearningFit": "The two variants share oral outcomes and differ only in timing of recognition. Only explicit hardPrerequisites are blocking; sequence, recycled context, and scaffolds remain nonblocking. No adaptive selector, approval, or future lesson is created.",
+      "confidence": {
+        "rating": "LOW",
+        "rationale": "Broad learner capabilities and source use are explicit, but no official framework dictates this lesson sequence or recognition strategy.",
+        "limitations": [
+          "Needs Owner curriculum choice and real-child validation; frequency and controlled-comparison evidence are absent."
+        ]
+      }
+    },
+    {
+      "variantId": "B",
+      "label": "Balanced oral + recognition; add a small set of forms as words become familiar",
+      "sequence": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E"
+      ],
+      "lessons": [
+        {
+          "slot": "A",
+          "title": "L1 — Greet and say your own name",
+          "skillTargets": [
+            "skill-greet-self-name"
+          ],
+          "vocabularyTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao"
+          ],
+          "grammarTargets": [
+            "grammar-self-name"
+          ],
+          "characterTargets": [
+            "char-wo"
+          ],
+          "newVocabularyTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao"
+          ],
+          "newGrammarTargets": [
+            "grammar-self-name"
+          ],
+          "newCharacterTargets": [
+            "char-wo"
+          ],
+          "recycledTargetIds": [],
+          "listeningComprehensionTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "grammar-self-name"
+          ],
+          "visualMeaningComprehensionTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao"
+          ],
+          "spokenProductionTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "grammar-self-name"
+          ],
+          "characterRecognitionTargets": [
+            "char-wo"
+          ],
+          "scriptReadingTargets": [
+            "vocab-wo"
+          ],
+          "writingTargets": [],
+          "phoneticTargetSyllables": [
+            "nǐ",
+            "hǎo",
+            "wǒ",
+            "jiào"
+          ],
+          "srsReviewTargets": [],
+          "whyNow": "First proposed capability in this experiment; no prior target is assumed.",
+          "orderRationale": "Establishes the first peer-facing move in both variants.",
+          "alternatives": [
+            "Begin with greetings only and defer names.",
+            "Use a non-verbal name card outside this language target set."
+          ],
+          "confidence": {
+            "rating": "LOW",
+            "rationale": "This five-lesson progression is explicit and evidence-constrained, but the framework supports broad capability rather than the selected order.",
+            "limitations": [
+              "No comparison study, frequency-corpus evidence, classroom observation, or real-child load data is available."
+            ]
+          },
+          "adaptiveLearningFit": "Only lesson hardPrerequisites may block entry. Pedagogical predecessors, recycled context, and assumed-known targets guide recommendation or scaffolding only. A future authoritative selector may skip lessons when the exact hard-prerequisite skills are authoritative; this proposal does not implement a selector or authorize Lesson 6.",
+          "load": {
+            "newVocabularyCount": 3,
+            "newGrammarCount": 1,
+            "newCharacterRecognitionCount": 1,
+            "newWritingCount": 0,
+            "newPhoneticSyllableCount": 4,
+            "riskFlags": [
+              "Recognition load is a hypothesis, not a validated cognitive-capacity threshold."
+            ]
+          },
+          "hardPrerequisites": [],
+          "pedagogicalPredecessors": [],
+          "recycledContext": [],
+          "assumedKnown": []
+        },
+        {
+          "slot": "B",
+          "title": "L2 — Ask and answer a peer's name",
+          "skillTargets": [
+            "skill-greet-self-name",
+            "skill-ask-answer-name"
+          ],
+          "vocabularyTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "vocab-ni",
+            "vocab-shenme",
+            "vocab-mingzi"
+          ],
+          "grammarTargets": [
+            "grammar-self-name",
+            "grammar-name-question"
+          ],
+          "characterTargets": [
+            "char-wo",
+            "char-ni"
+          ],
+          "newVocabularyTargets": [
+            "vocab-ni",
+            "vocab-shenme",
+            "vocab-mingzi"
+          ],
+          "newGrammarTargets": [
+            "grammar-name-question"
+          ],
+          "newCharacterTargets": [
+            "char-ni"
+          ],
+          "recycledTargetIds": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "grammar-self-name"
+          ],
+          "listeningComprehensionTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "vocab-ni",
+            "vocab-shenme",
+            "vocab-mingzi",
+            "grammar-self-name",
+            "grammar-name-question"
+          ],
+          "visualMeaningComprehensionTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "vocab-ni",
+            "vocab-shenme",
+            "vocab-mingzi"
+          ],
+          "spokenProductionTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "vocab-ni",
+            "vocab-shenme",
+            "vocab-mingzi",
+            "grammar-self-name",
+            "grammar-name-question"
+          ],
+          "characterRecognitionTargets": [
+            "char-wo",
+            "char-ni"
+          ],
+          "scriptReadingTargets": [
+            "vocab-wo",
+            "vocab-ni"
+          ],
+          "writingTargets": [],
+          "phoneticTargetSyllables": [
+            "shén",
+            "me",
+            "míng",
+            "zi"
+          ],
+          "srsReviewTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao"
+          ],
+          "whyNow": "A name exchange is placed after self-introduction as a pedagogical sequence choice. The lesson has no lesson-entry hard prerequisite; missing components may be scaffolded.",
+          "orderRationale": "Follows L1 in the proposed communication-first sequence; placement or authoritative mastery may bypass that sequence.",
+          "alternatives": [
+            "Teach only a fixed name-response frame and defer the question word.",
+            "Ask for one-word responses before productive question forms."
+          ],
+          "confidence": {
+            "rating": "LOW",
+            "rationale": "This five-lesson progression is explicit and evidence-constrained, but the framework supports broad capability rather than the selected order.",
+            "limitations": [
+              "No comparison study, frequency-corpus evidence, classroom observation, or real-child load data is available."
+            ]
+          },
+          "adaptiveLearningFit": "Only lesson hardPrerequisites may block entry. Pedagogical predecessors, recycled context, and assumed-known targets guide recommendation or scaffolding only. A future authoritative selector may skip lessons when the exact hard-prerequisite skills are authoritative; this proposal does not implement a selector or authorize Lesson 6.",
+          "load": {
+            "newVocabularyCount": 3,
+            "newGrammarCount": 1,
+            "newCharacterRecognitionCount": 1,
+            "newWritingCount": 0,
+            "newPhoneticSyllableCount": 4,
+            "riskFlags": [
+              "Lesson 2 combines a name question, three lexical targets, and four new phonetic syllables; validate load with children."
+            ]
+          },
+          "hardPrerequisites": [],
+          "pedagogicalPredecessors": [
+            {
+              "lessonSlot": "A",
+              "rationale": "Chosen to follow self-introduction in the experiment; the order is a teaching preference, not a language-comprehension gate."
+            }
+          ],
+          "recycledContext": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "grammar-self-name",
+            "skill-greet-self-name"
+          ],
+          "assumedKnown": [
+            {
+              "targetId": "vocab-nihao",
+              "scaffoldIfMissing": "Offer the spoken greeting with an audio model and allow immediate echoing."
+            },
+            {
+              "targetId": "vocab-wo",
+              "scaffoldIfMissing": "Show a first-person speaker cue and model the word aloud."
+            },
+            {
+              "targetId": "vocab-jiao",
+              "scaffoldIfMissing": "Model the name phrase before asking the learner to answer."
+            },
+            {
+              "targetId": "grammar-self-name",
+              "scaffoldIfMissing": "Provide a complete self-name phrase strip; do not make prior mastery a lesson-entry gate."
+            }
+          ]
+        },
+        {
+          "slot": "C",
+          "title": "L3 — Tell a peer one preference",
+          "skillTargets": [
+            "skill-greet-self-name",
+            "skill-ask-answer-name",
+            "skill-state-preference"
+          ],
+          "vocabularyTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "vocab-ni",
+            "vocab-shenme",
+            "vocab-mingzi",
+            "vocab-xihuan"
+          ],
+          "grammarTargets": [
+            "grammar-self-name",
+            "grammar-name-question",
+            "grammar-state-preference"
+          ],
+          "characterTargets": [
+            "char-wo",
+            "char-ni",
+            "char-xi"
+          ],
+          "newVocabularyTargets": [
+            "vocab-xihuan"
+          ],
+          "newGrammarTargets": [
+            "grammar-state-preference"
+          ],
+          "newCharacterTargets": [
+            "char-xi"
+          ],
+          "recycledTargetIds": [
+            "vocab-ni",
+            "vocab-wo",
+            "grammar-self-name"
+          ],
+          "listeningComprehensionTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "vocab-ni",
+            "vocab-shenme",
+            "vocab-mingzi",
+            "vocab-xihuan",
+            "grammar-self-name",
+            "grammar-name-question",
+            "grammar-state-preference"
+          ],
+          "visualMeaningComprehensionTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "vocab-ni",
+            "vocab-shenme",
+            "vocab-mingzi",
+            "vocab-xihuan"
+          ],
+          "spokenProductionTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "vocab-ni",
+            "vocab-shenme",
+            "vocab-mingzi",
+            "vocab-xihuan",
+            "grammar-self-name",
+            "grammar-name-question",
+            "grammar-state-preference"
+          ],
+          "characterRecognitionTargets": [
+            "char-wo",
+            "char-ni",
+            "char-xi"
+          ],
+          "scriptReadingTargets": [
+            "vocab-wo",
+            "vocab-ni"
+          ],
+          "writingTargets": [],
+          "phoneticTargetSyllables": [
+            "xǐ",
+            "huan",
+            "qiú"
+          ],
+          "srsReviewTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "vocab-ni",
+            "vocab-shenme",
+            "vocab-mingzi"
+          ],
+          "whyNow": "Preference expression is a separate communicative capability. L2 name exchange is a pedagogical predecessor only, not a language prerequisite.",
+          "orderRationale": "Moves into preference expression while preserving a path that does not require name-question mastery.",
+          "alternatives": [
+            "Use a learner-selected noun only after its provenance and load are reviewed.",
+            "Omit the fixed leisure noun until child validation."
+          ],
+          "confidence": {
+            "rating": "LOW",
+            "rationale": "This five-lesson progression is explicit and evidence-constrained, but the framework supports broad capability rather than the selected order.",
+            "limitations": [
+              "No comparison study, frequency-corpus evidence, classroom observation, or real-child load data is available."
+            ]
+          },
+          "adaptiveLearningFit": "Only lesson hardPrerequisites may block entry. Pedagogical predecessors, recycled context, and assumed-known targets guide recommendation or scaffolding only. A future authoritative selector may skip lessons when the exact hard-prerequisite skills are authoritative; this proposal does not implement a selector or authorize Lesson 6.",
+          "load": {
+            "newVocabularyCount": 1,
+            "newGrammarCount": 1,
+            "newCharacterRecognitionCount": 1,
+            "newWritingCount": 0,
+            "newPhoneticSyllableCount": 3,
+            "riskFlags": [
+              "Recognition load is a hypothesis, not a validated cognitive-capacity threshold."
+            ]
+          },
+          "hardPrerequisites": [],
+          "pedagogicalPredecessors": [
+            {
+              "lessonSlot": "B",
+              "rationale": "Chosen to move from introductions into personal interests; asking/answering names is not linguistically required to state a preference."
+            }
+          ],
+          "recycledContext": [
+            "vocab-ni",
+            "vocab-wo",
+            "grammar-self-name",
+            "skill-ask-answer-name"
+          ],
+          "assumedKnown": [
+            {
+              "targetId": "skill-ask-answer-name",
+              "scaffoldIfMissing": "Introduce the peer by name or provide a name card; the preference statement remains available without prior name-exchange mastery."
+            },
+            {
+              "targetId": "vocab-wo",
+              "scaffoldIfMissing": "If missing, cue the learner as the speaker, model 我 with audio, then model and echo 我喜歡 before asking for preference production."
+            }
+          ]
+        },
+        {
+          "slot": "D",
+          "title": "L4 — Ask what a peer likes",
+          "skillTargets": [
+            "skill-greet-self-name",
+            "skill-ask-answer-name",
+            "skill-state-preference",
+            "skill-ask-answer-preference"
+          ],
+          "vocabularyTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "vocab-ni",
+            "vocab-shenme",
+            "vocab-mingzi",
+            "vocab-xihuan"
+          ],
+          "grammarTargets": [
+            "grammar-self-name",
+            "grammar-name-question",
+            "grammar-state-preference",
+            "grammar-ask-preference"
+          ],
+          "characterTargets": [
+            "char-wo",
+            "char-ni",
+            "char-xi",
+            "char-huan"
+          ],
+          "newVocabularyTargets": [],
+          "newGrammarTargets": [
+            "grammar-ask-preference"
+          ],
+          "newCharacterTargets": [
+            "char-huan"
+          ],
+          "recycledTargetIds": [
+            "vocab-ni",
+            "vocab-shenme",
+            "vocab-xihuan",
+            "grammar-state-preference"
+          ],
+          "listeningComprehensionTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "vocab-ni",
+            "vocab-shenme",
+            "vocab-mingzi",
+            "vocab-xihuan",
+            "grammar-self-name",
+            "grammar-name-question",
+            "grammar-state-preference",
+            "grammar-ask-preference"
+          ],
+          "visualMeaningComprehensionTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "vocab-ni",
+            "vocab-shenme",
+            "vocab-mingzi",
+            "vocab-xihuan"
+          ],
+          "spokenProductionTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "vocab-ni",
+            "vocab-shenme",
+            "vocab-mingzi",
+            "vocab-xihuan",
+            "grammar-self-name",
+            "grammar-name-question",
+            "grammar-state-preference",
+            "grammar-ask-preference"
+          ],
+          "characterRecognitionTargets": [
+            "char-wo",
+            "char-ni",
+            "char-xi",
+            "char-huan"
+          ],
+          "scriptReadingTargets": [
+            "vocab-wo",
+            "vocab-ni",
+            "vocab-xihuan"
+          ],
+          "writingTargets": [],
+          "phoneticTargetSyllables": [],
+          "srsReviewTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "vocab-ni",
+            "vocab-shenme",
+            "vocab-mingzi",
+            "vocab-xihuan"
+          ],
+          "whyNow": "Preference questions reuse relevant words but do not require the learner to have mastered preference statements; a model line can scaffold that context.",
+          "orderRationale": "Adds a peer-directed preference question; an earlier preference statement is useful recycled context, not a blocking skill gate.",
+          "alternatives": [
+            "Keep only the statement pattern and postpone asking about interests.",
+            "A yes/no question would require a separate negative-response policy."
+          ],
+          "confidence": {
+            "rating": "LOW",
+            "rationale": "This five-lesson progression is explicit and evidence-constrained, but the framework supports broad capability rather than the selected order.",
+            "limitations": [
+              "No comparison study, frequency-corpus evidence, classroom observation, or real-child load data is available."
+            ]
+          },
+          "adaptiveLearningFit": "Only lesson hardPrerequisites may block entry. Pedagogical predecessors, recycled context, and assumed-known targets guide recommendation or scaffolding only. A future authoritative selector may skip lessons when the exact hard-prerequisite skills are authoritative; this proposal does not implement a selector or authorize Lesson 6.",
+          "load": {
+            "newVocabularyCount": 0,
+            "newGrammarCount": 1,
+            "newCharacterRecognitionCount": 1,
+            "newWritingCount": 0,
+            "newPhoneticSyllableCount": 0,
+            "riskFlags": [
+              "Recognition load is a hypothesis, not a validated cognitive-capacity threshold."
+            ]
+          },
+          "hardPrerequisites": [],
+          "pedagogicalPredecessors": [
+            {
+              "lessonSlot": "C",
+              "rationale": "Chosen to open the same topic to a peer after introducing preference language; stating one’s own preference is useful context, not a hard gate."
+            }
+          ],
+          "recycledContext": [
+            "vocab-ni",
+            "vocab-shenme",
+            "vocab-xihuan",
+            "grammar-state-preference",
+            "skill-state-preference"
+          ],
+          "assumedKnown": [
+            {
+              "targetId": "skill-state-preference",
+              "scaffoldIfMissing": "Model one preference statement before the peer-question turn; lack of prior preference-statement mastery does not block the new question target."
+            },
+            {
+              "targetId": "vocab-ni",
+              "scaffoldIfMissing": "If missing, point to the peer as “you,” model 你 with audio, and rehearse addressing the peer before the question turn."
+            },
+            {
+              "targetId": "vocab-xihuan",
+              "scaffoldIfMissing": "If missing, replay and model 喜歡 in 我喜歡, let the learner identify the preference action, then model 你喜歡什麼."
+            },
+            {
+              "targetId": "vocab-shenme",
+              "scaffoldIfMissing": "If missing, model 什麼 as the question for what/which and offer a simple visual choice set before the learner attempts the question."
+            }
+          ]
+        },
+        {
+          "slot": "E",
+          "title": "L5 — Sustain a reciprocal introduction-and-preference exchange",
+          "skillTargets": [
+            "skill-greet-self-name",
+            "skill-ask-answer-name",
+            "skill-state-preference",
+            "skill-ask-answer-preference",
+            "skill-sustain-peer-exchange"
+          ],
+          "vocabularyTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "vocab-ni",
+            "vocab-shenme",
+            "vocab-mingzi",
+            "vocab-xihuan"
+          ],
+          "grammarTargets": [
+            "grammar-self-name",
+            "grammar-name-question",
+            "grammar-state-preference",
+            "grammar-ask-preference",
+            "grammar-reciprocal-ne"
+          ],
+          "characterTargets": [
+            "char-wo",
+            "char-ni",
+            "char-xi",
+            "char-huan",
+            "char-ming",
+            "char-zi",
+            "char-ne"
+          ],
+          "newVocabularyTargets": [],
+          "newGrammarTargets": [
+            "grammar-reciprocal-ne"
+          ],
+          "newCharacterTargets": [
+            "char-ming",
+            "char-zi",
+            "char-ne"
+          ],
+          "recycledTargetIds": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "vocab-ni",
+            "vocab-shenme",
+            "vocab-mingzi",
+            "vocab-xihuan",
+            "grammar-self-name",
+            "grammar-name-question",
+            "grammar-state-preference",
+            "grammar-ask-preference"
+          ],
+          "listeningComprehensionTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "vocab-ni",
+            "vocab-shenme",
+            "vocab-mingzi",
+            "vocab-xihuan",
+            "grammar-self-name",
+            "grammar-name-question",
+            "grammar-state-preference",
+            "grammar-ask-preference",
+            "grammar-reciprocal-ne"
+          ],
+          "visualMeaningComprehensionTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "vocab-ni",
+            "vocab-shenme",
+            "vocab-mingzi",
+            "vocab-xihuan"
+          ],
+          "spokenProductionTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "vocab-ni",
+            "vocab-shenme",
+            "vocab-mingzi",
+            "vocab-xihuan",
+            "grammar-self-name",
+            "grammar-name-question",
+            "grammar-state-preference",
+            "grammar-ask-preference",
+            "grammar-reciprocal-ne"
+          ],
+          "characterRecognitionTargets": [
+            "char-wo",
+            "char-ni",
+            "char-xi",
+            "char-huan",
+            "char-ming",
+            "char-zi",
+            "char-ne"
+          ],
+          "scriptReadingTargets": [
+            "vocab-wo",
+            "vocab-ni",
+            "vocab-mingzi",
+            "vocab-xihuan",
+            "grammar-reciprocal-ne"
+          ],
+          "writingTargets": [],
+          "phoneticTargetSyllables": [
+            "ne"
+          ],
+          "srsReviewTargets": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "vocab-ni",
+            "vocab-shenme",
+            "vocab-mingzi",
+            "vocab-xihuan"
+          ],
+          "whyNow": "This integrated exchange is offered only when its three explicitly named component skills are authoritative; A–D order is a preference, not an automatic prerequisite chain.",
+          "orderRationale": "Integrates name and preference turns; only the three required communicative skills block this lesson, regardless of how the learner acquired them.",
+          "alternatives": [
+            "Integrate Lessons 1–4 without 呢; that would make Lesson 5 consolidation rather than a new discourse capability.",
+            "Use another sourced reciprocal-turn device after evidence review."
+          ],
+          "confidence": {
+            "rating": "LOW",
+            "rationale": "This five-lesson progression is explicit and evidence-constrained, but the framework supports broad capability rather than the selected order.",
+            "limitations": [
+              "No comparison study, frequency-corpus evidence, classroom observation, or real-child load data is available."
+            ]
+          },
+          "adaptiveLearningFit": "Only lesson hardPrerequisites may block entry. Pedagogical predecessors, recycled context, and assumed-known targets guide recommendation or scaffolding only. A future authoritative selector may skip lessons when the exact hard-prerequisite skills are authoritative; this proposal does not implement a selector or authorize Lesson 6.",
+          "load": {
+            "newVocabularyCount": 0,
+            "newGrammarCount": 1,
+            "newCharacterRecognitionCount": 3,
+            "newWritingCount": 0,
+            "newPhoneticSyllableCount": 1,
+            "riskFlags": [
+              "Recognition load is a hypothesis, not a validated cognitive-capacity threshold."
+            ]
+          },
+          "hardPrerequisites": [
+            {
+              "targetId": "skill-ask-answer-name",
+              "rationale": "The integrated exchange must include the learner asking and answering about names."
+            },
+            {
+              "targetId": "skill-state-preference",
+              "rationale": "The integrated exchange must include the learner stating a preference."
+            },
+            {
+              "targetId": "skill-ask-answer-preference",
+              "rationale": "The integrated exchange must include the learner asking and responding about a peer preference."
+            }
+          ],
+          "pedagogicalPredecessors": [
+            {
+              "lessonSlot": "A",
+              "rationale": "Chosen to integrate the earlier communication moves; lesson order does not itself require mastery when the explicit hard skills are already met."
+            },
+            {
+              "lessonSlot": "B",
+              "rationale": "Chosen to integrate the earlier communication moves; lesson order does not itself require mastery when the explicit hard skills are already met."
+            },
+            {
+              "lessonSlot": "C",
+              "rationale": "Chosen to integrate the earlier communication moves; lesson order does not itself require mastery when the explicit hard skills are already met."
+            },
+            {
+              "lessonSlot": "D",
+              "rationale": "Chosen to integrate the earlier communication moves; lesson order does not itself require mastery when the explicit hard skills are already met."
+            }
+          ],
+          "recycledContext": [
+            "vocab-nihao",
+            "vocab-wo",
+            "vocab-jiao",
+            "vocab-ni",
+            "vocab-shenme",
+            "vocab-mingzi",
+            "vocab-xihuan",
+            "grammar-self-name",
+            "grammar-name-question",
+            "grammar-state-preference",
+            "grammar-ask-preference",
+            "skill-greet-self-name",
+            "skill-ask-answer-name",
+            "skill-state-preference",
+            "skill-ask-answer-preference"
+          ],
+          "assumedKnown": []
+        }
+      ],
+      "strengths": [
+        "Oral targets and a small, bounded number of familiar forms progress together.",
+        "Recognition is tied to already-heard whole words or the discourse particle; it never substitutes for oral capability.",
+        "Character load is explicit and capped at three candidate glyphs per lesson."
+      ],
+      "risks": [
+        "Parallel script work may increase cognitive load without improving communication.",
+        "Lesson 5 has three new glyphs plus an integrated exchange; real-child validation is required."
+      ],
+      "cognitiveLoadSummary": "The five-lesson oral target path is shared: new vocabulary 3/3/1/0/0; one new grammar target per lesson; phonetic syllables 4/4/3/0/1. Character recognition candidates by lesson are [1, 1, 1, 1, 3]; maximum is 3. Counts are not evidence-backed child-capacity thresholds; Lesson 2 and integrated Lesson 5 need real-child validation.",
+      "adaptiveLearningFit": "The two variants share oral outcomes and differ only in timing of recognition. Only explicit hardPrerequisites are blocking; sequence, recycled context, and scaffolds remain nonblocking. No adaptive selector, approval, or future lesson is created.",
+      "confidence": {
+        "rating": "LOW",
+        "rationale": "Broad learner capabilities and source use are explicit, but no official framework dictates this lesson sequence or recognition strategy.",
+        "limitations": [
+          "Needs Owner curriculum choice and real-child validation; frequency and controlled-comparison evidence are absent."
+        ]
+      }
+    }
+  ],
+  "ownerDecision": null,
+  "lexicalDecisionGates": [
+    {
+      "gateId": "l3-preference-object",
+      "lessonSlot": "C",
+      "status": "OWNER_LEXICAL_DECISION_REQUIRED",
+      "selectedTargetId": null,
+      "communicativeFrame": "我喜歡＋[直接名詞補語]",
+      "options": [
+        {
+          "optionId": "option-qiu",
+          "form": "球",
+          "pinyin": "qiú",
+          "dictionarySense": "ball; sphere",
+          "evidenceIds": [
+            "ev-lex-qiu"
+          ],
+          "directFrameProbe": "我喜歡球",
+          "directNominalUse": "OWNER_REVIEW_REQUIRED",
+          "childFamiliarity": "UNVERIFIED",
+          "semanticBurden": "OWNER_REVIEW_REQUIRED",
+          "genericUseRequiresClassifier": false,
+          "requiresAdditionalGrammarTarget": false,
+          "comparisonNote": "Concrete and visually referable, but the Owner questions whether it is a natural, child-common preference object; the dictionary gloss cannot settle that concern."
+        },
+        {
+          "optionId": "option-wanju",
+          "form": "玩具",
+          "pinyin": "wánjù",
+          "dictionarySense": "toy",
+          "evidenceIds": [
+            "ev-lex-wanju"
+          ],
+          "directFrameProbe": "我喜歡玩具",
+          "directNominalUse": "OWNER_REVIEW_REQUIRED",
+          "childFamiliarity": "UNVERIFIED",
+          "semanticBurden": "OWNER_REVIEW_REQUIRED",
+          "genericUseRequiresClassifier": false,
+          "requiresAdditionalGrammarTarget": false,
+          "comparisonNote": "A concrete category with an easy visual referent; cited evidence does not show that this is more familiar, useful, or natural for the intended learner group."
+        },
+        {
+          "optionId": "option-shu",
+          "form": "書",
+          "pinyin": "shū",
+          "dictionarySense": "book",
+          "evidenceIds": [
+            "ev-lex-shu"
+          ],
+          "directFrameProbe": "我喜歡書",
+          "directNominalUse": "OWNER_REVIEW_REQUIRED",
+          "childFamiliarity": "UNVERIFIED",
+          "semanticBurden": "OWNER_REVIEW_REQUIRED",
+          "genericUseRequiresClassifier": false,
+          "requiresAdditionalGrammarTarget": false,
+          "comparisonNote": "A simple concrete noun, but an individual learner’s interest in books/literacy and its preference-frame naturalness are not established by the dictionary entry."
+        },
+        {
+          "optionId": "option-youxi",
+          "form": "遊戲",
+          "pinyin": "yóuxì",
+          "dictionarySense": "game",
+          "evidenceIds": [
+            "ev-lex-youxi"
+          ],
+          "directFrameProbe": "我喜歡遊戲",
+          "directNominalUse": "OWNER_REVIEW_REQUIRED",
+          "childFamiliarity": "UNVERIFIED",
+          "semanticBurden": "OWNER_REVIEW_REQUIRED",
+          "genericUseRequiresClassifier": false,
+          "requiresAdditionalGrammarTarget": false,
+          "comparisonNote": "The dictionary gives a game sense; whether the bare noun is the intended natural statement rather than a construction with an extra verb needs language review."
+        },
+        {
+          "optionId": "option-dianying",
+          "form": "電影",
+          "pinyin": "diànyǐng",
+          "dictionarySense": "movie; film",
+          "evidenceIds": [
+            "ev-lex-dianying"
+          ],
+          "directFrameProbe": "我喜歡電影",
+          "directNominalUse": "OWNER_REVIEW_REQUIRED",
+          "childFamiliarity": "UNVERIFIED",
+          "semanticBurden": "OWNER_REVIEW_REQUIRED",
+          "genericUseRequiresClassifier": false,
+          "requiresAdditionalGrammarTarget": false,
+          "comparisonNote": "A direct nominal candidate, but exposure/familiarity varies and cited evidence does not justify prioritizing it for beginner children."
+        }
+      ],
+      "decisionCriteria": [
+        "自然放入「我喜歡 X」且不需要額外動詞",
+        "目標兒童日常常見且 semantic burden 低",
+        "不新增 classifier / measure-word 要求",
+        "不依賴複雜文化背景",
+        "rights / provenance 可追溯",
+        "初學難度合理，且有證據支持而非只憑直覺"
+      ],
+      "comparisonConclusion": "CC-CEDICT/MDBG supports only the options’ forms, Pinyin, and basic senses. It does not rank frequency, child familiarity, frame naturalness, cognitive burden, or sequence. No unique candidate can be established; keep the selection unresolved for Owner curriculum decision.",
+      "grammarScope": "The pattern has one direct nominal complement slot. No option is selected and no new verb, classifier, or grammar target is introduced by this gate. A candidate cannot be selected until direct-frame naturalness and child-fit are reviewed."
+    }
+  ]
+}

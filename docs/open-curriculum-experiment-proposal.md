@@ -1,15 +1,9 @@
-# Proposed prototype curriculum experiment — structure only
+# Open Curriculum Five-Lesson Proposal — Current Reference
 
-**Status: `PROPOSED` — not an approved curriculum and not executable.** This records the five distinct capability demonstrations requested for the later TongXuan Prototype Curriculum Pack. No target words, characters, grammar, lesson titles, examples, exercises, or sequence prerequisites have been selected here.
+The current Issue #109 proposal is [`open-curriculum-5-lesson-experiment-proposal.md`](open-curriculum-5-lesson-experiment-proposal.md) and machine record [`prototype-peer-exchange-2026-09-v4.json`](../shared/open-curriculum/proposals/prototype-peer-exchange-2026-09-v4.json), canonical SHA-256 `1d72be175f30b3b7a520a6f581b3dea286ecd103ffde84b2e99d5d282ecf270d`. It preserves the accepted cumulative L1–L5 peer-exchange capability direction and Variant A/B strategies, records the Owner-selected L3 noun `玩具` as a TongXuan hypothesis, and separates hard prerequisites from nonblocking pedagogical sequence, recycled context, and scaffoldable assumed-known material.
 
-| Slot | Proposed capability demonstration | Target decision |
-| --- | --- | --- |
-| A | Listening + pronunciation | Pending approved graph targets and source/difficulty evidence. |
-| B | Vocabulary + visual recognition | Pending approved graph targets and source/difficulty evidence. |
-| C | Sentence pattern + speaking | Pending approved graph targets and source/difficulty evidence. |
-| D | Character recognition + SRS | Pending approved graph targets, evidence domain, and exact SRS contract. |
-| E | Integrated learning + REVIEW + REPAIR | Pending approved graph targets, prerequisites, and reviewed task contracts. |
+The exact v2 proposal hash `7877db1106d8fa69644e026648513a0d9eaa569d23a5860eb81e5ec76ab9d5be` received Owner `REVISE`; see the immutable hash-bound record [`prototype-peer-exchange-2026-09-v2-revise.json`](../shared/open-curriculum/proposals/owner-decisions/prototype-peer-exchange-2026-09-v2-revise.json). v1 and v2 remain historical and unchanged. The Owner marked exact v3 hash `b5ff4050fd107220926f15f403a2d68a0895f30694a628704d7faa594bafb097` `REVISE — L3 LEXICAL SELECTION ONLY`; its immutable decision record is [`prototype-peer-exchange-2026-09-v3-revise.json`](../shared/open-curriculum/proposals/owner-decisions/prototype-peer-exchange-2026-09-v3-revise.json). v4 remains `PROPOSED`, non-executable, and outside the approved graph; the lexical selection does not approve Variant A or B.
 
-The slot labels are not claims about lesson order or a recommended learning sequence. Before any executable lesson is created, a human/Architect must approve the Curriculum Graph, source records, target evidence, prerequisites, learner-known-vocabulary ceiling, mastery targets, and validation policy. Any additional target must enter through a `CURRICULUM_CHANGE_PROPOSAL` and the content-authority gate.
+Only `HARD_PREREQUISITE` relationships may block entry. Prior lesson appearance does not imply mastery or necessity. A missing `ASSUMED_KNOWN` target receives its declared scaffold. Adaptive ranking may use sequence/context but cannot override a hard prerequisite or autonomously choose a future lesson.
 
-The five-slot experiment must not use OCAC lesson order, titles, text, exercises, images, or paraphrases as prompt/source material. If a later benchmark comparison is desired, first freeze the independently authored TongXuan proposal and record separate benchmark evidence. This file contains no imported source content.
+No OCAC sequence, title, content, test, or paraphrase is authorized or used. The proposal does not create executable lessons, promote graph nodes, select a variant, or authorize Lesson 6+.

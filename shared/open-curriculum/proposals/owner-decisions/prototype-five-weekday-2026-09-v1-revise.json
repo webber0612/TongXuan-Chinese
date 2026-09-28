@@ -1,0 +1,32 @@
+{
+  "recordVersion": "1.0",
+  "recordId": "owner-decision-prototype-five-weekday-v1-revise-2026-09-28",
+  "documentType": "CURRICULUM_OWNER_DECISION",
+  "proposalId": "prototype-five-weekday-2026-09-v1",
+  "proposalSha256": "1bafad4a7db3b0af9cd5cda69284b73f6101edc64235d466390fb8f71c69f35a",
+  "proposer": {
+    "role": "PROPOSER",
+    "identity": "CODEX_AI"
+  },
+  "advisoryReview": {
+    "role": "ADVISORY_REVIEWER",
+    "reviewType": "ADVERSARIAL_ARCHITECT_REVIEW",
+    "reviewedProposalSha256": "1bafad4a7db3b0af9cd5cda69284b73f6101edc64235d466390fb8f71c69f35a",
+    "outcome": "PASS",
+    "findings": [
+      "Prior PR #110 advisory PASS applied only to the exact v1 proposal hash; it is historical and does not override the Owner's REVISE."
+    ]
+  },
+  "ownerDecision": {
+    "role": "FINAL_HUMAN_CURRICULUM_APPROVER",
+    "identity": "webber0612",
+    "decision": "REVISE",
+    "decidedAt": "2026-09-28T04:37:29Z",
+    "scope": "FIVE_LESSON_FEASIBILITY_PLAN",
+    "rationale": "The five weekday capability slots reused one tiny calendar statement and tested activity order rather than a genuinely cumulative five-lesson curriculum. Redesign the proposal to show five distinct communicative outcomes, explicit prerequisites, controlled per-lesson load, recycling, and no unsupported character-SRS assumption."
+  },
+  "decisionEvidence": {
+    "kind": "OWNER_AUTHORED_CHAT_MESSAGE",
+    "reference": "Codex attachment 81ff71a2-2296-49d4-b311-4b3a904de185; Owner REVISE for exact proposal hash 1bafad4a7db3b0af9cd5cda69284b73f6101edc64235d466390fb8f71c69f35a"
+  }
+}

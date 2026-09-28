@@ -84,6 +84,39 @@ def test_machine_inventory_covers_current_tracked_content_sensitive_paths():
     assert all(entry["sha256"] and entry["sizeBytes"] >= 0 for entry in audit["entries"])
 
 
+def test_issue109_proposal_artifacts_are_reference_only_not_publishable():
+    audit = load_audit()
+    curriculum_paths = {
+        "docs/open-curriculum-5-lesson-experiment-proposal.md",
+        "shared/open-curriculum/proposals/prototype-five-weekday-2026-09.json",
+        "shared/open-curriculum/proposals/prototype-peer-exchange-2026-09-v2.json",
+        "shared/open-curriculum/proposals/prototype-peer-exchange-2026-09-v3.json",
+        "shared/open-curriculum/proposals/prototype-peer-exchange-2026-09-v4.json",
+    }
+    decision_paths = {
+        "shared/open-curriculum/proposals/owner-decisions/prototype-five-weekday-2026-09-v1-revise.json",
+        "shared/open-curriculum/proposals/owner-decisions/prototype-peer-exchange-2026-09-v2-revise.json",
+        "shared/open-curriculum/proposals/owner-decisions/prototype-peer-exchange-2026-09-v3-revise.json",
+    }
+    entries = {entry["path"]: entry for entry in audit["entries"]}
+
+    assert curriculum_paths | decision_paths <= entries.keys()
+    for path in curriculum_paths:
+        entry = entries[path]
+        assert entry["classification"] == "REFERENCE_ONLY"
+        assert entry["publishableArtifactAllowed"] is False
+        assert entry["rootMitApplies"] is False
+        assert {"cc-cedict", "tbcl-naer", "tocfl-cccc"} <= set(entry["sourceIds"])
+    for decision_path in decision_paths:
+        decision = entries[decision_path]
+        assert decision["classification"] == "REFERENCE_ONLY"
+        assert decision["publishableArtifactAllowed"] is False
+        assert decision["rootMitApplies"] is False
+    restricted_paths = curriculum_paths | decision_paths
+    errors = validate_publishable_paths(sorted(restricted_paths), audit)
+    assert all(f"PUBLIC_ARTIFACT_RESTRICTED_CONTENT: {path}" in errors for path in restricted_paths)
+
+
 def test_future_pack_raw_import_and_discovered_content_paths_enter_the_audit_scope():
     assert _is_candidate("shared/open-curriculum/packs/candidate.json")
     assert _is_candidate("shared/content-sources/imports/corpus.csv")
