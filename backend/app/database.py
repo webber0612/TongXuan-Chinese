@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 DEFAULT_DB_PATH = Path(__file__).resolve().parents[2] / "data" / "tongxuan.sqlite3"
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 7
 SQLITE_BUSY_TIMEOUT_MS = 5000
 
 
@@ -275,7 +275,7 @@ def initialize_database() -> None:
             CREATE TABLE IF NOT EXISTS pronunciation_readings (
                 id TEXT PRIMARY KEY, character TEXT NOT NULL, script TEXT NOT NULL CHECK(script IN ('TRADITIONAL','SIMPLIFIED')),
                 notation_system TEXT NOT NULL CHECK(notation_system IN ('ZHUYIN','PINYIN')),
-                notation TEXT NOT NULL, locale TEXT NOT NULL, context TEXT NOT NULL DEFAULT '', source_name TEXT NOT NULL, license_name TEXT NOT NULL,
+                notation TEXT NOT NULL, locale TEXT NOT NULL, context TEXT NOT NULL DEFAULT '', script_scope_verified INTEGER NOT NULL DEFAULT 0 CHECK(script_scope_verified IN (0,1)), source_name TEXT NOT NULL, license_name TEXT NOT NULL,
                 provenance_status TEXT NOT NULL, commercial_ready INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
             CREATE TABLE IF NOT EXISTS pronunciation_states (
@@ -459,6 +459,86 @@ def initialize_database() -> None:
                 assessed_by TEXT NOT NULL,
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
+            CREATE TABLE IF NOT EXISTS placement_profiles_v2 (
+                child_id INTEGER PRIMARY KEY REFERENCES children(id) ON DELETE CASCADE,
+                profile_version INTEGER NOT NULL CHECK(profile_version = 2),
+                domains_json TEXT NOT NULL,
+                assessment_method TEXT NOT NULL CHECK(assessment_method IN ('PARENT_OBSERVATION','DIAGNOSTIC')),
+                assessed_by TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS learner_evidence_targets (
+                child_id INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+                target_id TEXT NOT NULL,
+                target_kind TEXT NOT NULL CHECK(target_kind IN ('LEXICAL_CONCEPT','ORTHOGRAPHIC_FORM','PHRASE','PRONUNCIATION','CHARACTER')),
+                concept_id TEXT,
+                script TEXT NOT NULL CHECK(script IN ('TRADITIONAL','SIMPLIFIED','SCRIPT_INDEPENDENT')),
+                display_form TEXT,
+                handwriting_expectation TEXT CHECK(handwriting_expectation IS NULL OR handwriting_expectation IN ('WRITE_CORE','WRITE_FAMILIAR','READ_INPUT','EXPOSURE_ONLY')),
+                created_at TEXT NOT NULL,
+                PRIMARY KEY(child_id,target_id)
+            );
+            CREATE INDEX IF NOT EXISTS learner_evidence_targets_concept
+                ON learner_evidence_targets(child_id,concept_id,script);
+            CREATE TABLE IF NOT EXISTS learner_evidence_events (
+                id TEXT PRIMARY KEY,
+                child_id INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+                target_id TEXT NOT NULL,
+                dimension TEXT NOT NULL CHECK(dimension IN ('HEAR','RECALL','READ','INPUT','HANDWRITING','SPEAK','ORTHOGRAPHIC_RECOGNITION','PRONUNCIATION')),
+                script TEXT NOT NULL CHECK(script IN ('TRADITIONAL','SIMPLIFIED','SCRIPT_INDEPENDENT')),
+                outcome TEXT NOT NULL CHECK(outcome IN ('CORRECT','INCORRECT','PARTIAL','NOT_ASSESSED')),
+                assistance TEXT NOT NULL CHECK(assistance IN ('INDEPENDENT','ASSISTED','UNKNOWN')),
+                score REAL CHECK(score IS NULL OR (score >= 0 AND score <= 1)),
+                scorer TEXT,
+                scorer_version TEXT,
+                cue_type TEXT NOT NULL CHECK(cue_type IN ('IMAGE','CONCEPT','NATIVE_LANGUAGE','CONTEXT_CLOZE','AUDIO','CHINESE_TEXT','NONE')),
+                answer_exposed INTEGER NOT NULL CHECK(answer_exposed IN (0,1)),
+                input_method TEXT NOT NULL CHECK(input_method IN ('ZHUYIN','PINYIN','VOICE','OTHER_KEYBOARD','NONE')),
+                retrieval_timing TEXT NOT NULL CHECK(retrieval_timing IN ('IMMEDIATE','DELAYED','UNKNOWN')),
+                prior_exposure_at TEXT,
+                review_due_at TEXT,
+                source_type TEXT NOT NULL,
+                source_ref TEXT NOT NULL,
+                source_task_id TEXT,
+                source_session_id TEXT,
+                source_lesson_id TEXT,
+                occurred_at TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                evidence_schema_version INTEGER NOT NULL CHECK(evidence_schema_version = 1),
+                FOREIGN KEY(child_id,target_id) REFERENCES learner_evidence_targets(child_id,target_id) ON DELETE CASCADE,
+                UNIQUE(child_id,source_type,source_ref,target_id,dimension,script,input_method),
+                CHECK(dimension <> 'RECALL' OR (cue_type <> 'CHINESE_TEXT' AND answer_exposed = 0)),
+                CHECK(outcome NOT IN ('NOT_ASSESSED') OR score IS NULL)
+            );
+            CREATE INDEX IF NOT EXISTS learner_evidence_events_child_target_time
+                ON learner_evidence_events(child_id,target_id,occurred_at,id);
+            CREATE INDEX IF NOT EXISTS learner_evidence_events_child_dimension_script
+                ON learner_evidence_events(child_id,dimension,script,occurred_at);
+            CREATE TRIGGER IF NOT EXISTS learner_evidence_events_immutable_update
+                BEFORE UPDATE ON learner_evidence_events
+                BEGIN SELECT RAISE(ABORT,'learner_evidence_events_are_immutable'); END;
+            CREATE TABLE IF NOT EXISTS learner_evidence_profiles (
+                child_id INTEGER NOT NULL,
+                target_id TEXT NOT NULL,
+                dimension TEXT NOT NULL,
+                script TEXT NOT NULL,
+                input_method TEXT NOT NULL,
+                state TEXT NOT NULL CHECK(state IN ('NOT_ASSESSED','OBSERVED')),
+                latest_evidence_at TEXT,
+                latest_outcome TEXT CHECK(latest_outcome IS NULL OR latest_outcome IN ('CORRECT','INCORRECT','PARTIAL','NOT_ASSESSED')),
+                evidence_count INTEGER NOT NULL DEFAULT 0,
+                independent_correct_count INTEGER NOT NULL DEFAULT 0,
+                assisted_count INTEGER NOT NULL DEFAULT 0,
+                incorrect_count INTEGER NOT NULL DEFAULT 0,
+                partial_count INTEGER NOT NULL DEFAULT 0,
+                not_assessed_count INTEGER NOT NULL DEFAULT 0,
+                aggregation_version INTEGER NOT NULL CHECK(aggregation_version = 1),
+                rebuilt_at TEXT NOT NULL,
+                PRIMARY KEY(child_id,target_id,dimension,script,input_method),
+                FOREIGN KEY(child_id,target_id) REFERENCES learner_evidence_targets(child_id,target_id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS learner_evidence_profiles_child_dimension
+                ON learner_evidence_profiles(child_id,dimension,script,state);
             CREATE TABLE IF NOT EXISTS learning_flow_sessions (
                 id TEXT PRIMARY KEY,
                 child_id INTEGER NOT NULL REFERENCES children(id),
@@ -541,6 +621,7 @@ def initialize_database() -> None:
         migrations = {
             "pronunciation_readings": [
                 ("script", "TEXT NOT NULL DEFAULT 'TRADITIONAL'"),
+                ("script_scope_verified", "INTEGER NOT NULL DEFAULT 0"),
                 ("context", "TEXT NOT NULL DEFAULT ''"),
                 ("created_at", "TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP")
             ],
@@ -589,6 +670,7 @@ def initialize_database() -> None:
             ],
             "placement_profiles": [("age_hint_years", "INTEGER")],
             "ocr_imports": [("confirmed_at", "TEXT")],
+            "learner_evidence_targets": [("handwriting_expectation", "TEXT CHECK(handwriting_expectation IS NULL OR handwriting_expectation IN ('WRITE_CORE','WRITE_FAMILIAR','READ_INPUT','EXPOSURE_ONLY'))")],
             # Nullable owner preserves all existing learner rows as unclaimed.
             "children": [("parent_id", "INTEGER REFERENCES google_parents(id)")],
         }
@@ -602,5 +684,10 @@ def initialize_database() -> None:
             raise RuntimeError("database_schema_newer_than_application")
         if current_version < SCHEMA_VERSION:
             connection.execute("CREATE INDEX IF NOT EXISTS children_parent_id ON children(parent_id, id)")
-            connection.execute("INSERT OR IGNORE INTO schema_migrations(version, description) VALUES (?, ?)", (SCHEMA_VERSION, "Google parent identity and nullable child ownership"))
+            if current_version < 5:
+                connection.execute("INSERT OR IGNORE INTO schema_migrations(version, description) VALUES (5, 'Google parent identity and nullable child ownership')")
+            if current_version < 6:
+                connection.execute("INSERT OR IGNORE INTO schema_migrations(version, description) VALUES (6, 'Learner evidence foundation and dual-script orthographic profile')")
+            if current_version < 7:
+                connection.execute("INSERT OR IGNORE INTO schema_migrations(version, description) VALUES (7, 'Explicit target handwriting expectation contract')")
             connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
