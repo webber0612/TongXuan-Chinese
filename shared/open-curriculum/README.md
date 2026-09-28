@@ -1,6 +1,6 @@
 # Open Curriculum authority gate
 
-This directory defines data contracts and validation behavior. It contains no approved learner targets or executable lesson packages. The experiment proposal's five slots are capability placeholders only.
+This directory defines data contracts and validation behavior. It contains no approved learner targets or executable lesson packages. The active Issue #109 proposal uses the schema's A–E identifiers as five cumulative lesson positions, not capability/activity slots; see [`docs/open-curriculum-5-lesson-experiment-proposal.md`](../../docs/open-curriculum-5-lesson-experiment-proposal.md). Its targets remain `PROPOSED` and do not mutate the approved graph.
 
 ## Schema inventory
 

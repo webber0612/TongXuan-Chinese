@@ -1,15 +1,9 @@
-# Proposed prototype curriculum experiment — structure only
+# Open Curriculum Five-Lesson Proposal — Current Reference
 
-**Status: `PROPOSED` — not an approved curriculum and not executable.** This records the five distinct capability demonstrations requested for the later TongXuan Prototype Curriculum Pack. No target words, characters, grammar, lesson titles, examples, exercises, or sequence prerequisites have been selected here.
+**The capability-slot outline previously recorded in this file is superseded by the Owner's exact-hash `REVISE` for `prototype-five-weekday-2026-09-v1`.** The v1 proposal and its decision record are retained as an immutable historical snapshot; v1 is not an active plan.
 
-| Slot | Proposed capability demonstration | Target decision |
-| --- | --- | --- |
-| A | Listening + pronunciation | Pending approved graph targets and source/difficulty evidence. |
-| B | Vocabulary + visual recognition | Pending approved graph targets and source/difficulty evidence. |
-| C | Sentence pattern + speaking | Pending approved graph targets and source/difficulty evidence. |
-| D | Character recognition + SRS | Pending approved graph targets, evidence domain, and exact SRS contract. |
-| E | Integrated learning + REVIEW + REPAIR | Pending approved graph targets, prerequisites, and reviewed task contracts. |
+The current Issue #109 proposal is [`open-curriculum-5-lesson-experiment-proposal.md`](open-curriculum-5-lesson-experiment-proposal.md) and machine record [`prototype-peer-exchange-2026-09-v2.json`](../shared/open-curriculum/proposals/prototype-peer-exchange-2026-09-v2.json), canonical hash `7877db1106d8fa69644e026648513a0d9eaa569d23a5860eb81e5ec76ab9d5be`. It defines five genuinely cumulative lessons with distinct communicative outcomes, explicit target prerequisites, controlled new/recycled loads, evidence, and two curriculum strategies. The schema's A–E labels identify lesson order; they are not activity categories.
 
-The slot labels are not claims about lesson order or a recommended learning sequence. Before any executable lesson is created, a human/Architect must approve the Curriculum Graph, source records, target evidence, prerequisites, learner-known-vocabulary ceiling, mastery targets, and validation policy. Any additional target must enter through a `CURRICULUM_CHANGE_PROPOSAL` and the content-authority gate.
+Every candidate remains `PROPOSED`. Nothing here approves a target, promotes the graph, authorizes publication, creates executable lessons, selects a variant, or permits autonomous Lesson 6+ selection. The proposal is not a formal course. After exact-head advisory review, stop for an explicit Owner decision bound to the replacement proposal hash.
 
-The five-slot experiment must not use OCAC lesson order, titles, text, exercises, images, or paraphrases as prompt/source material. If a later benchmark comparison is desired, first freeze the independently authored TongXuan proposal and record separate benchmark evidence. This file contains no imported source content.
+The five-lesson plan must not use OCAC lesson order, titles, texts, exercises, images, audio, teacher material, or paraphrases as prompt/source material. A benchmark may be considered only after the independent TongXuan proposal is frozen and a separate Owner-authorized benchmark record exists. No OCAC comparison was performed for this proposal.
