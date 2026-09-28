@@ -820,8 +820,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Tracked UTF-8 text contains literal or escaped CJK and is included conservatively for review. This path signal does not establish curriculum authorship, source, or reuse rights.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "b5caed679707b79b0d81bbc4a8603da085fb958ef97c96b9be7e30693bfadaa8",
-      "sizeBytes": 76549,
+      "sha256": "2da6367e8a4e07a5115111c1028277a9e134b3d8682662a2cdb034a64d884f52",
+      "sizeBytes": 77130,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "TRACKED_CJK_TEXT_FAIL_CLOSED"
     },
@@ -897,8 +897,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Tracked UTF-8 text contains literal or escaped CJK and is included conservatively for review. This path signal does not establish curriculum authorship, source, or reuse rights.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "dd229c9709eb3427aedd61b588bc43c42487a2de593f3e5bca398b52f07af934",
-      "sizeBytes": 45810,
+      "sha256": "35d5c3f7777841134cf875aee4b3914e560f71a3fe81b5732f09ba3170d63591",
+      "sizeBytes": 46025,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "TRACKED_CJK_TEXT_FAIL_CLOSED"
     },
