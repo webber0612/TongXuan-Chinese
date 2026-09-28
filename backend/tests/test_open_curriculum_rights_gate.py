@@ -101,6 +101,7 @@ def test_unregistered_cjk_and_media_candidates_are_discovered_fail_closed():
     assert _is_dynamic_text_candidate("docs/future-lesson.md", r"escaped = '\uD840\uDC00'")
     assert _is_dynamic_text_candidate("frontend/src/future.css", r".label::after { content: '\4f60 \597d'; }")
     assert _is_dynamic_text_candidate("frontend/src/future.css", r".label::after { content: '\4f60\597d'; }")
+    assert _is_dynamic_text_candidate("frontend/src/future.css", r".label::after { content: '\003400A'; }")
     assert _is_dynamic_text_candidate("docs/future-lesson.md", "entity = '&#x323B0;'")
     assert not _is_dynamic_text_candidate("docs/future-lesson.md", "English-only text")
     assert _is_candidate("new-asset/lesson-audio.wav")
@@ -160,6 +161,39 @@ def test_nul_in_declared_text_path_is_an_ambiguous_candidate(tmp_path, monkeypat
     monkeypatch.setattr(rights_gate, "ROOT", tmp_path)
 
     assert _is_candidate(relative_path)
+
+
+def test_unreadable_declared_text_path_is_not_omitted(tmp_path, monkeypatch):
+    relative_path = "docs/future-lesson.md"
+    path = tmp_path / relative_path
+    path.parent.mkdir(parents=True)
+    path.write_text("candidate", encoding="utf-8")
+    monkeypatch.setattr(rights_gate, "ROOT", tmp_path)
+    monkeypatch.setattr(rights_gate, "REGISTRY_PATH", tmp_path / "source-registry.json")
+    (tmp_path / "source-registry.json").write_text('{"sources": []}', encoding="utf-8")
+    monkeypatch.setattr(rights_gate, "_tracked_paths", lambda: [relative_path])
+
+    def deny_read(_path):
+        raise PermissionError("test unreadable path")
+
+    monkeypatch.setattr(Path, "read_bytes", deny_read)
+
+    assert _is_candidate(relative_path)
+    audit = load_audit()
+    audit["entries"] = [{
+        "path": relative_path,
+        "classification": "RIGHTS_UNCLEAR",
+        "sourceIds": [],
+        "evidenceIds": [],
+        "rootMitApplies": False,
+        "publishableArtifactAllowed": False,
+        "reason": "Unreadable paths remain blocked.",
+        "digestMode": "TEXT_LF_NORMALIZED",
+        "sha256": "unavailable",
+        "sizeBytes": 0,
+    }]
+
+    assert "AUDIT_CONTENT_UNREADABLE: docs/future-lesson.md" in validate_inventory(audit)
 
 
 def test_new_tracked_cjk_path_without_inventory_entry_fails_closed(tmp_path, monkeypatch):

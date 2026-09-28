@@ -47,14 +47,15 @@ MEDIA_EXTENSIONS = frozenset({
 CJK_PATTERN = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\U00020000-\U0003347f]")
 UNICODE_ESCAPE_PATTERN = re.compile(r"\\u([0-9a-fA-F]{4})|\\U([0-9a-fA-F]{8})|\\u\{([0-9a-fA-F]{1,6})\}")
 HTML_CODEPOINT_PATTERN = re.compile(r"&#(?:x([0-9a-fA-F]+)|([0-9]+));", re.IGNORECASE)
-CSS_CODEPOINT_PATTERN = re.compile(r"\\([0-9a-fA-F]{1,6})(?![0-9a-fA-F])")
+CSS_CODEPOINT_PATTERN = re.compile(r"\\([0-9a-fA-F]{1,6})")
 SCOPE_METHOD = (
     "Enumerate tracked data, curriculum, media, and known embedded-content modules. "
-    "In addition, treat every tracked UTF-8 text file in the declared text extensions "
+    "Also treat every tracked UTF-8 text file in the declared text extensions "
     "with literal CJK, Unicode escapes, numeric HTML entities, or CSS hexadecimal "
-    "escapes as a candidate, every undecodable or NUL-containing "
-    "file with a declared text extension as an ambiguous candidate, and every file in "
-    "the declared media extensions as a candidate. Record path, classification, "
+    "escapes as a candidate. Treat undecodable or NUL-containing text-extension "
+    "files as ambiguous candidates; retain unreadable tracked paths and fail validation "
+    "if they cannot be hashed. Include every file in the declared media extensions "
+    "as a candidate. Record path, classification, "
     "source/evidence links where supported, canonical size, digest mode, and SHA-256 "
     "only. Text uses UTF-8 with LF-normalized line endings; binary is hashed "
     "byte-for-byte. No source corpus is downloaded."
@@ -63,7 +64,7 @@ SCOPE_LIMITATIONS = (
     "Path and digest inventory does not detect paraphrase, copying, embedded data, or authorship.",
     "CJK detection is a conservative path-discovery signal; it can include interface, technical, and reference text and does not establish that a path contains curriculum content.",
     "The text scan recognizes literal CJK through the Unicode 18 Extension J block boundary (U+3347F), Unicode escapes including UTF-16 surrogate pairs, numeric HTML entities, and CSS hexadecimal escapes only in the declared text extensions; future Unicode blocks require an explicit scanner-range update, and the scan does not detect English paraphrase or semantic similarity.",
-    "Declared text paths that are not valid UTF-8 or contain NUL bytes are included as ambiguous blocked candidates; their contents are not decoded for CJK matching.",
+    "Declared text paths that are not valid UTF-8 or contain NUL bytes are included as ambiguous blocked candidates; their contents are not decoded for CJK matching. Unreadable tracked paths remain candidates and cause inventory hashing to fail rather than silently disappearing.",
     "The media scan is extension-based and does not inspect or identify the contents of a binary file.",
     "The public-repository audit manifest is intentionally not one of its own digest entries; the gate validates its structure and scope directly.",
     "A source link or public availability is not a reuse grant.",
@@ -131,7 +132,7 @@ def _is_cjk_codepoint(value: int) -> bool:
 
 
 def _contains_cjk(text: str) -> bool:
-    """Recognize literal, Unicode-escaped, and HTML-escaped CJK in UTF-8 text."""
+    """Recognize literal CJK, Unicode/HTML escapes, and CSS hex escapes."""
     decoded = html.unescape(text)
     if CJK_PATTERN.search(decoded):
         return True
@@ -193,7 +194,8 @@ def _is_candidate(path: str) -> bool:
         # Do not let a non-UTF-8 payload with a text extension bypass discovery.
         return True
     except OSError:
-        return False
+        # A tracked text path that cannot be read is ambiguous; never omit it.
+        return True
     return _is_dynamic_text_candidate(path, text)
 
 
@@ -353,7 +355,11 @@ def validate_inventory(audit: Mapping[str, Any]) -> list[str]:
             errors.append(f"BLOCKED_AUDIT_ENTRY_MARKED_PUBLISHABLE: {path}")
 
         source_path = ROOT / Path(path)
-        actual_digest, actual_size, actual_mode = _content_snapshot(source_path)
+        try:
+            actual_digest, actual_size, actual_mode = _content_snapshot(source_path)
+        except OSError:
+            errors.append(f"AUDIT_CONTENT_UNREADABLE: {path}")
+            continue
         digest_mode = entry.get("digestMode")
         if not isinstance(digest_mode, str) or digest_mode not in {"TEXT_LF_NORMALIZED", "BINARY_RAW"}:
             errors.append(f"AUDIT_DIGEST_MODE_INVALID: {path}")

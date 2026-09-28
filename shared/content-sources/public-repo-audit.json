@@ -91,12 +91,12 @@
       ".xls",
       ".xlsx"
     ],
-    "method": "Enumerate tracked data, curriculum, media, and known embedded-content modules. In addition, treat every tracked UTF-8 text file in the declared text extensions with literal CJK, Unicode escapes, numeric HTML entities, or CSS hexadecimal escapes as a candidate, every undecodable or NUL-containing file with a declared text extension as an ambiguous candidate, and every file in the declared media extensions as a candidate. Record path, classification, source/evidence links where supported, canonical size, digest mode, and SHA-256 only. Text uses UTF-8 with LF-normalized line endings; binary is hashed byte-for-byte. No source corpus is downloaded.",
+    "method": "Enumerate tracked data, curriculum, media, and known embedded-content modules. Also treat every tracked UTF-8 text file in the declared text extensions with literal CJK, Unicode escapes, numeric HTML entities, or CSS hexadecimal escapes as a candidate. Treat undecodable or NUL-containing text-extension files as ambiguous candidates; retain unreadable tracked paths and fail validation if they cannot be hashed. Include every file in the declared media extensions as a candidate. Record path, classification, source/evidence links where supported, canonical size, digest mode, and SHA-256 only. Text uses UTF-8 with LF-normalized line endings; binary is hashed byte-for-byte. No source corpus is downloaded.",
     "limitations": [
       "Path and digest inventory does not detect paraphrase, copying, embedded data, or authorship.",
       "CJK detection is a conservative path-discovery signal; it can include interface, technical, and reference text and does not establish that a path contains curriculum content.",
       "The text scan recognizes literal CJK through the Unicode 18 Extension J block boundary (U+3347F), Unicode escapes including UTF-16 surrogate pairs, numeric HTML entities, and CSS hexadecimal escapes only in the declared text extensions; future Unicode blocks require an explicit scanner-range update, and the scan does not detect English paraphrase or semantic similarity.",
-      "Declared text paths that are not valid UTF-8 or contain NUL bytes are included as ambiguous blocked candidates; their contents are not decoded for CJK matching.",
+      "Declared text paths that are not valid UTF-8 or contain NUL bytes are included as ambiguous blocked candidates; their contents are not decoded for CJK matching. Unreadable tracked paths remain candidates and cause inventory hashing to fail rather than silently disappearing.",
       "The media scan is extension-based and does not inspect or identify the contents of a binary file.",
       "The public-repository audit manifest is intentionally not one of its own digest entries; the gate validates its structure and scope directly.",
       "A source link or public availability is not a reuse grant.",
@@ -437,8 +437,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Tracked UTF-8 text contains literal or escaped CJK and is included conservatively for review. This path signal does not establish curriculum authorship, source, or reuse rights.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "5ec8a839003d06b059998c5955c6f12f76d348f387c7080730ee1e6235c3fd1b",
-      "sizeBytes": 22380,
+      "sha256": "1aeca7ebf665ae5db6f82beac77a7c733eaacc766b0ff1b166885676ca407050",
+      "sizeBytes": 23734,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "TRACKED_CJK_TEXT_FAIL_CLOSED"
     },
@@ -794,8 +794,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Tracked UTF-8 text contains literal or escaped CJK and is included conservatively for review. This path signal does not establish curriculum authorship, source, or reuse rights.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "f69c43ab7979ac672aeb1712e701dcb1b355a5ce9cd1841082e4259d714d440e",
-      "sizeBytes": 72797,
+      "sha256": "3dc51ba6c602168486af345a092bd6f3f8820a3f7e71c6fd9aef125ee07f6c21",
+      "sizeBytes": 73238,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "TRACKED_CJK_TEXT_FAIL_CLOSED"
     },
@@ -808,8 +808,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Tracked UTF-8 text contains literal or escaped CJK and is included conservatively for review. This path signal does not establish curriculum authorship, source, or reuse rights.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "811c397f616f487302ee42619e77f644a0d4d131f19c38ac583e888135ec765e",
-      "sizeBytes": 45085,
+      "sha256": "5fe6a81e4e94394bd2a84d4a121d8d94e0fadfb18f57a1a2d64156ed97a88e43",
+      "sizeBytes": 45406,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "TRACKED_CJK_TEXT_FAIL_CLOSED"
     },
@@ -1587,8 +1587,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Rights-gate implementation contains Unicode escape ranges used by the conservative CJK path detector; this is policy/tooling metadata, not lesson content or a source-rights claim.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "dbb9d450dfea435b92b49492a4af8351bbdfd9212372798ec1eda509e36eabc7",
-      "sizeBytes": 24551,
+      "sha256": "801ea352fcab3d5160a89ce17857a8e7e6175a0187fc91c4a3af6cff6784abc1",
+      "sizeBytes": 24911,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "RIGHTS_GATE_POLICY_TOOLING"
     },
