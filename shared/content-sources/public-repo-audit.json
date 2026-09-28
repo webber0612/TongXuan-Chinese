@@ -448,8 +448,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Proposal and regression references only. Candidate words remain unapproved; the artifact is blocked from publishable curriculum use and preserves CC BY-SA 4.0 attribution/share-alike without applying root MIT.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "13e1debba403e1c060be7243de43a4cefb5d7d52ec8596d03efb119b37c52673",
-      "sizeBytes": 20011,
+      "sha256": "ff11142d4ae1d5cc595e16fa3663158760249a593b99cc7d8a784c22a7eba442",
+      "sizeBytes": 25559,
       "repositoryStatus": "PROPOSED_PUBLIC_REPO_CHANGE_REQUIRES_REVIEW",
       "contentKind": "OPEN_CURRICULUM_PROPOSAL_PLAN",
       "sourceRelationship": "Planning or regression artifact cites selected CC-CEDICT forms and broad TBCL/CCCC framework references. No raw dataset or source lesson content is included; no candidate is approved for publication."
@@ -463,8 +463,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Tracked UTF-8 text contains literal or escaped CJK and is included conservatively for review. This path signal does not establish curriculum authorship, source, or reuse rights.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "d2d81a918f799d1f87acdec032f21e1ed5314afa700f596baee9d475e84c47f3",
-      "sizeBytes": 25356,
+      "sha256": "67ad09f05ff54d25ab329a6d3dbd3abefc9f41476004971d045adf8c4dec1ace",
+      "sizeBytes": 25547,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "TRACKED_CJK_TEXT_FAIL_CLOSED"
     },
@@ -820,8 +820,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Tracked UTF-8 text contains literal or escaped CJK and is included conservatively for review. This path signal does not establish curriculum authorship, source, or reuse rights.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "112bb2fc4d289a2d8545454102d9817fb457db13ecfffa0bb76ee772a2b22374",
-      "sizeBytes": 75532,
+      "sha256": "b5caed679707b79b0d81bbc4a8603da085fb958ef97c96b9be7e30693bfadaa8",
+      "sizeBytes": 76549,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "TRACKED_CJK_TEXT_FAIL_CLOSED"
     },
@@ -843,11 +843,50 @@
       "publishableArtifactAllowed": false,
       "reason": "Proposal-only planning artifact records selected CC-CEDICT item-level forms/Pinyin with a CC BY-SA 4.0 notice and cites TBCL/CCCC only as references. Candidate targets remain PROPOSED; this file is blocked from publishable curriculum artifacts. This path classification is not a legal/ownership determination and changes no source status.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "f1adc7d829dcc6737f41cdb5d97c918bc3c3b52ced7a99fa26c095990a8a68d6",
-      "sizeBytes": 8329,
+      "sha256": "88d7bc617621fa7365f663fbcb8da5a31a7ead7623f7452f680ece2428c460ed",
+      "sizeBytes": 9692,
       "repositoryStatus": "PROPOSED_PUBLIC_REPO_CHANGE_REQUIRES_REVIEW",
       "contentKind": "CURRICULUM_REFERENCE_DOCUMENT",
       "sourceRelationship": "This proposal cites CC-CEDICT/MDBG for selected item-level forms and Pinyin and records the required CC BY-SA 4.0 attribution/share-alike boundary. TBCL/CCCC are cited only as reference evidence; no raw tables, question items, or source sequence is included. The candidate remains PROPOSED, and this path is blocked from publishable curriculum artifacts."
+    },
+    {
+      "path": "docs/open-curriculum-experiment-proposal.md",
+      "classification": "REFERENCE_ONLY",
+      "sourceIds": [
+        "cc-cedict",
+        "tbcl-naer",
+        "tocfl-cccc"
+      ],
+      "evidenceIds": [
+        "evidence-cc-cedict-download-license",
+        "evidence-cc-cedict-cc-by-sa-deed",
+        "evidence-tbcl-naer-landing-page",
+        "evidence-tocfl-cccc-official-page"
+      ],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Proposal index and governance reference. It points to the current non-executable proposal and records the Owner lexical-decision boundary; blocked from publishable curriculum artifacts.",
+      "digestMode": "TEXT_LF_NORMALIZED",
+      "sha256": "aaa788789184eed14850a49ae9caade1b2b9aaa87148910a8c83692c0dc0e284",
+      "sizeBytes": 2029,
+      "repositoryStatus": "PROPOSED_PUBLIC_REPO_CHANGE_REQUIRES_REVIEW",
+      "contentKind": "CURRICULUM_REFERENCE_DOCUMENT",
+      "sourceRelationship": "Governance reference points to the CC-CEDICT-derived proposal item under CC BY-SA 4.0 and keeps TBCL/CCCC reference-only; no raw curriculum text is included."
+    },
+    {
+      "path": "docs/open-curriculum-source-policy.md",
+      "classification": "REFERENCE_ONLY",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Repository policy reference describing evidence, rights, and Owner-decision boundaries; not curriculum content and blocked from publishable curriculum artifacts.",
+      "digestMode": "TEXT_LF_NORMALIZED",
+      "sha256": "c4be92af0ce0c56be5e316be0191b87cfbd47c02899aef8c3919f88351c1f499",
+      "sizeBytes": 11256,
+      "repositoryStatus": "PROPOSED_PUBLIC_REPO_CHANGE_REQUIRES_REVIEW",
+      "contentKind": "OPEN_CURRICULUM_POLICY_REFERENCE",
+      "sourceRelationship": "Project policy and governance reference only; it grants no content rights and contains no third-party curriculum items."
     },
     {
       "path": "docs/project-handoff.md",
@@ -858,8 +897,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Tracked UTF-8 text contains literal or escaped CJK and is included conservatively for review. This path signal does not establish curriculum authorship, source, or reuse rights.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "933007a137cdad7a26916dd5fbbdaefded71ca8ad22391f4e23f030990b2df55",
-      "sizeBytes": 45890,
+      "sha256": "dd229c9709eb3427aedd61b588bc43c42487a2de593f3e5bca398b52f07af934",
+      "sizeBytes": 45810,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "TRACKED_CJK_TEXT_FAIL_CLOSED"
     },
@@ -1790,6 +1829,21 @@
       "digestMode": "TEXT_LF_NORMALIZED"
     },
     {
+      "path": "shared/open-curriculum/README.md",
+      "classification": "REFERENCE_ONLY",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Schema and workflow index only. It states that proposal records are not approved learner content and blocks this reference from publishable curriculum artifacts.",
+      "digestMode": "TEXT_LF_NORMALIZED",
+      "sha256": "02c694b9993a89c75759f3962324e9f84dd5ed30a896c3952605f6ae4a4a84cd",
+      "sizeBytes": 7004,
+      "repositoryStatus": "PROPOSED_PUBLIC_REPO_CHANGE_REQUIRES_REVIEW",
+      "contentKind": "OPEN_CURRICULUM_REFERENCE",
+      "sourceRelationship": "Policy/index text only; no source curriculum items or third-party content are included."
+    },
+    {
       "path": "shared/open-curriculum/proposals/owner-decisions/prototype-five-weekday-2026-09-v1-revise.json",
       "classification": "REFERENCE_ONLY",
       "sourceIds": [],
@@ -1818,6 +1872,21 @@
       "repositoryStatus": "PROPOSED_PUBLIC_REPO_CHANGE_REQUIRES_REVIEW",
       "contentKind": "OWNER_DECISION_RECORD",
       "sourceRelationship": "Planning/governance record only; it grants no permission to publish or reuse flagged content and is not an approved curriculum artifact."
+    },
+    {
+      "path": "shared/open-curriculum/proposals/owner-decisions/prototype-peer-exchange-2026-09-v3-revise.json",
+      "classification": "REFERENCE_ONLY",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Hash-bound Owner REVISE record for immutable v3 only. It records a TongXuan lexical hypothesis and does not approve v4, a variant, a graph target, or publication.",
+      "digestMode": "TEXT_LF_NORMALIZED",
+      "sha256": "154f31742243634e37cc7a6f9261dc65241238d3df306afb8676bb2529b16665",
+      "sizeBytes": 2417,
+      "repositoryStatus": "PROPOSED_PUBLIC_REPO_CHANGE_REQUIRES_REVIEW",
+      "contentKind": "OWNER_DECISION_RECORD",
+      "sourceRelationship": "Governance record for the Owner’s v3-only lexical REVISE decision; it grants no third-party content permission and does not approve the replacement proposal."
     },
     {
       "path": "shared/open-curriculum/proposals/prototype-five-weekday-2026-09.json",
@@ -1890,6 +1959,30 @@
       "repositoryStatus": "PROPOSED_PUBLIC_REPO_CHANGE_REQUIRES_REVIEW",
       "contentKind": "OPEN_CURRICULUM_PROPOSAL_PLAN",
       "sourceRelationship": "Planning or regression artifact cites selected CC-CEDICT forms and broad TBCL/CCCC framework references. No raw dataset or source lesson content is included; no candidate is approved for publication."
+    },
+    {
+      "path": "shared/open-curriculum/proposals/prototype-peer-exchange-2026-09-v4.json",
+      "classification": "REFERENCE_ONLY",
+      "sourceIds": [
+        "cc-cedict",
+        "tbcl-naer",
+        "tocfl-cccc"
+      ],
+      "evidenceIds": [
+        "evidence-cc-cedict-download-license",
+        "evidence-cc-cedict-cc-by-sa-deed",
+        "evidence-tbcl-naer-landing-page",
+        "evidence-tocfl-cccc-official-page"
+      ],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Owner-selected L3 lexical substitution proposal only. 玩具 remains a PROPOSED TongXuan hypothesis with CC BY-SA 4.0 item provenance; this file is blocked from publishable curriculum artifacts.",
+      "digestMode": "TEXT_LF_NORMALIZED",
+      "sha256": "e9a336f87fafb2f7c8aa8740125cbc74fe0d94017dfe6f2e25bdba626aa17713",
+      "sizeBytes": 155080,
+      "repositoryStatus": "PROPOSED_PUBLIC_REPO_CHANGE_REQUIRES_REVIEW",
+      "contentKind": "OPEN_CURRICULUM_PROPOSAL_PLAN",
+      "sourceRelationship": "Planning artifact records the Owner-selected 玩具 target as a TongXuan hypothesis. CC-CEDICT/MDBG provides item-level form/Pinyin/basic meaning under CC BY-SA 4.0; TBCL/CCCC remain references and do not establish lexical superiority. No raw dataset or source lesson content is included; the proposal remains PROPOSED and blocked from publication."
     },
     {
       "path": "shared/validated-curriculum-slice.json",

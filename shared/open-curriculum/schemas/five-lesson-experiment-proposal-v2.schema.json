@@ -433,7 +433,7 @@
           "items": {
             "$ref": "#/$defs/hardPrerequisite"
           },
-      "description": "A justified capability-level HARD_PREREQUISITE edge with a rationale. A skill-level edge is not a lesson-entry gate unless it is separately listed in that lesson's hardPrerequisites. Previous lesson appearance alone creates no edge."
+          "description": "A justified capability-level HARD_PREREQUISITE edge with a rationale. A skill-level edge is not a lesson-entry gate unless it is separately listed in that lesson's hardPrerequisites. Previous lesson appearance alone creates no edge."
         }
       }
     },
@@ -537,7 +537,7 @@
           "items": {
             "$ref": "#/$defs/hardPrerequisite"
           },
-      "description": "A justified target-composition HARD_PREREQUISITE edge with a rationale. It identifies a needed linguistic component for this target; it is not a lesson-entry gate unless it is separately listed in that lesson's hardPrerequisites. Previous lesson appearance alone creates no edge."
+          "description": "A justified target-composition HARD_PREREQUISITE edge with a rationale. It identifies a needed linguistic component for this target; it is not a lesson-entry gate unless it is separately listed in that lesson's hardPrerequisites. Previous lesson appearance alone creates no edge."
         }
       }
     },
@@ -976,7 +976,8 @@
         "directNominalUse": {
           "enum": [
             "VERIFIED",
-            "OWNER_REVIEW_REQUIRED"
+            "OWNER_REVIEW_REQUIRED",
+            "OWNER_DECISION_ACCEPTED"
           ]
         },
         "childFamiliarity": {
@@ -988,7 +989,8 @@
         "semanticBurden": {
           "enum": [
             "EVIDENCE_SUPPORTED_LOW",
-            "OWNER_REVIEW_REQUIRED"
+            "OWNER_REVIEW_REQUIRED",
+            "OWNER_DECISION_ACCEPTED_LOW"
           ]
         },
         "genericUseRequiresClassifier": {
@@ -1026,11 +1028,17 @@
           "const": "C"
         },
         "status": {
-          "const": "OWNER_LEXICAL_DECISION_REQUIRED"
+          "enum": [
+            "OWNER_LEXICAL_DECISION_REQUIRED",
+            "OWNER_CURRICULUM_DECISION"
+          ]
         },
         "selectedTargetId": {
-          "type": "null",
-          "description": "No candidate is promoted or selected in this proposal revision."
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
         },
         "communicativeFrame": {
           "type": "string",
@@ -1058,8 +1066,101 @@
         "grammarScope": {
           "type": "string",
           "minLength": 1
+        },
+        "selectionSource": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "recordId",
+            "sourceProposalId",
+            "sourceProposalSha256"
+          ],
+          "properties": {
+            "type": {
+              "const": "OWNER_CURRICULUM_DECISION"
+            },
+            "recordId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sourceProposalId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sourceProposalSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          }
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "selectedTargetId": {
+                "type": "null"
+              }
+            },
+            "required": [
+              "selectedTargetId"
+            ]
+          },
+          "then": {
+            "properties": {
+              "status": {
+                "const": "OWNER_LEXICAL_DECISION_REQUIRED"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "OWNER_CURRICULUM_DECISION"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "required": [
+              "selectionSource"
+            ],
+            "properties": {
+              "selectedTargetId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "selectionSource": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "OWNER_LEXICAL_DECISION_REQUIRED"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "selectedTargetId": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
     }
   }
 }

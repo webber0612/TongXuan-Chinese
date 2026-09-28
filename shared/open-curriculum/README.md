@@ -1,6 +1,6 @@
 # Open Curriculum authority gate
 
-This directory defines data contracts and validation behavior. It contains no approved learner targets or executable lesson packages. The active Issue #109 proposal is `prototype-peer-exchange-2026-09-v3`; its A–E identifiers are five cumulative lesson positions, not capability/activity slots. It uses the typed relationship schema and remains `PROPOSED`; see [`docs/open-curriculum-5-lesson-experiment-proposal.md`](../../docs/open-curriculum-5-lesson-experiment-proposal.md).
+This directory defines data contracts and validation behavior. It contains no approved learner targets or executable lesson packages. The active Issue #109 proposal is `prototype-peer-exchange-2026-09-v4`; its A–E identifiers are five cumulative lesson positions, not capability/activity slots. It records the Owner-selected L3 noun `玩具` as a TongXuan hypothesis, uses the typed relationship schema, and remains `PROPOSED`; see [`docs/open-curriculum-5-lesson-experiment-proposal.md`](../../docs/open-curriculum-5-lesson-experiment-proposal.md).
 
 ## Schema inventory
 

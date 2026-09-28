@@ -6,16 +6,19 @@ from jsonschema import Draft202012Validator, FormatChecker
 
 
 ROOT = Path(__file__).resolve().parents[2]
-PROPOSAL_PATH = ROOT / "shared" / "open-curriculum" / "proposals" / "prototype-peer-exchange-2026-09-v3.json"
+PROPOSAL_PATH = ROOT / "shared" / "open-curriculum" / "proposals" / "prototype-peer-exchange-2026-09-v4.json"
+V3_PROPOSAL_PATH = ROOT / "shared" / "open-curriculum" / "proposals" / "prototype-peer-exchange-2026-09-v3.json"
 V2_PROPOSAL_PATH = ROOT / "shared" / "open-curriculum" / "proposals" / "prototype-peer-exchange-2026-09-v2.json"
 OLD_PROPOSAL_PATH = ROOT / "shared" / "open-curriculum" / "proposals" / "prototype-five-weekday-2026-09.json"
 V1_DECISION_PATH = ROOT / "shared" / "open-curriculum" / "proposals" / "owner-decisions" / "prototype-five-weekday-2026-09-v1-revise.json"
 V2_DECISION_PATH = ROOT / "shared" / "open-curriculum" / "proposals" / "owner-decisions" / "prototype-peer-exchange-2026-09-v2-revise.json"
+V3_DECISION_PATH = ROOT / "shared" / "open-curriculum" / "proposals" / "owner-decisions" / "prototype-peer-exchange-2026-09-v3-revise.json"
 V1_SCHEMA_PATH = ROOT / "shared" / "open-curriculum" / "schemas" / "five-lesson-experiment-proposal.schema.json"
 PROPOSAL_SCHEMA_PATH = ROOT / "shared" / "open-curriculum" / "schemas" / "five-lesson-experiment-proposal-v2.schema.json"
 DECISION_SCHEMA_PATH = ROOT / "shared" / "open-curriculum" / "schemas" / "owner-decision-record.schema.json"
 OLD_OWNER_HASH = "1bafad4a7db3b0af9cd5cda69284b73f6101edc64235d466390fb8f71c69f35a"
 V2_OWNER_HASH = "7877db1106d8fa69644e026648513a0d9eaa569d23a5860eb81e5ec76ab9d5be"
+V3_OWNER_HASH = "b5ff4050fd107220926f15f403a2d68a0895f30694a628704d7faa594bafb097"
 
 
 def load_json(path):
@@ -35,14 +38,14 @@ def targets_by_id(plan):
     return {item["id"]: item for item in plan["candidateTargetCatalog"]}
 
 
-def test_v3_proposal_matches_typed_relationship_schema_and_stays_non_executable():
+def test_v4_proposal_matches_typed_relationship_schema_and_stays_non_executable():
     plan = load_plan()
     schema = load_json(PROPOSAL_SCHEMA_PATH)
     errors = list(Draft202012Validator(schema, format_checker=FormatChecker()).iter_errors(plan))
 
     assert errors == []
     assert plan["schemaVersion"] == "2.0"
-    assert plan["proposalId"] == "prototype-peer-exchange-2026-09-v3"
+    assert plan["proposalId"] == "prototype-peer-exchange-2026-09-v4"
     assert plan["approvalStatus"] == "PROPOSED"
     assert plan["ownerDecision"] is None
     assert plan["scope"]["formalCourseClaim"] is False
@@ -52,15 +55,17 @@ def test_v3_proposal_matches_typed_relationship_schema_and_stays_non_executable(
     assert plan["scope"]["writingTargets"] == []
 
 
-def test_owner_revise_records_are_bound_to_both_immutable_hashes():
+def test_owner_revise_records_are_bound_to_immutable_proposal_hashes():
     old = load_json(OLD_PROPOSAL_PATH)
     v2 = load_json(V2_PROPOSAL_PATH)
+    v3 = load_json(V3_PROPOSAL_PATH)
     new = load_plan()
     decision_schema = load_json(DECISION_SCHEMA_PATH)
     v1_decision = load_json(V1_DECISION_PATH)
     v2_decision = load_json(V2_DECISION_PATH)
+    v3_decision = load_json(V3_DECISION_PATH)
 
-    for decision in (v1_decision, v2_decision):
+    for decision in (v1_decision, v2_decision, v3_decision):
         assert list(Draft202012Validator(decision_schema, format_checker=FormatChecker()).iter_errors(decision)) == []
         assert decision["ownerDecision"]["decision"] == "REVISE"
         assert decision["advisoryReview"]["outcome"] == "PASS"
@@ -73,7 +78,15 @@ def test_owner_revise_records_are_bound_to_both_immutable_hashes():
     assert list(Draft202012Validator(load_json(V1_SCHEMA_PATH), format_checker=FormatChecker()).iter_errors(v2)) == []
     assert v2_decision["proposalId"] == v2["proposalId"] == "prototype-peer-exchange-2026-09-v2"
     assert v2_decision["proposalSha256"] == v2_decision["advisoryReview"]["reviewedProposalSha256"] == V2_OWNER_HASH
-    assert new["proposalId"] not in {old["proposalId"], v2["proposalId"]}
+    assert canonical_sha256(v3) == V3_OWNER_HASH
+    assert v3_decision["proposalId"] == v3["proposalId"] == "prototype-peer-exchange-2026-09-v3"
+    assert v3_decision["proposalSha256"] == v3_decision["advisoryReview"]["reviewedProposalSha256"] == V3_OWNER_HASH
+    assert v3_decision["ownerDecision"]["rationale"].startswith("REVISE — L3 LEXICAL SELECTION ONLY.")
+    selection_source = new["lexicalDecisionGates"][0]["selectionSource"]
+    assert selection_source["recordId"] == v3_decision["recordId"]
+    assert selection_source["sourceProposalId"] == v3_decision["proposalId"]
+    assert selection_source["sourceProposalSha256"] == v3_decision["proposalSha256"] == V3_OWNER_HASH
+    assert new["proposalId"] not in {old["proposalId"], v2["proposalId"], v3["proposalId"]}
     assert new["ownerDecision"] is None
 
 
@@ -92,7 +105,7 @@ def test_five_lessons_keep_the_accepted_cumulative_communicative_outcomes():
     expected_vocab = [
         {"vocab-nihao", "vocab-wo", "vocab-jiao"},
         {"vocab-ni", "vocab-shenme", "vocab-mingzi"},
-        {"vocab-xihuan"},
+        {"vocab-xihuan", "vocab-wanju"},
         set(),
         set(),
     ]
@@ -278,19 +291,28 @@ def test_fast_track_skipped_composition_inputs_are_scaffolded_or_taught_in_lesso
         assert {"vocab-ni", "vocab-xihuan", "vocab-shenme"} <= l4_assumed
 
 
-def test_l3_lexical_choice_fails_closed_and_keeps_a_direct_nominal_slot():
+def test_l3_lexical_choice_is_owner_selected_and_keeps_a_direct_nominal_slot():
     plan = load_plan()
     targets = targets_by_id(plan)
     gate = plan["lexicalDecisionGates"][0]
     l3 = plan["variants"][0]["lessons"][2]
     grammar = targets["grammar-state-preference"]
 
-    assert gate["status"] == "OWNER_LEXICAL_DECISION_REQUIRED"
-    assert gate["selectedTargetId"] is None
+    assert gate["status"] == "OWNER_CURRICULUM_DECISION"
+    assert gate["selectedTargetId"] == "vocab-wanju"
+    assert gate["selectionSource"]["type"] == "OWNER_CURRICULUM_DECISION"
+    assert gate["selectionSource"]["sourceProposalSha256"] == V3_OWNER_HASH
     assert gate["lessonSlot"] == "C"
     assert "我喜歡" in gate["communicativeFrame"]
-    assert "直接名詞補語" in grammar["candidateForm"]
-    assert l3["newVocabularyTargets"] == ["vocab-xihuan"]
+    assert grammar["candidateForm"] == "我喜歡＋玩具"
+    assert l3["newVocabularyTargets"] == ["vocab-xihuan", "vocab-wanju"]
+    assert l3["phoneticTargetSyllables"] == ["xǐ", "huan", "wán", "jù"]
+    assert l3["load"]["newVocabularyCount"] == 2
+    assert l3["load"]["newPhoneticSyllableCount"] == 4
+    assert targets["vocab-wanju"]["candidateForm"] == "玩具"
+    assert targets["vocab-wanju"]["pinyin"] == "wánjù"
+    assert "Owner curriculum decision / TongXuan hypothesis" in targets["vocab-wanju"]["whyThis"]
+    assert "does not establish that 玩具 is the best" in targets["vocab-wanju"]["whyThis"]
     assert "vocab-qiu" not in targets
     assert "char-qiu" not in targets
     assert {edge["targetId"] for edge in grammar["hardPrerequisites"]} == {"vocab-wo", "vocab-xihuan"}
@@ -300,7 +322,11 @@ def test_l3_lexical_choice_fails_closed_and_keeps_a_direct_nominal_slot():
         assert option["directFrameProbe"] == f"我喜歡{option['form']}"
         assert option["requiresAdditionalGrammarTarget"] is False
         assert option["genericUseRequiresClassifier"] is False
-        assert option["directNominalUse"] == "OWNER_REVIEW_REQUIRED"
+        if option["form"] == "玩具":
+            assert option["directNominalUse"] == "OWNER_DECISION_ACCEPTED"
+            assert option["semanticBurden"] == "OWNER_DECISION_ACCEPTED_LOW"
+        else:
+            assert option["directNominalUse"] == "OWNER_REVIEW_REQUIRED"
         assert option["childFamiliarity"] == "UNVERIFIED"
         assert option["evidenceIds"]
 
@@ -312,6 +338,10 @@ def test_lexical_comparison_provenance_does_not_claim_frequency_or_child_familia
     forms = {option["form"] for option in gate["options"]}
 
     assert {"球", "玩具", "書", "遊戲", "電影"} == forms
+    active_forms = {target["candidateForm"] for target in plan["candidateTargetCatalog"]}
+    assert "玩具" in active_forms
+    assert not (forms - {"玩具"}) & active_forms
+    assert next(option for option in gate["options"] if option["form"] == "玩具")["directNominalUse"] == "OWNER_DECISION_ACCEPTED"
     for option in gate["options"]:
         for evidence_id in option["evidenceIds"]:
             record = evidence[evidence_id]
@@ -319,7 +349,71 @@ def test_lexical_comparison_provenance_does_not_claim_frequency_or_child_familia
             assert record["category"] == "OPEN_LEXICAL_ITEM"
             assert "does not establish" in record["claim"]
             assert record["rawContentIncluded"] is False
-    assert "No unique candidate" in gate["comparisonConclusion"]
+    assert "Owner selected 玩具" in gate["comparisonConclusion"]
+    assert "not TBCL/CCCC/CC-CEDICT evidence" in gate["comparisonConclusion"]
+
+
+def test_v4_changes_only_the_owner_selected_l3_lexical_target_and_derived_load():
+    old = load_json(V3_PROPOSAL_PATH)
+    new = load_plan()
+    normalized = json.loads(json.dumps(new))
+
+    assert canonical_sha256(old) == V3_OWNER_HASH
+    normalized["proposalId"] = old["proposalId"]
+    normalized["scope"]["contaminationAssessment"] = old["scope"]["contaminationAssessment"]
+    normalized["licenseNotice"] = old["licenseNotice"]
+    normalized["lexicalDecisionGates"] = old["lexicalDecisionGates"]
+    normalized["evidenceCatalog"] = [item for item in normalized["evidenceCatalog"] if item["evidenceId"] != "ev-owner-decision-l3-wanju"]
+    normalized["candidateTargetCatalog"] = [
+        item for item in normalized["candidateTargetCatalog"] if item["id"] != "vocab-wanju"
+    ]
+    old_targets = {item["id"]: item for item in old["candidateTargetCatalog"]}
+    normalized["candidateTargetCatalog"] = [
+        old_targets[item["id"]] if item["id"] == "grammar-state-preference" else item
+        for item in normalized["candidateTargetCatalog"]
+    ]
+
+    derived_fields = (
+        "vocabularyTargets",
+        "newVocabularyTargets",
+        "recycledTargetIds",
+        "listeningComprehensionTargets",
+        "visualMeaningComprehensionTargets",
+        "spokenProductionTargets",
+        "srsReviewTargets",
+        "recycledContext",
+    )
+    old_variants = {item["variantId"]: item for item in old["variants"]}
+    for variant in normalized["variants"]:
+        original_variant = old_variants[variant["variantId"]]
+        variant["cognitiveLoadSummary"] = original_variant["cognitiveLoadSummary"]
+        old_lessons = {item["slot"]: item for item in original_variant["lessons"]}
+        for lesson in variant["lessons"]:
+            original = old_lessons[lesson["slot"]]
+            # Each downstream list contains the newly selected vocabulary only as a recycled target.
+            for field in derived_fields:
+                lesson[field] = [target_id for target_id in lesson[field] if target_id != "vocab-wanju"]
+            if lesson["slot"] == "C":
+                assert lesson["phoneticTargetSyllables"] == ["xǐ", "huan", "wán", "jù"]
+                assert lesson["load"]["newVocabularyCount"] == original["load"]["newVocabularyCount"] + 1
+                assert lesson["load"]["newPhoneticSyllableCount"] == original["load"]["newPhoneticSyllableCount"] + 1
+            lesson["phoneticTargetSyllables"] = original["phoneticTargetSyllables"]
+            lesson["load"] = original["load"]
+
+    assert normalized == old
+
+
+def test_selected_l3_noun_is_recycled_and_reviewed_after_introduction():
+    plan = load_plan()
+    for variant in plan["variants"]:
+        lessons = {lesson["slot"]: lesson for lesson in variant["lessons"]}
+        assert "vocab-wanju" in lessons["C"]["newVocabularyTargets"]
+        for slot in ("D", "E"):
+            lesson = lessons[slot]
+            assert "vocab-wanju" in lesson["vocabularyTargets"]
+            assert "vocab-wanju" in lesson["recycledContext"]
+            assert "vocab-wanju" in lesson["recycledTargetIds"]
+            assert "vocab-wanju" in lesson["srsReviewTargets"]
 
 
 def test_item_provenance_preserves_rights_and_framework_evidence():
@@ -387,6 +481,6 @@ def test_schema_rejects_target_promotion_and_mit_relabeling_of_cc_cedict():
     relabeled["licenseNotice"]["mitAppliesToCedictData"] = True
     assert list(Draft202012Validator(schema, format_checker=FormatChecker()).iter_errors(relabeled))
 
-    selected_without_owner_resolution = json.loads(json.dumps(plan))
-    selected_without_owner_resolution["lexicalDecisionGates"][0]["selectedTargetId"] = "vocab-wanju"
-    assert list(Draft202012Validator(schema, format_checker=FormatChecker()).iter_errors(selected_without_owner_resolution))
+    selected_without_owner_source = json.loads(json.dumps(plan))
+    del selected_without_owner_source["lexicalDecisionGates"][0]["selectionSource"]
+    assert list(Draft202012Validator(schema, format_checker=FormatChecker()).iter_errors(selected_without_owner_source))

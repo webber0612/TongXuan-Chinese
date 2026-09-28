@@ -1,0 +1,32 @@
+{
+  "recordVersion": "1.0",
+  "recordId": "owner-decision-prototype-peer-exchange-v3-revise-2026-09-28",
+  "documentType": "CURRICULUM_OWNER_DECISION",
+  "proposalId": "prototype-peer-exchange-2026-09-v3",
+  "proposalSha256": "b5ff4050fd107220926f15f403a2d68a0895f30694a628704d7faa594bafb097",
+  "proposer": {
+    "role": "PROPOSER",
+    "identity": "CODEX_AI"
+  },
+  "advisoryReview": {
+    "role": "ADVISORY_REVIEWER",
+    "reviewType": "ADVERSARIAL_ARCHITECT_REVIEW",
+    "reviewedProposalSha256": "b5ff4050fd107220926f15f403a2d68a0895f30694a628704d7faa594bafb097",
+    "outcome": "PASS",
+    "findings": [
+      "The prior advisory PASS applies only to the exact v3 proposal hash. It did not approve curriculum; the Owner subsequently marked that exact hash REVISE — L3 LEXICAL SELECTION ONLY."
+    ]
+  },
+  "ownerDecision": {
+    "role": "FINAL_HUMAN_CURRICULUM_APPROVER",
+    "identity": "webber0612",
+    "decision": "REVISE",
+    "decidedAt": "2026-09-28T09:17:49Z",
+    "scope": "FIVE_LESSON_FEASIBILITY_PLAN",
+    "rationale": "REVISE — L3 LEXICAL SELECTION ONLY. Select 玩具 as the L3 direct nominal object for 我喜歡 X. The Owner’s reasons are: 我喜歡玩具 is a natural complete direct-noun preference statement; it needs no extra verb or classifier/measure-word grammar; the meaning is concrete and visualizable, suitable for a child context with low semantic burden and no complex cultural background; compared with 球 it does not invite the competing 打球 verb construction, compared with 遊戲 it avoids 玩遊戲, compared with 電影 it is closer to children’s daily lives, and compared with 書 it is a more suitable neutral concrete-interest example for this prototype. This is an Owner curriculum decision / TongXuan hypothesis. CC-CEDICT is used only for form, Pinyin, basic lexical meaning, and provenance; TBCL, CCCC, and CC-CEDICT do not establish that 玩具 is the best beginner word. Do not change curriculum architecture, the cumulative L1–L5 progression, relationship semantics, or Variant A/B strategy; do not add other vocabulary/grammar, author executable lessons, or approve the proposal."
+  },
+  "decisionEvidence": {
+    "kind": "OWNER_AUTHORED_CHAT_MESSAGE",
+    "reference": "Owner-authored Codex message dated 2026-09-28; REVISE only L3 lexical selection for exact proposal SHA-256 b5ff4050fd107220926f15f403a2d68a0895f30694a628704d7faa594bafb097."
+  }
+}

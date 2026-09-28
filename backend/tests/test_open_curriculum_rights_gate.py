@@ -91,10 +91,12 @@ def test_issue109_proposal_artifacts_are_reference_only_not_publishable():
         "shared/open-curriculum/proposals/prototype-five-weekday-2026-09.json",
         "shared/open-curriculum/proposals/prototype-peer-exchange-2026-09-v2.json",
         "shared/open-curriculum/proposals/prototype-peer-exchange-2026-09-v3.json",
+        "shared/open-curriculum/proposals/prototype-peer-exchange-2026-09-v4.json",
     }
     decision_paths = {
         "shared/open-curriculum/proposals/owner-decisions/prototype-five-weekday-2026-09-v1-revise.json",
         "shared/open-curriculum/proposals/owner-decisions/prototype-peer-exchange-2026-09-v2-revise.json",
+        "shared/open-curriculum/proposals/owner-decisions/prototype-peer-exchange-2026-09-v3-revise.json",
     }
     entries = {entry["path"]: entry for entry in audit["entries"]}
 
