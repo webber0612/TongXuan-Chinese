@@ -1,0 +1,32 @@
+{
+  "recordVersion": "1.0",
+  "recordId": "owner-decision-prototype-peer-exchange-v2-revise-2026-09-28",
+  "documentType": "CURRICULUM_OWNER_DECISION",
+  "proposalId": "prototype-peer-exchange-2026-09-v2",
+  "proposalSha256": "7877db1106d8fa69644e026648513a0d9eaa569d23a5860eb81e5ec76ab9d5be",
+  "proposer": {
+    "role": "PROPOSER",
+    "identity": "CODEX_AI"
+  },
+  "advisoryReview": {
+    "role": "ADVISORY_REVIEWER",
+    "reviewType": "ADVERSARIAL_ARCHITECT_REVIEW",
+    "reviewedProposalSha256": "7877db1106d8fa69644e026648513a0d9eaa569d23a5860eb81e5ec76ab9d5be",
+    "outcome": "PASS",
+    "findings": [
+      "The earlier advisory PASS applied only to this exact v2 hash and did not make a curriculum decision. The Owner subsequently marked this exact hash REVISE."
+    ]
+  },
+  "ownerDecision": {
+    "role": "FINAL_HUMAN_CURRICULUM_APPROVER",
+    "identity": "webber0612",
+    "decision": "REVISE",
+    "decidedAt": "2026-09-28T07:45:37Z",
+    "scope": "FIVE_LESSON_FEASIBILITY_PLAN",
+    "rationale": "Revise only L3 lexical choice and dependency semantics. The cumulative L1–L5 direction and Variant A/B strategies are accepted. Compare alternatives with provenance; if evidence cannot establish a uniquely suitable noun, retain OWNER_LEXICAL_DECISION_REQUIRED. Distinguish hard prerequisites from pedagogical sequence, recycled context, and assumed-known material so prior lesson targets do not automatically block fast-track or placement."
+  },
+  "decisionEvidence": {
+    "kind": "OWNER_AUTHORED_CHAT_MESSAGE",
+    "reference": "Owner-authored Codex message dated 2026-09-28; REVISE for exact proposal SHA-256 7877db1106d8fa69644e026648513a0d9eaa569d23a5860eb81e5ec76ab9d5be."
+  }
+}

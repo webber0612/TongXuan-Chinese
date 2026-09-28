@@ -431,6 +431,30 @@
       "contentKind": "TRACKED_CJK_TEXT_FAIL_CLOSED"
     },
     {
+      "path": "backend/tests/test_open_curriculum_experiment_plan.py",
+      "classification": "REFERENCE_ONLY",
+      "sourceIds": [
+        "cc-cedict",
+        "tbcl-naer",
+        "tocfl-cccc"
+      ],
+      "evidenceIds": [
+        "evidence-cc-cedict-download-license",
+        "evidence-cc-cedict-cc-by-sa-deed",
+        "evidence-tbcl-naer-landing-page",
+        "evidence-tocfl-cccc-official-page"
+      ],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Proposal and regression references only. Candidate words remain unapproved; the artifact is blocked from publishable curriculum use and preserves CC BY-SA 4.0 attribution/share-alike without applying root MIT.",
+      "digestMode": "TEXT_LF_NORMALIZED",
+      "sha256": "a7d12d20d6acd34a96fe9d6c5b73be6c46b6b4beb9f8d4a5b8c51c89b6f4c828",
+      "sizeBytes": 18695,
+      "repositoryStatus": "PROPOSED_PUBLIC_REPO_CHANGE_REQUIRES_REVIEW",
+      "contentKind": "OPEN_CURRICULUM_PROPOSAL_PLAN",
+      "sourceRelationship": "Planning or regression artifact cites selected CC-CEDICT forms and broad TBCL/CCCC framework references. No raw dataset or source lesson content is included; no candidate is approved for publication."
+    },
+    {
       "path": "backend/tests/test_open_curriculum_rights_gate.py",
       "classification": "RIGHTS_UNCLEAR",
       "sourceIds": [],
@@ -439,8 +463,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Tracked UTF-8 text contains literal or escaped CJK and is included conservatively for review. This path signal does not establish curriculum authorship, source, or reuse rights.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "f7a284e8661b551dbfebd7c60c229830b19ef36a996d7fb5c703476d86d3e9a5",
-      "sizeBytes": 25070,
+      "sha256": "d2d81a918f799d1f87acdec032f21e1ed5314afa700f596baee9d475e84c47f3",
+      "sizeBytes": 25356,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "TRACKED_CJK_TEXT_FAIL_CLOSED"
     },
@@ -796,8 +820,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Tracked UTF-8 text contains literal or escaped CJK and is included conservatively for review. This path signal does not establish curriculum authorship, source, or reuse rights.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "81bb47bb2086baa601b35938a6812234ad8c92feb0d1c6cf53ff199a215f748d",
-      "sizeBytes": 74118,
+      "sha256": "42ecb5a477c0b84cbbad0af43d9a537d0c4c904734489a46ecef434977d80dbb",
+      "sizeBytes": 74416,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "TRACKED_CJK_TEXT_FAIL_CLOSED"
     },
@@ -819,8 +843,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Proposal-only planning artifact records selected CC-CEDICT item-level forms/Pinyin with a CC BY-SA 4.0 notice and cites TBCL/CCCC only as references. Candidate targets remain PROPOSED; this file is blocked from publishable curriculum artifacts. This path classification is not a legal/ownership determination and changes no source status.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "e968f49544a085602a87f806b86b3574ff18c139cc00277c150e230fbf4dba8c",
-      "sizeBytes": 13370,
+      "sha256": "64057a8e5066d8cd9afa78a2f40e2fff742e2b475c9df8c38c72651c1026df7f",
+      "sizeBytes": 7936,
       "repositoryStatus": "PROPOSED_PUBLIC_REPO_CHANGE_REQUIRES_REVIEW",
       "contentKind": "CURRICULUM_REFERENCE_DOCUMENT",
       "sourceRelationship": "This proposal cites CC-CEDICT/MDBG for selected item-level forms and Pinyin and records the required CC BY-SA 4.0 attribution/share-alike boundary. TBCL/CCCC are cited only as reference evidence; no raw tables, question items, or source sequence is included. The candidate remains PROPOSED, and this path is blocked from publishable curriculum artifacts."
@@ -834,8 +858,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Tracked UTF-8 text contains literal or escaped CJK and is included conservatively for review. This path signal does not establish curriculum authorship, source, or reuse rights.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "50e388af930a1bb856ee7ce7a3c0e58b1fb5d4d0b203b9afb2b488a243267299",
-      "sizeBytes": 45590,
+      "sha256": "873c820ce914b63e61fb62434e28fdec9dbb87f87217200ed0ccc4f622a0bd2b",
+      "sizeBytes": 45146,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "TRACKED_CJK_TEXT_FAIL_CLOSED"
     },
@@ -1781,6 +1805,21 @@
       "sourceRelationship": "Planning/governance record only; it grants no permission to publish or reuse flagged content and is not an approved curriculum artifact."
     },
     {
+      "path": "shared/open-curriculum/proposals/owner-decisions/prototype-peer-exchange-2026-09-v2-revise.json",
+      "classification": "REFERENCE_ONLY",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Hash-bound Owner REVISE record for an immutable proposal only. It does not contain third-party curriculum data, approve a target, or authorize publication.",
+      "digestMode": "TEXT_LF_NORMALIZED",
+      "sha256": "9b1198c57d9213393a559aed0d857fc80cec95aa4f7a2d671c2ac7d63f376e4c",
+      "sizeBytes": 1699,
+      "repositoryStatus": "PROPOSED_PUBLIC_REPO_CHANGE_REQUIRES_REVIEW",
+      "contentKind": "OWNER_DECISION_RECORD",
+      "sourceRelationship": "Planning/governance record only; it grants no permission to publish or reuse flagged content and is not an approved curriculum artifact."
+    },
+    {
       "path": "shared/open-curriculum/proposals/prototype-five-weekday-2026-09.json",
       "classification": "REFERENCE_ONLY",
       "sourceIds": [
@@ -1827,6 +1866,30 @@
       "repositoryStatus": "PROPOSED_PUBLIC_REPO_CHANGE_REQUIRES_REVIEW",
       "contentKind": "OPEN_CURRICULUM_PROPOSAL_PLAN",
       "sourceRelationship": "Planning/governance record only; it grants no permission to publish or reuse flagged content and is not an approved curriculum artifact."
+    },
+    {
+      "path": "shared/open-curriculum/proposals/prototype-peer-exchange-2026-09-v3.json",
+      "classification": "REFERENCE_ONLY",
+      "sourceIds": [
+        "cc-cedict",
+        "tbcl-naer",
+        "tocfl-cccc"
+      ],
+      "evidenceIds": [
+        "evidence-cc-cedict-download-license",
+        "evidence-cc-cedict-cc-by-sa-deed",
+        "evidence-tbcl-naer-landing-page",
+        "evidence-tocfl-cccc-official-page"
+      ],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Proposal and regression references only. Candidate words remain unapproved; the artifact is blocked from publishable curriculum use and preserves CC BY-SA 4.0 attribution/share-alike without applying root MIT.",
+      "digestMode": "TEXT_LF_NORMALIZED",
+      "sha256": "ea44bd334cd66e879576411dc6b15f19b8a5ea63a78618f5b44aea42ef7d88e2",
+      "sizeBytes": 147172,
+      "repositoryStatus": "PROPOSED_PUBLIC_REPO_CHANGE_REQUIRES_REVIEW",
+      "contentKind": "OPEN_CURRICULUM_PROPOSAL_PLAN",
+      "sourceRelationship": "Planning or regression artifact cites selected CC-CEDICT forms and broad TBCL/CCCC framework references. No raw dataset or source lesson content is included; no candidate is approved for publication."
     },
     {
       "path": "shared/validated-curriculum-slice.json",

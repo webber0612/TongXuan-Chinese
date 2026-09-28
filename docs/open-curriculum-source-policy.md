@@ -19,6 +19,8 @@ AUTHORITATIVE FRAMEWORK / LEGALLY USABLE SOURCES
 
 `NO_AUTONOMOUS_NEXT_LESSON`: completing lesson N never authorizes Codex to choose lesson N+1. The next targets must come from an approved Curriculum Graph and plan.
 
+The current proposal-only five-lesson experiment is `prototype-peer-exchange-2026-09-v3`. Its L3 noun remains `OWNER_LEXICAL_DECISION_REQUIRED`; typed `HARD_PREREQUISITE` edges are distinct from pedagogical order, recycled context, and scaffoldable assumptions. These proposal corrections do not promote graph nodes or change executable learning behavior.
+
 ## Source registry
 
 [`shared/content-sources/source-registry.json`](../shared/content-sources/source-registry.json) is the source-of-truth registry for curriculum sources. Each source record contains source/authority identity, ownership, license scope, commercial/modification/redistribution/attribution/share-alike/raw-ingestion/public-repository/derivative permissions, validation-only and item-level flags, evidence records, a policy decision, verification date, and constraints. Every rights decision links its evidence IDs to records containing the evidence URL, locator, observation date, capture method, supported claim types, a SHA-256 of the UTF-8 response-text representation when captured, and a concise claim summary. Evidence records store no third-party corpus rows or substantial source excerpts.
