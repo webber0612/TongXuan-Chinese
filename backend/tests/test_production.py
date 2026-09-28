@@ -34,7 +34,7 @@ def test_health_and_readiness_are_deterministic_and_schema_versioned(tmp_path):
         assert body["status"] == "READY"
         assert body["checks"]["config"]["status"] == "PASS"
         assert body["checks"]["database"]["status"] == "PASS"
-        assert body["schema_version"] == 5
+        assert body["schema_version"] == 7
         assert body["privacy"] == {"raw_request_bodies_logged": False, "secrets_exposed": False}
         assert result.headers["x-request-id"]
 

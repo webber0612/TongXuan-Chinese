@@ -1266,6 +1266,7 @@ def _session_plan(db: Any, child_id: int, as_of_text: str, lesson: dict[str, Any
     stage = next(stage for stage in validated_slice()["stages"] if stage["id"] == lesson["stageId"])
     return {
         "childId": child_id,
+        "scriptMode": script_mode,
         "generatedAt": as_of_text,
         "targetMinutes": target_minutes,
         "curriculumContext": {
@@ -1377,8 +1378,15 @@ def _ensure_lesson_materials(db: Any, child_id: int, lesson: dict[str, Any]) -> 
                 notation_system, notation, locale = ("ZHUYIN", zhuyin, "zh-TW") if script == "TRADITIONAL" else ("PINYIN", pinyin, "zh-CN")
                 reading_id = _item_id(child_id, lesson_id, f"reading_{script.lower()}", index)
                 db.execute(
-                    "INSERT OR IGNORE INTO pronunciation_readings(id,character,script,notation_system,notation,locale,context,source_name,license_name,provenance_status,commercial_ready) VALUES(?,?,?,?,?,?,?,?,?,?,0)",
-                    (reading_id, character, script, notation_system, notation, locale, "learning-session-v1", source_name, "TONGXUAN_AUTHORED_INTERNAL_DRAFT", provenance),
+                    "INSERT OR IGNORE INTO pronunciation_readings(id,character,script,notation_system,notation,locale,context,script_scope_verified,source_name,license_name,provenance_status,commercial_ready) VALUES(?,?,?,?,?,?,?,?,?,?,?,0)",
+                    (reading_id, character, script, notation_system, notation, locale, "learning-session-v1", 1, source_name, "TONGXUAN_AUTHORED_INTERNAL_DRAFT", provenance),
+                )
+                db.execute(
+                    """UPDATE pronunciation_readings SET script_scope_verified=1
+                       WHERE id=? AND character=? AND script=? AND notation_system=? AND notation=? AND locale=?
+                         AND context='learning-session-v1' AND source_name=?
+                         AND license_name='TONGXUAN_AUTHORED_INTERNAL_DRAFT' AND provenance_status=? AND commercial_ready=0""",
+                    (reading_id, character, script, notation_system, notation, locale, source_name, provenance),
                 )
                 links.append(("phonetics", reading_id))
     for skill, item_id in links:
@@ -1889,6 +1897,36 @@ def submit_learning_answer(*, child_id: int, session_id: str, task_id: str, sele
                 score = float(correct)
                 scorer_version = "recognition-engine-v1"
                 record_linked_score_evidence(db, child_id=child_id, skill_domain="recognition", item_id=row["activity_item_id"], score=score, assisted=assisted, evidence_ref=attempt["id"], evidence_type="recognition_attempt")
+                script = json.loads(session["plan_json"]).get("scriptMode")
+                if script in {"TRADITIONAL", "SIMPLIFIED"}:
+                    from .learner_evidence import record_evidence_in_transaction
+
+                    item = db.execute("SELECT character FROM learning_items WHERE id=? AND child_id=?", (row["activity_item_id"], child_id)).fetchone()
+                    if item is None:
+                        raise ValueError("learner_evidence_source_item_not_found")
+                    previous = None
+                    due_at = task.get("taskData", {}).get("dueAt")
+                    timing = "UNKNOWN"
+                    if row["source_queue"] == "REVIEW":
+                        previous = db.execute(
+                            "SELECT MIN(timestamp) FROM recognition_attempts WHERE child_id=? AND item_id=? AND id<>?",
+                            (child_id, row["activity_item_id"], attempt["id"]),
+                        ).fetchone()[0]
+                        if previous and due_at:
+                            timing = "DELAYED"
+                    record_evidence_in_transaction(
+                        db, child_id=child_id, target_id=f"learning-item:{row['activity_item_id']}:{script.lower()}",
+                        target_kind="ORTHOGRAPHIC_FORM", target_script=script, dimension="ORTHOGRAPHIC_RECOGNITION",
+                        script=script, outcome="CORRECT" if correct else "INCORRECT",
+                        assistance="ASSISTED" if assisted else "INDEPENDENT", score=score,
+                        scorer="learning_flow_server_answer_key", scorer_version=scorer_version,
+                        cue_type="AUDIO", answer_exposed=False, input_method="NONE",
+                        retrieval_timing=timing, prior_exposure_at=previous, review_due_at=due_at,
+                        source_type="LEARNING_FLOW_RECOGNITION", source_ref=attempt["id"],
+                        source_task_id=task_id, source_session_id=session_id,
+                        source_lesson_id=row["lesson_id"], occurred_at=attempt["timestamp"],
+                        display_form=item["character"],
+                    )
             elif task.get("_answerKind") == "vocabulary":
                 refs = [uid("session-vocabulary-attempt")]
                 score = float(correct)
@@ -1938,7 +1976,7 @@ def submit_learning_answer(*, child_id: int, session_id: str, task_id: str, sele
                 selected_notation = next(item["label"] for item in question["choices"] if item["id"] == selected)
                 correct_choice = task["_answerKeys"][question["id"]]
                 is_correct = selected == correct_choice
-                attempt = _practice_pronunciation_in_transaction(db, child_id, item_id, selected_notation, assisted, source_type="CURRICULUM")
+                attempt = _practice_pronunciation_in_transaction(db, child_id, item_id, selected_notation, assisted, source_type="CURRICULUM", source_task_id=task_id, source_session_id=session_id, source_lesson_id=row["lesson_id"])
                 refs.append(attempt["attempt_id"])
                 outcomes.append(is_correct)
             correct = all(outcomes)
@@ -2090,7 +2128,7 @@ def _validate_flow_writing_submission(
     return result, assisted, "writing_provider_attempt", expected_ref, False
 
 
-def _complete_speaking_provider_attempt_in_transaction(db: Any, *, child_id: int, evidence_ref: str, duration_ms: int | None) -> dict[str, Any]:
+def _complete_speaking_provider_attempt_in_transaction(db: Any, *, child_id: int, evidence_ref: str, duration_ms: int | None, task_id: str | None = None, session_id: str | None = None, lesson_id: str | None = None) -> dict[str, Any]:
     from .reading_aloud import complete_attempt_in_transaction
 
     return complete_attempt_in_transaction(
@@ -2099,6 +2137,9 @@ def _complete_speaking_provider_attempt_in_transaction(db: Any, *, child_id: int
         attempt_id=evidence_ref,
         duration_ms=duration_ms,
         require_skill_gate=True,
+        source_task_id=task_id,
+        source_session_id=session_id,
+        source_lesson_id=lesson_id,
     )
 
 
@@ -2178,6 +2219,9 @@ def attach_learning_evidence(
                 script_mode=writing_script_mode,
                 attempt_id=evidence_ref,
                 record_mastery_gate=row["task_type"] != "REVIEW_WRITING",
+                source_task_id=task_id,
+                source_session_id=session_id,
+                source_lesson_id=row["lesson_id"],
             )
             synchronized_task_json = _sync_review_task_due_at(db, child_id=child_id, row=row, task=data)
         if row["task_type"] == "LISTENING":
@@ -2192,13 +2236,15 @@ def attach_learning_evidence(
                 duration_ms=duration_ms,
                 allow_completed=True,
                 reject_active_learn_binding=False,
+                source_task_id=task_id,
+                source_session_id=session_id,
             )
             if listening_completion["gateId"] is None:
                 raise ValueError("listening_skill_gate_not_linked")
         if row["task_type"] in {"SPEAKING_ATTEMPT", "PRONUNCIATION_ATTEMPT"}:
             # Provider completion, the linked curriculum gate, and flow evidence share this transaction.
             # Any downstream failure rolls back all three authoritative writes.
-            _complete_speaking_provider_attempt_in_transaction(db, child_id=child_id, evidence_ref=evidence_ref, duration_ms=duration_ms)
+            _complete_speaking_provider_attempt_in_transaction(db, child_id=child_id, evidence_ref=evidence_ref, duration_ms=duration_ms, task_id=task_id, session_id=session_id, lesson_id=row["lesson_id"])
         is_flow_writing = row["task_type"].startswith("WRITING_") or row["task_type"] == "REVIEW_WRITING"
         required_repeat = int(data.get("taskData", {}).get("repeatCount", 1)) if is_flow_writing else 1
         if result == "incorrect":

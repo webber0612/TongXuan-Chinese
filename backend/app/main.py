@@ -21,6 +21,10 @@ from .tts import prepare_tts
 from .reading_aloud import abort_attempt, complete_attempt, start_attempt
 from .listening import abort_listening_attempt, complete_listening_attempt, start_listening_attempt
 from .placement import get_placement_profile, save_placement_profile
+from .learner_evidence import (
+    get_evidence_summary, get_orthographic_profile, get_placement_profile_v2,
+    get_target_evidence, save_placement_profile_v2,
+)
 from .learning_flow import (
     _log,
     attach_learning_evidence,
@@ -80,7 +84,7 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(title="TongXuan Chinese API", version="0.1.0", lifespan=lifespan)
 opencc_provider = OpenCCProvider()
-app.add_middleware(CORSMiddleware, allow_origins=list(load_settings().allowed_origins), allow_credentials=True, allow_methods=["GET", "POST", "OPTIONS"], allow_headers=["Authorization", "Content-Type", "X-CSRF-Token", "X-Request-ID"])
+app.add_middleware(CORSMiddleware, allow_origins=list(load_settings().allowed_origins), allow_credentials=True, allow_methods=["GET", "POST", "PUT", "OPTIONS"], allow_headers=["Authorization", "Content-Type", "X-CSRF-Token", "X-Request-ID"])
 production_logger = logging.getLogger("tongxuan.production")
 if not production_logger.handlers:
     from .production import JsonLogFormatter
@@ -347,6 +351,12 @@ class PlacementProfileRequest(BaseModel):
     domain_levels: dict[str, str] = Field(default_factory=dict)
     assessment_method: str = "PARENT_OBSERVATION"
     age_hint_years: int | None = Field(default=None, ge=3, le=18)
+
+
+class PlacementProfileV2Request(BaseModel):
+    model_config = {"extra": "forbid"}
+    domains: dict[str, str] = Field(default_factory=dict)
+    assessment_method: str = "PARENT_OBSERVATION"
 
 
 class OCRCandidateRequest(BaseModel):
@@ -625,6 +635,51 @@ def put_child_placement_profile(child_id: int, request: PlacementProfileRequest,
         return save_placement_profile(child_id=child_id, domain_levels=request.domain_levels, assessment_method=request.assessment_method, assessed_by=actor.subject, age_hint_years=request.age_hint_years)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@app.get("/api/children/{child_id}/placement-profile/v2")
+def get_child_placement_profile_v2(child_id: int, http_request: Request) -> dict[str, object]:
+    require_parent_or_admin_child_access(http_request, child_id)
+    try:
+        return get_placement_profile_v2(child_id=child_id)
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@app.put("/api/children/{child_id}/placement-profile/v2")
+def put_child_placement_profile_v2(child_id: int, request: PlacementProfileV2Request, http_request: Request) -> dict[str, object]:
+    actor = require_parent_or_admin_child_access(http_request, child_id)
+    try:
+        return save_placement_profile_v2(child_id=child_id, domain_levels=request.domains, assessment_method=request.assessment_method, assessed_by=actor.subject)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@app.get("/api/children/{child_id}/learner-evidence/summary")
+def get_child_learner_evidence_summary(child_id: int, http_request: Request) -> dict[str, object]:
+    require_parent_or_admin_child_access(http_request, child_id)
+    try:
+        return get_evidence_summary(child_id=child_id)
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@app.get("/api/children/{child_id}/learner-evidence/orthographic-profile")
+def get_child_orthographic_profile(child_id: int, http_request: Request) -> dict[str, object]:
+    require_parent_or_admin_child_access(http_request, child_id)
+    try:
+        return get_orthographic_profile(child_id=child_id)
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@app.get("/api/children/{child_id}/learner-evidence/targets/{target_id}")
+def get_child_target_evidence(child_id: int, target_id: str, http_request: Request) -> dict[str, object]:
+    require_parent_or_admin_child_access(http_request, child_id)
+    try:
+        return get_target_evidence(child_id=child_id, target_id=target_id)
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
 
 
 @app.get("/api/children/{child_id}/phonetic-support")

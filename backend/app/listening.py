@@ -92,6 +92,8 @@ def complete_listening_attempt_in_transaction(
     duration_ms: int | None = None,
     allow_completed: bool = False,
     reject_active_learn_binding: bool = True,
+    source_task_id: str | None = None,
+    source_session_id: str | None = None,
 ) -> dict[str, Any]:
     if duration_ms is not None and not 0 <= duration_ms <= 3_600_000:
         raise ValueError("invalid_duration")
@@ -122,6 +124,18 @@ def complete_listening_attempt_in_transaction(
         lesson_id=row["lesson_id"],
         evidence_ref=attempt_id,
         evidence_type="reference_audio_completed",
+    )
+    from .learner_evidence import record_evidence_in_transaction
+
+    record_evidence_in_transaction(
+        db, child_id=child_id, target_id=f"listening-item:{row['item_id']}",
+        target_kind="PHRASE", target_script="SCRIPT_INDEPENDENT", dimension="HEAR",
+        script="SCRIPT_INDEPENDENT", outcome="NOT_ASSESSED", assistance="UNKNOWN",
+        scorer="reference_audio_completion_metadata", scorer_version="listening-completion-v1",
+        cue_type="AUDIO", answer_exposed=False, input_method="NONE",
+        retrieval_timing="UNKNOWN", source_type="LISTENING_COMPLETION", source_ref=attempt_id,
+        source_task_id=source_task_id, source_session_id=source_session_id,
+        source_lesson_id=row["lesson_id"], occurred_at=completed_at,
     )
     return {"id": attempt_id, "status": "COMPLETED", "gateId": gate_id, "gateStatus": "ATTEMPTED_INDEPENDENTLY" if gate_id else None, "durationMs": final_duration, "completedAt": completed_at}
 
