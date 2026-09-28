@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://tongxuan.dev/schemas/open-curriculum.schema.json",
   "title": "TongXuan Open Curriculum graph and candidate pack",
-  "description": "Evidence-constrained graph/pack schema. Passing structural validation never substitutes for human or Architect approval.",
+  "description": "Evidence-constrained graph/pack schema. Structural validity and advisory Architect review never substitute for an explicit Owner decision record or evidence-backed source rights.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schemaVersion", "documentType", "packId", "publicationStatus", "graph", "lessons", "validationPolicy"],

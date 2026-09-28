@@ -7,6 +7,7 @@ next lesson, approve curriculum, or import source content.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import sys
@@ -22,6 +23,7 @@ from referencing import Registry, Resource
 ROOT = Path(__file__).resolve().parents[2]
 SCHEMA_DIR = ROOT / "shared" / "open-curriculum" / "schemas"
 PACK_SCHEMA_PATH = SCHEMA_DIR / "open-curriculum.schema.json"
+OWNER_DECISION_SCHEMA_PATH = SCHEMA_DIR / "owner-decision-record.schema.json"
 SOURCE_SCHEMA_PATH = SCHEMA_DIR / "source-registry.schema.json"
 SOURCE_REGISTRY_PATH = ROOT / "shared" / "content-sources" / "source-registry.json"
 EVIDENCE_KIND_ALLOWED_CLAIMS = {
@@ -750,6 +752,62 @@ def _validate_proposed_node_relationships(
         if degree > 0 and node_id in candidate_paths:
             add("PROPOSAL_GRAPH_PREREQUISITE_CYCLE", candidate_paths[node_id], f"Proposed node {node_id!r} participates in a prerequisite cycle.")
 
+    return sorted(set(issues))
+
+
+def _canonical_json_sha256(value: Any) -> str:
+    payload = json.dumps(
+        value,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        allow_nan=False,
+    ).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def validate_curriculum_owner_decision_record(
+    record: Mapping[str, Any],
+    proposal: Mapping[str, Any],
+) -> list[ValidationIssue]:
+    """Validate a manual Owner decision bound to one unchanged PROPOSED snapshot.
+
+    This offline contract checks record shape and exact proposal identity/hash. It
+    does not authenticate the human, change proposal state, apply graph changes,
+    or authorize publication.
+    """
+    schema = _read_json(OWNER_DECISION_SCHEMA_PATH)
+    pack_schema = _read_json(PACK_SCHEMA_PATH)
+    proposal_schema = _read_json(SCHEMA_DIR / "curriculum-change-proposal.schema.json")
+    resolver = _registry_for(schema, pack_schema, proposal_schema)
+    issues = _schema_issues(record, schema, resolver)
+    issues.extend(_schema_issues(proposal, proposal_schema, resolver))
+
+    def add(code: str, path: str, message: str) -> None:
+        issues.append(ValidationIssue(code, path, message))
+
+    if not isinstance(proposal, Mapping):
+        add("OWNER_DECISION_PROPOSAL_INVALID", "/proposal", "The referenced proposal must be an object.")
+        return sorted(set(issues))
+    if proposal.get("documentType") != "CURRICULUM_CHANGE_PROPOSAL":
+        add("OWNER_DECISION_PROPOSAL_INVALID", "/proposal/documentType", "The decision must reference a CURRICULUM_CHANGE_PROPOSAL.")
+    if proposal.get("approvalStatus") != "PROPOSED":
+        add("OWNER_DECISION_PROPOSAL_NOT_PROPOSED", "/proposal/approvalStatus", "An Owner decision record does not rewrite or advance the immutable proposal's PROPOSED state.")
+
+    if not isinstance(record, Mapping):
+        return sorted(set(issues))
+    if record.get("proposalId") != proposal.get("proposalId"):
+        add("OWNER_DECISION_PROPOSAL_ID_MISMATCH", "/proposalId", "The decision record must identify the exact referenced proposal.")
+    try:
+        actual_hash = _canonical_json_sha256(proposal)
+    except (TypeError, ValueError):
+        add("OWNER_DECISION_PROPOSAL_INVALID", "/proposal", "The proposal must be finite, canonical JSON data.")
+    else:
+        if record.get("proposalSha256") != actual_hash:
+            add("OWNER_DECISION_PROPOSAL_HASH_MISMATCH", "/proposalSha256", "The decision record must bind to the canonical SHA-256 of the exact proposal snapshot.")
+        review = record.get("advisoryReview")
+        if isinstance(review, Mapping) and review.get("reviewedProposalSha256") != actual_hash:
+            add("OWNER_DECISION_REVIEW_HASH_MISMATCH", "/advisoryReview/reviewedProposalSha256", "The advisory review must name the same exact proposal snapshot; it remains advisory and never substitutes for the Owner decision.")
     return sorted(set(issues))
 
 
