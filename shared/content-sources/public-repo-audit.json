@@ -796,8 +796,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Tracked UTF-8 text contains literal or escaped CJK and is included conservatively for review. This path signal does not establish curriculum authorship, source, or reuse rights.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "90b5667a5134c5dd9d1b717cf805b9768fa42a9fbe1298728e5b4f2fdc66d5d7",
-      "sizeBytes": 73356,
+      "sha256": "b51502822855b5bc3cd5d5160563113fbfb1e81667d68ee39b1c3d62610901e2",
+      "sizeBytes": 73347,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "TRACKED_CJK_TEXT_FAIL_CLOSED"
     },
