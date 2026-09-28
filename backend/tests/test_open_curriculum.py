@@ -13,6 +13,7 @@ from app import open_curriculum_validator
 from app.open_curriculum_validator import (
     SCHEMA_DIR,
     load_default_source_registry,
+    validate_curriculum_owner_decision_record,
     validate_curriculum_pack,
     validate_source_registry,
 )
@@ -1183,3 +1184,86 @@ def test_registry_rejects_invalid_license_status():
 ])
 def test_contract_inventory_contains_required_wrappers(wrapper):
     assert (SCHEMA_DIR / wrapper).is_file()
+
+
+def _decision_test_hash(value):
+    import hashlib
+
+    payload = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def _owner_decision_record(proposal):
+    proposal_hash = _decision_test_hash(proposal)
+    return {
+        "recordVersion": "1.0",
+        "recordId": "decision-five-lesson-plan",
+        "documentType": "CURRICULUM_OWNER_DECISION",
+        "proposalId": proposal["proposalId"],
+        "proposalSha256": proposal_hash,
+        "proposer": {"role": "PROPOSER", "identity": "CODEX_AI"},
+        "advisoryReview": {
+            "role": "ADVISORY_REVIEWER",
+            "reviewType": "ADVERSARIAL_ARCHITECT_REVIEW",
+            "reviewedProposalSha256": proposal_hash,
+            "outcome": "PASS",
+            "findings": [],
+        },
+        "ownerDecision": {
+            "role": "FINAL_HUMAN_CURRICULUM_APPROVER",
+            "identity": "webber0612",
+            "decision": "APPROVE",
+            "decidedAt": "2026-09-28T09:00:00+08:00",
+            "scope": "FIVE_LESSON_FEASIBILITY_PLAN",
+            "rationale": "Synthetic schema test only; this is not an actual curriculum decision.",
+        },
+        "decisionEvidence": {
+            "kind": "OWNER_AUTHORED_CHAT_MESSAGE",
+            "reference": "synthetic://owner-decision-fixture",
+        },
+    }
+
+
+def test_manual_owner_decision_record_is_bound_to_exact_proposed_snapshot():
+    proposal = deepcopy(make_pack()["curriculumChangeProposals"][0])
+    record = _owner_decision_record(proposal)
+
+    assert proposal["approvalStatus"] == "PROPOSED"
+    assert validate_curriculum_owner_decision_record(record, proposal) == []
+    assert proposal["approvalStatus"] == "PROPOSED"
+
+
+def test_manual_owner_decision_rejects_self_approval_and_missing_evidence():
+    proposal = deepcopy(make_pack()["curriculumChangeProposals"][0])
+    record = _owner_decision_record(proposal)
+    record["ownerDecision"]["identity"] = "CODEX_AI"
+    record["decisionEvidence"] = {}
+
+    issue_codes = {issue.code for issue in validate_curriculum_owner_decision_record(record, proposal)}
+    assert "SCHEMA_INVALID" in issue_codes
+
+
+def test_manual_owner_decision_fails_closed_on_stale_or_advanced_proposal():
+    proposal = deepcopy(make_pack()["curriculumChangeProposals"][0])
+    record = _owner_decision_record(proposal)
+    proposal["rationale"] = "Changed after review."
+
+    issue_codes = {issue.code for issue in validate_curriculum_owner_decision_record(record, proposal)}
+    assert "OWNER_DECISION_PROPOSAL_HASH_MISMATCH" in issue_codes
+    assert "OWNER_DECISION_REVIEW_HASH_MISMATCH" in issue_codes
+
+    advanced = deepcopy(make_pack()["curriculumChangeProposals"][0])
+    advanced["approvalStatus"] = "EVIDENCE_CHECKED"
+    advanced_record = _owner_decision_record(deepcopy(make_pack()["curriculumChangeProposals"][0]))
+    issue_codes = {issue.code for issue in validate_curriculum_owner_decision_record(advanced_record, advanced)}
+    assert "OWNER_DECISION_PROPOSAL_NOT_PROPOSED" in issue_codes
+
+
+def test_manual_owner_decision_rejects_malformed_proposal_snapshot():
+    proposal = deepcopy(make_pack()["curriculumChangeProposals"][0])
+    record = _owner_decision_record(proposal)
+    del proposal["whyNow"]
+
+    issue_codes = {issue.code for issue in validate_curriculum_owner_decision_record(record, proposal)}
+    assert "SCHEMA_INVALID" in issue_codes
+    assert "OWNER_DECISION_PROPOSAL_HASH_MISMATCH" in issue_codes

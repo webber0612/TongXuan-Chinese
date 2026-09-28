@@ -9,11 +9,11 @@ AUTHORITATIVE FRAMEWORK / LEGALLY USABLE SOURCES
 → CURRICULUM GRAPH
 → AI PROPOSAL
 → AUTOMATED VALIDATION
-→ HUMAN / ARCHITECT APPROVAL
+→ EXPLICIT OWNER DECISION (ARCHITECT REVIEW IS ADVISORY)
 → EXECUTABLE LESSON
 ```
 
-`AI_PROPOSES_HUMAN_APPROVES`: AI/Codex may collect evidence and propose sequencing, targets, examples, exercises, and prerequisite relationships. It may not turn those proposals into official learning targets or executable curriculum by itself.
+`AI_PROPOSES_HUMAN_APPROVES`: Codex/AI is the proposer. Architect reasoning is advisory and cannot authorize targets. Webber (`webber0612`) is the final human curriculum approver; a decision must be an explicit Owner-authored record bound to the exact proposal ID and canonical hash. Neither a review PASS nor a valid schema is human approval.
 
 `NO_UNSOURCED_CURRICULUM_DECISION`: each proposed or approved target records its identity and type, evidence and source provenance, authority type, difficulty evidence, prerequisite evidence, rationale, and review status. “Plausible for beginners” and “the next textbook lesson” are not evidence.
 
@@ -54,10 +54,10 @@ All graph nodes and proposed targets use exactly these states:
 
 - `PROPOSED`: candidate only; cannot enter an executable or publishable pack.
 - `EVIDENCE_CHECKED`: evidence and source references have been checked; approval is still required.
-- `ARCHITECT_APPROVED`: eligible for inclusion, subject to pack validation and source license constraints.
+- `ARCHITECT_APPROVED`: legacy structural token in pack schema v1.4. It is not produced by `ADVERSARIAL_ARCHITECT_REVIEW` and is not an Owner decision record. The manual Owner contract does not promote graph nodes; do not use this token as evidence of approval.
 - `REJECTED`: cannot be included.
 
-The node schemas live in [`shared/open-curriculum/schemas/`](../shared/open-curriculum/schemas/). A curriculum change is represented as a proposal; it does not mutate an approved graph until a human explicitly accepts it.
+The node schemas live in [`shared/open-curriculum/schemas/`](../shared/open-curriculum/schemas/). A curriculum change is represented as an immutable proposal. The separate manual Owner decision record records an explicit decision without changing proposal state or applying graph changes. The current validator does not authenticate the named identity; no executable promotion flow is implemented.
 
 ## Content intake and publication rules
 
@@ -66,7 +66,7 @@ The node schemas live in [`shared/open-curriculum/schemas/`](../shared/open-curr
 3. Preserve the source’s license, attribution, share-alike, and access requirements on each item and derived pack.
 4. Include only approved graph target IDs in a publishable pack. Every target must have source provenance, difficulty and prerequisite evidence, and rationale.
 5. Keep AI-created examples bounded by the explicitly approved graph and learner-known vocabulary. Submit any new target as a `CURRICULUM_CHANGE_PROPOSAL`.
-6. If rights evidence is missing or a source is `RED` / `UNKNOWN`, fail closed. If an audit finds a potentially substantial source reproduction, preserve the files, stop curriculum implementation, and ask the Architect to review the exact paths. Do not make a legal finding or rewrite Git history.
+6. If rights evidence is missing or a source is `RED` / `UNKNOWN`, fail closed. If an audit finds a potentially substantial source reproduction, preserve the files, stop curriculum implementation, and request advisory review of the exact paths plus Owner/legal disposition. Do not treat the review as a legal finding or rewrite Git history.
 7. Existing course data may remain as an engineering regression fixture during review, but it is not thereby approved or cleared for public/commercial curriculum use.
 
 ## Current audit references

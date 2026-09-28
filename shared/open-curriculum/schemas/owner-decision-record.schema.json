@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tongxuan.dev/schemas/owner-decision-record.schema.json",
+  "title": "Manual TongXuan curriculum Owner decision record",
+  "description": "Records an explicit human decision on one immutable proposal snapshot. Structural validity does not authenticate the named human or promote a proposal into the approved graph.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["recordVersion", "recordId", "documentType", "proposalId", "proposalSha256", "proposer", "advisoryReview", "ownerDecision", "decisionEvidence"],
+  "properties": {
+    "recordVersion": { "const": "1.0" },
+    "recordId": { "type": "string", "minLength": 1, "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:-]*$" },
+    "documentType": { "const": "CURRICULUM_OWNER_DECISION" },
+    "proposalId": { "type": "string", "minLength": 1, "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:-]*$" },
+    "proposalSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "proposer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "identity"],
+      "properties": {
+        "role": { "const": "PROPOSER" },
+        "identity": { "const": "CODEX_AI" }
+      }
+    },
+    "advisoryReview": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "reviewType", "reviewedProposalSha256", "outcome", "findings"],
+      "properties": {
+        "role": { "const": "ADVISORY_REVIEWER" },
+        "reviewType": { "const": "ADVERSARIAL_ARCHITECT_REVIEW" },
+        "reviewedProposalSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "outcome": { "enum": ["PASS", "CHANGES_REQUESTED", "NOT_RUN"] },
+        "findings": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "ownerDecision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "identity", "decision", "decidedAt", "scope", "rationale"],
+      "properties": {
+        "role": { "const": "FINAL_HUMAN_CURRICULUM_APPROVER" },
+        "identity": { "const": "webber0612" },
+        "decision": { "enum": ["APPROVE", "REVISE", "REJECT"] },
+        "decidedAt": { "type": "string", "format": "date-time" },
+        "scope": { "const": "FIVE_LESSON_FEASIBILITY_PLAN" },
+        "rationale": { "type": "string", "minLength": 1 }
+      }
+    },
+    "decisionEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "reference"],
+      "properties": {
+        "kind": { "enum": ["OWNER_AUTHORED_CHAT_MESSAGE", "OWNER_AUTHORED_GITHUB_COMMENT"] },
+        "reference": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

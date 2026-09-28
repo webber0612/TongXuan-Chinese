@@ -2,9 +2,7 @@
 
 ## Purpose
 
-The Codex runtime is the execution and handoff channel for the implementation agent and the
-independent audit agent. Repository files remain the durable project record, while GitHub is used
-for the requested branch, Draft PR, and merge gate.
+The Codex runtime is the execution and handoff channel for the proposer and advisory review. Repository files remain the durable project record, while GitHub is used for branches, PRs, and merge gates. Review is structured adversarial reasoning, not an independent human/legal/curriculum approval.
 
 ## Roles
 
@@ -17,7 +15,7 @@ Responsibilities:
 - make final decisions when agents disagree;
 - approve commercial-release decisions.
 
-The Product Owner is **not** responsible for relaying implementation or audit messages.
+The Product Owner is **not** responsible for relaying implementation or audit messages. For curriculum proposals, Webber (`webber0612`) is the `FINAL_HUMAN_CURRICULUM_APPROVER`; only an explicit Owner-authored decision record resolves that gate.
 
 ### Developer Agent
 Primary implementation agent: Codex.
@@ -33,20 +31,17 @@ Responsibilities:
 - never begin the next Phase until the current Phase reaches PASS.
 
 ### Architect / Project Manager Agent
-Independent reviewer launched inside the Codex runtime for each work order.
+
+`ADVISORY_REVIEWER` using `ADVERSARIAL_ARCHITECT_REVIEW` for each exact work-order head.
 
 Responsibilities:
-- review the PR diff, tests, architecture and Phase acceptance criteria;
-- check roadmap / licensing / privacy / learning-engine rules;
-- publish structured findings back to the PR;
-- never modify product requirements silently;
-- never approve its own implementation work.
+- review the PR diff, tests, architecture, and acceptance criteria;
+- check roadmap, rights boundaries, privacy, and learning-engine invariants;
+- publish structured findings for the Implementer;
+- never change product requirements silently;
+- never turn review PASS into Owner curriculum approval.
 
-The Codex runtime launches an internal Implementer and Architect pair for the current work order.
-The Architect receives the completed implementation in an isolated review context, performs a
-fresh adversarial audit, and returns findings to the Implementer. This loop does not depend on
-GitHub Actions, an external API, a repository secret, or a timer.
-
+The Codex runtime may use a separate reasoning context for an adversarial audit. The same GitHub credential may be used by author and reviewer; therefore this is not independent human, legal, or curriculum approval. It does not depend on GitHub Actions, an external API, a repository secret, or a timer.
 ---
 
 # Runtime Coordination Architecture
@@ -55,8 +50,7 @@ Use:
 
 1. **Work Order / roadmap** — authorized Phase scope and boundaries.
 2. **Internal Implementer** — edits only the current Phase, adds tests, and prepares the Draft PR.
-3. **Internal Architect / Project Manager** — independently reviews implementation, schema,
-   migrations, tests, frontend, provenance, and adversarial cases.
+3. **ADVISORY_REVIEWER / Project Manager** — performs an exact-head adversarial review of code, schemas, tests, frontend where in scope, provenance, and failure cases; records PASS or CHANGES_REQUESTED.
 4. **Codex runtime handoff** — sends findings back for correction and starts a fresh re-audit.
 5. **Feature branch + Draft PR** — durable delivery artifact and merge gate.
 
