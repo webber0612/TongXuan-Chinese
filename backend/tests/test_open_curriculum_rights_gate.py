@@ -95,6 +95,13 @@ def test_unregistered_cjk_and_media_candidates_are_discovered_fail_closed():
     assert _is_dynamic_text_candidate("docs/future-lesson.md", "Example: 你好")
     assert _is_dynamic_text_candidate("frontend/src/future.tsx", r"const target = '\u4f60\u597d';")
     assert _is_dynamic_text_candidate("backend/app/future.py", "label = '&#x4F60;&#x597D;'")
+    assert _is_dynamic_text_candidate("docs/future-lesson.md", chr(0x31350))
+    assert _is_dynamic_text_candidate("docs/future-lesson.md", chr(0x323B0))
+    assert _is_dynamic_text_candidate("docs/future-lesson.md", r"escaped = '\U000323B0'")
+    assert _is_dynamic_text_candidate("docs/future-lesson.md", r"escaped = '\uD840\uDC00'")
+    assert _is_dynamic_text_candidate("frontend/src/future.css", r".label::after { content: '\4f60 \597d'; }")
+    assert _is_dynamic_text_candidate("frontend/src/future.css", r".label::after { content: '\4f60\597d'; }")
+    assert _is_dynamic_text_candidate("docs/future-lesson.md", "entity = '&#x323B0;'")
     assert not _is_dynamic_text_candidate("docs/future-lesson.md", "English-only text")
     assert _is_candidate("new-asset/lesson-audio.wav")
     assert not _is_candidate(rights_gate.AUDIT_RELATIVE_PATH)
@@ -135,11 +142,21 @@ def test_scope_method_and_limitations_cannot_drift_silently():
     assert "AUDIT_SCOPE_LIMITATIONS_STALE" in errors
 
 
-def test_invalid_text_encoding_does_not_bypass_path_discovery(tmp_path, monkeypatch):
+def test_invalid_utf8_without_nul_does_not_bypass_path_discovery(tmp_path, monkeypatch):
     relative_path = "docs/future-lesson.md"
     path = tmp_path / relative_path
     path.parent.mkdir(parents=True)
-    path.write_bytes(b"\xff\xfe\x00\x4f")
+    path.write_bytes(b"\xff\xe4\xbd\xa0")
+    monkeypatch.setattr(rights_gate, "ROOT", tmp_path)
+
+    assert _is_candidate(relative_path)
+
+
+def test_nul_in_declared_text_path_is_an_ambiguous_candidate(tmp_path, monkeypatch):
+    relative_path = "docs/future-lesson.md"
+    path = tmp_path / relative_path
+    path.parent.mkdir(parents=True)
+    path.write_bytes(b"text\x00payload")
     monkeypatch.setattr(rights_gate, "ROOT", tmp_path)
 
     assert _is_candidate(relative_path)

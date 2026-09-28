@@ -44,13 +44,15 @@ MEDIA_EXTENSIONS = frozenset({
     ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
     ".ttf", ".otf", ".woff", ".woff2",
 })
-CJK_PATTERN = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\U00020000-\U0003134f]")
+CJK_PATTERN = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\U00020000-\U0003347f]")
 UNICODE_ESCAPE_PATTERN = re.compile(r"\\u([0-9a-fA-F]{4})|\\U([0-9a-fA-F]{8})|\\u\{([0-9a-fA-F]{1,6})\}")
 HTML_CODEPOINT_PATTERN = re.compile(r"&#(?:x([0-9a-fA-F]+)|([0-9]+));", re.IGNORECASE)
+CSS_CODEPOINT_PATTERN = re.compile(r"\\([0-9a-fA-F]{1,6})(?![0-9a-fA-F])")
 SCOPE_METHOD = (
     "Enumerate tracked data, curriculum, media, and known embedded-content modules. "
     "In addition, treat every tracked UTF-8 text file in the declared text extensions "
-    "with literal or escaped CJK as a candidate, every undecodable or NUL-containing "
+    "with literal CJK, Unicode escapes, numeric HTML entities, or CSS hexadecimal "
+    "escapes as a candidate, every undecodable or NUL-containing "
     "file with a declared text extension as an ambiguous candidate, and every file in "
     "the declared media extensions as a candidate. Record path, classification, "
     "source/evidence links where supported, canonical size, digest mode, and SHA-256 "
@@ -60,7 +62,7 @@ SCOPE_METHOD = (
 SCOPE_LIMITATIONS = (
     "Path and digest inventory does not detect paraphrase, copying, embedded data, or authorship.",
     "CJK detection is a conservative path-discovery signal; it can include interface, technical, and reference text and does not establish that a path contains curriculum content.",
-    "The text scan recognizes literal CJK, Unicode escapes, and numeric HTML entities only in the declared text extensions; it does not detect English paraphrase or semantic similarity.",
+    "The text scan recognizes literal CJK through the Unicode 18 Extension J block boundary (U+3347F), Unicode escapes including UTF-16 surrogate pairs, numeric HTML entities, and CSS hexadecimal escapes only in the declared text extensions; future Unicode blocks require an explicit scanner-range update, and the scan does not detect English paraphrase or semantic similarity.",
     "Declared text paths that are not valid UTF-8 or contain NUL bytes are included as ambiguous blocked candidates; their contents are not decoded for CJK matching.",
     "The media scan is extension-based and does not inspect or identify the contents of a binary file.",
     "The public-repository audit manifest is intentionally not one of its own digest entries; the gate validates its structure and scope directly.",
@@ -133,14 +135,30 @@ def _contains_cjk(text: str) -> bool:
     decoded = html.unescape(text)
     if CJK_PATTERN.search(decoded):
         return True
+    escaped_codepoints: list[int] = []
     for match in UNICODE_ESCAPE_PATTERN.finditer(decoded):
         encoded = next((group for group in match.groups() if group is not None), None)
         if encoded is not None and _is_cjk_codepoint(int(encoded, 16)):
             return True
+        if encoded is not None:
+            escaped_codepoints.append(int(encoded, 16))
+    index = 0
+    while index + 1 < len(escaped_codepoints):
+        high, low = escaped_codepoints[index:index + 2]
+        if 0xD800 <= high <= 0xDBFF and 0xDC00 <= low <= 0xDFFF:
+            codepoint = 0x10000 + ((high - 0xD800) << 10) + (low - 0xDC00)
+            if _is_cjk_codepoint(codepoint):
+                return True
+            index += 2
+        else:
+            index += 1
     for match in HTML_CODEPOINT_PATTERN.finditer(decoded):
         encoded = match.group(1) or match.group(2)
         radix = 16 if match.group(1) else 10
         if encoded is not None and _is_cjk_codepoint(int(encoded, radix)):
+            return True
+    for match in CSS_CODEPOINT_PATTERN.finditer(decoded):
+        if _is_cjk_codepoint(int(match.group(1), 16)):
             return True
     return False
 
