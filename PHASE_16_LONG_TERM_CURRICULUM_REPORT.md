@@ -1,5 +1,7 @@
 # Phase 16 — Long-Term Curriculum Report
 
+> Historical delivery report. Its hierarchy and progress-event prototype is not approved curriculum authority or a Learning Cycle implementation. The current authority and progression boundaries are in [Learning System Architecture v1](docs/learning-system-architecture-v1.md).
+
 ## Scope
 
 Implemented the deterministic long-term curriculum foundation from the Phase 16 Work Order,

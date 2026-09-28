@@ -1,5 +1,7 @@
 # TongXuan Chinese — Learning Path v2 & Lesson Player v1 Specification
 
+> **Historical / superseded product design.** The current canonical product and learning-system direction is [Learning System Architecture v1](learning-system-architecture-v1.md). This file remains as an implementation-history record for validated lesson fixtures and earlier contracts. Its 15–25 minute target, self-report Fast Track wording, and unconditional default LEARN sequence no longer define product progression. Runtime facts and rights/provenance safeguards remain useful only where they match executable code and the current source policy.
+
 ## 1. Product Principle & Information Architecture
 
 > **Official curriculum decides what to learn.**  

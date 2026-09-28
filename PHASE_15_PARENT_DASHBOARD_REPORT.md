@@ -1,5 +1,7 @@
 # Phase 15 — Parent Dashboard Report
 
+> Historical delivery report. It records an event-based read-only dashboard implementation, not the target-level parent KPI design. The current product direction is [Learning System Architecture v1](docs/learning-system-architecture-v1.md).
+
 ## Scope
 
 Implemented only the read-only Parent Dashboard work order from GitHub Issue #15.

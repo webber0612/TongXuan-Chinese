@@ -6,6 +6,8 @@ Use this protocol to find obvious pacing, clarity, and recovery problems in the 
 
 **Status:** protocol prepared; no real-child trial is represented as completed by this implementation. Run trials only with a parent or guardian supervising and using the product's normal child-isolation and privacy boundaries.
 
+> **Pacing note:** The 15–25-minute field below records the current implementation-era trial setup. The current product direction uses 10/20/30-minute engine budgets, as specified in [Learning System Architecture v1](learning-system-architecture-v1.md). Neither timing scheme has been empirically validated by this protocol; update the trial form when the budget implementation is ready.
+
 ## Trial setup
 
 1. Obtain parent/guardian agreement and let the child stop at any time.

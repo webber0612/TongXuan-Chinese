@@ -1,5 +1,7 @@
 # Phase 14 — Adaptive Learning Report
 
+> Historical delivery report. It records the Phase 14 implementation scope and verification, not the current learner-progression policy. The current product contract is [Learning System Architecture v1](docs/learning-system-architecture-v1.md); adaptive ranking remains a recommendation until explicitly integrated into the authoritative Daily Queue.
+
 ## Scope
 
 Implemented only Phase 14 Adaptive Learning from GitHub Issue #13. Phase 15 Parent Dashboard has not started.

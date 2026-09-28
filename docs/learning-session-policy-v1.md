@@ -1,5 +1,7 @@
 # Learning Session Policy v1
 
+> **Implementation snapshot, not canonical product architecture.** See [Learning System Architecture v1](learning-system-architecture-v1.md) for the Owner-directed Learning Cycle, 10/20/30-minute budgets, adaptive 9-Block player, evidence-based Fast Track, and target-level mastery direction. This document records current API/database behavior for its limited validated lesson slice. In particular, its 15–25-minute contract has not yet migrated to the new time-budget model.
+
 ## Scope
 
 This flow connects the learner's placement profile to a deterministic, resumable daily session for the validated first lesson in the selected stage:

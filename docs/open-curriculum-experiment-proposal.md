@@ -1,5 +1,7 @@
 # Proposed prototype curriculum experiment — structure only
 
+> This proposal is a feasibility experiment, not the product's four-lessons-plus-Knowledge-Station Learning Cycle and not an official curriculum sequence. The current cycle and player architecture is defined in [Learning System Architecture v1](learning-system-architecture-v1.md). Any experiment still requires the existing rights, graph, and human-approval gates.
+
 **Status: `PROPOSED` — not an approved curriculum and not executable.** This records the five distinct capability demonstrations requested for the later TongXuan Prototype Curriculum Pack. No target words, characters, grammar, lesson titles, examples, exercises, or sequence prerequisites have been selected here.
 
 | Slot | Proposed capability demonstration | Target decision |

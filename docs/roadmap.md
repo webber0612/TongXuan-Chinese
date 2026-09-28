@@ -2,6 +2,8 @@
 
 本文件保存產品的全階段施工計畫，版本 v1.0。
 
+> **Historical engineering roadmap.** Phase ordering records implementation work, not a learner's day/week progression. The current product learning architecture, including date-independent Learning Cycles, is defined in [Learning System Architecture v1](learning-system-architecture-v1.md).
+
 完整原始規劃已納入本專案，涵蓋 Phase 0（技術驗證）至 Phase 20（最終成品），並遵循以下施工順序：
 
 1. Phase 0：技術驗證
