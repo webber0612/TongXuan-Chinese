@@ -4,7 +4,7 @@
 
 The Owner accepted the cumulative five-lesson direction in v2 but marked the exact v2 snapshot `REVISE` for (1) L3's lexical choice and (2) dependency semantics. The hash-bound record is [`prototype-peer-exchange-2026-09-v2-revise.json`](../shared/open-curriculum/proposals/owner-decisions/prototype-peer-exchange-2026-09-v2-revise.json), bound to v2 SHA-256 `7877db1106d8fa69644e026648513a0d9eaa569d23a5860eb81e5ec76ab9d5be`. v1 and v2 remain immutable historical proposals.
 
-The current replacement is [`prototype-peer-exchange-2026-09-v3.json`](../shared/open-curriculum/proposals/prototype-peer-exchange-2026-09-v3.json), canonical SHA-256 `0406565582401c0c7b976ff91c86849a6f196ab3f01d546287283cbf16d58b87`. Its schema v2 distinguishes `HARD_PREREQUISITE`, `PEDAGOGICAL_SEQUENCE`, `RECYCLED_CONTEXT`, and `ASSUMED_KNOWN`. Only explicit, justified lesson hard prerequisites may block entry. Earlier lesson appearance does not create a prerequisite. All target records remain `PROPOSED`; the plan creates no executable lesson, approved graph entry, learner-facing content, mastery rule, or next-lesson authority.
+The current replacement is [`prototype-peer-exchange-2026-09-v3.json`](../shared/open-curriculum/proposals/prototype-peer-exchange-2026-09-v3.json), canonical SHA-256 `b5ff4050fd107220926f15f403a2d68a0895f30694a628704d7faa594bafb097`. Its schema v2 distinguishes `HARD_PREREQUISITE`, `PEDAGOGICAL_SEQUENCE`, `RECYCLED_CONTEXT`, and `ASSUMED_KNOWN`. Only explicit, justified lesson hard prerequisites may block entry. Earlier lesson appearance does not create a prerequisite. All target records remain `PROPOSED`; the plan creates no executable lesson, approved graph entry, learner-facing content, mastery rule, or next-lesson authority.
 
 ## L3 lexical decision gate
 
@@ -41,8 +41,8 @@ These relationships are shared by Variants A and B.
 | --- | --- | --- | --- | --- |
 | L1 | None | None | None | None |
 | L2 | None; name-question components are introduced or scaffolded in the lesson. | L1 | Greeting and self-name phrase. | L1 words/frame; audio cue and phrase strip if missing. |
-| L3 | None; asking/answering a name is not required to state a preference. | L2 | Peer address and a self-name cue for an extended dialogue. | Name-exchange skill; identify the peer with a name card/model if missing. |
-| L4 | None; stating one’s preference is not required to ask what a peer likes. | L3 | `你` / `什麼` / `喜歡` and the preference topic. | Preference-statement skill; provide a model line if missing. |
+| L3 | None; asking/answering a name is not required to state a preference. | L2 | Peer address and a self-name cue for an extended dialogue. | Name-exchange skill; identify the peer with a name card/model if missing. If `我` is missing, cue the learner as speaker, model it with audio, and rehearse `我喜歡` before preference production. |
+| L4 | None; stating one’s preference is not required to ask what a peer likes. | L3 | `你` / `什麼` / `喜歡` and the preference topic. | Preference-statement skill; provide a model line if missing. Also model `你`, `喜歡`, and `什麼` with a peer cue, replayed audio, and a simple visual choice set before the question task. |
 | L5 | Ask/answer names; state a preference; ask/answer a peer preference. | L1–L4, as the selected integrated teaching sequence. | Name and preference exchanges from earlier slots. | None; the three integrated communication capabilities are hard gates. |
 
 The graph deliberately does not expand into “L5 requires every L1–L4 target.” A future selector could skip a pedagogical predecessor when the exact hard capabilities are authoritative; this proposal contains no selector implementation and does not authorize autonomous next lessons.
@@ -64,7 +64,7 @@ The tests verify that:
 2. every hard edge has a rationale;
 3. recycled targets may remain non-hard;
 4. pedagogical order can differ from the blocking hard graph;
-5. theoretical fast-track eligibility depends only on exact hard edges;
+5. theoretical fast-track eligibility depends only on exact lesson hard edges, and each new grammar target's required lexical components are introduced in the lesson or have an explicit scaffold when missing;
 6. L3 keeps a direct nominal slot without adding an undeclared verb/classifier grammar target; lexical naturalness and familiarity remain explicitly unresolved rather than falsely asserted.
 
 These checks validate proposal data and the conceptual fast-track rule only; they do not implement or test a production adaptive engine.

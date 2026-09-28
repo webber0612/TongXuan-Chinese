@@ -2421,6 +2421,10 @@
             {
               "targetId": "skill-ask-answer-name",
               "scaffoldIfMissing": "Introduce the peer by name or provide a name card; the preference statement remains available without prior name-exchange mastery."
+            },
+            {
+              "targetId": "vocab-wo",
+              "scaffoldIfMissing": "If missing, cue the learner as the speaker, model 我 with audio, then model and echo 我喜歡 before asking for preference production."
             }
           ]
         },
@@ -2562,6 +2566,18 @@
             {
               "targetId": "skill-state-preference",
               "scaffoldIfMissing": "Model one preference statement before the peer-question turn; lack of prior preference-statement mastery does not block the new question target."
+            },
+            {
+              "targetId": "vocab-ni",
+              "scaffoldIfMissing": "If missing, point to the peer as “you,” model 你 with audio, and rehearse addressing the peer before the question turn."
+            },
+            {
+              "targetId": "vocab-xihuan",
+              "scaffoldIfMissing": "If missing, replay and model 喜歡 in 我喜歡, let the learner identify the preference action, then model 你喜歡什麼."
+            },
+            {
+              "targetId": "vocab-shenme",
+              "scaffoldIfMissing": "If missing, model 什麼 as the question for what/which and offer a simple visual choice set before the learner attempts the question."
             }
           ]
         },
@@ -3161,6 +3177,10 @@
             {
               "targetId": "skill-ask-answer-name",
               "scaffoldIfMissing": "Introduce the peer by name or provide a name card; the preference statement remains available without prior name-exchange mastery."
+            },
+            {
+              "targetId": "vocab-wo",
+              "scaffoldIfMissing": "If missing, cue the learner as the speaker, model 我 with audio, then model and echo 我喜歡 before asking for preference production."
             }
           ]
         },
@@ -3306,6 +3326,18 @@
             {
               "targetId": "skill-state-preference",
               "scaffoldIfMissing": "Model one preference statement before the peer-question turn; lack of prior preference-statement mastery does not block the new question target."
+            },
+            {
+              "targetId": "vocab-ni",
+              "scaffoldIfMissing": "If missing, point to the peer as “you,” model 你 with audio, and rehearse addressing the peer before the question turn."
+            },
+            {
+              "targetId": "vocab-xihuan",
+              "scaffoldIfMissing": "If missing, replay and model 喜歡 in 我喜歡, let the learner identify the preference action, then model 你喜歡什麼."
+            },
+            {
+              "targetId": "vocab-shenme",
+              "scaffoldIfMissing": "If missing, model 什麼 as the question for what/which and offer a simple visual choice set before the learner attempts the question."
             }
           ]
         },

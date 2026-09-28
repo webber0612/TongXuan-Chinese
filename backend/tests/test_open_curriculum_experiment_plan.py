@@ -254,6 +254,30 @@ def test_fast_track_can_skip_nonessential_lessons_when_only_hard_prerequisites_a
     assert not entry_allowed(l5, l5_hard - {"skill-state-preference"})
 
 
+def test_fast_track_skipped_composition_inputs_are_scaffolded_or_taught_in_lesson():
+    plan = load_plan()
+    targets = targets_by_id(plan)
+    for variant in plan["variants"]:
+        for slot, grammar_id in (("C", "grammar-state-preference"), ("D", "grammar-ask-preference")):
+            lesson = next(item for item in variant["lessons"] if item["slot"] == slot)
+            assumed_ids = {entry["targetId"] for entry in lesson["assumedKnown"]}
+            new_vocab_ids = set(lesson["newVocabularyTargets"])
+            grammar = targets[grammar_id]
+            required_components = {edge["targetId"] for edge in grammar["hardPrerequisites"]}
+
+            # A fast-track learner may skip prior lessons. Every composition input
+            # must therefore be taught in this lesson or explicitly scaffolded.
+            assert required_components - new_vocab_ids <= assumed_ids
+            assert all(edge["rationale"].strip() for edge in grammar["hardPrerequisites"])
+
+    for variant in plan["variants"]:
+        l3, l4 = variant["lessons"][2:4]
+        l3_assumed = {entry["targetId"] for entry in l3["assumedKnown"]}
+        l4_assumed = {entry["targetId"] for entry in l4["assumedKnown"]}
+        assert "vocab-wo" in l3_assumed
+        assert {"vocab-ni", "vocab-xihuan", "vocab-shenme"} <= l4_assumed
+
+
 def test_l3_lexical_choice_fails_closed_and_keeps_a_direct_nominal_slot():
     plan = load_plan()
     targets = targets_by_id(plan)
