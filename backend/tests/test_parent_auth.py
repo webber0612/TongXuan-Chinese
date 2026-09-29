@@ -129,6 +129,17 @@ def test_google_auth_identity_csrf_and_parent_owned_child_lifecycle(tmp_path, mo
         assert first.status_code == second.status_code == 200
         child_ids = {first.json()["id"], second.json()["id"]}
         assert {child["id"] for child in api.get("/api/children").json()} == child_ids
+        from app.database import connect
+        from app.learner_evidence import record_evidence_in_transaction
+        with connect() as db:
+            record_evidence_in_transaction(
+                db, child_id=first.json()["id"], target_id="family-isolation-target",
+                target_kind="ORTHOGRAPHIC_FORM", target_script="TRADITIONAL", dimension="READ",
+                script="TRADITIONAL", outcome="CORRECT", assistance="INDEPENDENT", score=1.0,
+                scorer="test_server_scorer", scorer_version="test-v1",
+                source_type="TEST", source_ref="family-isolation-attempt", occurred_at="2026-09-01T00:00:00Z",
+            )
+        assert api.get(f"/api/children/{first.json()['id']}/learner-evidence/summary").status_code == 200
         assert legacy_id not in {child["id"] for child in api.get("/api/children").json()}
         assert api.get(f"/api/children/{first.json()['id']}/learning-daily-queue").status_code == 200
         assert api.get(f"/api/children/{first.json()['id']}/placement-profile").status_code == 200
@@ -156,6 +167,10 @@ def test_google_auth_identity_csrf_and_parent_owned_child_lifecycle(tmp_path, mo
         assert [child["name"] for child in api.get("/api/children").json()] == ["Child C"]
         assert api.get(f"/api/children/{first.json()['id']}/learning-daily-queue").status_code == 403
         assert api.get(f"/api/children/{first.json()['id']}/placement-profile").status_code == 403
+        assert api.get(f"/api/children/{first.json()['id']}/placement-profile/v2").status_code == 403
+        assert api.get(f"/api/children/{first.json()['id']}/learner-evidence/summary").status_code == 403
+        assert api.get(f"/api/children/{first.json()['id']}/learner-evidence/orthographic-profile").status_code == 403
+        assert api.get(f"/api/children/{first.json()['id']}/learner-evidence/targets/family-isolation-target").status_code == 403
         assert api.get(f"/api/children/{first.json()['id']}/learning-sessions/report").status_code == 403
         assert api.get(f"/api/dashboard?child_id={first.json()['id']}").status_code == 403
         assert api.post(
@@ -169,6 +184,9 @@ def test_google_auth_identity_csrf_and_parent_owned_child_lifecycle(tmp_path, mo
             json={"text": "你好", "locale": "zh-TW", "text_kind": "sentence", "child_id": first.json()["id"]},
         ).status_code == 403
         assert api.get(f"/api/children/{third.json()['id']}/learning-daily-queue").status_code == 200
+        isolated_summary = api.get(f"/api/children/{third.json()['id']}/learner-evidence/summary")
+        assert isolated_summary.status_code == 200
+        assert isolated_summary.json()["dimensions"] == []
         api.post("/api/auth/logout", headers={"Origin": "https://family.example"})
         assert api.get("/api/auth/session").json()["authenticated"] is False
         assert api.get("/api/children").status_code == 401
@@ -314,6 +332,9 @@ def test_schema_v5_migration_keeps_legacy_children_unowned(tmp_path, monkeypatch
         assert tuple(row) == (1, "Unclaimed child", None)
         session = db.execute("SELECT id,child_id FROM learning_sessions WHERE id='legacy-session-1'").fetchone()
         assert tuple(session) == ("legacy-session-1", 1)
-        assert db.execute("PRAGMA user_version").fetchone()[0] == 5
+        assert db.execute("PRAGMA user_version").fetchone()[0] == 8
         assert db.execute("SELECT COUNT(*) FROM google_parents").fetchone()[0] == 0
         assert db.execute("SELECT description FROM schema_migrations WHERE version=5").fetchone()[0] == "Google parent identity and nullable child ownership"
+        assert db.execute("SELECT description FROM schema_migrations WHERE version=6").fetchone()[0] == "Learner evidence foundation and dual-script orthographic profile"
+        assert db.execute("SELECT description FROM schema_migrations WHERE version=7").fetchone()[0] == "Explicit target handwriting expectation contract"
+        assert db.execute("SELECT description FROM schema_migrations WHERE version=8").fetchone()[0] == "Phonetic notation evidence dimension"

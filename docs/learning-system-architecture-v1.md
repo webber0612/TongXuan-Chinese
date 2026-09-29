@@ -4,7 +4,7 @@
 
 **Repository baseline audited:** GitHub main at 3ca711e7ec2b2e912c50630ff6466278b1a76171.
 
-**Implementation status:** See the A/B/C/D audit and next-step checklist below. Existing API and database behavior remains the implementation truth until a separately reviewed implementation change replaces it.
+**Implementation status:** Section 12 records the inherited mainline audit. Section 14 records the Evidence Foundation v1 branch implementation; it is not a claim that the draft change has merged or deployed. Unbuilt behavior remains governed by executable code and the limitations listed there.
 
 ## 1. Product position and learning principles
 
@@ -310,11 +310,11 @@ The Open Curriculum schemas validate proposal and graph structure; they do not s
 - Targeted lesson repair and failure stop behavior, without Cycle Repair and alternate-item Cycle Check.
 - Parent reports, without cumulative product KPIs.
 
-### Not implemented
+### Not implemented after Evidence Foundation v1
 
 - Learning Cycle and deterministic, time-budgeted Progression Engine.
-- A versioned learner evidence model for HEAR / RECALL / READ / PRODUCE and separate script-level recognition, input, and handwriting.
-- Target-specific handwriting expectations and delayed-retrieval mastery contracts.
+- Authoritative active lexical recall, separate text-reading assessment, and Chinese keyboard-input ingestion.
+- Target-specific handwriting expectations and educational evidence-sufficiency / delayed-retention thresholds.
 - Evidence-sufficiency policy that gates Fast Track by target and dimension.
 - Approved Knowledge Station topic library, shared-language-payload variants, and Cycle Check.
 - Cycle-level blocking and non-blocking repair transitions.
@@ -322,11 +322,11 @@ The Open Curriculum schemas validate proposal and graph structure; they do not s
 - Parent KPI report for active recall, delayed retention, script reading, and handwriting.
 - Empirical child/device validation and calibrated thresholds.
 
-### Recommended next implementation PR
+### Original recommended first implementation PR (superseded by Evidence Foundation v1)
 
-Start with a versioned learner-evidence and orthographic-profile contract, including a non-destructive persistence/API migration plan. Keep existing event history and legacy placement values readable; add Traditional/Simplified recognition, input, and handwriting independently, and define evidence references without claiming new mastery automatically. Do not add lessons or promote curriculum targets in that PR. This model is the dependency for evidence-based Fast Track, per-script SRS, the Progression Engine, Cycle Check, and the future parent KPI view.
+This recommendation was implemented as an additive, child-scoped evidence and orthographic-profile model in the Evidence Foundation v1 branch. The executable boundary, compatibility map, events, routes, and limitations are documented in [learner-evidence-foundation-v1.md](learner-evidence-foundation-v1.md). It does not claim evidence-backed mastery, approve targets, or change this section's unbuilt progression components.
 
-After that contract is reviewed, implement in this order:
+After Evidence Foundation v1 is merged and deployed, implement in this order:
 
 1. Evidence-backed lexical recall and delayed SRS state, with script-specific read/input evidence.
 2. Learning Cycle state and 10/20/30-minute deterministic Progression Engine.
@@ -336,3 +336,21 @@ After that contract is reviewed, implement in this order:
 6. Supervised real-child/device validation before claiming efficacy or pacing calibration.
 
 All curriculum content remains subject to the existing rights, source, and Owner approval gates. This architecture does not approve a target, authorize a lesson, or validate the educational effect of the design.
+
+## 14. Evidence Foundation v1 implementation status
+
+This section describes the implementation in the Evidence Foundation v1 draft branch. The inherited Section 12 audit is a mainline snapshot and should not be read as evidence that the draft migration is already on `main`.
+
+Implemented in the branch:
+
+- SQLite schema v6–v8 adds child-scoped targets, append-only evidence events, deterministic derived facts, an additive placement profile v2, a validated optional target handwriting-expectation label, and `PHONETIC_NOTATION`. Existing v1 placement and attempt history remain readable; there is no legacy evidence backfill.
+- Exact Traditional / Simplified orthographic target scopes are separate. Exact-form targets use script plus SHA-256 of NFC-normalized written form; whitespace and punctuation are preserved. Cross-script lexical identity is represented only when explicitly supplied; current production adapters do not infer equivalence.
+- Evidence dimensions include HEAR, RECALL, READ, INPUT, HANDWRITING, SPEAK, ORTHOGRAPHIC_RECOGNITION, and PRONUNCIATION. Existing Learning Flow audio-to-glyph recognition writes ORTHOGRAPHIC_RECOGNITION; speaking and listening lifecycle events remain NOT_ASSESSED; validated notation matching writes PRONUNCIATION; writing activity remains NOT_ASSESSED because the existing trace result is client-supplied.
+- Summary, target-history, orthographic-profile, and placement-v2 routes are child scoped. The orthographic profile keeps input evidence keyed by `inputByMethod`; placement-v2 accepts partial updates and rejects empty domains. Evidence has no public write route. The existing placement route remains unchanged.
+- Evidence summaries expose per-dimension/script counts and read-only event facts (active recall observations, delayed correct retrievals, independent delayed correct retrievals, and incorrect/partial observations). Target records can carry an explicitly supplied, validated handwriting expectation, but this branch assigns none to curriculum targets and does not infer requirements from learner activity.
+- Frontend contracts represent script-separated facts and NOT_ASSESSED. No visual UI was changed.
+- Local verification is recorded in [Learner Evidence Foundation v1](learner-evidence-foundation-v1.md): backend **333 passed**, frontend **181/181**, production build and canonical import guard **PASS (38 modules)**, migration and rights checks **PASS**. GitHub Actions and independent review must be read from the current exact head in PR metadata; do not carry a prior SHA's result forward.
+
+Not established: active lexical-recall scoring; distinct reading and Chinese keyboard input scoring; target-level curriculum requirement policy; educational mastery thresholds; evidence-based placement/FAST_TRACK/progression; deployed OAuth behavior; real-child/device validation; or learning efficacy. See the implementation spec for the complete route contract, record mapping, downgrade limitations, and next dependency.
+
+Once this branch is merged, the highest-value next system step is the still-missing authoritative active lexical-recall and delayed SRS integration, subject to approved targets and prompt/scorer boundaries. Progression Engine work should follow only after that ingestion contract is genuinely supported.

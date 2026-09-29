@@ -108,6 +108,9 @@ def complete_attempt_in_transaction(
     attempt_id: str,
     duration_ms: int | None,
     require_skill_gate: bool = False,
+    source_task_id: str | None = None,
+    source_session_id: str | None = None,
+    source_lesson_id: str | None = None,
 ) -> dict[str, Any]:
     if duration_ms is not None and not 0 <= duration_ms <= 3_600_000:
         raise ValueError("invalid_duration")
@@ -117,9 +120,10 @@ def complete_attempt_in_transaction(
     if row["status"] != "STARTED" or row["completed_at"] is not None or row["aborted_at"] is not None:
         raise ValueError("reading_aloud_attempt_not_started")
 
+    completed_at = now()
     updated = db.execute(
         "UPDATE reading_aloud_attempts SET completed_at=?,duration_ms=?,status='COMPLETED' WHERE id=? AND child_id=? AND status='STARTED' AND completed_at IS NULL AND aborted_at IS NULL",
-        (now(), duration_ms, attempt_id, child_id),
+        (completed_at, duration_ms, attempt_id, child_id),
     )
     if updated.rowcount != 1:
         raise ValueError("reading_aloud_attempt_not_started")
@@ -139,6 +143,31 @@ def complete_attempt_in_transaction(
             raise ValueError("reading_aloud_skill_gate_unavailable")
     elif require_skill_gate:
         raise ValueError("reading_aloud_skill_gate_unavailable")
+    from .learner_evidence import record_evidence_in_transaction
+
+    dimension = "PRONUNCIATION" if row["activity_domain"] == "pronunciation" else "SPEAK"
+    oral_target_id = f"oral:{str(row['source_type']).lower()}:{row['source_id'] or attempt_id}"
+    linked_lesson_id = source_lesson_id
+    if linked_lesson_id is None and row["source_type"] == "CURRICULUM" and row["source_id"]:
+        linked = db.execute(
+            "SELECT lesson_id FROM curriculum_item_links WHERE child_id=? AND skill_domain=? AND item_id=?",
+            (child_id, row["activity_domain"], row["source_id"]),
+        ).fetchone()
+        linked_lesson_id = linked["lesson_id"] if linked else None
+    record_evidence_in_transaction(
+        db, child_id=child_id, target_id=oral_target_id,
+        # The target is the spoken curriculum phrase in both modes; the evidence
+        # dimension distinguishes speaking from pronunciation. Keeping one stable
+        # semantic identity prevents cross-mode target registration conflicts.
+        target_kind="PHRASE",
+        target_script="SCRIPT_INDEPENDENT", dimension=dimension, script="SCRIPT_INDEPENDENT",
+        outcome="NOT_ASSESSED", assistance="UNKNOWN" if row["manual_review"] else ("ASSISTED" if row["assisted"] else "INDEPENDENT"),
+        scorer="reading_aloud_provider_metadata", scorer_version="reading-aloud-metadata-v1",
+        cue_type="CHINESE_TEXT", answer_exposed=True, input_method="VOICE",
+        retrieval_timing="UNKNOWN", source_type="READING_ALOUD_COMPLETION", source_ref=attempt_id,
+        source_task_id=source_task_id, source_session_id=source_session_id,
+        source_lesson_id=linked_lesson_id, occurred_at=completed_at,
+    )
     return _attempt(db, attempt_id, child_id)
 
 
