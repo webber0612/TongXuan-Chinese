@@ -141,9 +141,12 @@ export interface ExitTicketQuestion {
   id: string;
   domain: CurriculumDomain;
   prompt: string;
+  /** Exact backend task bound to this question in authoritative LEARN sessions. */
+  taskId?: string;
   audioText?: string;
   choices: LessonStepChoice[];
-  correctChoiceId: string;
+  /** Omitted from server-authoritative task payloads so the client does not need answer keys. */
+  correctChoiceId?: string;
   explanation?: string;
 }
 

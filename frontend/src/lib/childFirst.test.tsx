@@ -683,7 +683,7 @@ describe("child-first shell contracts", () => {
     window.history.replaceState({}, "", "/");
     const requestLog: Array<{ url: string; method: string }> = [];
     const reviewStates = { ni: "PENDING", hao: "PENDING" };
-    const curriculumTasks = plannerTasksForLesson("book1-l01").map((task) => ({
+    const curriculumTasks = plannerTasksForLesson("book1-l01", false, false, 22).map((task) => ({
       ...task,
       id: `learn-session:${task.key}`,
       childId: 22,
