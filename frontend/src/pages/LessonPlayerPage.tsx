@@ -749,12 +749,15 @@ export function LessonPlayerPage({
   const speakingStepHasCompletedEvidence = speakingStepTaskIds.length > 0 &&
     speakingStepTasks.length === speakingStepTaskIds.length &&
     speakingStepTasks.every((task: { state: string } | undefined) => task?.state === "COMPLETED");
+  const speakingStepHasDeferredTask = currentStep?.stepKey === "speaking" &&
+    speakingStepTasks.some((task: { state: string } | undefined) => task?.state === "DEFERRED");
   const speakingStepCanStart = speakingStepTaskIds.length > 0 &&
     speakingStepTasks.length === speakingStepTaskIds.length &&
     session?.status === "IN_PROGRESS" &&
-    speakingStepTasks.every((task: { state: string } | undefined) => task && task.state !== "COMPLETED" && task.state !== "DEFERRED");
-  const speakingStepHasDeferredTask = currentStep?.stepKey === "speaking" &&
-    speakingStepTasks.some((task: { state: string } | undefined) => task?.state === "DEFERRED");
+    speakingStepTasks.every((task: { state: string } | undefined) => task &&
+      (task.state === "COMPLETED" || task.state === "PENDING" || task.state === "IN_PROGRESS")) &&
+    speakingStepTasks.some((task: { state: string } | undefined) => task &&
+      (task.state === "PENDING" || task.state === "IN_PROGRESS"));
   const visibleError = error ?? (speakingStepHasDeferredTask ? text.speakingEvidenceMissing : null);
 
   useEffect(() => {

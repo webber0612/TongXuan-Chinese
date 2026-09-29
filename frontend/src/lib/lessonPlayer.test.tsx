@@ -4324,6 +4324,157 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     vi.unstubAllGlobals();
   });
 
+  it("74a. Step 6 retries only pronunciation after authoritative speaking success and unlocks Next after both exact tasks complete", async () => {
+    const session = authoritativeSessionFixture("book1-l01", "s-sp-partial", {
+      listen: "COMPLETED", "context-choice": "COMPLETED", vocabulary: "COMPLETED",
+      "recognition-1": "COMPLETED", "recognition-2": "COMPLETED",
+      "sentence-pattern": "COMPLETED", speaking: "PENDING", pronunciation: "PENDING",
+    });
+    const speakingTaskId = "s-sp-partial:speaking";
+    const pronunciationTaskId = "s-sp-partial:pronunciation";
+    const speakingTask = session.tasks.find((task) => task.id === speakingTaskId)!;
+    const pronunciationTask = session.tasks.find((task) => task.id === pronunciationTaskId)!;
+
+    const track = { stop: vi.fn() };
+    const stream = { getTracks: () => [track] };
+    class MockMediaRecorder {
+      state = "inactive";
+      mimeType = "audio/webm";
+      ondataavailable = (_event: { data: Blob }) => {};
+      onstop = () => {};
+      onerror = () => {};
+      constructor(public stream: unknown) {}
+      start() { this.state = "recording"; }
+      stop() { this.state = "inactive"; this.ondataavailable({ data: new Blob(["audio"]) }); this.onstop(); }
+    }
+    vi.stubGlobal("navigator", { ...navigator, mediaDevices: { getUserMedia: vi.fn().mockResolvedValue(stream) } });
+    vi.stubGlobal("MediaRecorder", MockMediaRecorder);
+
+    const providerStartBodies: any[] = [];
+    const providerAborts: string[] = [];
+    const taskAborts: string[] = [];
+    const evidenceWrites: Array<{ taskId: string; evidenceRef: string }> = [];
+    let pronunciationEvidenceAttempts = 0;
+    let resolvePronunciationSuccess!: (response: Response) => void;
+    const pendingPronunciationSuccess = new Promise<Response>((resolve) => { resolvePronunciationSuccess = resolve; });
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes("/learning-sessions/current")) {
+        return new Response(JSON.stringify(session), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/reading-aloud/attempts/start")) {
+        const body = JSON.parse(init?.body as string);
+        providerStartBodies.push(body);
+        const count = providerStartBodies.filter((item) => item.activity_domain === body.activity_domain).length;
+        return new Response(JSON.stringify({ id: `partial-${body.activity_domain}-${count}`, status: "STARTED" }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/reading-aloud/attempts/") && url.includes("/abort?")) {
+        const attemptId = decodeURIComponent(url.split("/attempts/")[1].split("/")[0]);
+        providerAborts.push(attemptId);
+        return new Response(JSON.stringify({ id: attemptId, status: "ABORTED" }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.endsWith(`/tasks/${speakingTaskId}/evidence`) && init?.method === "POST") {
+        const body = JSON.parse(init.body as string);
+        evidenceWrites.push({ taskId: speakingTaskId, evidenceRef: body.evidence_ref });
+        speakingTask.state = "COMPLETED";
+        speakingTask.attemptCount = 1;
+        speakingTask.completedAt = "2026-09-29T00:00:00Z";
+        return new Response(JSON.stringify(session), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.endsWith(`/tasks/${pronunciationTaskId}/evidence`) && init?.method === "POST") {
+        const body = JSON.parse(init.body as string);
+        evidenceWrites.push({ taskId: pronunciationTaskId, evidenceRef: body.evidence_ref });
+        pronunciationEvidenceAttempts++;
+        if (pronunciationEvidenceAttempts === 1) {
+          return new Response(JSON.stringify({ error: "evidence_persistence_failed" }), { status: 500, headers: { "Content-Type": "application/json" } });
+        }
+        return pendingPronunciationSuccess;
+      }
+      if (url.endsWith(`/tasks/${pronunciationTaskId}/abort`) && init?.method === "POST") {
+        taskAborts.push(pronunciationTaskId);
+        pronunciationTask.state = "IN_PROGRESS";
+        pronunciationTask.attemptCount = (pronunciationTask.attemptCount ?? 0) + 1;
+        return new Response(JSON.stringify(session), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} initialMode="LEARN" />);
+    });
+    await advanceToPlannerStep(container, "speaking");
+    const next = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
+    const mic = container.querySelector(".mic-record-btn") as HTMLButtonElement;
+    expect(mic.disabled).toBe(false);
+
+    await act(async () => { mic.click(); });
+    expect(providerStartBodies.map((body) => body.activity_domain)).toEqual(["speaking", "pronunciation"]);
+    expect(providerStartBodies.map((body) => body.source_id)).toEqual([speakingTask.itemId, pronunciationTask.itemId]);
+    expect(providerStartBodies.every((body) => body.source_type === "CURRICULUM" || body.source_type === "SENTENCE")).toBe(true);
+
+    await act(async () => { (container.querySelector(".mic-record-btn") as HTMLButtonElement).click(); await new Promise((resolve) => setTimeout(resolve, 0)); });
+    expect(evidenceWrites).toEqual([
+      { taskId: speakingTaskId, evidenceRef: "partial-speaking-1" },
+      { taskId: pronunciationTaskId, evidenceRef: "partial-pronunciation-1" },
+    ]);
+    expect(speakingTask.state).toBe("COMPLETED");
+    expect(pronunciationTask.state).toBe("IN_PROGRESS");
+    expect(providerAborts).toEqual(["partial-pronunciation-1"]);
+    expect(taskAborts).toEqual([pronunciationTaskId]);
+    expect(container.querySelector(".error-strip")).toBeTruthy();
+    expect(container.querySelector(".recording-status-label")?.textContent).toContain("Hold to record speaking");
+    expect(container.querySelector(".recording-status-label")?.textContent).not.toContain("Speaking practice recorded");
+    expect((container.querySelector(".mic-record-btn") as HTMLButtonElement).classList.contains("is-attempted")).toBe(false);
+    expect((container.querySelector(".mic-record-btn") as HTMLButtonElement).disabled).toBe(false);
+    expect(next.disabled).toBe(true);
+    await act(async () => { next.click(); });
+    expect(container.querySelector("[data-step-key='speaking']")).toBeTruthy();
+    expect(container.querySelector("[data-step-key='writing']")).toBeNull();
+
+    await act(async () => { (container.querySelector(".mic-record-btn") as HTMLButtonElement).click(); });
+    expect(providerStartBodies.map((body) => body.activity_domain)).toEqual(["speaking", "pronunciation", "pronunciation"]);
+    expect(providerStartBodies.map((body) => body.source_id)).toEqual([speakingTask.itemId, pronunciationTask.itemId, pronunciationTask.itemId]);
+    expect((container.querySelector(".next-step-cta-btn") as HTMLButtonElement).disabled).toBe(true);
+    await act(async () => { (container.querySelector(".mic-record-btn") as HTMLButtonElement).click(); await new Promise((resolve) => setTimeout(resolve, 0)); });
+
+    expect(evidenceWrites).toEqual([
+      { taskId: speakingTaskId, evidenceRef: "partial-speaking-1" },
+      { taskId: pronunciationTaskId, evidenceRef: "partial-pronunciation-1" },
+      { taskId: pronunciationTaskId, evidenceRef: "partial-pronunciation-2" },
+    ]);
+    expect(speakingTask.state).toBe("COMPLETED");
+    expect(pronunciationTask.state).toBe("IN_PROGRESS");
+    expect((container.querySelector(".mic-record-btn") as HTMLButtonElement).classList.contains("is-attempted")).toBe(false);
+    expect((container.querySelector(".next-step-cta-btn") as HTMLButtonElement).disabled).toBe(true);
+
+    await act(async () => {
+      pronunciationTask.state = "COMPLETED";
+      pronunciationTask.attemptCount = 1;
+      pronunciationTask.completedAt = "2026-09-29T00:00:01Z";
+      resolvePronunciationSuccess(new Response(JSON.stringify(session), { status: 200, headers: { "Content-Type": "application/json" } }));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(speakingTask.state).toBe("COMPLETED");
+    expect(pronunciationTask.state).toBe("COMPLETED");
+    expect((container.querySelector(".mic-record-btn") as HTMLButtonElement).classList.contains("is-attempted")).toBe(true);
+    expect((container.querySelector(".recording-status-label") as HTMLElement).textContent).toContain("Speaking practice recorded");
+    expect((container.querySelector(".next-step-cta-btn") as HTMLButtonElement).disabled).toBe(false);
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes(`/children/1/learning-sessions/s-sp-partial/tasks/${speakingTaskId}/evidence`))).toBe(true);
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes(`/children/1/learning-sessions/s-sp-partial/tasks/${pronunciationTaskId}/evidence`))).toBe(true);
+    expect(providerAborts).toEqual(["partial-pronunciation-1"]);
+
+    await act(async () => { (container.querySelector(".next-step-cta-btn") as HTMLButtonElement).click(); });
+    expect(container.querySelector("[data-step-key='writing']")).toBeTruthy();
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
+
   it("73b. Resuming a session with deferred speaking tasks keeps Step 6 visible and blocks Next without evidence", async () => {
     const pausedSession = authoritativeSessionFixture("book1-l01", "s-speaking-deferred-resume", {
       listen: "COMPLETED", "context-choice": "COMPLETED", vocabulary: "COMPLETED",
@@ -4362,6 +4513,59 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     await act(async () => { next.click(); });
     expect(container.querySelector("[data-step-key='speaking']")).toBeTruthy();
     expect(container.querySelector("[data-step-key='writing']")).toBeNull();
+
+    root.unmount(); container.remove(); vi.unstubAllGlobals();
+  });
+
+  it("73c. A deferred exact pronunciation task blocks capture and Next even when speaking is already complete", async () => {
+    const pausedSession = authoritativeSessionFixture("book1-l01", "s-pronunciation-deferred-resume", {
+      listen: "COMPLETED", "context-choice": "COMPLETED", vocabulary: "COMPLETED",
+      "recognition-1": "COMPLETED", "recognition-2": "COMPLETED",
+      "sentence-pattern": "COMPLETED", speaking: "COMPLETED", pronunciation: "DEFERRED",
+    });
+    pausedSession.status = "PAUSED";
+    const resumedSession = { ...pausedSession, status: "IN_PROGRESS" };
+    const urls: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      urls.push(`${init?.method ?? "GET"} ${url}`);
+      if (url.includes("/learning-sessions/current")) return new Response(JSON.stringify(pausedSession), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.endsWith("/learning-sessions") && init?.method === "POST") return new Response(JSON.stringify(resumedSession), { status: 200, headers: { "Content-Type": "application/json" } });
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    const container = document.createElement("div"); document.body.appendChild(container); const root = createRoot(container);
+    await act(async () => {
+      root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} initialMode="LEARN" />);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(container.querySelector("[data-step-key='speaking']")).toBeTruthy();
+    expect(container.querySelector(".error-strip")?.textContent).toContain("No valid speaking evidence was saved");
+    expect(container.querySelector(".error-strip button")).toBeNull();
+    expect((container.querySelector(".mic-record-btn") as HTMLButtonElement).disabled).toBe(true);
+    expect((container.querySelector(".next-step-cta-btn") as HTMLButtonElement).disabled).toBe(true);
+    expect(urls.some((request) => request.includes("/reading-aloud/attempts/start"))).toBe(false);
+
+    root.unmount(); container.remove(); vi.unstubAllGlobals();
+  });
+
+  it("73d. An unexpected exact Step 6 task state blocks capture and Next", async () => {
+    const session = authoritativeSessionFixture("book1-l01", "s-speaking-unknown-state", {
+      listen: "COMPLETED", "context-choice": "COMPLETED", vocabulary: "COMPLETED",
+      "recognition-1": "COMPLETED", "recognition-2": "COMPLETED",
+      "sentence-pattern": "COMPLETED", speaking: "COMPLETED", pronunciation: "UNKNOWN",
+    });
+    const requests = installPlannerSessionMock(session);
+    const container = document.createElement("div"); document.body.appendChild(container); const root = createRoot(container);
+
+    await act(async () => {
+      root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} initialMode="LEARN" />);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(container.querySelector(".mic-record-btn")).toBeNull();
+    expect(container.querySelector(".next-step-cta-btn")).toBeNull();
+    expect(requests.some((request) => request.includes("/reading-aloud/attempts/start"))).toBe(false);
 
     root.unmount(); container.remove(); vi.unstubAllGlobals();
   });

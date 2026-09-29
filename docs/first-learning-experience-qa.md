@@ -98,19 +98,19 @@ This runbook separates observed evidence from planned procedures. The implementa
 | --- | --- | --- |
 | Home child isolation, identity, queue, CTA, and unsupported rewards | Frontend child-first regressions, including child A versus child B/demo identity and reward display cases | Final full Vitest result recorded below. This does not substitute for the live browser identity/session check. |
 | Book 1 Simplified display text and unchanged source/task/answer identifiers | Lesson Player regressions for Traditional and Simplified rendering and exact answer choices | Final full Vitest result recorded below. The scoped runtime display correction does not rewrite package text or IDs. |
-| Step 6 getUserMedia error classification, attempt cleanup, speakingAttempted false, retry before the stop threshold, no evidence on failure, deferred-resume and Next/capture gating | readingAloud and Lesson Player regressions for unavailable API, generic capture rejection, legacy denial code, failed evidence post, and resumed deferred task state | Focused regressions passed 112 tests before the final disabled mic state assertion; final full frontend result is recorded below. No fake capture or completion is used. |
-| Full backend pytest, full frontend Vitest, production build and canonical import guard | Commands and outcomes below | Full suites pass; standard npm build requires the Vite runner workaround in this workspace. |
+| Step 6 retryable partial success, getUserMedia error classification, attempt cleanup, deferred-resume and exact-task Next/capture gating | Lesson Player regressions for provider/task evidence persistence, pronunciation failure after speaking success, pronunciation-only retry, authoritative completion, abort cleanup, and either exact task deferred; readingAloud regressions cover unavailable API, generic capture rejection, and legacy denial code | Final full frontend result is recorded below. The partial-success path uses mocked provider and API responses; no fake browser speech or real microphone success is claimed. |
+| Full backend pytest, full frontend Vitest, production build and canonical import guard | Commands and outcomes below | Both full suites pass. Backend pytest required transient `requests`, which is not declared in `backend/requirements.txt`. Standard npm build remains blocked by workspace path access; the Vite runner build passes. |
 | Open Curriculum Rights Gate and git diff --check | Digest refresh is run only after the last content edit, then check and diff check | Final outcomes recorded below. No official course rights assertion is made. |
 
 ### Canonical frontend chain — seven checks
 
-1. Branch: `codex/first-complete-learning-experience` (implementation is uncommitted).
+1. Branch: `codex/first-complete-learning-experience`; QA follows the existing branch tip. Check the current remote PR SHA and GitHub Actions after push.
 2. Production entry: `frontend/src/main.tsx`.
-3. Target learner route: `/`.
-4. Final Home component: `ChildPortalPage`.
-5. Production `AppShell` imports that component and routes `/` to it.
-6. Similarly named archive/preview surfaces are historical or retired and are not active production imports.
-7. The production Vite runner build and canonical import guard confirm the active graph is included; the guard found 38 production modules and no archived React source.
+3. Target learner route for Step 6: `/learning-session`.
+4. Final component: `LessonPlayerPage`.
+5. Production `AppShell` lazily imports `LessonPlayerPage` and renders it for `/learning-session`.
+6. The archive contains only its historical preview note; legacy player routes are retired and no similarly named archived component is in the active production source.
+7. The production build and canonical import guard confirm the active graph is included; the guard found 38 production modules and no archived React source.
 
 ### CODEX_RUNTIME — actual browser evidence
 
@@ -121,6 +121,7 @@ This runbook separates observed evidence from planned procedures. The implementa
 - Simplified/Pinyin: the prior local browser record in this worktree exercised the Home CTA and Steps 1–5 with a separate fictional child. Steps 2, 3, and 5 displayed 大卫 and Pinyin, including the Step 2 speaker accessibility name. No source package, task ID, answer choice ID, or answer key was changed.
 - Step 6: Chrome produced a genuine getUserMedia capture failure without a permission prompt. The UI presented general device/browser guidance and a retry action; this error did not establish permission denial. One retry produced another genuine failure. The existing SPEAKING_ABORTS stop policy paused the same session. The learner used the visible exit confirmation to return Home; Home CTA resumed the same session at Step 6.
 - Exact read-only API evidence after resume: session ID learning_flow_a31baf58d0ac, child 1, status IN_PROGRESS. The speaking task is DEFERRED with attemptCount 2, completedAt null, evidenceRef null. The pronunciation task is PENDING with no completion or evidence. After the code fix, the live Step 6 view shows a missing-evidence alert; microphone and Next are both disabled. A screenshot confirmed the disabled microphone is also visibly muted. No Next action was taken to enter an unverified later step.
+- The retryable partial-success path added in this correction is covered by automated regression only; no live recording or provider success was exercised.
 - Browser Home after a normal manual exit from Step 6 was observed. Home return after lesson settlement was not verified.
 
 ### CODEX_RUNTIME — limits and unvisited flow
@@ -128,6 +129,7 @@ This runbook separates observed evidence from planned procedures. The implementa
 - The existing stop policy leaves the speaking task terminal-deferred after two aborted attempts. The backend does not return authoritative speech evidence, and this session cannot advance. Steps 7–9, settlement, and Home return after settlement are NOT VERIFIED. No speech was faked, no session pointer/database/task was edited, no abort was treated as success, and no skip route was added.
 - Both script paths were observed only through Step 5. Browser Step 6 failure/retry/exit/resume was observed on the Traditional path. The full normal audio-success path is unvisited.
 - Browser evidence is Codex runtime evidence, not iPad Safari, physical microphone, touch/Apple Pencil, or supervised child testing. The latest 390×844 identity-pill check is NOT VERIFIED: the independent viewport tool was blocked by its approval gate, and the available CUA interface had no viewport override. No page or state changed during that failed attempt. The earlier 390×844 check predates the current identity CSS and does not count as current narrow-width evidence.
+- For this correction, Chrome was available through the CUA extension with two unrelated user tabs; both were left untouched. No TongXuan browser tab or local app runtime was launched or verified, and the partial-success retry regression is automated evidence only.
 - Browser navigation to /learning-session was triggered through the production Home CTA. No archive or preview route was used.
 
 ### OWNER_DEVICE
@@ -136,39 +138,39 @@ Required separately: real iPad Safari microphone permission/capture and recovery
 
 ### EXTERNAL
 
-Exact-head GitHub Actions and Architect review have not run for this uncommitted worktree. This agent made no commit, push, or GitHub write. Draft/unmerged PR status and external exact-head evidence remain for the Product Governor / Owner handoff.
+GitHub Actions for the revised branch tip and Architect review have not been checked. Local test/build results are not GitHub CI. Check the current remote PR SHA and CI after push. Coding made no commit, push, or GitHub write; verify the existing PR's Draft state in the remote handoff.
 
 ### Review handoff
 
-- Branch: `codex/first-complete-learning-experience`.
-- `HEAD`: `7eeeba4e5bbb6c10b4e41ce4e702138b258562ba` (unchanged; implementation is uncommitted).
-- Next gate: Product Governor's independent PM acceptance, followed by Architect review against the exact committed PR head. GitHub Actions and PR Draft/unmerged state are EXTERNAL and were not changed or checked by Coding.
+- Branch: `codex/first-complete-learning-experience`; QA follows the existing branch tip.
+- After push, check that the remote PR SHA matches the pushed tip and review the corresponding GitHub Actions result.
+- Next gate: Product Governor's independent PM acceptance, followed by Architect review against the exact remote PR head. Keep the existing PR Draft; its remote state is EXTERNAL and was not changed or checked by Coding.
 
 ### Frontend auditor checklist — separate review pass, findings only
 
 - **Primary action and hierarchy:** Home visibly prioritizes the selected child’s Today lesson CTA; parent controls remain behind Settings. No rewards or unsupported progress totals appear. Existing Home shows a second CTA in the lesson card; this is a hierarchy polish finding, unchanged by this bounded correction.
 - **Responsive behavior and media crop:** Settled Home identity was visibly rechecked at 1278×843. The current 390×844 identity-pill check is NOT VERIFIED because the viewport connector was blocked by its approval gate and CUA has no viewport override; the prior narrow-width observation predates this CSS change. Step 6 error state was visually checked at the desktop browser viewport, not a narrow viewport. The illustration slot is a reserved placeholder; this work did not change media or crop.
-- **Visual states:** Step 6 normal, error, and disabled states were observed. After a terminal speaking deferral, the error is visible, mic and Next are disabled, and mic disabled styling is visibly muted. Earlier real browser checks covered a retry before the stop threshold. Hover and pressed states were not separately checked in this run.
+- **Visual states:** Earlier runtime review observed Step 6 normal, terminal error, and disabled states. After a terminal speaking deferral, the error is visible, mic and Next are disabled, and mic disabled styling is visibly muted. The retryable partial-success error with an enabled mic added in this correction is covered by automated regression only and was not visually rechecked. Earlier real browser checks covered a retry before the stop threshold. Hover and pressed states were not separately checked in this run.
 - **Accessibility and reduced motion — NOT VERIFIED:** the browser accessibility tree exposes the error as an alert and reports the mic and Next controls disabled. The mic has a localized accessible label; global focus-visible styling remains in place. Reduced-motion emulation was not verified because the browser media-emulation action was unavailable.
 - **Tests and build:** full frontend test, full backend test, standard npm build, Vite runner build, canonical import guard, Rights Gate, and diff results are recorded below.
 - **Learning behavior:** no scoring, SRS, mastery, curriculum, task plan, answer key, package text, or backend policy changed. Step 6 now advances only when the exact backend speaking tasks are COMPLETED; DEFERRED is not treated as speech evidence.
-- **Review status:** this separate checklist pass records observed facts and limits. Hover/pressed, narrow Step 6, current narrow Home identity, reduced-motion, and Owner-device behavior remain pending. Narrow-width browser review could not be performed with the available viewport tools; Product Governor disposition is requested.
+- **Review status:** this separate checklist pass records observed facts and limits. Hover/pressed, narrow Step 6, current narrow Home identity, reduced-motion, and Owner-device behavior remain pending. Narrow-width browser review could not be performed with the available viewport tools.
 
 ### Product escalation
 
-The existing SPEAKING_ABORTS policy makes the current session’s speaking task DEFERRED after two aborted attempts. Existing Home resume leaves that task deferred, so the learner remains on Step 6 with capture and Next disabled and no evidence. This implementation preserves that policy and fails closed, as required. Product Governor should decide whether this terminal recovery state is intended or requires a separately authorized recovery policy; Coding did not add one.
+The existing SPEAKING_ABORTS policy makes the current session’s speaking task DEFERRED after two aborted attempts. Existing Home resume leaves that task deferred, so the learner remains on Step 6 with capture and Next disabled and no evidence. Product Governor accepted preserving this terminal state fail-closed. No recovery behavior was added.
 
 ### Latest automated verification — 2026-09-29
 
-Full frontend and backend suites ran after the implementation changes and the latest browser review. The backend run used the refreshed inventory digest below. The final verification row update is followed by another Rights Gate digest refresh and `--check`.
+This follow-up reran the full frontend suite, production build paths, and canonical production import guard after the retry correction. The parent subsequently completed the full backend suite: 336/336 passed using its cached Python 3.11 `uv` environment, `backend/requirements.txt`, transient `requests`, and a unique `%TEMP%` basetemp. No `backend/.pytest-tmp-*` path was touched. Earlier parent reruns while the QA document was changing reported 335 passed/1 failure when optional `requests` was unavailable, then 336 collected with two Rights Gate digest tests racing the document edit; those attempts were superseded by the final stable 336/336 pass. The parent’s Rights Gate `--check` passed after the previous digest refresh, but its post-edit invocation could not initialize `C:\Users\webbe\AppData\Local\uv\cache` (`os error 183`) and stopped before the script ran. This QA edit changes registered digest input; the digest refresh and final post-edit check are recorded separately below. `requests` is used by existing tests but is not declared in `backend/requirements.txt`; it was supplied transiently and no requirements file was changed.
 
 | Check | Result | Scope / limit |
 | --- | --- | --- |
-| Full backend pytest | PASS — 336 passed, 93 warnings in 191.84s | `python -m pytest -p no:cacheprovider --basetemp "$env:TEMP\tongxuan-issue114-final-backend-20260929-03"` from `backend/`; warnings are SQLite default datetime-adapter deprecations. The temporary base directory is outside `backend/`. |
-| Full frontend Vitest | PASS — 193 passed across 16 files | `npm run test -- --configLoader runner`. Plain `npm run test` fails during Vitest config loading because the sandbox denies access to `../../../../..`; existing React `act(...)` warnings appear in child-first tests. |
+| Full backend pytest | PASS — 336/336 — AUTOMATED (parent-run) | Parent used cached Python 3.11 through `uv`, `backend/requirements.txt` plus transient `requests`, and a unique `%TEMP%` basetemp. No `backend/.pytest-tmp-*` path was touched. `requests` is an undeclared test/runtime transport dependency; project requirements were not changed. |
+| Full frontend Vitest | PASS — 196 passed across 16 files | `npm run test -- --configLoader runner`; includes partial-success, deferred-pronunciation, and unexpected task-state regressions. Existing React `act(...)` warnings appear in child-first tests. |
 | Standard production build | BLOCKED by workspace path access | `npm run build` passed TypeScript, then standard Vite config loading failed with `Cannot read directory "../../../../..": Access is denied` and could not resolve `frontend/vite.config.js`. |
 | Vite runner production build | PASS — 3,253 modules transformed and PWA output generated | `node node_modules/vite/bin/vite.js build --configLoader runner`. Existing chunk-size warning over 500 kB. This workaround does not replace the standard `npm run build` result. |
-| Canonical production import guard | PASS — 38 production modules | `node scripts/assert-canonical-frontend.mjs` from `frontend/`; `frontend/src/main.tsx` → `AppShell`; `/` → `ChildPortalPage`; `/learning-session` → `LessonPlayerPage`; no archived React source in the import graph/bundle. |
-| Open Curriculum Rights Gate | PASS — final inventory digest refresh and `--check` | `python scripts/open_curriculum_rights_gate.py --refresh-digests` after the last content edit, followed by `python scripts/open_curriculum_rights_gate.py --check`; registered path classifications unchanged. |
-| `git diff --check` | PASS | No whitespace errors; Git reported only LF-to-CRLF normalization warnings for edited files. |
+| Canonical production import guard | PASS — 38 production modules | `node scripts/assert-canonical-frontend.mjs` from `frontend/`; `frontend/src/main.tsx` → `AppShell`; `/learning-session` → `LessonPlayerPage`; no archived React source in the import graph/bundle. |
+| Open Curriculum Rights Gate | PASS — post-edit digest refresh and parent-run `--check` | `python scripts/open_curriculum_rights_gate.py --refresh-digests` refreshed the registered inventory after the final QA text edit. Parent then ran `uv run --no-project --with-requirements backend/requirements.txt -- python scripts/open_curriculum_rights_gate.py --check`; the command returned exit code 0 with `Open Curriculum rights gate PASS`. This supersedes the earlier cache-initialization failure. |
+| `git diff --check` | PASS | No whitespace errors. Git reported only LF-to-CRLF normalization warnings for the three edited text files. |
 | Migration | N/A | No schema or migration change. |
