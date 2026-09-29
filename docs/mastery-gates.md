@@ -1,5 +1,7 @@
 # Mastery gates
 
+> **Current executable slice contract.** The product-level mastery direction is in [Learning System Architecture v1](learning-system-architecture-v1.md). The 0.75 scored-domain floor and activity-completion non-score gates below describe existing code; they are not validated universal learning thresholds and do not yet establish active lexical recall, delayed retention, or script-specific mastery.
+
 Lesson completion, mastery, soft unlock, points, and School Queue state are separate records.
 
 ## State model

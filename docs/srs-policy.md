@@ -1,5 +1,7 @@
 # Spaced repetition policy
 
+> **Current executable scheduler contract.** The product-level retention and script-specific evidence direction is in [Learning System Architecture v1](learning-system-architecture-v1.md). The intervals and event rules below describe the present domain/item scheduler; they do not by themselves grant mastery or provide the future concept × script × evidence-dimension model.
+
 The scheduler stores review state separately for each learner, skill domain, and item. School Queue membership remains independent. The deterministic intervals are:
 
 | Stage after independent correct response | Next review |

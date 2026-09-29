@@ -1,7 +1,7 @@
-# TongXuan Chinese (童軒中文) 🏮
+# TongXuan Chinese (桐軒中文) 🏮
 
-> 專為海外與幼童家庭打造的現代中文沉浸式自主學習系統。  
-> 支援 **繁體中文 + 注音** 與 **簡體中文 + 拼音** 雙軌學習，融合筆順引導、智能跟讀、溫暖獎勵與無壓力的每日學習循環。
+> 專為 AI 時代孩童設計的中文學習系統。
+> 以繁簡字形、注音／拼音、主動回想、閱讀、輸入與適切書寫為不同的學習能力；以高要求、低浪費為方向，把練習集中在真正需要的能力上。
 
 🌐 **[點此直接在瀏覽器 / iPad 上線體驗 (Live Demo)](https://webber0612.github.io/TongXuan-Chinese/)**
 
@@ -14,8 +14,8 @@
 
 ## ✨ 核心特色 (Key Features)
 
-* 🎨 **溫暖童趣、無干擾介面（Child-First UI）**：
-  * 捨棄噪音刺激的課金遊戲化設計與刺眼色調，採用柔和紙实质感的雙週衝刺軌道、沉浸式課文大繪本與大按鈕無障礙互動。
+* 🎨 **溫暖童趣、專注學習介面（Child-First UI）**：
+  * 捨棄噪音刺激的課金遊戲化設計與刺眼色調，採用柔和紙質感的關卡式學習進度、沉浸式課文大繪本與大按鈕無障礙互動。
 * 🀄 **專業漢字注音/拼音排版引擎**：
   * 獨家精準的注音符號與標點符號基準線對齊演算法，支援直式注音排版與橫式拼音自由切換。
 * ✍️ **互動式漢字筆順引導（Stroke Tracing）**：
@@ -28,6 +28,10 @@
   * 零第三方廣告、零追蹤代碼，錄音音訊完全不外流，各孩子學習進度與學校作業（School Queue）完全獨立隔離。
 
 ---
+
+## Learning system architecture
+
+The current product learning design and its implementation-gap checklist are in [Learning System Architecture v1](docs/learning-system-architecture-v1.md). That specification distinguishes intended architecture from features that exist in the runtime today.
 
 ## 🛠️ 技術架構 (Tech Stack)
 
@@ -99,7 +103,7 @@ python scripts/final_smoke.py
 
 ## ☕ 支持與贊助 (Support & Sponsor)
 
-**童軒中文** 是一個由獨立開發者為孩子打造的開源學習專案。如果這個專案對您與孩子的中文學習有所幫助，歡迎請作者喝杯咖啡支持持續維護與內容充實！
+**桐軒中文** 是一個由獨立開發者為孩子打造的開源學習專案。如果這個專案對您與孩子的中文學習有所幫助，歡迎請作者喝杯咖啡支持持續維護與內容充實！
 
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-☕%20請作者喝咖啡-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/webber0612)
 

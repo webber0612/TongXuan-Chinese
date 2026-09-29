@@ -1,5 +1,7 @@
 # Assessment blueprints
 
+> **Current implementation snapshot.** See [Learning System Architecture v1](learning-system-architecture-v1.md) for the product-level distinction between hearing, active recall, reading, production, and orthographic mastery. The 0.75 floor, current per-lesson domains, and weekly activity review below describe the existing slice; they are not validated first-book KPIs or a substitute for delayed recall.
+
 ## Validated lesson checks
 
 The curriculum response keeps source-verified title/source metadata under `official`. TongXuan-authored handbook paraphrases, domains, practice targets, gates, and learner state stay under `tongxuan`. The domains are taken from `domains` in [validated-curriculum-slice.json](../shared/validated-curriculum-slice.json). Scored domains (`recognition`, `reading`, `phonetics`, `vocabulary`, `grammar`) have a `0.75` floor. The assessment endpoint accepts an empty request only; scores and assistance flags from callers are rejected. The server finds the latest server-scored evidence per linked item and derives each score from those results. Raw attempt rows alone do not count. An evidence reference and attempt type are persisted for audit.
