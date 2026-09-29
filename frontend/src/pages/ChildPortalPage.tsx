@@ -1846,6 +1846,8 @@ export function ChildPortalPage({
   onOpenCurriculum: () => void;
   onStartLearningSession?: (childId: number | null, targetLessonId: string | undefined, mode: "LEARN" | "REVIEW") => boolean;
 }) {
+  const hasSelectedBackendChild = isValidBackendChildId(activeChildId) && Boolean(activeChildName?.trim());
+  const selectedBackendChildName = hasSelectedBackendChild ? activeChildName!.trim() : null;
   // Learner Profiles Storage
   const [learners, setLearners] = useState<ChildLearner[]>(() => {
     const saved = localStorage.getItem("tongxuan_learners_list");
@@ -2324,69 +2326,28 @@ export function ChildPortalPage({
             </div>
           </div>
 
-          <button
-            className="header-learner-pill header-learner-large header-learner-interactive-btn"
-            onClick={() => setLoginModalOpen(true)}
-            title={t("switchUser")}
-            aria-label={t("switchUser")}
-          >
-            <span className="brand-badge-mini brand-badge-large">{activeLearner.avatar}</span>
-            <div className="learner-info">
-              <span className="learner-name learner-name-large">☀️ {t("morning")} · {activeLearner.name}</span>
-              <span className="learner-sub learner-sub-large">{t("levelProgressSub", { n: selectedLevelNum })}</span>
+          {selectedBackendChildName && (
+            <div className="header-learner-pill header-learner-large" data-testid="home-selected-child" data-child-id={activeChildId}>
+              <span className="brand-badge-mini brand-badge-large" aria-hidden="true">{Array.from(selectedBackendChildName.trim())[0] ?? ""}</span>
+              <div className="learner-info">
+                <span className="learner-name learner-name-large">
+                  <span className="learner-greeting">☀️ {t("morning")} · </span>
+                  <span className="learner-name-text">{selectedBackendChildName}</span>
+                </span>
+              </div>
             </div>
-          </button>
+          )}
         </div>
 
         {/* Right Actions: Pact Reminder, Points Balance, Achievements, Rewards & Settings Menu */}
         <div className="header-right-actions-group">
-          {/* Active Pinky Promise Reminder Chip (if active) */}
-          {activeLearner.activePinkyPromise && !activeLearner.activePinkyPromise.isCompleted && (
-            <div className="header-pact-chip" title={t("pinkyPactChip", { current: activeLearner.activePinkyPromise.currentDays, total: activeLearner.activePinkyPromise.requiredDays })}>
-              <span>{t("pinkyPactChip", { current: activeLearner.activePinkyPromise.currentDays, total: activeLearner.activePinkyPromise.requiredDays })}</span>
-            </div>
-          )}
-
-          {/* Points Balance Pill */}
-          <button
-            type="button"
-            className="header-points-combined-pill"
-            onClick={() => setRewardsShopModalOpen(true)}
-            title={t("rewardsShop")}
-          >
-            <span className="pill-coin-part">🪙 <b>{learnerPoints.coins.toLocaleString()}</b></span>
-            <span className="pill-sep">|</span>
-            <span className="pill-star-part">⭐ <b>{learnerPoints.stars}</b></span>
-          </button>
-
-          {/* Achievements Button */}
-          <button
-            type="button"
-            className="feature-action-capsule-btn achievements-btn"
-            onClick={() => setAchievementsModalOpen(true)}
-            title={t("myAchievements")}
-          >
-            <span className="btn-icon">🏆</span>
-            <span>{t("myAchievements")}</span>
-          </button>
-
-          {/* Rewards Store Button */}
-          <button
-            type="button"
-            className="feature-action-capsule-btn rewards-btn"
-            onClick={() => setRewardsShopModalOpen(true)}
-            title={t("rewardsShop")}
-          >
-            <span className="btn-icon">🎁</span>
-            <span>{t("rewardsShop")}</span>
-          </button>
-
           {/* Settings Menu Button */}
           <div className="header-menu-wrap" ref={menuRef}>
             <button
               className={`menu-trigger-btn ${menuOpen ? "active" : ""}`}
               onClick={() => setMenuOpen((prev) => !prev)}
               aria-label={t("menu")}
+              aria-expanded={menuOpen}
               title={t("settings")}
             >
               <Settings size={22} />
@@ -2431,6 +2392,7 @@ export function ChildPortalPage({
                     <div className="menu-segmented-pill">
                       <button
                         className={`seg-btn ${scriptMode === "zhuyin" ? "active" : ""}`}
+                        aria-pressed={scriptMode === "zhuyin"}
                         onClick={() => updateScriptMode("zhuyin")}
                         title={t("scriptZhuyin")}
                       >
@@ -2438,6 +2400,7 @@ export function ChildPortalPage({
                       </button>
                       <button
                         className={`seg-btn ${scriptMode === "pinyin" ? "active" : ""}`}
+                        aria-pressed={scriptMode === "pinyin"}
                         onClick={() => updateScriptMode("pinyin")}
                         title={t("scriptPinyin")}
                       >
@@ -2445,6 +2408,7 @@ export function ChildPortalPage({
                       </button>
                       <button
                         className={`seg-btn ${scriptMode === "dual" ? "active" : ""}`}
+                        aria-pressed={scriptMode === "dual"}
                         onClick={() => updateScriptMode("dual")}
                         title={t("scriptDual")}
                       >
@@ -2471,6 +2435,7 @@ export function ChildPortalPage({
                     <div className="menu-segmented-pill">
                       <button
                         className={`seg-btn ${phoneticAssist === "zhuyin" ? "active" : ""}`}
+                        aria-pressed={phoneticAssist === "zhuyin"}
                         onClick={() => updatePhoneticAssist("zhuyin")}
                         title={t("scriptZhuyin")}
                       >
@@ -2478,6 +2443,7 @@ export function ChildPortalPage({
                       </button>
                       <button
                         className={`seg-btn ${phoneticAssist === "pinyin" ? "active" : ""}`}
+                        aria-pressed={phoneticAssist === "pinyin"}
                         onClick={() => updatePhoneticAssist("pinyin")}
                         title={t("scriptPinyin")}
                       >
@@ -2485,6 +2451,7 @@ export function ChildPortalPage({
                       </button>
                       <button
                         className={`seg-btn ${phoneticAssist === "off" ? "active" : ""}`}
+                        aria-pressed={phoneticAssist === "off"}
                         onClick={() => updatePhoneticAssist("off")}
                         title={t("phoneticHide")}
                       >
@@ -2890,8 +2857,8 @@ export function ChildPortalPage({
                     <div className="star-card-goal-star" title="第 1 顆星：生字聽說讀寫">
                       <Star
                         size={28}
-                        className={selectedDay.status === "completed" ? "star-earned-gold" : "star-pending-dark"}
-                        fill="currentColor"
+                        className="star-pending-dark"
+                        fill="none"
                       />
                     </div>
                   </div>
@@ -2955,8 +2922,8 @@ export function ChildPortalPage({
                     <div className="star-card-goal-star" title="第 2 顆星：生詞認讀造句">
                       <Star
                         size={28}
-                        className={selectedDay.status === "completed" ? "star-earned-gold" : "star-pending-dark"}
-                        fill="currentColor"
+                        className="star-pending-dark"
+                        fill="none"
                       />
                     </div>
                   </div>
@@ -3003,8 +2970,8 @@ export function ChildPortalPage({
                     <div className="star-card-goal-star" title="第 3 顆星：成語故事閱讀">
                       <Star
                         size={28}
-                        className={selectedDay.status === "completed" ? "star-earned-gold" : "star-pending-dark"}
-                        fill="currentColor"
+                        className="star-pending-dark"
+                        fill="none"
                       />
                     </div>
                   </div>

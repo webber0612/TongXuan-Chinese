@@ -126,7 +126,7 @@ describe("child-first shell contracts", () => {
     vi.unstubAllGlobals();
   });
 
-  it("switches between duplicate-name backend profiles by exact ID and launches LEARN for only the selected child", async () => {
+  it("switches duplicate-name backend profiles by exact ID and launches LEARN for only the selected child", async () => {
     localStorage.clear();
     localStorage.setItem(DISPLAY_LANGUAGE_KEY, "zh-Hant");
     persistSelectedBackendChild(11, "Twin");
@@ -160,12 +160,12 @@ describe("child-first shell contracts", () => {
     expect(requestUrls).toContain("/api/children/22/learning-daily-queue");
     expect(requestUrls).not.toContain("/api/children/11/learning-daily-queue");
 
-    await act(async () => { (document.querySelector(".header-learner-interactive-btn") as HTMLButtonElement).click(); });
-    const localPrototype = Array.from(document.querySelectorAll(".learner-select-tile"))
-      .find((tile) => tile.querySelector(".learner-tile-name")?.textContent === "萌萌") as HTMLElement;
-    expect(localPrototype).toBeTruthy();
-    await act(async () => { localPrototype.click(); });
-    expect(document.querySelector(".learner-name-large")?.textContent).toContain("萌萌");
+    const displayedChild = document.querySelector('[data-testid="home-selected-child"]');
+    expect(displayedChild?.getAttribute("data-child-id")).toBe("22");
+    expect(displayedChild?.textContent).toContain("Twin");
+    expect(displayedChild?.querySelector(".brand-badge-mini")?.textContent).toBe("T");
+    expect(document.querySelector(".learner-select-tile")).toBeNull();
+    expect(document.querySelector(".header-points-combined-pill")).toBeNull();
     expect(requestUrls.filter((url) => url.includes("/learning-daily-queue"))).toEqual(["/api/children/22/learning-daily-queue"]);
 
     await import("../pages/LessonPlayerPage");
@@ -411,6 +411,71 @@ describe("child-first shell contracts", () => {
     expect(window.location.pathname).toBe("/TongXuan-Chinese/learning-session");
     expect(document.querySelector(".mode-badge.mode-learn")).toBeTruthy();
     expect(document.querySelector(".player-lesson-title")?.textContent).toBe("你好");
+    expect(requestLog.find((entry) => entry.url.endsWith("/api/children/32/learning-sessions") && entry.method === "POST")?.body).toMatchObject({ lesson_id: "starter-l01" });
+    await act(async () => { root.unmount(); });
+    vi.unstubAllGlobals();
+  });
+
+  it("keeps Home identity and visible progress separate from an unrelated local demo learner", async () => {
+    localStorage.clear();
+    localStorage.setItem(DISPLAY_LANGUAGE_KEY, "zh-Hant");
+    persistSelectedBackendChild(32, "Selected Backend Child");
+    localStorage.setItem("tongxuan_learners_list", JSON.stringify([{
+      id: "learner-1", name: "Wrong Demo Child", avatar: "🐯", role: "learner",
+      scriptMode: "dual", phoneticAssist: "zhuyin", handMode: "right",
+      points: { coins: 999, stars: 777 },
+      levelsProgress: [{ levelNumber: 9, status: "completed", completedAt: "2026-09-01", starsEarned: 3, score: 100, masteryStatus: "MASTERED", softUnlocked: true }],
+      redemptions: [], totalMinutesLearned: 999, streakDays: 90,
+    }]));
+    window.history.replaceState({}, "", "/");
+    const requestLog: Array<{ url: string; method: string; body?: any }> = [];
+    const session = authoritativeSessionFixture("starter-l01", "identity-regression-session", {}, {}, false, false, 32);
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+      const body = init?.body ? JSON.parse(init.body as string) : undefined;
+      requestLog.push({ url, method, body });
+      if (url.endsWith("/api/children")) return new Response(JSON.stringify([{ id: 32, name: "Selected Backend Child" }]), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.endsWith("/api/children/32/learning-daily-queue")) return new Response(JSON.stringify(noDueQueue(32, "starter-l01")), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.endsWith("/api/children/32/learning-sessions/current")) return new Response("null", { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.endsWith("/api/children/32/learning-sessions") && method === "POST") return new Response(JSON.stringify(session), { status: 200, headers: { "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({}), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    document.body.innerHTML = '<div id="root"></div>';
+    const root = createRoot(document.getElementById("root")!);
+    await act(async () => { root.render(React.createElement(AppShell)); await new Promise((resolve) => setTimeout(resolve, 45)); });
+    const displayedChild = document.querySelector('[data-testid="home-selected-child"]');
+    expect(displayedChild?.getAttribute("data-child-id")).toBe("32");
+    expect(displayedChild?.textContent).toContain("Selected Backend Child");
+    expect(displayedChild?.querySelector(".learner-name-text")?.textContent).toBe("Selected Backend Child");
+    expect(document.querySelector(".ipad-weekly-portal")?.textContent).not.toContain("Wrong Demo Child");
+    expect(document.querySelector(".ipad-weekly-portal")?.textContent).not.toContain("999");
+    expect(document.querySelector(".ipad-weekly-portal")?.textContent).not.toContain("777");
+    expect(document.querySelector(".header-points-combined-pill")).toBeNull();
+    expect(document.querySelector(".achievements-btn")).toBeNull();
+    expect(document.querySelector(".rewards-btn")).toBeNull();
+    expect(document.querySelector(".star-earned-gold")).toBeNull();
+    const menuTrigger = document.querySelector<HTMLButtonElement>(".menu-trigger-btn");
+    expect(menuTrigger).toBeTruthy();
+    expect(menuTrigger?.getAttribute("aria-expanded")).toBe("false");
+    await act(async () => { menuTrigger?.click(); });
+    expect(menuTrigger?.getAttribute("aria-expanded")).toBe("true");
+    const [scriptGroup, phoneticGroup] = Array.from(document.querySelectorAll<HTMLElement>(".menu-segmented-pill"));
+    const scriptOptions = Array.from(scriptGroup.querySelectorAll<HTMLButtonElement>(".seg-btn"));
+    const phoneticOptions = Array.from(phoneticGroup.querySelectorAll<HTMLButtonElement>(".seg-btn"));
+    expect(scriptOptions.map((option) => option.getAttribute("aria-pressed"))).toEqual(["false", "false", "true"]);
+    expect(scriptOptions[2].classList.contains("active")).toBe(true);
+    expect(phoneticOptions.map((option) => option.getAttribute("aria-pressed"))).toEqual(["true", "false", "false"]);
+    expect(phoneticOptions[0].classList.contains("active")).toBe(true);
+    expect(document.querySelector(".menu-switch-user-btn")).toBeTruthy();
+    expect(document.querySelector(".menu-parent-row .menu-parent-full-btn")).toBeTruthy();
+    await act(async () => { menuTrigger?.click(); });
+    expect(menuTrigger?.getAttribute("aria-expanded")).toBe("false");
+
+    await import("../pages/LessonPlayerPage");
+    await act(async () => { (document.querySelector(".hero-primary-cta-row .launch-quiz-cta-btn") as HTMLButtonElement).click(); await new Promise((resolve) => setTimeout(resolve, 60)); });
+    expect(window.location.pathname).toBe("/TongXuan-Chinese/learning-session");
     expect(requestLog.find((entry) => entry.url.endsWith("/api/children/32/learning-sessions") && entry.method === "POST")?.body).toMatchObject({ lesson_id: "starter-l01" });
     await act(async () => { root.unmount(); });
     vi.unstubAllGlobals();

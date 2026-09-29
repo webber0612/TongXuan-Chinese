@@ -104,7 +104,7 @@ export function AppShell() {
 
   const activeProfile = selectProfile(profiles, activeKey);
   const activeChild = selectedBackendChild(activeProfile, children);
-  const childName = activeProfile.role === "child" ? activeProfile.name : t("childRole");
+  const childName = activeChild?.name;
   const internalSession = parentSession.authenticated && (parentSession.role === "developer" || parentSession.role === "admin");
   const canManageChildren = !parentSession.authRequired || parentSession.authenticated && parentSession.role === "parent" || internalSession;
 

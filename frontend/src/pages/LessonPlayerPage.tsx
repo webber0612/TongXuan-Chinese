@@ -192,6 +192,8 @@ const copy = {
     domainSpeaking: "開口使用",
     retry: "重試",
     taskFailed: "任務操作失敗，請點擊重試",
+    speakingStartError: "無法開始錄音。請檢查裝置麥克風是否可用及瀏覽器權限，再按麥克風重試。也可以返回並選擇離開課堂，之後從首頁繼續同一課程。",
+    speakingEvidenceMissing: "這個口說步驟尚未保存有效證據，因此不能前進。",
     pleaseAnswerQuestion: "請先完成目前題目再繼續",
     noDueReviews: "目前沒有到期的複習項目",
     noDueReviewsDesc: "太棒了！所有進度都已掌握，暫時沒有需要檢索複習的生字或詞彙。",
@@ -270,6 +272,8 @@ const copy = {
     domainSpeaking: "开口使用",
     retry: "重试",
     taskFailed: "任务操作失败，请点击重试",
+    speakingStartError: "无法开始录音。请检查设备麦克风是否可用及浏览器权限，然后再次点击麦克风。也可以返回并选择离开课堂，之后从首页继续同一课程。",
+    speakingEvidenceMissing: "这个口语步骤尚未保存有效证据，因此不能继续。",
     pleaseAnswerQuestion: "请先完成当前题目再继续",
     noDueReviews: "目前没有到期的复习项目",
     noDueReviewsDesc: "太棒了！所有进度都已掌握，暂时没有需要检索复习的生字或词汇。",
@@ -348,6 +352,8 @@ const copy = {
     domainSpeaking: "Speaking",
     retry: "Retry",
     taskFailed: "Task operation failed. Please retry.",
+    speakingStartError: "Recording could not start. Check that a microphone is available and review browser permissions, then try the microphone again. You can also go back, choose Leave lesson, and resume this session from Home.",
+    speakingEvidenceMissing: "No valid speaking evidence was saved for this step, so the lesson cannot advance.",
     pleaseAnswerQuestion: "Please answer the current question to continue",
     noDueReviews: "No due reviews right now",
     noDueReviewsDesc: "Great job! All items are up to date. There are no due SRS retrieval items.",
@@ -426,6 +432,8 @@ const copy = {
     domainSpeaking: "発音",
     retry: "再試行",
     taskFailed: "操作に失敗しました。再試行してください。",
+    speakingStartError: "録音を開始できませんでした。マイクが利用できることとブラウザーの権限を確認してから、マイクをもう一度押してください。戻って「レッスンを終了」を選ぶと、ホームから同じセッションを再開できます。",
+    speakingEvidenceMissing: "このステップには有効な発話の証拠が保存されていないため、先に進めません。",
     pleaseAnswerQuestion: "現在の問題に答えてから進んでください",
     noDueReviews: "現在、復習期日の項目はありません",
     noDueReviewsDesc: "素晴らしい！現在復習が必要な項目はありません。",
@@ -504,6 +512,8 @@ const copy = {
     domainSpeaking: "말하기",
     retry: "다시 시도",
     taskFailed: "작업에 실패했습니다. 다시 시도해 주세요.",
+    speakingStartError: "녹음을 시작할 수 없습니다. 마이크를 사용할 수 있는지와 브라우저 권한을 확인한 뒤 마이크 버튼을 다시 눌러 주세요. 뒤로 가서 수업 나가기를 선택하면 홈에서 같은 세션을 이어갈 수 있습니다.",
+    speakingEvidenceMissing: "이 단계에는 유효한 말하기 증거가 저장되지 않아 다음으로 진행할 수 없습니다.",
     pleaseAnswerQuestion: "현재 문제를 먼저 완료하고 계속 진행하세요",
     noDueReviews: "현재 복습할 항목이 없습니다",
     noDueReviewsDesc: "훌륭합니다! 모든 항목이 최신 상태입니다.",
@@ -582,6 +592,8 @@ const copy = {
     domainSpeaking: "Expresión oral",
     retry: "Reintentar",
     taskFailed: "Error en la operación. Intente nuevamente.",
+    speakingStartError: "No se pudo iniciar la grabación. Comprueba que haya un micrófono disponible y revisa los permisos del navegador; después, vuelve a pulsar el micrófono. También puedes volver, elegir Salir de la lección y reanudar esta misma sesión desde Inicio.",
+    speakingEvidenceMissing: "No se guardó evidencia oral válida para este paso, así que la lección no puede avanzar.",
     pleaseAnswerQuestion: "Por favor complete la pregunta actual para continuar",
     noDueReviews: "No hay repasos pendientes en este momento",
     noDueReviewsDesc: "¡Excelente! Todo está al día.",
@@ -730,6 +742,20 @@ export function LessonPlayerPage({
     session?.status === "IN_PROGRESS" && repairTaskIds.length > 0 && new Set(repairTaskIds).size === repairTaskIds.length
   );
   const playerSessionReady = learnSessionReady && repairSessionReady && pendingRepairResume === null;
+  const speakingStepTaskIds = currentStep?.stepKey === "speaking" ? (currentStep.data.taskIds ?? []) : [];
+  const speakingStepTasks: Array<{ state: string } | undefined> = speakingStepTaskIds.map((id: string) =>
+    session?.tasks?.find((task) => task.id === id)
+  );
+  const speakingStepHasCompletedEvidence = speakingStepTaskIds.length > 0 &&
+    speakingStepTasks.length === speakingStepTaskIds.length &&
+    speakingStepTasks.every((task: { state: string } | undefined) => task?.state === "COMPLETED");
+  const speakingStepCanStart = speakingStepTaskIds.length > 0 &&
+    speakingStepTasks.length === speakingStepTaskIds.length &&
+    session?.status === "IN_PROGRESS" &&
+    speakingStepTasks.every((task: { state: string } | undefined) => task && task.state !== "COMPLETED" && task.state !== "DEFERRED");
+  const speakingStepHasDeferredTask = currentStep?.stepKey === "speaking" &&
+    speakingStepTasks.some((task: { state: string } | undefined) => task?.state === "DEFERRED");
+  const visibleError = error ?? (speakingStepHasDeferredTask ? text.speakingEvidenceMissing : null);
 
   useEffect(() => {
     if (mode !== "LEARN" || !activeChildId || !session?.id || !learnPlanValid || !steps.length) return;
@@ -756,6 +782,11 @@ export function LessonPlayerPage({
         const taskById = new Map((session.tasks ?? []).map((task) => [task.id, task]));
         const firstPendingStep = steps.findIndex((step) => {
           const ids = step.data.taskIds ?? (step.data.taskId ? [step.data.taskId] : []);
+          if (step.stepKey === "speaking") {
+            // A policy deferral after aborted capture attempts is not speaking
+            // evidence. Keep the learner on Step 6 when resuming this session.
+            return ids.length === 0 || ids.some((id: string) => taskById.get(id)?.state !== "COMPLETED");
+          }
           if (!ids.length) return false;
           return ids.some((id: string) => {
             const task = taskById.get(id);
@@ -1893,7 +1924,8 @@ export function LessonPlayerPage({
       const speakingTasks = (sessAfterSpeaking?.tasks ?? []).filter((t) => stepTaskIds.length
         ? stepTaskIds.includes(t.id)
         : t.taskType === "SPEAKING_ATTEMPT" || t.taskType === "PRONUNCIATION_ATTEMPT" || t.key === "speaking" || t.key === "pronunciation");
-      const allCompleted = speakingTasks.length > 0 && speakingTasks.every((t) => t.state === "COMPLETED" || t.state === "DEFERRED");
+      const allCompleted = stepTaskIds.length > 0 && speakingTasks.length === stepTaskIds.length &&
+        speakingTasks.every((t) => t.state === "COMPLETED");
       if (!allCompleted) {
         setError(text.taskFailed);
         return;
@@ -2208,7 +2240,10 @@ export function LessonPlayerPage({
       } catch (err: any) {
         setRecording(false);
         setSpeakingAttempted(false);
-        setError(err?.message || text.taskFailed);
+        const errorCode = err?.message;
+        setError(errorCode === "microphone_start_failed" || errorCode === "microphone_unavailable" || errorCode === "microphone_permission_denied"
+          ? text.speakingStartError
+          : errorCode || text.taskFailed);
         await cleanupAndAbortSpeakingAttempts(ids);
       }
     }
@@ -2550,6 +2585,10 @@ export function LessonPlayerPage({
     APPROVED: text.reviewStatusApproved,
     REJECTED: text.reviewStatusRejected,
   };
+  const toLearnerVisibleText = (value: string | undefined) => {
+    if (!value || resolvedLessonId !== "book1-l01" || activeScriptMode !== "SIMPLIFIED") return value;
+    return value.replaceAll("大衛", "大卫");
+  };
   const renderScaffold = (scaffoldKey?: string) => {
     if (!scaffoldKey || !Object.prototype.hasOwnProperty.call(pkg.nativeLanguageSupport.entries, scaffoldKey)) return null;
     const info = getScaffoldText(pkg, scaffoldKey, scaffoldMode);
@@ -2571,8 +2610,8 @@ export function LessonPlayerPage({
           </button>
         ) : (
           <div className="scaffold-content">
-            <span className="scaffold-text">{info.visibleText}</span>
-            {info.notes && <span className="scaffold-notes">({info.notes})</span>}
+            <span className="scaffold-text">{toLearnerVisibleText(info.visibleText ?? undefined)}</span>
+            {info.notes && <span className="scaffold-notes">({toLearnerVisibleText(info.notes)})</span>}
             <span className="scaffold-status-pill" title={scaffoldStatusLabels[info.reviewStatus]}>
               {scaffoldStatusLabels[info.reviewStatus]}
             </span>
@@ -2592,14 +2631,16 @@ export function LessonPlayerPage({
 
   return (
     <main className="lesson-player-container" role="main" aria-label={text.lessonPlayer} data-lesson-id={resolvedLessonId}>
-      {error && (
+      {visibleError && (
         <div className="error-strip" role="alert" style={{ margin: "0.5rem 1rem" }}>
-          <span>{error}</span>
-          <button type="button" className="button button-text" onClick={() => pendingRepairResume
-            ? void resumeFastTrackRepair(pendingRepairResume)
-            : void initSession()}>
+          <span>{visibleError}</span>
+          {!speakingStepHasDeferredTask && <button type="button" className="button button-text" onClick={() => error === text.speakingStartError
+            ? void handleRecordSpeaking()
+            : pendingRepairResume
+              ? void resumeFastTrackRepair(pendingRepairResume)
+              : void initSession()}>
             {text.retry}
-          </button>
+          </button>}
         </div>
       )}
       {mode === "LEARN" && activeChildId && !learnSessionReady && busy && (
@@ -2721,8 +2762,8 @@ export function LessonPlayerPage({
               ) : null}
               <span className="step-num-pill">Step {currentStep.stepNumber}</span>
             </div>
-            <h2 className="step-card-title">{currentStep.title}</h2>
-            <p className="step-card-subtitle">{currentStep.subtitle}</p>
+            <h2 className="step-card-title">{toLearnerVisibleText(currentStep.title)}</h2>
+            <p className="step-card-subtitle">{toLearnerVisibleText(currentStep.subtitle)}</p>
           </header>
 
           {/* STEP 1: Situational Context */}
@@ -2788,11 +2829,11 @@ export function LessonPlayerPage({
               <div className="dialogue-lines-container">
                 {currentStep.data.dialogueRows?.map((row) => (
                   <div key={row.id} className="dialogue-line-card">
-                    <div className="dialogue-speaker-avatar">{row.speaker ? row.speaker[0] : "話"}</div>
+                    <div className="dialogue-speaker-avatar">{row.speaker ? toLearnerVisibleText(row.speaker)?.[0] : "話"}</div>
                     <div className="dialogue-bubble">
-                      <div className="speaker-name">{row.speaker}</div>
+                      <div className="speaker-name">{toLearnerVisibleText(row.speaker)}</div>
                       <div className="dialogue-chinese-text">
-                        <span className="char-text">{row.text}</span>
+                        <span className="char-text">{toLearnerVisibleText(row.text)}</span>
                         {activeScriptMode === "TRADITIONAL" && row.zhuyin && <span className="phonetic-zhuyin">{row.zhuyin}</span>}
                         {activeScriptMode === "SIMPLIFIED" && row.pinyin && <span className="phonetic-pinyin">{row.pinyin}</span>}
                       </div>
@@ -2800,7 +2841,7 @@ export function LessonPlayerPage({
                         type="button"
                         className="button button-text dialogue-audio-btn"
                         onClick={() => playAudio(row.text)}
-                        aria-label={`播放 ${row.speaker} 的語音`}
+                        aria-label={toLearnerVisibleText(`播放 ${row.speaker} 的語音`)}
                       >
                         <Volume2 size={18} />
                         <span>聽這句</span>
@@ -2825,7 +2866,7 @@ export function LessonPlayerPage({
               <div className="step-body step-vocab-body">
                 <div className="vocab-highlight-card">
                   <div className="vocab-word-large">
-                    <span className="vocab-hanzi">{currentStep.data.word || "你好"}</span>
+                    <span className="vocab-hanzi">{toLearnerVisibleText(currentStep.data.word || "你好")}</span>
                     <span className="vocab-role-pill">{text.activeRole}</span>
                   </div>
                   <div className="vocab-phonetics-row">
@@ -2842,12 +2883,12 @@ export function LessonPlayerPage({
                     </button>
                   </div>
                   <div className="vocab-example-sentence">
-                    <p><strong>例句：</strong> {currentStep.data.exampleSentence || "你好！我叫大衛。"}</p>
+                    <p><strong>例句：</strong> {toLearnerVisibleText(currentStep.data.exampleSentence || "你好！我叫大衛。")}</p>
                   </div>
                   {renderStepScaffold(currentStep.data.scaffoldKey)}
                 </div>
 
-                <p className="interaction-prompt">{prompt}</p>
+                <p className="interaction-prompt">{toLearnerVisibleText(prompt)}</p>
 
                 <div className="choices-vertical-list">
                   {choices?.map((choice: { id: string; label: string; isCorrect?: boolean }) => {
@@ -2870,7 +2911,7 @@ export function LessonPlayerPage({
                         }}
                         disabled={Boolean(currentStep.data.taskId && answerSubmittingByTask[currentStep.data.taskId])}
                       >
-                        <span className="choice-label">{choice.label}</span>
+                        <span className="choice-label">{toLearnerVisibleText(choice.label)}</span>
                         {isSelected && feedback === "correct" && <span className="feedback-badge positive">✓ {text.correct}</span>}
                         {isSelected && feedback === "incorrect" && <span className="feedback-badge negative">{text.retryAnswer}</span>}
                       </button>
@@ -3052,12 +3093,12 @@ export function LessonPlayerPage({
               <div className="step-body step-sentence-body">
                 <div className="sentence-pattern-card">
                   <span className="pattern-badge">常用句型</span>
-                  <h3 className="pattern-formula">你好！我叫 ___。</h3>
-                  <p className="pattern-explanation">見面時打招呼並自我介紹名字的萬用句型。</p>
+                  <h3 className="pattern-formula">{toLearnerVisibleText("你好！我叫 ___。")}</h3>
+                  <p className="pattern-explanation">{toLearnerVisibleText("見面時打招呼並自我介紹名字的萬用句型。")}</p>
                   {renderScaffold("greeting_intro")}
                 </div>
 
-                <p className="interaction-prompt">{prompt}</p>
+                <p className="interaction-prompt">{toLearnerVisibleText(prompt)}</p>
 
                 <div className="choices-vertical-list">
                   {choices?.map((choice: { id: string; label: string; isCorrect?: boolean }) => {
@@ -3079,7 +3120,7 @@ export function LessonPlayerPage({
                         }}
                         disabled={Boolean(sentTask && (sentTask.state === "COMPLETED" || sentTask.state === "DEFERRED" || answerSubmittingByTask[sentTask.id]))}
                       >
-                        <span className="choice-label">{choice.label}</span>
+                        <span className="choice-label">{toLearnerVisibleText(choice.label)}</span>
                         {isSelected && feedback === "correct" && <span className="feedback-badge positive">✓ {text.correct}</span>}
                         {isSelected && feedback === "incorrect" && <span className="feedback-badge negative">{text.retryAnswer}</span>}
                         {isSelected && localCorrect && <span className="feedback-badge positive">✓ {text.correct}</span>}
@@ -3106,7 +3147,7 @@ export function LessonPlayerPage({
                   type="button"
                   className={`mic-record-btn ${recording ? "is-recording" : ""} ${speakingAttempted ? "is-attempted" : ""}`}
                   onClick={handleRecordSpeaking}
-                  disabled={!recording && !(session?.tasks ?? []).some((task) => (currentStep.data.taskIds ?? []).includes(task.id) && task.state !== "COMPLETED" && task.state !== "DEFERRED")}
+                  disabled={!recording && !speakingStepCanStart}
                   aria-label={recording ? text.recordStop : text.recordStart}
                 >
                   <Mic size={36} />
@@ -3171,7 +3212,7 @@ export function LessonPlayerPage({
                         <span className="q-badge">題目 {qIndex + 1}</span>
                         <span className="domain-sub-badge">{q.domain}</span>
                       </div>
-                      <p className="q-prompt">{q.prompt}</p>
+                      <p className="q-prompt">{toLearnerVisibleText(q.prompt)}</p>
 
                       {q.audioText && (
                         <button
@@ -3416,6 +3457,7 @@ export function LessonPlayerPage({
                   onClick={handleNextStep}
                   disabled={
                     !playerSessionReady ||
+                    (currentStep.stepKey === "speaking" && !speakingStepHasCompletedEvidence) ||
                     (currentStep.stepKey === "exit_ticket" && !exitTicketSubmitted) ||
                     (currentStep.stepKey === "mini_check" && !selectedChoices[currentStep.data.taskId]) ||
                     (mode === "REVIEW" && currentStep.stepKey === "mini_check" && currentStep.domain === "listening" &&

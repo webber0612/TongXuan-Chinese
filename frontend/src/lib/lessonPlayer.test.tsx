@@ -167,6 +167,10 @@ async function advanceToPlannerStep(container: HTMLElement, targetStepKey: strin
 describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
   beforeEach(() => {
     sessionStorage.clear();
+    vi.spyOn(HanziWriter, "create").mockImplementation(() => ({
+      quiz: vi.fn(),
+      animateCharacter: vi.fn(),
+    }) as any);
   });
   // Test 1
   it("1. 《你好》 lesson player never renders 日/月/星/光 legacy draft data as official lesson tasks", () => {
@@ -1798,6 +1802,132 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     vi.unstubAllGlobals();
   });
 
+  it("presents the approved Simplified name in book1-l01 without changing source text or answer IDs", async () => {
+    const pkg = getLessonPackage("book1-l01")!;
+    const dialogueSource = pkg.taskBlueprint.learnSteps.find((step) => step.stepKey === "dialogue")!;
+    const vocabularySource = pkg.vocabulary[0];
+    const sentenceSource = pkg.taskBlueprint.learnSteps.find((step) => step.stepKey === "sentence_pattern")!;
+    expect(dialogueSource.subtitle).toContain("大衛");
+    expect(dialogueSource.data.dialogueRows?.[0].speaker).toBe("大衛");
+    expect(vocabularySource.usage?.[0]).toBe("你好！我叫大衛。");
+    expect(sentenceSource.data.choices?.map((choice) => choice.label)).toEqual(["你好！我叫大衛。", "大衛！我叫你好。"]);
+
+    const session = authoritativeSessionFixture(
+      "book1-l01", "session-simplified-name-display", { listen: "COMPLETED" }, {}, false, false, 1, "SIMPLIFIED",
+    );
+    const submittedAnswers: Array<Record<string, unknown>> = [];
+    installPlannerSessionMock(session, (url, init) => {
+      if (url.endsWith("/answer") && init?.method === "POST") {
+        submittedAnswers.push(JSON.parse(init.body as string));
+      }
+      return undefined;
+    });
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    await act(async () => {
+      root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} initialMode="LEARN" />);
+    });
+
+    await advanceToPlannerStep(container, "dialogue");
+    expect(container.querySelector(".step-card-subtitle")?.textContent).toContain("大卫");
+    expect(container.querySelector(".step-card-subtitle")?.textContent).not.toContain("大衛");
+    expect(container.querySelector(".speaker-name")?.textContent).toBe("大卫");
+    expect(container.querySelector(".phonetic-pinyin")?.textContent).toContain("nǐ hǎo");
+    expect(container.querySelector(".phonetic-zhuyin")).toBeNull();
+    const dialogueAudioButton = container.querySelector<HTMLButtonElement>(".dialogue-audio-btn");
+    expect(dialogueAudioButton?.getAttribute("aria-label")).toContain("播放 大卫 的語音");
+    expect(dialogueAudioButton?.getAttribute("aria-label")).not.toContain("大衛");
+
+    await advanceToPlannerStep(container, "vocabulary");
+    expect(container.querySelector(".vocab-example-sentence")?.textContent).toContain("你好！我叫大卫。");
+    expect(container.querySelector(".vocab-example-sentence")?.textContent).not.toContain("大衛");
+    expect(container.querySelector(".pinyin-tag")?.textContent).toContain("nǐ hǎo");
+
+    await advanceToPlannerStep(container, "sentence_pattern");
+    const correctChoice = container.querySelector<HTMLButtonElement>(
+      '.step-sentence-body [data-choice-id="opt-correct-order"]',
+    );
+    expect(correctChoice?.textContent).toContain("你好！我叫大卫。");
+    expect(correctChoice?.textContent).not.toContain("大衛");
+    await act(async () => { correctChoice?.click(); });
+    expect(submittedAnswers).toContainEqual(expect.objectContaining({ selected_option_id: "opt-correct-order" }));
+
+    expect(dialogueSource.subtitle).toContain("大衛");
+    expect(vocabularySource.usage?.[0]).toBe("你好！我叫大衛。");
+    expect(sentenceSource.data.choices?.[0].label).toBe("你好！我叫大衛。");
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
+
+  it("keeps the Traditional book1-l01 name unchanged", async () => {
+    const session = authoritativeSessionFixture(
+      "book1-l01", "session-traditional-name-display", { listen: "COMPLETED" }, {}, false, false, 1, "TRADITIONAL",
+    );
+    installPlannerSessionMock(session);
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    await act(async () => {
+      root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} initialMode="LEARN" />);
+    });
+
+    await advanceToPlannerStep(container, "dialogue");
+    expect(container.querySelector(".step-card-subtitle")?.textContent).toContain("大衛");
+    expect(container.querySelector(".speaker-name")?.textContent).toBe("大衛");
+    expect(container.querySelector(".dialogue-audio-btn")?.getAttribute("aria-label")).toContain("播放 大衛 的語音");
+    root.unmount();
+    container.remove();
+    vi.unstubAllGlobals();
+  });
+
+  it("renders the Book 1 L1 Step 8 prompt in the active script without changing source text or choice IDs", async () => {
+    const pkg = getLessonPackage("book1-l01")!;
+    const exitTicket = pkg.taskBlueprint.learnSteps.find((step) => step.stepKey === "exit_ticket")!;
+    const sourceQuestion = exitTicket.data.questions?.find((question) => question.prompt.includes("大衛"))!;
+    const sourceChoiceIds = sourceQuestion.choices.map((choice) => choice.id);
+    expect(sourceQuestion.prompt).toBe("完成句子：你好！我 ___ 大衛。");
+
+    for (const scriptMode of ["SIMPLIFIED", "TRADITIONAL"] as const) {
+      const session = authoritativeSessionFixture(
+        "book1-l01", `session-step8-${scriptMode.toLowerCase()}-display`, {}, {}, false, false, 1, scriptMode,
+      );
+      const ticketTask = session.tasks.find((task) => task.key === `exit-ticket-${sourceQuestion.id}`)!;
+      expect(ticketTask.taskData.prompt).toBe(sourceQuestion.prompt);
+      expect(ticketTask.taskData.choices.map((choice: { id: string }) => choice.id)).toEqual(sourceChoiceIds);
+      sessionStorage.setItem("tongxuan:learn-session:1:book1-l01", JSON.stringify({
+        sessionId: session.id, lessonId: "book1-l01", stepIndex: 7,
+      }));
+      installPlannerSessionMock(session);
+
+      const container = document.createElement("div");
+      document.body.appendChild(container);
+      const root = createRoot(container);
+      await act(async () => {
+        root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} initialMode="LEARN" />);
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      });
+
+      const stepCard = container.querySelector<HTMLElement>('[data-step-key="exit_ticket"]');
+      expect(stepCard).toBeTruthy();
+      const questionCard = Array.from(stepCard!.querySelectorAll<HTMLElement>(".exit-ticket-item-card"))
+        .find((card) => card.dataset.taskId === ticketTask.id);
+      expect(questionCard?.querySelector(".q-prompt")?.textContent).toBe(
+        scriptMode === "SIMPLIFIED" ? sourceQuestion.prompt.replaceAll("大衛", "大卫") : sourceQuestion.prompt,
+      );
+      expect(ticketTask.taskData.prompt).toBe(sourceQuestion.prompt);
+      expect(ticketTask.taskData.questionId).toBe(sourceQuestion.id);
+      expect(ticketTask.taskData.choices.map((choice: { id: string }) => choice.id)).toEqual(sourceChoiceIds);
+
+      await act(async () => { root.unmount(); });
+      container.remove();
+      sessionStorage.removeItem("tongxuan:learn-session:1:book1-l01");
+      vi.unstubAllGlobals();
+    }
+  });
+
   // Test 29
   it("29. Answering wrong on a scored planner task preserves the incorrect choice and Next never substitutes the correct answer", async () => {
     const recordedSubmissions: { taskId: string; selected_option_id: string }[] = [];
@@ -2064,7 +2194,7 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     root.unmount(); container.remove(); vi.unstubAllGlobals();
   });
 
-  it("35. Speaking step progression gate strictly checks exact planner tasks", async () => {
+  it("35. Speaking step keeps Next disabled until exact planner tasks are completed", async () => {
     const session = authoritativeSessionFixture("book1-l01", "s-speak-gate", {
       listen: "COMPLETED", "recognition-1": "COMPLETED", "recognition-2": "COMPLETED",
       "sentence-pattern": "COMPLETED", speaking: "PENDING", pronunciation: "PENDING",
@@ -2075,10 +2205,10 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     await act(async () => { root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} initialMode="LEARN" />); });
     await advanceToPlannerStep(container, "speaking");
     expect(container.querySelector(".step-speaking-body")).toBeTruthy();
-    await act(async () => { (container.querySelector(".next-step-cta-btn") as HTMLButtonElement).click(); });
+    expect((container.querySelector(".next-step-cta-btn") as HTMLButtonElement).disabled).toBe(true);
     expect(container.querySelector(".step-speaking-body")).toBeTruthy();
     expect(container.querySelector("[data-step-key='mini_check']")).toBeNull();
-    expect(container.querySelector(".error-strip")).toBeTruthy();
+    expect(container.querySelector(".error-strip")).toBeNull();
     expect(session.tasks.find((task) => task.key === "speaking")?.state).toBe("PENDING");
     expect(session.tasks.find((task) => task.key === "pronunciation")?.state).toBe("PENDING");
     root.unmount(); container.remove(); vi.unstubAllGlobals();
@@ -3977,7 +4107,7 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     vi.unstubAllGlobals();
   });
 
-  it("73. Speaking failure regression A: recorder.start() throws -> backend attempt aborted/cleaned -> speakingAttempted=false -> task incomplete -> Next blocked", async () => {
+  it.each(["microphone_start_failed", "microphone_unavailable", "microphone_permission_denied"] as const)("73. Speaking failure regression A: %s -> backend attempt aborted/cleaned -> speakingAttempted=false -> task incomplete -> Next blocked", async (startError) => {
     const session = authoritativeSessionFixture("book1-l01", "s-sp-a", {
       listen: "COMPLETED", "context-choice": "COMPLETED", vocabulary: "COMPLETED",
       "recognition-1": "COMPLETED", "recognition-2": "COMPLETED",
@@ -3991,9 +4121,11 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     let abortAttemptCalled = false;
     let abortTaskCalled = false;
 
-    // MediaDevices throws permission denied
-    const getUserMedia = vi.fn().mockRejectedValue(new Error("microphone_permission_denied"));
+    // Browser capture can fail for several reasons; none proves permission was denied.
+    const getUserMedia = vi.fn().mockRejectedValue(new Error(startError));
     vi.stubGlobal("navigator", { ...navigator, mediaDevices: { getUserMedia } });
+    // The adapter checks recorder support before requesting microphone access.
+    vi.stubGlobal("MediaRecorder", class UnusedMediaRecorder {});
 
     vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
       if (url.includes("/learning-sessions/current")) {
@@ -4042,6 +4174,21 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     expect(createdAttemptId).toBe("aloud-err-1");
     // 2. Verify backend attempt was aborted/cleaned
     expect(abortAttemptCalled).toBe(true);
+    expect(abortTaskCalled).toBe(true);
+    // The adapter's generic getUserMedia rejection code must not be presented
+    // as proof that a parent or Owner denied permission. Give a useful retry
+    // action and the existing leave/resume path instead.
+    const errorStrip = container.querySelector(".error-strip") as HTMLElement;
+    expect(errorStrip.textContent).toContain("Recording could not start");
+    expect(errorStrip.textContent).toContain("review browser permissions");
+    expect(errorStrip.textContent).toContain("resume this session from Home");
+    expect(errorStrip.textContent).not.toContain("permission denied");
+    const retryButton = errorStrip.querySelector("button") as HTMLButtonElement;
+    await act(async () => { retryButton.click(); });
+    expect(getUserMedia).toHaveBeenCalledTimes(2);
+    expect(container.querySelector(".step-speaking-body")).toBeTruthy();
+    expect(tasksState.find((task) => task.id === "s-sp-a:speaking")?.state).toBe("PENDING");
+    expect(container.querySelector(".recording-status-label")?.textContent).toContain("Hold to record speaking");
     // 3. Verify speakingAttempted is false (UI does not show saved)
     const statusLabel = container.querySelector(".recording-status-label");
     expect(statusLabel?.textContent).toContain("Hold to record speaking");
@@ -4052,6 +4199,7 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     const speakingTask = tasksState.find((t) => t.id === "s-sp-a:speaking");
     expect(speakingTask?.state).toBe("PENDING");
     // 5. Next button must be blocked
+    expect(nextBtn.disabled).toBe(true);
     await act(async () => { nextBtn.click(); });
     expect(container.querySelector(".step-speaking-body")).toBeTruthy();
     expect(container.querySelector(".step-writing-body")).toBeNull();
@@ -4166,6 +4314,7 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     expect(speakingTask?.state).toBe("PENDING");
 
     // 6. Next button must be blocked
+    expect(nextBtn.disabled).toBe(true);
     await act(async () => { nextBtn.click(); });
     expect(container.querySelector(".step-speaking-body")).toBeTruthy();
     expect(container.querySelector(".step-writing-body")).toBeNull();
@@ -4173,6 +4322,48 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     root.unmount();
     container.remove();
     vi.unstubAllGlobals();
+  });
+
+  it("73b. Resuming a session with deferred speaking tasks keeps Step 6 visible and blocks Next without evidence", async () => {
+    const pausedSession = authoritativeSessionFixture("book1-l01", "s-speaking-deferred-resume", {
+      listen: "COMPLETED", "context-choice": "COMPLETED", vocabulary: "COMPLETED",
+      "recognition-1": "COMPLETED", "recognition-2": "COMPLETED",
+      "sentence-pattern": "COMPLETED", speaking: "DEFERRED", pronunciation: "PENDING",
+    });
+    pausedSession.status = "PAUSED";
+    const resumedSession = { ...pausedSession, status: "IN_PROGRESS" };
+    let resumeCalls = 0;
+    sessionStorage.clear();
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes("/learning-sessions/current")) {
+        return new Response(JSON.stringify(pausedSession), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.endsWith("/learning-sessions") && init?.method === "POST") {
+        resumeCalls++;
+        return new Response(JSON.stringify(resumedSession), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify(null), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    const container = document.createElement("div"); document.body.appendChild(container); const root = createRoot(container);
+    await act(async () => {
+      root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} initialMode="LEARN" />);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(resumeCalls).toBe(1);
+    expect(container.querySelector("[data-step-key='speaking']")).toBeTruthy();
+    expect(container.querySelector("[data-step-key='writing']")).toBeNull();
+    expect(container.querySelector(".error-strip")?.textContent).toContain("No valid speaking evidence was saved");
+    expect(container.querySelector(".error-strip button")).toBeNull();
+    expect((container.querySelector(".mic-record-btn") as HTMLButtonElement).disabled).toBe(true);
+    const next = container.querySelector(".next-step-cta-btn") as HTMLButtonElement;
+    expect(next.disabled).toBe(true);
+    await act(async () => { next.click(); });
+    expect(container.querySelector("[data-step-key='speaking']")).toBeTruthy();
+    expect(container.querySelector("[data-step-key='writing']")).toBeNull();
+
+    root.unmount(); container.remove(); vi.unstubAllGlobals();
   });
 
   it("75. LEARN resumes a PAUSED planner session authoritatively before task interaction or Next", async () => {

@@ -1,5 +1,23 @@
 # TongXuan Chinese — Agent Operating Rules
 
+## Product work governance
+
+- Only the project-scoped `product_governor` and `implementation_engineer` agents are permanent product roles. The root task coordinates; it must not simulate either role. Do not add permanent frontend, backend, or test agent roles.
+- Before product implementation, Product Governor must inspect repository and external review evidence and emit a formal `PM_DECISION`. Only `APPROVE` or `REDUCE` can issue an executable `TASK_CONTRACT`; `DEFER`, `REJECT`, and `REQUEST_EVIDENCE` gate Coding completely.
+- Implementation Engineer follows the contract's scope, non-goals, constraints, acceptance, verification, and stop conditions. Material evidence conflicts require `ESCALATION_TO_PM` before expanding or changing scope.
+- After implementation, Product Governor independently records `PM_ACCEPTANCE` as `ACCEPT`, `REVISE`, or `REJECT`. `ACCEPT` means ready for Owner / Architect review and never authorizes merge.
+- Treat brainstorming as non-authoritative. Follow explicit Owner decisions over canonical repository architecture and merged decisions, then observed production behavior and repository evidence, accepted contracts and PR decisions, discovery packets, and issue suggestions. Label `FACT`, `EXISTING DECISION`, `PROPOSAL`, `ASSUMPTION`, and `OPEN QUESTION` accurately.
+- Do not introduce learning, mastery, scoring, adaptive, SRS, or curriculum mechanisms incidentally. Product changes need explicit contract acceptance criteria. Preserve the current PR / branch when the task says to continue it; never merge unless explicitly authorized.
+
+## Evidence ownership and acceptance gates
+
+- Every executable TASK_CONTRACT assigns each acceptance item to exactly one evidence owner: AUTOMATED, CODEX_RUNTIME, OWNER_DEVICE, or EXTERNAL. Report evidence with that owner; one category never substitutes for another.
+- REQUEST_EVIDENCE is non-executable. It may identify missing evidence, who can obtain it, and a concrete collection method, but it does not authorize Coding or convert missing evidence into a pass. Do not request Owner-device or external evidence from Coding when that evidence is not obtainable in the workspace.
+- The independent PM_ACCEPTANCE records verification_matrix, owner_validation_required, release_blockers, and required_changes separately. The matrix records owner, evidence, result, and limits. required_changes lists only in-contract implementation work needed now; pending Owner-device evidence belongs in owner_validation_required, and later release or external review gates belong in release_blockers. Coding can be accepted with Owner validation still required.
+- There are two gates: an initial PM_DECISION of APPROVE or REDUCE may issue the executable contract; after implementation, a separate Product Governor must record PM_ACCEPTANCE. ACCEPT means ready for Owner / Architect review and never authorizes merge.
+- Every PM invocation must run in a fresh parent session explicitly started with --sandbox read-only. A later writable parent live override can supersede the PM agent TOML, so never invoke or spawn PM from a workspace-write parent. Verify the effective sandbox at both PM gates. Run Coding separately in workspace-write.
+- Keep exactly two permanent product agents: product_governor and implementation_engineer.
+
 This repository uses a role-separated frontend workflow. These rules apply to every agent modifying `frontend/`.
 
 ## Canonical frontend guardrail

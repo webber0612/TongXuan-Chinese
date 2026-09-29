@@ -41,6 +41,7 @@ export interface AuthoritativeSessionFixture {
   id: string;
   status: string;
   lessonId: string;
+  scriptMode?: "TRADITIONAL" | "SIMPLIFIED";
   childId: number;
   sessionId: string;
   masteryStatus: string | null;
@@ -379,8 +380,9 @@ export function authoritativeSessionFixture(
   includeOptionalWriting = false,
   partialRecognition = false,
   childId = 1,
+  scriptMode?: "TRADITIONAL" | "SIMPLIFIED",
 ) : AuthoritativeSessionFixture {
-  const tasks = plannerTasksForLesson(lessonId, includeOptionalWriting, partialRecognition, childId).map((task) => ({
+  const tasks = plannerTasksForLesson(lessonId, includeOptionalWriting, partialRecognition, childId, scriptMode ?? "TRADITIONAL").map((task) => ({
     ...task,
     id: `${sessionId}:${task.key}`,
     sessionId,
@@ -393,6 +395,7 @@ export function authoritativeSessionFixture(
     id: sessionId,
     status: "IN_PROGRESS",
     lessonId,
+    ...(scriptMode ? { scriptMode } : {}),
     childId,
     sessionId,
     masteryStatus: "IN_PROGRESS",
