@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
+import unicodedata
 from collections import defaultdict
 from typing import Any
 
@@ -12,7 +14,7 @@ from .placement import get_placement_profile
 
 DIMENSIONS = {
     "HEAR", "RECALL", "READ", "INPUT", "HANDWRITING", "SPEAK",
-    "ORTHOGRAPHIC_RECOGNITION", "PRONUNCIATION",
+    "ORTHOGRAPHIC_RECOGNITION", "PHONETIC_NOTATION", "PRONUNCIATION",
 }
 SCRIPTS = {"TRADITIONAL", "SIMPLIFIED", "SCRIPT_INDEPENDENT"}
 TARGET_KINDS = {"LEXICAL_CONCEPT", "ORTHOGRAPHIC_FORM", "PHRASE", "PRONUNCIATION", "CHARACTER"}
@@ -22,12 +24,32 @@ CUES = {"IMAGE", "CONCEPT", "NATIVE_LANGUAGE", "CONTEXT_CLOZE", "AUDIO", "CHINES
 INPUT_METHODS = {"ZHUYIN", "PINYIN", "VOICE", "OTHER_KEYBOARD", "NONE"}
 TIMINGS = {"IMMEDIATE", "DELAYED", "UNKNOWN"}
 ORTHOGRAPHIC_DIMENSIONS = ("ORTHOGRAPHIC_RECOGNITION", "READ", "INPUT", "HANDWRITING")
+FORM_IDENTITY_DIMENSIONS = frozenset((*ORTHOGRAPHIC_DIMENSIONS, "PHONETIC_NOTATION"))
 PLACEMENT_V2_DOMAINS = (
     "listening", "speaking", "traditional_recognition", "simplified_recognition",
     "traditional_writing", "simplified_writing",
 )
 PLACEMENT_LEVELS = {"NOT_ASSESSED", "STARTER", "BASIC", "BOOK_1"}
 HANDWRITING_EXPECTATIONS = {"WRITE_CORE", "WRITE_FAMILIAR", "READ_INPUT", "EXPOSURE_ONLY"}
+ORTHOGRAPHIC_SCRIPTS = {"TRADITIONAL", "SIMPLIFIED"}
+ORTHOGRAPHIC_INPUT_METHODS = {"ZHUYIN", "PINYIN", "OTHER_KEYBOARD"}
+PHONETIC_INPUT_METHODS = {"ZHUYIN", "PINYIN"}
+
+
+def normalize_orthographic_form(form: str) -> str:
+    """Apply Unicode canonical composition only; preserve all visible spacing and punctuation."""
+    if not isinstance(form, str) or not form:
+        raise ValueError("invalid_orthographic_form")
+    return unicodedata.normalize("NFC", form)
+
+
+def orthographic_form_target_id(script: str, form: str) -> str:
+    """Return stable exact-form identity, without cross-script or lexical inference."""
+    if script not in ORTHOGRAPHIC_SCRIPTS:
+        raise ValueError("orthographic_form_requires_traditional_or_simplified_script")
+    normalized = normalize_orthographic_form(form)
+    digest = hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+    return f"orthographic-form:{script.lower()}:{digest}"
 
 
 def validate_handwriting_expectation(value: str | None) -> str | None:
@@ -103,12 +125,22 @@ def record_evidence_in_transaction(
         raise ValueError("orthographic_evidence_requires_script")
     if dimension == "INPUT" and input_method not in {"ZHUYIN", "PINYIN", "OTHER_KEYBOARD"}:
         raise ValueError("input_evidence_requires_input_method")
-    if dimension == "PRONUNCIATION" and input_method not in {"ZHUYIN", "PINYIN", "VOICE"}:
-        raise ValueError("pronunciation_evidence_requires_input_method")
+    if dimension == "PHONETIC_NOTATION" and (
+        input_method not in PHONETIC_INPUT_METHODS or script not in ORTHOGRAPHIC_SCRIPTS
+    ):
+        raise ValueError("phonetic_notation_requires_script_and_notation_method")
+    if dimension == "PRONUNCIATION" and input_method != "VOICE":
+        raise ValueError("pronunciation_evidence_requires_voice_method")
+    if dimension in {"ORTHOGRAPHIC_RECOGNITION", "READ", "HANDWRITING"} and input_method != "NONE":
+        raise ValueError("orthographic_dimension_does_not_accept_input_method")
     if outcome != "NOT_ASSESSED" and (not scorer or not scorer_version):
         raise ValueError("scored_evidence_requires_scorer_version")
     if target_script != "SCRIPT_INDEPENDENT" and script != target_script:
         raise ValueError("learner_evidence_target_script_mismatch")
+    if target_kind == "ORTHOGRAPHIC_FORM" and dimension in FORM_IDENTITY_DIMENSIONS and display_form is not None:
+        display_form = normalize_orthographic_form(display_form)
+        if target_id != orthographic_form_target_id(target_script, display_form):
+            raise ValueError("orthographic_form_target_id_mismatch")
 
     ensure_child(db, child_id)
     register_target_in_transaction(
@@ -225,8 +257,8 @@ def get_evidence_summary(*, child_id: int) -> dict[str, Any]:
         facts = db.execute(
             """SELECT COUNT(*) AS total,
                       COALESCE(SUM(CASE WHEN dimension='RECALL' THEN 1 ELSE 0 END),0) AS active_recall,
-                      COALESCE(SUM(CASE WHEN retrieval_timing='DELAYED' AND outcome='CORRECT' THEN 1 ELSE 0 END),0) AS delayed_correct,
-                      COALESCE(SUM(CASE WHEN retrieval_timing='DELAYED' AND outcome='CORRECT' AND assistance='INDEPENDENT' THEN 1 ELSE 0 END),0) AS delayed_independent_correct,
+                      COALESCE(SUM(CASE WHEN dimension='RECALL' AND retrieval_timing='DELAYED' AND outcome='CORRECT' THEN 1 ELSE 0 END),0) AS delayed_correct,
+                      COALESCE(SUM(CASE WHEN dimension='RECALL' AND retrieval_timing='DELAYED' AND outcome='CORRECT' AND assistance='INDEPENDENT' THEN 1 ELSE 0 END),0) AS delayed_independent_correct,
                       COALESCE(SUM(CASE WHEN outcome IN ('INCORRECT','PARTIAL') THEN 1 ELSE 0 END),0) AS incorrect_or_partial
                FROM learner_evidence_events WHERE child_id=?""", (child_id,),
         ).fetchone()
@@ -293,21 +325,32 @@ def get_orthographic_profile(*, child_id: int) -> dict[str, Any]:
                WHERE child_id=? AND dimension IN ('ORTHOGRAPHIC_RECOGNITION','READ','INPUT','HANDWRITING')
                ORDER BY target_id,dimension,script,input_method""", (child_id,),
         ).fetchall()
-        by_key = {(row["target_id"], row["dimension"], row["script"]): _profile_payload(row) for row in states}
+        by_key = {
+            (row["target_id"], row["dimension"], row["script"], row["input_method"]): _profile_payload(row)
+            for row in states
+        }
         dimensions = {
             "recognition": "ORTHOGRAPHIC_RECOGNITION", "reading": "READ",
-            "input": "INPUT", "handwriting": "HANDWRITING",
+            "handwriting": "HANDWRITING",
         }
         result = []
         for target in targets:
             scripts = {}
             for script in ("TRADITIONAL", "SIMPLIFIED"):
-                scripts[script.lower()] = {name: by_key.get((target["target_id"], dim, script), {
+                script_facts = {name: by_key.get((target["target_id"], dim, script, "NONE"), {
                     "state": "NOT_ASSESSED", "latestEvidenceAt": None, "latestOutcome": None,
                     "evidenceCount": 0, "independentCorrectCount": 0, "assistedCount": 0,
                     "incorrectCount": 0, "partialCount": 0, "notAssessedCount": 0,
                     "aggregationVersion": 1,
                 }) for name, dim in dimensions.items()}
+                script_facts["inputByMethod"] = {
+                    row["input_method"]: _profile_payload(row)
+                    for row in states
+                    if row["target_id"] == target["target_id"]
+                    and row["dimension"] == "INPUT"
+                    and row["script"] == script
+                }
+                scripts[script.lower()] = script_facts
             result.append({"target": {"id": target["target_id"], "kind": target["target_kind"],
                                       "conceptId": target["concept_id"], "script": target["script"],
                                       "displayForm": target["display_form"],
@@ -339,15 +382,23 @@ def get_placement_profile_v2(*, child_id: int) -> dict[str, Any]:
 def save_placement_profile_v2(*, child_id: int, domain_levels: dict[str, str], assessment_method: str, assessed_by: str) -> dict[str, Any]:
     if not isinstance(domain_levels, dict) or set(domain_levels) - set(PLACEMENT_V2_DOMAINS):
         raise ValueError("invalid_placement_v2_domain")
+    if not domain_levels:
+        raise ValueError("no_placement_v2_domains_supplied")
     if any(level not in PLACEMENT_LEVELS for level in domain_levels.values()):
         raise ValueError("invalid_placement_level")
     if assessment_method not in {"PARENT_OBSERVATION", "DIAGNOSTIC"}:
         raise ValueError("invalid_assessment_method")
-    domains = {domain: domain_levels.get(domain, "NOT_ASSESSED") for domain in PLACEMENT_V2_DOMAINS}
     stamp = now()
     initialize_database()
     with connect() as db:
+        db.execute("BEGIN IMMEDIATE")
         ensure_child(db, child_id)
+        existing = db.execute("SELECT domains_json FROM placement_profiles_v2 WHERE child_id=?", (child_id,)).fetchone()
+        domains = (
+            {domain: "NOT_ASSESSED" for domain in PLACEMENT_V2_DOMAINS}
+            if existing is None else json.loads(existing["domains_json"])
+        )
+        domains.update(domain_levels)
         db.execute(
             """INSERT INTO placement_profiles_v2(child_id,profile_version,domains_json,assessment_method,assessed_by,updated_at)
                VALUES(?,2,?,?,?,?) ON CONFLICT(child_id) DO UPDATE SET domains_json=excluded.domains_json,

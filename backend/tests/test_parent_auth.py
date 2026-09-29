@@ -332,8 +332,9 @@ def test_schema_v5_migration_keeps_legacy_children_unowned(tmp_path, monkeypatch
         assert tuple(row) == (1, "Unclaimed child", None)
         session = db.execute("SELECT id,child_id FROM learning_sessions WHERE id='legacy-session-1'").fetchone()
         assert tuple(session) == ("legacy-session-1", 1)
-        assert db.execute("PRAGMA user_version").fetchone()[0] == 7
+        assert db.execute("PRAGMA user_version").fetchone()[0] == 8
         assert db.execute("SELECT COUNT(*) FROM google_parents").fetchone()[0] == 0
         assert db.execute("SELECT description FROM schema_migrations WHERE version=5").fetchone()[0] == "Google parent identity and nullable child ownership"
         assert db.execute("SELECT description FROM schema_migrations WHERE version=6").fetchone()[0] == "Learner evidence foundation and dual-script orthographic profile"
         assert db.execute("SELECT description FROM schema_migrations WHERE version=7").fetchone()[0] == "Explicit target handwriting expectation contract"
+        assert db.execute("SELECT description FROM schema_migrations WHERE version=8").fetchone()[0] == "Phonetic notation evidence dimension"

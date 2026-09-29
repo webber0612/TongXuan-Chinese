@@ -6,8 +6,9 @@ export type EvidenceAssistance = "INDEPENDENT" | "ASSISTED" | "UNKNOWN";
 export type EvidenceState = "NOT_ASSESSED" | "OBSERVED";
 export type EvidenceDimension =
   | "HEAR" | "RECALL" | "READ" | "INPUT" | "HANDWRITING" | "SPEAK"
-  | "ORTHOGRAPHIC_RECOGNITION" | "PRONUNCIATION";
+  | "ORTHOGRAPHIC_RECOGNITION" | "PHONETIC_NOTATION" | "PRONUNCIATION";
 export type EvidenceInputMethod = "ZHUYIN" | "PINYIN" | "VOICE" | "OTHER_KEYBOARD" | "NONE";
+export type OrthographicInputMethod = Extract<EvidenceInputMethod, "ZHUYIN" | "PINYIN" | "OTHER_KEYBOARD">;
 export type HandwritingExpectation = "WRITE_CORE" | "WRITE_FAMILIAR" | "READ_INPUT" | "EXPOSURE_ONLY";
 
 export type EvidenceProfileFact = {
@@ -50,8 +51,12 @@ export type LearnerEvidenceSummary = {
 
 export type OrthographicProfileItem = {
   target: { id: string; kind: string; conceptId: string | null; script: EvidenceScript; displayForm: string | null; handwritingExpectation: HandwritingExpectation | null };
-  traditional: Record<"recognition" | "reading" | "input" | "handwriting", EvidenceProfileFact>;
-  simplified: Record<"recognition" | "reading" | "input" | "handwriting", EvidenceProfileFact>;
+  traditional: Record<"recognition" | "reading" | "handwriting", EvidenceProfileFact> & {
+    inputByMethod: Partial<Record<OrthographicInputMethod, EvidenceProfileFact>>;
+  };
+  simplified: Record<"recognition" | "reading" | "handwriting", EvidenceProfileFact> & {
+    inputByMethod: Partial<Record<OrthographicInputMethod, EvidenceProfileFact>>;
+  };
 };
 
 export type OrthographicProfile = {

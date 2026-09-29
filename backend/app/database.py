@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 DEFAULT_DB_PATH = Path(__file__).resolve().parents[2] / "data" / "tongxuan.sqlite3"
-SCHEMA_VERSION = 7
+SCHEMA_VERSION = 8
 SQLITE_BUSY_TIMEOUT_MS = 5000
 
 
@@ -484,7 +484,7 @@ def initialize_database() -> None:
                 id TEXT PRIMARY KEY,
                 child_id INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
                 target_id TEXT NOT NULL,
-                dimension TEXT NOT NULL CHECK(dimension IN ('HEAR','RECALL','READ','INPUT','HANDWRITING','SPEAK','ORTHOGRAPHIC_RECOGNITION','PRONUNCIATION')),
+                dimension TEXT NOT NULL CHECK(dimension IN ('HEAR','RECALL','READ','INPUT','HANDWRITING','SPEAK','ORTHOGRAPHIC_RECOGNITION','PHONETIC_NOTATION','PRONUNCIATION')),
                 script TEXT NOT NULL CHECK(script IN ('TRADITIONAL','SIMPLIFIED','SCRIPT_INDEPENDENT')),
                 outcome TEXT NOT NULL CHECK(outcome IN ('CORRECT','INCORRECT','PARTIAL','NOT_ASSESSED')),
                 assistance TEXT NOT NULL CHECK(assistance IN ('INDEPENDENT','ASSISTED','UNKNOWN')),
@@ -690,4 +690,65 @@ def initialize_database() -> None:
                 connection.execute("INSERT OR IGNORE INTO schema_migrations(version, description) VALUES (6, 'Learner evidence foundation and dual-script orthographic profile')")
             if current_version < 7:
                 connection.execute("INSERT OR IGNORE INTO schema_migrations(version, description) VALUES (7, 'Explicit target handwriting expectation contract')")
+            if current_version < 8:
+                # SQLite cannot alter a CHECK constraint in place. Rebuild the
+                # append-only event table while preserving every existing row.
+                connection.execute("DROP TRIGGER IF EXISTS learner_evidence_events_immutable_update")
+                connection.execute("ALTER TABLE learner_evidence_events RENAME TO learner_evidence_events_v7")
+                connection.execute(
+                    """CREATE TABLE learner_evidence_events (
+                        id TEXT PRIMARY KEY,
+                        child_id INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+                        target_id TEXT NOT NULL,
+                        dimension TEXT NOT NULL CHECK(dimension IN ('HEAR','RECALL','READ','INPUT','HANDWRITING','SPEAK','ORTHOGRAPHIC_RECOGNITION','PHONETIC_NOTATION','PRONUNCIATION')),
+                        script TEXT NOT NULL CHECK(script IN ('TRADITIONAL','SIMPLIFIED','SCRIPT_INDEPENDENT')),
+                        outcome TEXT NOT NULL CHECK(outcome IN ('CORRECT','INCORRECT','PARTIAL','NOT_ASSESSED')),
+                        assistance TEXT NOT NULL CHECK(assistance IN ('INDEPENDENT','ASSISTED','UNKNOWN')),
+                        score REAL CHECK(score IS NULL OR (score >= 0 AND score <= 1)),
+                        scorer TEXT,
+                        scorer_version TEXT,
+                        cue_type TEXT NOT NULL CHECK(cue_type IN ('IMAGE','CONCEPT','NATIVE_LANGUAGE','CONTEXT_CLOZE','AUDIO','CHINESE_TEXT','NONE')),
+                        answer_exposed INTEGER NOT NULL CHECK(answer_exposed IN (0,1)),
+                        input_method TEXT NOT NULL CHECK(input_method IN ('ZHUYIN','PINYIN','VOICE','OTHER_KEYBOARD','NONE')),
+                        retrieval_timing TEXT NOT NULL CHECK(retrieval_timing IN ('IMMEDIATE','DELAYED','UNKNOWN')),
+                        prior_exposure_at TEXT,
+                        review_due_at TEXT,
+                        source_type TEXT NOT NULL,
+                        source_ref TEXT NOT NULL,
+                        source_task_id TEXT,
+                        source_session_id TEXT,
+                        source_lesson_id TEXT,
+                        occurred_at TEXT NOT NULL,
+                        created_at TEXT NOT NULL,
+                        evidence_schema_version INTEGER NOT NULL CHECK(evidence_schema_version = 1),
+                        FOREIGN KEY(child_id,target_id) REFERENCES learner_evidence_targets(child_id,target_id) ON DELETE CASCADE,
+                        UNIQUE(child_id,source_type,source_ref,target_id,dimension,script,input_method),
+                        CHECK(dimension <> 'RECALL' OR (cue_type <> 'CHINESE_TEXT' AND answer_exposed = 0)),
+                        CHECK(outcome NOT IN ('NOT_ASSESSED') OR score IS NULL)
+                    )"""
+                )
+                connection.execute(
+                    """INSERT INTO learner_evidence_events(
+                        id,child_id,target_id,dimension,script,outcome,assistance,score,scorer,scorer_version,
+                        cue_type,answer_exposed,input_method,retrieval_timing,prior_exposure_at,review_due_at,
+                        source_type,source_ref,source_task_id,source_session_id,source_lesson_id,occurred_at,
+                        created_at,evidence_schema_version
+                    ) SELECT id,child_id,target_id,dimension,script,outcome,assistance,score,scorer,scorer_version,
+                        cue_type,answer_exposed,input_method,retrieval_timing,prior_exposure_at,review_due_at,
+                        source_type,source_ref,source_task_id,source_session_id,source_lesson_id,occurred_at,
+                        created_at,evidence_schema_version FROM learner_evidence_events_v7"""
+                )
+                connection.execute("DROP TABLE learner_evidence_events_v7")
+                connection.execute(
+                    "CREATE INDEX IF NOT EXISTS learner_evidence_events_child_target_time ON learner_evidence_events(child_id,target_id,occurred_at,id)"
+                )
+                connection.execute(
+                    "CREATE INDEX IF NOT EXISTS learner_evidence_events_child_dimension_script ON learner_evidence_events(child_id,dimension,script,occurred_at)"
+                )
+                connection.execute(
+                    """CREATE TRIGGER learner_evidence_events_immutable_update
+                       BEFORE UPDATE ON learner_evidence_events
+                       BEGIN SELECT RAISE(ABORT,'learner_evidence_events_are_immutable'); END"""
+                )
+                connection.execute("INSERT OR IGNORE INTO schema_migrations(version, description) VALUES (8, 'Phonetic notation evidence dimension')")
             connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")

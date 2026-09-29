@@ -155,14 +155,21 @@ def _practice_writing_in_transaction(
     occurred_at = now()
     db.execute("INSERT INTO writing_attempts(id,child_id,character,trace_result,assisted,provider,created_at,phase,script_mode) VALUES (?,?,?,?,?,?,?,?,?)", (attempt_id, child_id, character, trace_result, int(assisted), provider, occurred_at, phase, script_mode))
     if script_mode in {"TRADITIONAL", "SIMPLIFIED"} and source_task_id and source_session_id and source_lesson_id:
-        from .learner_evidence import record_evidence_in_transaction
+        from .learner_evidence import (
+            normalize_orthographic_form,
+            orthographic_form_target_id,
+            record_evidence_in_transaction,
+        )
+
+        form = normalize_orthographic_form(character)
 
         record_evidence_in_transaction(
-            db, child_id=child_id, target_id=f"orthographic-form:{script_mode.lower()}:{character}",
+            db, child_id=child_id, target_id=orthographic_form_target_id(script_mode, form),
             target_kind="ORTHOGRAPHIC_FORM", target_script=script_mode, dimension="HANDWRITING",
             script=script_mode, outcome="NOT_ASSESSED", assistance="ASSISTED" if assisted else "INDEPENDENT",
             scorer="hanzi_writer_activity_metadata", scorer_version="hanzi-writer-metadata-v1",
             cue_type="CHINESE_TEXT", answer_exposed=True, input_method="NONE",
+            display_form=form,
             retrieval_timing="UNKNOWN", source_type="WRITING_PROVIDER_ATTEMPT", source_ref=attempt_id,
             source_task_id=source_task_id, source_session_id=source_session_id,
             source_lesson_id=source_lesson_id, occurred_at=occurred_at,
@@ -224,18 +231,23 @@ def _practice_pronunciation_in_transaction(db: sqlite3.Connection, child_id: int
     if source_type != "SCHOOL_QUEUE_PRIVATE":
         evidence_id = record_linked_score_evidence(db, child_id=child_id, skill_domain="phonetics", item_id=reading_id, score=float(correct), assisted=assisted, evidence_ref=attempt_id, evidence_type="phonetic_notation_attempt", script_mode="zhuyin" if reading["notation_system"] == "ZHUYIN" else "pinyin")
     if source_type != "SCHOOL_QUEUE_PRIVATE" and reading["script_scope_verified"]:
-        from .learner_evidence import record_evidence_in_transaction
+        from .learner_evidence import (
+            normalize_orthographic_form,
+            orthographic_form_target_id,
+            record_evidence_in_transaction,
+        )
 
+        form = normalize_orthographic_form(reading["character"])
         record_evidence_in_transaction(
-            db, child_id=child_id, target_id=f"pronunciation-reading:{reading_id}",
-            target_kind="PRONUNCIATION", target_script=reading["script"], dimension="PRONUNCIATION",
+            db, child_id=child_id, target_id=orthographic_form_target_id(reading["script"], form),
+            target_kind="ORTHOGRAPHIC_FORM", target_script=reading["script"], dimension="PHONETIC_NOTATION",
             script=reading["script"], outcome="CORRECT" if correct else "INCORRECT",
             assistance="ASSISTED" if assisted else "INDEPENDENT", score=float(correct),
             scorer="server_notation_comparison", scorer_version="pronunciation-normalizer-v1",
             cue_type="CHINESE_TEXT", answer_exposed=True, input_method=reading["notation_system"],
             retrieval_timing="UNKNOWN", source_type=f"PRONUNCIATION_{source_type}", source_ref=attempt_id,
             source_task_id=source_task_id, source_session_id=source_session_id,
-            source_lesson_id=source_lesson_id, occurred_at=created_at,
+            source_lesson_id=source_lesson_id, occurred_at=created_at, display_form=form,
         )
     return {"attempt_id": attempt_id, "evidence_id": evidence_id, "correct": bool(correct), "reading_id": reading_id, "normalized_answer": normalized_answer, "domain": "phonetics", "source_type": source_type, "school_queue_item_id": school_queue_item_id, "prompt_id": prompt_id, "state": dict(db.execute("SELECT * FROM pronunciation_states WHERE child_id=? AND reading_id=?", (child_id, reading_id)).fetchone()), "srs": None}
 

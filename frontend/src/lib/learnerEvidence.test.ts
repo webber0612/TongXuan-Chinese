@@ -9,6 +9,19 @@ import {
 describe("learner evidence API contract", () => {
   afterEach(() => vi.unstubAllGlobals());
 
+  const fact = (state: "OBSERVED" | "NOT_ASSESSED") => ({
+    state,
+    latestEvidenceAt: state === "OBSERVED" ? "2026-09-01T00:00:00Z" : null,
+    latestOutcome: state === "OBSERVED" ? "CORRECT" as const : null,
+    evidenceCount: state === "OBSERVED" ? 1 : 0,
+    independentCorrectCount: state === "OBSERVED" ? 1 : 0,
+    assistedCount: 0,
+    incorrectCount: 0,
+    partialCount: 0,
+    notAssessedCount: 0,
+    aggregationVersion: 1,
+  });
+
   it("keeps Traditional and Simplified orthographic facts separately typed", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
       childId: 3,
@@ -16,8 +29,14 @@ describe("learner evidence API contract", () => {
       isMasteryJudgment: false,
       items: [{
         target: { id: "target-a", kind: "ORTHOGRAPHIC_FORM", conceptId: "concept-a", script: "TRADITIONAL", displayForm: "醫", handwritingExpectation: "EXPOSURE_ONLY" },
-        traditional: { recognition: { state: "OBSERVED" }, reading: { state: "NOT_ASSESSED" }, input: { state: "NOT_ASSESSED" }, handwriting: { state: "NOT_ASSESSED" } },
-        simplified: { recognition: { state: "NOT_ASSESSED" }, reading: { state: "NOT_ASSESSED" }, input: { state: "NOT_ASSESSED" }, handwriting: { state: "NOT_ASSESSED" } },
+        traditional: {
+          recognition: fact("OBSERVED"), reading: fact("NOT_ASSESSED"), handwriting: fact("NOT_ASSESSED"),
+          inputByMethod: { ZHUYIN: fact("OBSERVED"), PINYIN: fact("OBSERVED") },
+        },
+        simplified: {
+          recognition: fact("NOT_ASSESSED"), reading: fact("NOT_ASSESSED"), handwriting: fact("NOT_ASSESSED"),
+          inputByMethod: {},
+        },
       }],
     }), { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
@@ -25,6 +44,8 @@ describe("learner evidence API contract", () => {
     const profile = await getOrthographicProfile(3);
     expect(profile.items[0].traditional.recognition.state).toBe("OBSERVED");
     expect(profile.items[0].simplified.recognition.state).toBe("NOT_ASSESSED");
+    expect(profile.items[0].traditional.inputByMethod.ZHUYIN?.evidenceCount).toBe(1);
+    expect(profile.items[0].traditional.inputByMethod.PINYIN?.evidenceCount).toBe(1);
     expect(fetchMock).toHaveBeenCalledWith("/api/children/3/learner-evidence/orthographic-profile", expect.objectContaining({ credentials: "include" }));
   });
 

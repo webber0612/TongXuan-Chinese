@@ -34,11 +34,12 @@ def _write_fact(db, *, child_id: int, target_id: str, target_script: str, script
                 answer_exposed: bool = False, input_method: str = "NONE",
                 target_kind: str = "ORTHOGRAPHIC_FORM", concept_id: str | None = None,
                 retrieval_timing: str = "UNKNOWN", prior_exposure_at: str | None = None,
-                handwriting_expectation: str | None = None):
+                handwriting_expectation: str | None = None, display_form: str | None = None,
+                source_lesson_id: str | None = None, source_task_id: str | None = None):
     from app.learner_evidence import record_evidence_in_transaction
     return record_evidence_in_transaction(
         db, child_id=child_id, target_id=target_id, target_kind=target_kind,
-        target_script=target_script, concept_id=concept_id, dimension=dimension,
+        target_script=target_script, concept_id=concept_id, display_form=display_form, dimension=dimension,
         handwriting_expectation=handwriting_expectation,
         script=script, outcome=outcome, assistance=assistance,
         score=1.0 if outcome == "CORRECT" else 0.0 if outcome == "INCORRECT" else None,
@@ -46,6 +47,7 @@ def _write_fact(db, *, child_id: int, target_id: str, target_script: str, script
         answer_exposed=answer_exposed, input_method=input_method,
         retrieval_timing=retrieval_timing, prior_exposure_at=prior_exposure_at,
         source_type="TEST", source_ref=source_ref, occurred_at=at,
+        source_lesson_id=source_lesson_id, source_task_id=source_task_id,
     )
 
 
@@ -94,11 +96,98 @@ def test_domains_cues_unknown_and_script_scope_are_validated(tmp_path):
         assert api.post(f"/api/children/{child_id}/learner-evidence/targets", headers=headers, json={"outcome": "MASTERED"}).status_code == 404
 
         with connect() as db:
-            with pytest.raises(ValueError, match="invalid_handwriting_expectation"):
-                _write_fact(db, child_id=child_id, target_id="bad-expectation", target_script="TRADITIONAL",
-                            script="TRADITIONAL", dimension="READ", outcome="NOT_ASSESSED",
-                            source_ref="invalid-expectation", at="2026-09-02T00:00:00Z",
-                            handwriting_expectation="WRITE_WHEN_PREFERRED")
+                with pytest.raises(ValueError, match="invalid_handwriting_expectation"):
+                    _write_fact(db, child_id=child_id, target_id="bad-expectation", target_script="TRADITIONAL",
+                                script="TRADITIONAL", dimension="READ", outcome="NOT_ASSESSED",
+                                source_ref="invalid-expectation", at="2026-09-02T00:00:00Z",
+                                handwriting_expectation="WRITE_WHEN_PREFERRED")
+
+
+def test_canonical_orthographic_identity_reconverges_across_lessons_and_dimensions(tmp_path):
+    from app.database import connect
+    from app.learner_evidence import normalize_orthographic_form, orthographic_form_target_id
+
+    assert normalize_orthographic_form("e\u0301") == "é"
+    assert orthographic_form_target_id("TRADITIONAL", "é") == orthographic_form_target_id("TRADITIONAL", "e\u0301")
+    assert orthographic_form_target_id("TRADITIONAL", "醫") != orthographic_form_target_id("SIMPLIFIED", "医")
+    assert orthographic_form_target_id("TRADITIONAL", "醫") != orthographic_form_target_id("TRADITIONAL", " 醫")
+    assert orthographic_form_target_id("TRADITIONAL", "醫") != orthographic_form_target_id("TRADITIONAL", "醫、")
+    assert orthographic_form_target_id("TRADITIONAL", "醫院") == orthographic_form_target_id("TRADITIONAL", "醫院")
+    assert orthographic_form_target_id("TRADITIONAL", "醫院") != orthographic_form_target_id("SIMPLIFIED", "医院")
+    assert orthographic_form_target_id("TRADITIONAL", "醫院") != orthographic_form_target_id("TRADITIONAL", "醫")
+
+    with client(tmp_path) as api:
+        child_id = make_child(api)
+        traditional_target = orthographic_form_target_id("TRADITIONAL", "醫")
+        simplified_target = orthographic_form_target_id("SIMPLIFIED", "医")
+        with connect() as db:
+            with pytest.raises(ValueError, match="orthographic_form_target_id_mismatch"):
+                _write_fact(db, child_id=child_id, target_id="learning-item:lesson-a-item:traditional",
+                            target_script="TRADITIONAL", script="TRADITIONAL", dimension="READ",
+                            outcome="CORRECT", source_ref="bad-form-identity", at="2026-09-01T00:00:00Z",
+                            display_form="醫")
+            _write_fact(db, child_id=child_id, target_id=traditional_target, target_script="TRADITIONAL",
+                        script="TRADITIONAL", dimension="ORTHOGRAPHIC_RECOGNITION", outcome="CORRECT",
+                        source_ref="lesson-a-recognition", at="2026-09-01T00:00:00Z", display_form="醫",
+                        source_lesson_id="lesson-a", source_task_id="lesson-a-task")
+            _write_fact(db, child_id=child_id, target_id=traditional_target, target_script="TRADITIONAL",
+                        script="TRADITIONAL", dimension="ORTHOGRAPHIC_RECOGNITION", outcome="INCORRECT",
+                        source_ref="lesson-b-recognition", at="2026-09-02T00:00:00Z", display_form="醫",
+                        source_lesson_id="lesson-b", source_task_id="lesson-b-task")
+            _write_fact(db, child_id=child_id, target_id=traditional_target, target_script="TRADITIONAL",
+                        script="TRADITIONAL", dimension="HANDWRITING", outcome="NOT_ASSESSED",
+                        source_ref="lesson-b-writing", at="2026-09-03T00:00:00Z", display_form="醫",
+                        source_lesson_id="lesson-b", source_task_id="lesson-b-writing-task")
+            _write_fact(db, child_id=child_id, target_id=traditional_target, target_script="TRADITIONAL",
+                        script="TRADITIONAL", dimension="READ", outcome="CORRECT",
+                        source_ref="lesson-b-read", at="2026-09-03T12:00:00Z", display_form="醫",
+                        source_lesson_id="lesson-b", source_task_id="lesson-b-read-task")
+            _write_fact(db, child_id=child_id, target_id=traditional_target, target_script="TRADITIONAL",
+                        script="TRADITIONAL", dimension="INPUT", outcome="CORRECT", input_method="ZHUYIN",
+                        source_ref="lesson-b-zhuyin", at="2026-09-04T00:00:00Z", display_form="醫")
+            _write_fact(db, child_id=child_id, target_id=traditional_target, target_script="TRADITIONAL",
+                        script="TRADITIONAL", dimension="INPUT", outcome="CORRECT", input_method="PINYIN",
+                        source_ref="lesson-b-pinyin", at="2026-09-05T00:00:00Z", display_form="醫")
+            _write_fact(db, child_id=child_id, target_id=simplified_target, target_script="SIMPLIFIED",
+                        script="SIMPLIFIED", dimension="ORTHOGRAPHIC_RECOGNITION", outcome="CORRECT",
+                        source_ref="lesson-c-simplified", at="2026-09-06T00:00:00Z", display_form="医",
+                        source_lesson_id="lesson-c", source_task_id="lesson-c-task")
+
+            target_rows = db.execute(
+                "SELECT target_id,script,display_form,concept_id FROM learner_evidence_targets WHERE child_id=? ORDER BY target_id",
+                (child_id,),
+            ).fetchall()
+            assert len(target_rows) == 2
+            traditional_events = db.execute(
+                "SELECT source_lesson_id,source_task_id,target_id FROM learner_evidence_events WHERE child_id=? AND target_id=? ORDER BY source_lesson_id,source_task_id",
+                (child_id, traditional_target),
+            ).fetchall()
+            assert len(traditional_events) == 6
+            assert {row["source_lesson_id"] for row in traditional_events if row["source_lesson_id"]} == {"lesson-a", "lesson-b"}
+            assert {row["source_task_id"] for row in traditional_events if row["source_task_id"]} == {
+                "lesson-a-task", "lesson-b-task", "lesson-b-writing-task",
+                "lesson-b-read-task",
+            }
+            assert all(row["target_id"] == traditional_target for row in traditional_events)
+            assert {row["script"] for row in target_rows} == {"TRADITIONAL", "SIMPLIFIED"}
+            assert all(row["concept_id"] is None for row in target_rows)
+
+        headers = auth_headers(child_id)
+        profile = api.get(f"/api/children/{child_id}/learner-evidence/orthographic-profile", headers=headers)
+        assert profile.status_code == 200, profile.text
+        items = {item["target"]["id"]: item for item in profile.json()["items"]}
+        traditional = items[traditional_target]["traditional"]
+        assert traditional["recognition"]["evidenceCount"] == 2
+        assert traditional["reading"]["evidenceCount"] == 1
+        assert traditional["handwriting"]["state"] == "NOT_ASSESSED"
+        assert traditional["inputByMethod"]["ZHUYIN"]["evidenceCount"] == 1
+        assert traditional["inputByMethod"]["PINYIN"]["evidenceCount"] == 1
+        assert items[simplified_target]["simplified"]["recognition"]["state"] == "OBSERVED"
+        target = api.get(f"/api/children/{child_id}/learner-evidence/targets/{traditional_target}", headers=headers).json()
+        assert {event["source"]["lessonId"] for event in target["events"] if event["source"]["lessonId"]} == {"lesson-a", "lesson-b"}
+        assert {event["dimension"] for event in target["events"]} >= {
+            "ORTHOGRAPHIC_RECOGNITION", "READ", "INPUT", "HANDWRITING",
+        }
 
 
 def test_append_idempotency_assistance_delayed_and_deterministic_rebuild(tmp_path):
@@ -179,6 +268,8 @@ def test_production_learning_flow_recognition_writes_server_scored_orthographic_
             assert event["scorer"] == "learning_flow_server_answer_key"
             assert event["source_task_id"] == task["id"]
             assert event["source_session_id"] == body["id"]
+            from app.learner_evidence import orthographic_form_target_id
+            assert event["target_id"] == orthographic_form_target_id("SIMPLIFIED", correct_character)
 
 
 def _speaking_attempt(api: TestClient, child_id: int) -> str:
@@ -244,15 +335,32 @@ def test_listening_and_pronunciation_production_paths_keep_scored_and_unscored_m
 
         seeded = api.post(f"/api/sprint-b/seed?child_id={child_id}")
         assert seeded.status_code == 200, seeded.text
-        traditional = next(reading for reading in seeded.json()["readings"] if reading["script"] == "TRADITIONAL")
-        pronunciation = api.post(f"/api/sprint-b/pronunciation/{traditional['id']}/attempts?child_id={child_id}", json={"answer": traditional["notation"]})
+        simplified = next(reading for reading in seeded.json()["readings"] if reading["script"] == "SIMPLIFIED" and reading["character"] == "学")
+        pronunciation = api.post(f"/api/sprint-b/pronunciation/{simplified['id']}/attempts?child_id={child_id}", json={"answer": "xue2"})
         assert pronunciation.status_code == 200, pronunciation.text
+        assert pronunciation.json()["correct"] is True
 
         with connect() as db:
             listening_fact = db.execute("SELECT dimension,outcome,score,script FROM learner_evidence_events WHERE source_ref=?", (started.json()["id"],)).fetchone()
             pronunciation_fact = db.execute("SELECT dimension,outcome,score,script,input_method FROM learner_evidence_events WHERE source_ref=?", (pronunciation.json()["attempt_id"],)).fetchone()
         assert tuple(listening_fact) == ("HEAR", "NOT_ASSESSED", None, "SCRIPT_INDEPENDENT")
-        assert tuple(pronunciation_fact) == ("PRONUNCIATION", "CORRECT", 1.0, "TRADITIONAL", "ZHUYIN")
+        assert tuple(pronunciation_fact) == ("PHONETIC_NOTATION", "CORRECT", 1.0, "SIMPLIFIED", "PINYIN")
+        from app.learner_evidence import orthographic_form_target_id
+        target_id = orthographic_form_target_id("SIMPLIFIED", simplified["character"])
+        with connect() as db:
+            _write_fact(db, child_id=child_id, target_id=target_id, target_script="SIMPLIFIED",
+                        script="SIMPLIFIED", dimension="PHONETIC_NOTATION", outcome="CORRECT",
+                        input_method="PINYIN", source_ref="delayed-notation-fixture",
+                        at="2026-09-21T08:00:00Z", retrieval_timing="DELAYED",
+                        prior_exposure_at="2026-09-20T08:00:00Z", display_form=simplified["character"])
+        summary = api.get(f"/api/children/{child_id}/learner-evidence/summary", headers=auth_headers(child_id)).json()
+        assert summary["eventFacts"]["activeRecallObservationCount"] == 0
+        assert summary["eventFacts"]["delayedCorrectRetrievalCount"] == 0
+        assert summary["eventFacts"]["delayedIndependentCorrectRetrievalCount"] == 0
+        target = api.get(f"/api/children/{child_id}/learner-evidence/targets/{target_id}", headers=auth_headers(child_id)).json()
+        notation_event = next(event for event in target["events"] if event["source"]["ref"] == pronunciation.json()["attempt_id"])
+        assert notation_event["dimension"] == "PHONETIC_NOTATION"
+        assert notation_event["outcome"] == "CORRECT"
 
 
 def test_learning_flow_client_trace_result_does_not_become_handwriting_correctness(tmp_path):
@@ -300,7 +408,7 @@ def test_legacy_default_script_row_is_not_promoted_to_script_specific_evidence(t
             assert db.execute("SELECT COUNT(*) FROM learner_evidence_events WHERE source_ref=?", (result.json()["attempt_id"],)).fetchone()[0] == 0
 
 
-def test_v7_migrates_populated_v5_without_backfill_or_legacy_rewrite(tmp_path, monkeypatch):
+def test_v8_migrates_populated_v5_without_backfill_or_legacy_rewrite(tmp_path, monkeypatch):
     from app.database import connect, initialize_database
 
     path = tmp_path / "populated-v5.sqlite3"
@@ -322,7 +430,7 @@ def test_v7_migrates_populated_v5_without_backfill_or_legacy_rewrite(tmp_path, m
     initialize_database()
     initialize_database()
     with connect() as db:
-        assert db.execute("PRAGMA user_version").fetchone()[0] == 7
+        assert db.execute("PRAGMA user_version").fetchone()[0] == 8
         assert db.execute("SELECT COUNT(*) FROM learner_evidence_events").fetchone()[0] == 0
         assert db.execute("SELECT COUNT(*) FROM learner_evidence_targets").fetchone()[0] == 0
         assert db.execute("SELECT main_curriculum_start FROM placement_profiles WHERE child_id=77").fetchone()[0] == "BASIC"
@@ -331,9 +439,10 @@ def test_v7_migrates_populated_v5_without_backfill_or_legacy_rewrite(tmp_path, m
         assert db.execute("SELECT COUNT(*) FROM learner_evidence_profiles").fetchone()[0] == 0
         assert db.execute("SELECT COUNT(*) FROM schema_migrations WHERE version=6").fetchone()[0] == 1
         assert db.execute("SELECT COUNT(*) FROM schema_migrations WHERE version=7").fetchone()[0] == 1
+        assert db.execute("SELECT COUNT(*) FROM schema_migrations WHERE version=8").fetchone()[0] == 1
 
 
-def test_v7_adds_handwriting_expectation_to_existing_v6_and_validates_contract(tmp_path, monkeypatch):
+def test_v8_upgrades_existing_v6_handwriting_contract_and_validates_expectation(tmp_path, monkeypatch):
     from app.database import connect, initialize_database
 
     path = tmp_path / "existing-v6.sqlite3"
@@ -356,8 +465,73 @@ def test_v7_adds_handwriting_expectation_to_existing_v6_and_validates_contract(t
             db.execute("""INSERT INTO learner_evidence_targets
                 (child_id,target_id,target_kind,concept_id,script,display_form,handwriting_expectation,created_at)
                 VALUES(88,'invalid-target','ORTHOGRAPHIC_FORM',NULL,'TRADITIONAL','字','WRITE_WHEN_PREFERRED','2026-09-01T00:00:00Z')""")
-        assert db.execute("PRAGMA user_version").fetchone()[0] == 7
+        assert db.execute("PRAGMA user_version").fetchone()[0] == 8
         assert db.execute("SELECT description FROM schema_migrations WHERE version=7").fetchone()[0] == "Explicit target handwriting expectation contract"
+
+
+def test_v8_rebuilds_v7_event_check_without_losing_existing_evidence(tmp_path, monkeypatch):
+    from app.database import connect, initialize_database
+    from app.learner_evidence import orthographic_form_target_id
+
+    path = tmp_path / "existing-v7.sqlite3"
+    monkeypatch.setenv("TONGXUAN_DB_PATH", str(path))
+    initialize_database()
+    child_id = 89
+    target_id = orthographic_form_target_id("TRADITIONAL", "醫")
+    with connect() as db:
+        db.execute("INSERT INTO children(id,name) VALUES(?,?)", (child_id, "Existing v7 learner"))
+        _write_fact(db, child_id=child_id, target_id=target_id, target_script="TRADITIONAL",
+                    script="TRADITIONAL", dimension="ORTHOGRAPHIC_RECOGNITION", outcome="CORRECT",
+                    source_ref="existing-v7-event", at="2026-09-01T00:00:00Z", display_form="醫")
+        existing = dict(db.execute("SELECT * FROM learner_evidence_events WHERE source_ref='existing-v7-event'").fetchone())
+        db.execute("DROP TRIGGER IF EXISTS learner_evidence_events_immutable_update")
+        db.execute("ALTER TABLE learner_evidence_events RENAME TO learner_evidence_events_v8_fixture")
+        db.execute("""CREATE TABLE learner_evidence_events (
+            id TEXT PRIMARY KEY,
+            child_id INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+            target_id TEXT NOT NULL,
+            dimension TEXT NOT NULL CHECK(dimension IN ('HEAR','RECALL','READ','INPUT','HANDWRITING','SPEAK','ORTHOGRAPHIC_RECOGNITION','PRONUNCIATION')),
+            script TEXT NOT NULL CHECK(script IN ('TRADITIONAL','SIMPLIFIED','SCRIPT_INDEPENDENT')),
+            outcome TEXT NOT NULL CHECK(outcome IN ('CORRECT','INCORRECT','PARTIAL','NOT_ASSESSED')),
+            assistance TEXT NOT NULL CHECK(assistance IN ('INDEPENDENT','ASSISTED','UNKNOWN')),
+            score REAL CHECK(score IS NULL OR (score >= 0 AND score <= 1)),
+            scorer TEXT, scorer_version TEXT,
+            cue_type TEXT NOT NULL CHECK(cue_type IN ('IMAGE','CONCEPT','NATIVE_LANGUAGE','CONTEXT_CLOZE','AUDIO','CHINESE_TEXT','NONE')),
+            answer_exposed INTEGER NOT NULL CHECK(answer_exposed IN (0,1)),
+            input_method TEXT NOT NULL CHECK(input_method IN ('ZHUYIN','PINYIN','VOICE','OTHER_KEYBOARD','NONE')),
+            retrieval_timing TEXT NOT NULL CHECK(retrieval_timing IN ('IMMEDIATE','DELAYED','UNKNOWN')),
+            prior_exposure_at TEXT, review_due_at TEXT, source_type TEXT NOT NULL, source_ref TEXT NOT NULL,
+            source_task_id TEXT, source_session_id TEXT, source_lesson_id TEXT,
+            occurred_at TEXT NOT NULL, created_at TEXT NOT NULL,
+            evidence_schema_version INTEGER NOT NULL CHECK(evidence_schema_version = 1),
+            FOREIGN KEY(child_id,target_id) REFERENCES learner_evidence_targets(child_id,target_id) ON DELETE CASCADE,
+            UNIQUE(child_id,source_type,source_ref,target_id,dimension,script,input_method),
+            CHECK(dimension <> 'RECALL' OR (cue_type <> 'CHINESE_TEXT' AND answer_exposed = 0)),
+            CHECK(outcome NOT IN ('NOT_ASSESSED') OR score IS NULL)
+        )""")
+        columns = (
+            "id,child_id,target_id,dimension,script,outcome,assistance,score,scorer,scorer_version,"
+            "cue_type,answer_exposed,input_method,retrieval_timing,prior_exposure_at,review_due_at,"
+            "source_type,source_ref,source_task_id,source_session_id,source_lesson_id,occurred_at,"
+            "created_at,evidence_schema_version"
+        )
+        db.execute(f"INSERT INTO learner_evidence_events({columns}) SELECT {columns} FROM learner_evidence_events_v8_fixture")
+        db.execute("DROP TABLE learner_evidence_events_v8_fixture")
+        db.execute("DELETE FROM schema_migrations WHERE version=8")
+        db.execute("PRAGMA user_version=7")
+
+    initialize_database()
+    initialize_database()
+    with connect() as db:
+        migrated = dict(db.execute("SELECT * FROM learner_evidence_events WHERE source_ref='existing-v7-event'").fetchone())
+        assert migrated == existing
+        assert db.execute("PRAGMA user_version").fetchone()[0] == 8
+        assert db.execute("SELECT description FROM schema_migrations WHERE version=8").fetchone()[0] == "Phonetic notation evidence dimension"
+        _write_fact(db, child_id=child_id, target_id=target_id, target_script="TRADITIONAL",
+                    script="TRADITIONAL", dimension="PHONETIC_NOTATION", outcome="CORRECT",
+                    input_method="ZHUYIN", source_ref="new-v8-event", at="2026-09-02T00:00:00Z",
+                    display_form="醫")
+        assert db.execute("SELECT COUNT(*) FROM learner_evidence_events WHERE child_id=?", (child_id,)).fetchone()[0] == 2
 
 
 def test_placement_profile_v2_is_additive_and_preserves_legacy_aggregate(tmp_path):
@@ -375,15 +549,26 @@ def test_placement_profile_v2_is_additive_and_preserves_legacy_aggregate(tmp_pat
         assert initial.json()["legacyAggregate"]["mainCurriculumStart"] == "STARTER"
         assert initial.json()["domains"]["traditional_recognition"]["level"] == "NOT_ASSESSED"
 
-        updated = api.put(f"/api/children/{child_id}/placement-profile/v2", headers=headers, json={
-            "domains": {"traditional_recognition": "STARTER", "simplified_writing": "BASIC"},
+        first_update = api.put(f"/api/children/{child_id}/placement-profile/v2", headers=headers, json={
+            "domains": {"traditional_recognition": "STARTER"},
             "assessment_method": "PARENT_OBSERVATION",
         })
-        assert updated.status_code == 200, updated.text
-        assert updated.json()["domains"]["traditional_recognition"]["level"] == "STARTER"
-        assert updated.json()["domains"]["simplified_writing"]["level"] == "BASIC"
-        assert updated.json()["legacyAggregate"] == initial.json()["legacyAggregate"]
+        assert first_update.status_code == 200, first_update.text
+        assert first_update.json()["domains"]["traditional_recognition"]["level"] == "STARTER"
+        second_update = api.put(f"/api/children/{child_id}/placement-profile/v2", headers=headers, json={
+            "domains": {"simplified_writing": "BASIC"},
+            "assessment_method": "DIAGNOSTIC",
+        })
+        assert second_update.status_code == 200, second_update.text
+        assert second_update.json()["domains"]["traditional_recognition"]["level"] == "STARTER"
+        assert second_update.json()["domains"]["simplified_writing"]["level"] == "BASIC"
+        assert second_update.json()["legacyAggregate"] == initial.json()["legacyAggregate"]
         assert api.get(f"/api/children/{child_id}/placement-profile", headers=headers).json()["mainCurriculumStart"] == "STARTER"
+        empty = api.put(f"/api/children/{child_id}/placement-profile/v2", headers=headers, json={
+            "domains": {}, "assessment_method": "DIAGNOSTIC",
+        })
+        assert empty.status_code == 400
+        assert empty.json()["detail"] == "no_placement_v2_domains_supplied"
         invalid = api.put(f"/api/children/{child_id}/placement-profile/v2", headers=headers, json={
             "domains": {"recognition": "BOOK_2"}, "assessment_method": "DIAGNOSTIC",
         })

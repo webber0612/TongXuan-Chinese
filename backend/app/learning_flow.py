@@ -1899,11 +1899,16 @@ def submit_learning_answer(*, child_id: int, session_id: str, task_id: str, sele
                 record_linked_score_evidence(db, child_id=child_id, skill_domain="recognition", item_id=row["activity_item_id"], score=score, assisted=assisted, evidence_ref=attempt["id"], evidence_type="recognition_attempt")
                 script = json.loads(session["plan_json"]).get("scriptMode")
                 if script in {"TRADITIONAL", "SIMPLIFIED"}:
-                    from .learner_evidence import record_evidence_in_transaction
+                    from .learner_evidence import (
+                        normalize_orthographic_form,
+                        orthographic_form_target_id,
+                        record_evidence_in_transaction,
+                    )
 
                     item = db.execute("SELECT character FROM learning_items WHERE id=? AND child_id=?", (row["activity_item_id"], child_id)).fetchone()
                     if item is None:
                         raise ValueError("learner_evidence_source_item_not_found")
+                    form = normalize_orthographic_form(item["character"])
                     previous = None
                     due_at = task.get("taskData", {}).get("dueAt")
                     timing = "UNKNOWN"
@@ -1915,7 +1920,7 @@ def submit_learning_answer(*, child_id: int, session_id: str, task_id: str, sele
                         if previous and due_at:
                             timing = "DELAYED"
                     record_evidence_in_transaction(
-                        db, child_id=child_id, target_id=f"learning-item:{row['activity_item_id']}:{script.lower()}",
+                        db, child_id=child_id, target_id=orthographic_form_target_id(script, form),
                         target_kind="ORTHOGRAPHIC_FORM", target_script=script, dimension="ORTHOGRAPHIC_RECOGNITION",
                         script=script, outcome="CORRECT" if correct else "INCORRECT",
                         assistance="ASSISTED" if assisted else "INDEPENDENT", score=score,
@@ -1925,7 +1930,7 @@ def submit_learning_answer(*, child_id: int, session_id: str, task_id: str, sele
                         source_type="LEARNING_FLOW_RECOGNITION", source_ref=attempt["id"],
                         source_task_id=task_id, source_session_id=session_id,
                         source_lesson_id=row["lesson_id"], occurred_at=attempt["timestamp"],
-                        display_form=item["character"],
+                        display_form=form,
                     )
             elif task.get("_answerKind") == "vocabulary":
                 refs = [uid("session-vocabulary-attempt")]
