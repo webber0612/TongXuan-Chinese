@@ -695,8 +695,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Tracked QA documentation contains curriculum-related lesson names and review notes; no reuse clearance is asserted, so this path remains fail-closed.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "4082f7a711b4c283d24908e3a59444fac896a58f8da84603cf6c4f01361f5952",
-      "sizeBytes": 22447,
+      "sha256": "cbb4109dfcce8a0a38591409879790cb79f73163cd776caa63b86fcc75ee5423",
+      "sizeBytes": 22499,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "TRACKED_CJK_TEXT_FAIL_CLOSED"
     },
