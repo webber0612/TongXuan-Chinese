@@ -688,6 +688,11 @@ export function LessonPlayerPage({
   const submittedAnswersRef = useRef<Record<string, { optionId?: string | null; answersKey?: string }>>({});
   const submittedEvidenceRef = useRef<Record<string, string>>({});
   const listeningAttemptIdsByTaskRef = useRef<Record<string, string>>({});
+  const activeChildIdRef = useRef(activeChildId);
+  activeChildIdRef.current = activeChildId;
+  const listeningPlaybackSequenceRef = useRef(0);
+  const activeListeningPlaybackCancelRef = useRef<(() => void) | null>(null);
+  const mountedRef = useRef(false);
   const submittedSkipsRef = useRef<Record<string, boolean>>({});
   const submittingTaskIdsRef = useRef<Set<string>>(new Set());
   const hydratedLearnSessionIdRef = useRef<string | null>(null);
@@ -1458,7 +1463,15 @@ export function LessonPlayerPage({
   };
 
   // Audio helper
+  const interruptListeningPlayback = useCallback(() => {
+    listeningPlaybackSequenceRef.current += 1;
+    const cancel = activeListeningPlaybackCancelRef.current;
+    activeListeningPlaybackCancelRef.current = null;
+    cancel?.();
+  }, []);
+
   const playAudio = useCallback((textToPlay: string) => {
+    interruptListeningPlayback();
     const ttsLocale = locale === "zh-CN" ? "zh-CN" : "zh-TW";
     try {
       speech.speak(
@@ -1477,14 +1490,58 @@ export function LessonPlayerPage({
     } catch {
       // Audio playback is non-blocking fallback
     }
-  }, [locale, speech]);
+  }, [interruptListeningPlayback, locale, speech]);
+
+  const playListeningAudioToCompletion = useCallback((textToPlay: string): Promise<"completed" | "failed" | "cancelled"> => {
+    interruptListeningPlayback();
+    const playbackSequence = listeningPlaybackSequenceRef.current;
+    const ttsLocale = locale === "zh-CN" ? "zh-CN" : "zh-TW";
+
+    return new Promise((resolve) => {
+      let settled = false;
+      const settle = (result: "completed" | "failed" | "cancelled") => {
+        if (settled) return;
+        settled = true;
+        if (activeListeningPlaybackCancelRef.current === cancelPlayback) {
+          activeListeningPlaybackCancelRef.current = null;
+        }
+        resolve(result);
+      };
+      const cancelPlayback = () => settle("cancelled");
+      activeListeningPlaybackCancelRef.current = cancelPlayback;
+
+      try {
+        speech.speak(
+          {
+            provider: "browser",
+            locale: ttsLocale,
+            voice_locale: ttsLocale,
+            text: textToPlay,
+            text_kind: "sentence",
+            rate: 0.85,
+            playback_only: true,
+            persisted: false,
+          },
+          {
+            onEnd: () => settle(playbackSequence === listeningPlaybackSequenceRef.current ? "completed" : "cancelled"),
+            onError: () => settle("failed"),
+          }
+        );
+      } catch {
+        settle("failed");
+      }
+    });
+  }, [interruptListeningPlayback, locale, speech]);
 
   // Listening attempt starter & evidence attacher
   const handlePlayListeningAudio = async (textToPlay: string, exactTaskId?: string): Promise<boolean> => {
-    playAudio(textToPlay);
-    if (!activeChildId) return true;
+    if (!activeChildId) {
+      playAudio(textToPlay);
+      return true;
+    }
     const currentSess = sessionRef.current;
     if (!currentSess?.id || !currentSess.tasks || currentSess.tasks.length === 0) {
+      playAudio(textToPlay);
       setError(text.taskFailed);
       return false;
     }
@@ -1492,11 +1549,33 @@ export function LessonPlayerPage({
       ? t.id === exactTaskId
       : (t.taskType === "LISTENING" || t.key === "listen"));
     if (!listenTask) {
+      playAudio(textToPlay);
       setError(text.taskFailed);
       return false;
     }
     if (listenTask.state === "COMPLETED" || listenTask.state === "DEFERRED") {
+      playAudio(textToPlay);
       delete listeningAttemptIdsByTaskRef.current[listenTask.id];
+      return true;
+    }
+    const playbackChildId = activeChildId;
+    const playbackSessionId = currentSess.id;
+    const playbackResult = await playListeningAudioToCompletion(textToPlay);
+    if (playbackResult !== "completed") {
+      if (playbackResult === "failed" && mountedRef.current) setError(text.taskFailed);
+      return false;
+    }
+    if (!mountedRef.current || activeChildIdRef.current !== playbackChildId || sessionRef.current?.id !== playbackSessionId) {
+      return false;
+    }
+    const completedPlaybackSession = sessionRef.current;
+    const completedPlaybackTask = completedPlaybackSession?.tasks?.find((task) => task.id === listenTask.id);
+    if (!completedPlaybackSession || !completedPlaybackTask) {
+      setError(text.taskFailed);
+      return false;
+    }
+    if (completedPlaybackTask.state === "COMPLETED" || completedPlaybackTask.state === "DEFERRED") {
+      delete listeningAttemptIdsByTaskRef.current[completedPlaybackTask.id];
       return true;
     }
     if (listenTask.itemId) {
@@ -1514,8 +1593,8 @@ export function LessonPlayerPage({
           if (attemptId) listeningAttemptIdsByTaskRef.current[listenTask.id] = attemptId;
         }
         if (attemptId) {
-          const writeResult = await submitBackendTaskEvidence(
-            (t) => t.id === listenTask.id,
+      const writeResult = await submitBackendTaskEvidence(
+            (t) => t.id === completedPlaybackTask.id,
             attemptId,
             1500
           );
@@ -1536,11 +1615,18 @@ export function LessonPlayerPage({
 
   // Clean up
   useEffect(() => {
+    mountedRef.current = true;
     return () => {
+      mountedRef.current = false;
+      interruptListeningPlayback();
       speech.cancel();
       recorder.delete();
     };
-  }, [recorder, speech]);
+  }, [interruptListeningPlayback, recorder, speech]);
+
+  useEffect(() => {
+    interruptListeningPlayback();
+  }, [activeChildId, interruptListeningPlayback]);
 
   // HanziWriter initialization for writing step
   useEffect(() => {

@@ -505,10 +505,12 @@ describe("child-first shell contracts", () => {
     await act(async () => { root.render(React.createElement(AppShell)); await new Promise((resolve) => setTimeout(resolve, 40)); });
     expect(document.querySelector("main.weekly-main-hero")).toBeTruthy();
     expect(requestUrls.some((url) => url.includes("/learning-daily-queue"))).toBe(false);
-    await act(async () => { (document.querySelector(".hero-primary-cta-row .launch-quiz-cta-btn") as HTMLButtonElement).click(); });
+    const unresolvedCta = document.querySelector(".hero-primary-cta-row .launch-quiz-cta-btn") as HTMLButtonElement;
+    expect(unresolvedCta.disabled).toBe(true);
+    await act(async () => { unresolvedCta.click(); });
     expect(window.location.pathname).toBe("/");
     expect(requestUrls.some((url) => url.includes("/learning-sessions"))).toBe(false);
-    expect(document.querySelector('[role="alert"]')?.textContent).toContain("找不到這位學習者");
+    expect(document.querySelector('[role="alert"]')).toBeNull();
     await act(async () => { root.unmount(); });
     vi.unstubAllGlobals();
   });
@@ -531,10 +533,446 @@ describe("child-first shell contracts", () => {
     await act(async () => { root.render(React.createElement(AppShell)); await new Promise((resolve) => setTimeout(resolve, 40)); });
     expect(requestUrls).toContain("/api/children/22/learning-daily-queue");
     expect(requestUrls).not.toContain("/api/children/11/learning-daily-queue");
-    await act(async () => { (document.querySelector(".hero-primary-cta-row .launch-quiz-cta-btn") as HTMLButtonElement).click(); });
+    const mismatchedQueueCta = document.querySelector(".hero-primary-cta-row .launch-quiz-cta-btn") as HTMLButtonElement;
+    expect(mismatchedQueueCta.disabled).toBe(true);
+    await act(async () => { mismatchedQueueCta.click(); });
     expect(window.location.pathname).toBe("/");
     expect(requestUrls.some((url) => url.includes("/learning-sessions"))).toBe(false);
-    expect(document.querySelector('[role="alert"]')?.textContent).toContain("找不到這位學習者");
+    const queueError = document.querySelector(".session-queue-refresh-error");
+    expect(queueError?.textContent).toContain("無法確認最新的今日課程");
+    expect(queueError?.textContent).not.toContain("正式課程檔案");
+    await act(async () => { root.unmount(); });
+    vi.unstubAllGlobals();
+  });
+
+  it("disables Home launch during queue resolution and submits the exact fresh queue lesson for that child", async () => {
+    localStorage.clear();
+    localStorage.setItem(DISPLAY_LANGUAGE_KEY, "zh-Hant");
+    persistSelectedBackendChild(11, "Queue Learner");
+    window.history.replaceState({}, "", "/");
+    const requestLog: Array<{ url: string; method: string; body?: any; cache?: RequestCache }> = [];
+    const session = authoritativeSessionFixture("book1-l01", "queue-race-session", {}, {}, false, false, 11);
+    const queue = noDueQueue(11, "book1-l01");
+    let releaseInitialQueue!: (response: Response) => void;
+    const initialQueueResponse = new Promise<Response>((resolve) => { releaseInitialQueue = resolve; });
+    let queueCalls = 0;
+
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+      const body = typeof init?.body === "string" ? JSON.parse(init.body) : undefined;
+      requestLog.push({ url, method, body, cache: init?.cache });
+      if (url.endsWith("/api/children")) return new Response(JSON.stringify([{ id: 11, name: "Queue Learner" }]), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.endsWith("/api/children/11/learning-daily-queue")) {
+        queueCalls += 1;
+        return queueCalls === 1
+          ? initialQueueResponse
+          : new Response(JSON.stringify(queue), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.endsWith("/api/children/11/learning-sessions/current")) return new Response("null", { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.endsWith("/api/children/11/learning-sessions") && method === "POST") return new Response(JSON.stringify(session), { status: 200, headers: { "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({}), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    document.body.innerHTML = '<div id="root"></div>';
+    const root = createRoot(document.getElementById("root")!);
+    await act(async () => { root.render(React.createElement(AppShell)); await new Promise((resolve) => setTimeout(resolve, 35)); });
+    const cta = document.querySelector(".hero-primary-cta-row .launch-quiz-cta-btn") as HTMLButtonElement;
+    expect(queueCalls).toBe(1);
+    expect(cta.disabled).toBe(true);
+    expect(cta.getAttribute("aria-busy")).toBe("true");
+    expect(cta.textContent).toContain("正在確認今日課程");
+    await act(async () => { cta.click(); });
+    expect(requestLog.filter((request) => request.url.endsWith("/api/children/11/learning-sessions") && request.method === "POST")).toHaveLength(0);
+
+    releaseInitialQueue(new Response(JSON.stringify(queue), { status: 200, headers: { "Content-Type": "application/json" } }));
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 35)); });
+    const resolvedCta = document.querySelector(".hero-primary-cta-row .launch-quiz-cta-btn") as HTMLButtonElement;
+    expect(resolvedCta.disabled).toBe(false);
+    expect(document.querySelector('[data-testid="home-selected-child"]')?.getAttribute("data-child-id")).toBe("11");
+
+    await import("../pages/LessonPlayerPage");
+    await act(async () => { resolvedCta.click(); await new Promise((resolve) => setTimeout(resolve, 70)); });
+    const createRequest = requestLog.find((request) => request.url.endsWith("/api/children/11/learning-sessions") && request.method === "POST");
+    expect(queueCalls).toBe(2);
+    expect(requestLog.filter((request) => request.url.endsWith("/api/children/11/learning-daily-queue")).every((request) => request.cache === "no-store")).toBe(true);
+    expect(createRequest?.body).toMatchObject({ lesson_id: "book1-l01" });
+    expect(session.childId).toBe(11);
+    expect(window.location.pathname).toBe("/TongXuan-Chinese/learning-session");
+    expect(document.querySelector(".error-strip")).toBeNull();
+
+    await act(async () => { root.unmount(); });
+    vi.unstubAllGlobals();
+  });
+
+  it("shows retry guidance when the initial Daily Queue load fails and launches only from its fresh response", async () => {
+    localStorage.clear();
+    localStorage.setItem(DISPLAY_LANGUAGE_KEY, "zh-Hant");
+    persistSelectedBackendChild(11, "Queue Learner");
+    window.history.replaceState({}, "", "/");
+    const requestLog: Array<{ url: string; method: string; body?: any }> = [];
+    const session = authoritativeSessionFixture("book1-l01", "initial-queue-retry-session", {}, {}, false, false, 11);
+    const freshQueue = noDueQueue(11, "book1-l01");
+    let queueCalls = 0;
+    let releaseRetry!: (response: Response) => void;
+    const retryResponse = new Promise<Response>((resolve) => { releaseRetry = resolve; });
+
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+      const body = typeof init?.body === "string" ? JSON.parse(init.body) : undefined;
+      requestLog.push({ url, method, body });
+      if (url.endsWith("/api/children")) return new Response(JSON.stringify([{ id: 11, name: "Queue Learner" }]), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.endsWith("/api/children/11/learning-daily-queue")) {
+        queueCalls += 1;
+        if (queueCalls === 1) return new Response(JSON.stringify({ detail: "queue_unavailable" }), { status: 503, headers: { "Content-Type": "application/json" } });
+        return retryResponse;
+      }
+      if (url.endsWith("/api/children/11/learning-sessions/current")) return new Response("null", { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.endsWith("/api/children/11/learning-sessions") && method === "POST") return new Response(JSON.stringify(session), { status: 200, headers: { "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({}), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    document.body.innerHTML = '<div id="root"></div>';
+    const root = createRoot(document.getElementById("root")!);
+    await act(async () => { root.render(React.createElement(AppShell)); await new Promise((resolve) => setTimeout(resolve, 50)); });
+    expect(queueCalls).toBe(1);
+    const disabledCta = document.querySelector(".hero-primary-cta-row .launch-quiz-cta-btn") as HTMLButtonElement;
+    expect(disabledCta.disabled).toBe(true);
+    expect(disabledCta.getAttribute("aria-busy")).toBe("false");
+    expect(disabledCta.matches('.validated-session-entry:disabled:not([aria-busy="true"])')).toBe(true);
+    expect(disabledCta.textContent).toContain("開始今日學習");
+    const queueError = document.querySelector(".session-queue-refresh-error");
+    expect(queueError?.textContent).toContain("無法確認最新的今日課程");
+    expect(queueError?.textContent).not.toContain("正式課程檔案");
+    expect(requestLog.some((request) => request.url.endsWith("/api/children/11/learning-sessions") && request.method === "POST")).toBe(false);
+
+    const retryButton = document.querySelector('[data-testid="session-queue-retry"]') as HTMLButtonElement;
+    expect(retryButton).toBeTruthy();
+    await act(async () => { retryButton.click(); await new Promise((resolve) => setTimeout(resolve, 0)); });
+    expect(queueCalls).toBe(2);
+    const retryingCta = document.querySelector(".hero-primary-cta-row .launch-quiz-cta-btn") as HTMLButtonElement;
+    expect(retryingCta.disabled).toBe(true);
+    expect(retryingCta.getAttribute("aria-busy")).toBe("true");
+    expect(retryingCta.textContent).toContain("正在確認今日課程");
+    expect(requestLog.some((request) => request.url.endsWith("/api/children/11/learning-sessions") && request.method === "POST")).toBe(false);
+
+    await import("../pages/LessonPlayerPage");
+    releaseRetry(new Response(JSON.stringify(freshQueue), { status: 200, headers: { "Content-Type": "application/json" } }));
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 70)); });
+    const createRequest = requestLog.find((request) => request.url.endsWith("/api/children/11/learning-sessions") && request.method === "POST");
+    expect(createRequest?.body).toMatchObject({ lesson_id: "book1-l01" });
+    expect(session.childId).toBe(11);
+    expect(document.querySelector(".session-queue-refresh-error")).toBeNull();
+    expect(window.location.pathname).toBe("/TongXuan-Chinese/learning-session");
+
+    await act(async () => { root.unmount(); });
+    vi.unstubAllGlobals();
+  });
+
+  it("ignores a delayed previous-child queue after switching profiles and launches only the new child's lesson", async () => {
+    localStorage.clear();
+    localStorage.setItem(DISPLAY_LANGUAGE_KEY, "zh-Hant");
+    persistSelectedBackendChild(11, "Twin");
+    window.history.replaceState({}, "", "/");
+    const requestLog: Array<{ url: string; method: string; body?: any }> = [];
+    const session = authoritativeSessionFixture("book1-l01", "switched-child-session", {}, {}, false, false, 22);
+    const oldQueue = noDueQueue(11, "starter-l01");
+    const newQueue = noDueQueue(22, "book1-l01");
+    let releaseOldQueue!: (response: Response) => void;
+    const oldQueueResponse = new Promise<Response>((resolve) => { releaseOldQueue = resolve; });
+    let child22QueueCalls = 0;
+
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+      const body = typeof init?.body === "string" ? JSON.parse(init.body) : undefined;
+      requestLog.push({ url, method, body });
+      if (url.endsWith("/api/children")) return new Response(JSON.stringify([{ id: 11, name: "Twin" }, { id: 22, name: "Twin" }]), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.endsWith("/api/children/11/learning-daily-queue")) return oldQueueResponse;
+      if (url.endsWith("/api/children/22/learning-daily-queue")) {
+        child22QueueCalls += 1;
+        return new Response(JSON.stringify(newQueue), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.endsWith("/api/children/22/learning-sessions/current")) return new Response("null", { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.endsWith("/api/children/22/learning-sessions") && method === "POST") return new Response(JSON.stringify(session), { status: 200, headers: { "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({}), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    document.body.innerHTML = '<div id="root"></div>';
+    const root = createRoot(document.getElementById("root")!);
+    await act(async () => { root.render(React.createElement(AppShell)); await new Promise((resolve) => setTimeout(resolve, 35)); });
+    expect(requestLog.some((request) => request.url.endsWith("/api/children/11/learning-daily-queue"))).toBe(true);
+
+    await act(async () => { (document.querySelector(".profile-trigger") as HTMLButtonElement).click(); });
+    const options = Array.from(document.querySelectorAll(".profile-option")) as HTMLButtonElement[];
+    await act(async () => { options[1].click(); await new Promise((resolve) => setTimeout(resolve, 40)); });
+    const unresolvedNewChildCta = document.querySelector(".hero-primary-cta-row .launch-quiz-cta-btn") as HTMLButtonElement;
+    expect(unresolvedNewChildCta.disabled).toBe(false);
+    expect(document.querySelector('[data-testid="home-selected-child"]')?.getAttribute("data-child-id")).toBe("22");
+
+    releaseOldQueue(new Response(JSON.stringify(oldQueue), { status: 200, headers: { "Content-Type": "application/json" } }));
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 30)); });
+    expect(document.querySelector('[data-testid="home-selected-child"]')?.getAttribute("data-child-id")).toBe("22");
+
+    await import("../pages/LessonPlayerPage");
+    const currentChildCta = document.querySelector(".hero-primary-cta-row .launch-quiz-cta-btn") as HTMLButtonElement;
+    await act(async () => { currentChildCta.click(); await new Promise((resolve) => setTimeout(resolve, 70)); });
+    expect(child22QueueCalls).toBe(2);
+    expect(requestLog.find((request) => request.url.endsWith("/api/children/22/learning-sessions") && request.method === "POST")?.body).toMatchObject({ lesson_id: "book1-l01" });
+    expect(requestLog.some((request) => request.url.endsWith("/api/children/11/learning-sessions") && request.method === "POST")).toBe(false);
+    expect(session.childId).toBe(22);
+    expect(window.location.pathname).toBe("/TongXuan-Chinese/learning-session");
+
+    await act(async () => { root.unmount(); });
+    vi.unstubAllGlobals();
+  });
+
+  it("cancels Home queue revalidation when the selected child changes before session creation", async () => {
+    localStorage.clear();
+    localStorage.setItem(DISPLAY_LANGUAGE_KEY, "zh-Hant");
+    persistSelectedBackendChild(11, "Twin");
+    window.history.replaceState({}, "", "/");
+    const requestLog: Array<{ url: string; method: string; body?: any }> = [];
+    const session = authoritativeSessionFixture("book1-l01", "revalidated-child-session", {}, {}, false, false, 22);
+    const child11Queue = noDueQueue(11, "starter-l01");
+    const child22Queue = noDueQueue(22, "book1-l01");
+    let releaseChild11Revalidation!: (response: Response) => void;
+    const child11Revalidation = new Promise<Response>((resolve) => { releaseChild11Revalidation = resolve; });
+    let child11QueueCalls = 0;
+    let child22QueueCalls = 0;
+
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+      const body = typeof init?.body === "string" ? JSON.parse(init.body) : undefined;
+      requestLog.push({ url, method, body });
+      if (url.endsWith("/api/children")) return new Response(JSON.stringify([{ id: 11, name: "Twin" }, { id: 22, name: "Twin" }]), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.endsWith("/api/children/11/learning-daily-queue")) {
+        child11QueueCalls += 1;
+        return child11QueueCalls === 1
+          ? new Response(JSON.stringify(child11Queue), { status: 200, headers: { "Content-Type": "application/json" } })
+          : child11Revalidation;
+      }
+      if (url.endsWith("/api/children/22/learning-daily-queue")) {
+        child22QueueCalls += 1;
+        return new Response(JSON.stringify(child22Queue), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.endsWith("/api/children/22/learning-sessions/current")) return new Response("null", { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.endsWith("/api/children/22/learning-sessions") && method === "POST") return new Response(JSON.stringify(session), { status: 200, headers: { "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({}), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    document.body.innerHTML = '<div id="root"></div>';
+    const root = createRoot(document.getElementById("root")!);
+    await act(async () => { root.render(React.createElement(AppShell)); await new Promise((resolve) => setTimeout(resolve, 40)); });
+    const child11Cta = document.querySelector(".hero-primary-cta-row .launch-quiz-cta-btn") as HTMLButtonElement;
+    expect(child11Cta.disabled).toBe(false);
+    await act(async () => { child11Cta.click(); await new Promise((resolve) => setTimeout(resolve, 0)); });
+    expect(child11QueueCalls).toBe(2);
+    const revalidatingCta = document.querySelector(".hero-primary-cta-row .launch-quiz-cta-btn") as HTMLButtonElement;
+    expect(revalidatingCta.disabled).toBe(true);
+    expect(revalidatingCta.getAttribute("aria-busy")).toBe("true");
+    expect(revalidatingCta.textContent).toContain("正在確認今日課程");
+
+    await act(async () => { (document.querySelector(".profile-trigger") as HTMLButtonElement).click(); });
+    const profileOptions = Array.from(document.querySelectorAll(".profile-option")) as HTMLButtonElement[];
+    await act(async () => { profileOptions[1].click(); await new Promise((resolve) => setTimeout(resolve, 40)); });
+    expect(document.querySelector('[data-testid="home-selected-child"]')?.getAttribute("data-child-id")).toBe("22");
+    expect((document.querySelector(".hero-primary-cta-row .launch-quiz-cta-btn") as HTMLButtonElement).disabled).toBe(false);
+
+    releaseChild11Revalidation(new Response(JSON.stringify(child11Queue), { status: 200, headers: { "Content-Type": "application/json" } }));
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 30)); });
+    expect(document.querySelector('[data-testid="home-selected-child"]')?.getAttribute("data-child-id")).toBe("22");
+    expect(requestLog.some((request) => request.url.endsWith("/api/children/11/learning-sessions") && request.method === "POST")).toBe(false);
+
+    await import("../pages/LessonPlayerPage");
+    const child22Cta = document.querySelector(".hero-primary-cta-row .launch-quiz-cta-btn") as HTMLButtonElement;
+    await act(async () => { child22Cta.click(); await new Promise((resolve) => setTimeout(resolve, 70)); });
+    const child22Create = requestLog.find((request) => request.url.endsWith("/api/children/22/learning-sessions") && request.method === "POST");
+    expect(child22QueueCalls).toBe(2);
+    expect(child22Create?.body).toMatchObject({ lesson_id: "book1-l01" });
+    expect(session.childId).toBe(22);
+    expect(window.location.pathname).toBe("/TongXuan-Chinese/learning-session");
+
+    await act(async () => { root.unmount(); });
+    vi.unstubAllGlobals();
+  });
+
+  it("shows a retryable queue-refresh error and launches only after a fresh queue succeeds", async () => {
+    localStorage.clear();
+    localStorage.setItem(DISPLAY_LANGUAGE_KEY, "zh-Hant");
+    persistSelectedBackendChild(11, "Queue Learner");
+    window.history.replaceState({}, "", "/");
+    const requestLog: Array<{ url: string; method: string; body?: any }> = [];
+    const session = authoritativeSessionFixture("book1-l01", "queue-retry-session", {}, {}, false, false, 11);
+    const initialQueue = noDueQueue(11, "starter-l01");
+    const retriedQueue = noDueQueue(11, "book1-l01");
+    let queueCalls = 0;
+    let releaseRetry!: (response: Response) => void;
+    const retryResponse = new Promise<Response>((resolve) => { releaseRetry = resolve; });
+
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+      const body = typeof init?.body === "string" ? JSON.parse(init.body) : undefined;
+      requestLog.push({ url, method, body });
+      if (url.endsWith("/api/children")) return new Response(JSON.stringify([{ id: 11, name: "Queue Learner" }]), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.endsWith("/api/children/11/learning-daily-queue")) {
+        queueCalls += 1;
+        if (queueCalls === 1) return new Response(JSON.stringify(initialQueue), { status: 200, headers: { "Content-Type": "application/json" } });
+        if (queueCalls === 2) return new Response(JSON.stringify({ detail: "queue_unavailable" }), { status: 503, headers: { "Content-Type": "application/json" } });
+        return retryResponse;
+      }
+      if (url.endsWith("/api/children/11/learning-sessions/current")) return new Response("null", { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.endsWith("/api/children/11/learning-sessions") && method === "POST") return new Response(JSON.stringify(session), { status: 200, headers: { "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({}), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    document.body.innerHTML = '<div id="root"></div>';
+    const root = createRoot(document.getElementById("root")!);
+    await act(async () => { root.render(React.createElement(AppShell)); await new Promise((resolve) => setTimeout(resolve, 40)); });
+    const initialCta = document.querySelector(".hero-primary-cta-row .launch-quiz-cta-btn") as HTMLButtonElement;
+    expect(initialCta.disabled).toBe(false);
+
+    await act(async () => { initialCta.click(); await new Promise((resolve) => setTimeout(resolve, 35)); });
+    expect(queueCalls).toBe(2);
+    expect(requestLog.some((request) => request.url.endsWith("/api/children/11/learning-sessions") && request.method === "POST")).toBe(false);
+    expect((document.querySelector(".hero-primary-cta-row .launch-quiz-cta-btn") as HTMLButtonElement).disabled).toBe(true);
+    const queueError = document.querySelector(".session-queue-refresh-error");
+    expect(queueError?.textContent).toContain("無法確認最新的今日課程");
+    expect(queueError?.textContent).not.toContain("正式課程檔案");
+
+    const retryButton = document.querySelector('[data-testid="session-queue-retry"]') as HTMLButtonElement;
+    expect(retryButton).toBeTruthy();
+    await act(async () => { retryButton.click(); await new Promise((resolve) => setTimeout(resolve, 0)); });
+    const pendingCta = document.querySelector(".hero-primary-cta-row .launch-quiz-cta-btn") as HTMLButtonElement;
+    expect(pendingCta.disabled).toBe(true);
+    expect(pendingCta.getAttribute("aria-busy")).toBe("true");
+    expect(pendingCta.textContent).toContain("正在確認今日課程");
+    expect(requestLog.some((request) => request.url.endsWith("/api/children/11/learning-sessions") && request.method === "POST")).toBe(false);
+
+    await import("../pages/LessonPlayerPage");
+    releaseRetry(new Response(JSON.stringify(retriedQueue), { status: 200, headers: { "Content-Type": "application/json" } }));
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 70)); });
+    const createRequest = requestLog.find((request) => request.url.endsWith("/api/children/11/learning-sessions") && request.method === "POST");
+    expect(queueCalls).toBe(3);
+    expect(createRequest?.body).toMatchObject({ lesson_id: "book1-l01" });
+    expect(session.childId).toBe(11);
+    expect(document.querySelector(".session-queue-refresh-error")).toBeNull();
+    expect(window.location.pathname).toBe("/TongXuan-Chinese/learning-session");
+
+    await act(async () => { root.unmount(); });
+    vi.unstubAllGlobals();
+  });
+
+  it("clears queue-refresh errors on child switch and ignores a stale failed retry", async () => {
+    localStorage.clear();
+    localStorage.setItem(DISPLAY_LANGUAGE_KEY, "zh-Hant");
+    persistSelectedBackendChild(11, "Twin");
+    window.history.replaceState({}, "", "/");
+    const requestLog: Array<{ url: string; method: string; body?: any }> = [];
+    const session = authoritativeSessionFixture("book1-l01", "queue-child-switch-session", {}, {}, false, false, 22);
+    const child11Queue = noDueQueue(11, "starter-l01");
+    const child22Queue = noDueQueue(22, "book1-l01");
+    let child11QueueCalls = 0;
+    let child22QueueCalls = 0;
+    let rejectChild11Retry!: (error: Error) => void;
+    const child11Retry = new Promise<Response>((_resolve, reject) => { rejectChild11Retry = reject; });
+
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+      const body = typeof init?.body === "string" ? JSON.parse(init.body) : undefined;
+      requestLog.push({ url, method, body });
+      if (url.endsWith("/api/children")) return new Response(JSON.stringify([{ id: 11, name: "Twin" }, { id: 22, name: "Twin" }]), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.endsWith("/api/children/11/learning-daily-queue")) {
+        child11QueueCalls += 1;
+        if (child11QueueCalls === 1) return new Response(JSON.stringify(child11Queue), { status: 200, headers: { "Content-Type": "application/json" } });
+        if (child11QueueCalls === 2) return new Response(JSON.stringify({ detail: "queue_unavailable" }), { status: 503, headers: { "Content-Type": "application/json" } });
+        return child11Retry;
+      }
+      if (url.endsWith("/api/children/22/learning-daily-queue")) {
+        child22QueueCalls += 1;
+        return new Response(JSON.stringify(child22Queue), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.endsWith("/api/children/22/learning-sessions/current")) return new Response("null", { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.endsWith("/api/children/22/learning-sessions") && method === "POST") return new Response(JSON.stringify(session), { status: 200, headers: { "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({}), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    document.body.innerHTML = '<div id="root"></div>';
+    const root = createRoot(document.getElementById("root")!);
+    await act(async () => { root.render(React.createElement(AppShell)); await new Promise((resolve) => setTimeout(resolve, 40)); });
+    const child11Cta = document.querySelector(".hero-primary-cta-row .launch-quiz-cta-btn") as HTMLButtonElement;
+    await act(async () => { child11Cta.click(); await new Promise((resolve) => setTimeout(resolve, 35)); });
+    expect(child11QueueCalls).toBe(2);
+    expect(document.querySelector(".session-queue-refresh-error")).toBeTruthy();
+
+    const retryButton = document.querySelector('[data-testid="session-queue-retry"]') as HTMLButtonElement;
+    await act(async () => { retryButton.click(); await new Promise((resolve) => setTimeout(resolve, 0)); });
+    expect(child11QueueCalls).toBe(3);
+
+    await act(async () => { (document.querySelector(".profile-trigger") as HTMLButtonElement).click(); });
+    const profileOptions = Array.from(document.querySelectorAll(".profile-option")) as HTMLButtonElement[];
+    await act(async () => { profileOptions[1].click(); await new Promise((resolve) => setTimeout(resolve, 40)); });
+    expect(document.querySelector('[data-testid="home-selected-child"]')?.getAttribute("data-child-id")).toBe("22");
+    expect(child22QueueCalls).toBe(1);
+    expect(document.querySelector(".session-queue-refresh-error")).toBeNull();
+
+    rejectChild11Retry(new Error("stale child queue request failed"));
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 30)); });
+    expect(document.querySelector('[data-testid="home-selected-child"]')?.getAttribute("data-child-id")).toBe("22");
+    expect(document.querySelector(".session-queue-refresh-error")).toBeNull();
+    expect((document.querySelector(".hero-primary-cta-row .launch-quiz-cta-btn") as HTMLButtonElement).disabled).toBe(false);
+
+    await import("../pages/LessonPlayerPage");
+    const child22Cta = document.querySelector(".hero-primary-cta-row .launch-quiz-cta-btn") as HTMLButtonElement;
+    await act(async () => { child22Cta.click(); await new Promise((resolve) => setTimeout(resolve, 70)); });
+    expect(child22QueueCalls).toBe(2);
+    expect(requestLog.find((request) => request.url.endsWith("/api/children/22/learning-sessions") && request.method === "POST")?.body).toMatchObject({ lesson_id: "book1-l01" });
+    expect(requestLog.some((request) => request.url.endsWith("/api/children/11/learning-sessions") && request.method === "POST")).toBe(false);
+    expect(session.childId).toBe(22);
+
+    await act(async () => { root.unmount(); });
+    vi.unstubAllGlobals();
+  });
+
+  it("keeps placement rejection fail-closed and shows the Lesson Player error without a session", async () => {
+    localStorage.clear();
+    localStorage.setItem(DISPLAY_LANGUAGE_KEY, "zh-Hant");
+    persistSelectedBackendChild(11, "Queue Learner");
+    window.history.replaceState({}, "", "/");
+    const requestLog: Array<{ url: string; method: string; body?: any }> = [];
+    const queue = noDueQueue(11, "book1-l01");
+
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+      const body = typeof init?.body === "string" ? JSON.parse(init.body) : undefined;
+      requestLog.push({ url, method, body });
+      if (url.endsWith("/api/children")) return new Response(JSON.stringify([{ id: 11, name: "Queue Learner" }]), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.endsWith("/api/children/11/learning-daily-queue")) return new Response(JSON.stringify(queue), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.endsWith("/api/children/11/learning-sessions/current")) return new Response("null", { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.endsWith("/api/children/11/learning-sessions") && method === "POST") {
+        return new Response(JSON.stringify({ detail: "learning_flow_lesson_not_in_placement" }), { status: 400, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify({}), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+
+    document.body.innerHTML = '<div id="root"></div>';
+    const root = createRoot(document.getElementById("root")!);
+    await act(async () => { root.render(React.createElement(AppShell)); await new Promise((resolve) => setTimeout(resolve, 35)); });
+    await import("../pages/LessonPlayerPage");
+    const cta = document.querySelector(".hero-primary-cta-row .launch-quiz-cta-btn") as HTMLButtonElement;
+    await act(async () => { cta.click(); await new Promise((resolve) => setTimeout(resolve, 70)); });
+
+    expect(requestLog.find((request) => request.url.endsWith("/api/children/11/learning-sessions") && request.method === "POST")?.body).toMatchObject({ lesson_id: "book1-l01" });
+    expect(window.location.pathname).toBe("/TongXuan-Chinese/learning-session");
+    expect(document.querySelector(".error-strip")).toBeTruthy();
+    expect(document.querySelector(".lesson-step-card")).toBeNull();
+    expect(document.querySelector(".finish-session-cta-btn")).toBeNull();
+
     await act(async () => { root.unmount(); });
     vi.unstubAllGlobals();
   });

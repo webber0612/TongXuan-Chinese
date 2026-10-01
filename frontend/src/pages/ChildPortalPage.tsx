@@ -137,6 +137,16 @@ export type ValidatedDailyQueue = {
   targetMinutes: number;
 };
 
+function getDailyQueueLessonId(queue: ValidatedDailyQueue | null): string | undefined {
+  if (!queue) return undefined;
+  const currentLessonId = queue.newLesson?.lessonId || queue.completedLesson?.lessonId;
+  if (typeof currentLessonId === "string" && currentLessonId.trim()) return currentLessonId;
+  if (queue.placementStart === "BOOK_1") return "book1-l01";
+  if (queue.placementStart === "BASIC") return "basic-l01";
+  if (queue.placementStart === "STARTER") return "starter-l01";
+  return undefined;
+}
+
 export type ScriptMode = "zhuyin" | "pinyin" | "dual";
 export type DisplayLang = "zh-Hant" | "zh-Hans" | "en" | "ja" | "ko" | "es";
 export type PhoneticAssist = "zhuyin" | "pinyin" | "off";
@@ -157,6 +167,9 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     draftContentNotice: "下方關卡是童軒自編示範內容，尚未納入官方課程。",
     openVerifiedCurriculum: "查看官方課程",
     startValidatedSession: "開始今日學習",
+    sessionQueueChecking: "正在確認今日課程…",
+    sessionQueueRefreshFailed: "無法確認最新的今日課程，尚未開始學習。請再試一次。",
+    retrySessionQueue: "再試一次",
     sessionProfileMissing: "找不到這位學習者的正式課程檔案，請家長先從課程頁新增相同名稱的學習者。",
     rewardsShop: "獎勵兌換舖",
     settings: "設定",
@@ -322,6 +335,9 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     draftContentNotice: "下方关卡是童轩自编示范内容，尚未纳入官方课程。",
     openVerifiedCurriculum: "查看官方课程",
     startValidatedSession: "开始今日学习",
+    sessionQueueChecking: "正在确认今日课程…",
+    sessionQueueRefreshFailed: "无法确认最新的今日课程，尚未开始学习。请再试一次。",
+    retrySessionQueue: "再试一次",
     sessionProfileMissing: "找不到这位学习者的正式课程档案，请家长先从课程页新增相同名称的学习者。",
     rewardsShop: "奖励兑换铺",
     settings: "设置",
@@ -487,6 +503,9 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     draftContentNotice: "The levels below are TongXuan-authored samples and are not part of the verified official course.",
     openVerifiedCurriculum: "View official course",
     startValidatedSession: "Start today's lesson",
+    sessionQueueChecking: "Checking today's lesson…",
+    sessionQueueRefreshFailed: "Couldn't verify today's lesson. Your session was not started. Try again.",
+    retrySessionQueue: "Try again",
     sessionProfileMissing: "No official learning profile matches this learner. Ask a parent to add the same name in the curriculum area first.",
     rewardsShop: "Rewards Shop",
     settings: "Settings",
@@ -652,6 +671,9 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     draftContentNotice: "以下のレベルは童軒が作成したサンプルで、公式教材として検証されていません。",
     openVerifiedCurriculum: "公式コースを見る",
     startValidatedSession: "今日の学習を始める",
+    sessionQueueChecking: "今日のレッスンを確認中…",
+    sessionQueueRefreshFailed: "今日のレッスンを確認できませんでした。学習は開始されていません。もう一度お試しください。",
+    retrySessionQueue: "もう一度試す",
     sessionProfileMissing: "この学習者に一致する公式学習プロフィールがありません。保護者の方はコース画面で同じ名前の学習者を追加してください。",
     rewardsShop: "ご褒美ショップ",
     settings: "設定",
@@ -817,6 +839,9 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     draftContentNotice: "아래 단계는 TongXuan 자체 제작 예시이며 공식 교재로 검증되지 않았습니다.",
     openVerifiedCurriculum: "공식 교육과정 보기",
     startValidatedSession: "오늘 학습 시작",
+    sessionQueueChecking: "오늘의 학습을 확인하고 있어요…",
+    sessionQueueRefreshFailed: "오늘의 학습을 확인하지 못해 학습을 시작하지 않았어요. 다시 시도해 주세요.",
+    retrySessionQueue: "다시 시도",
     sessionProfileMissing: "이 학습자와 일치하는 공식 학습 프로필이 없습니다. 보호자가 교육과정 화면에서 같은 이름의 학습자를 먼저 추가해 주세요.",
     rewardsShop: "보상 상점",
     settings: "설정",
@@ -982,6 +1007,9 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     draftContentNotice: "Los niveles siguientes son ejemplos creados por TongXuan y no forman parte del curso oficial verificado.",
     openVerifiedCurriculum: "Ver curso oficial",
     startValidatedSession: "Empezar la lección de hoy",
+    sessionQueueChecking: "Comprobando la lección de hoy…",
+    sessionQueueRefreshFailed: "No se pudo verificar la lección de hoy. La sesión no se inició. Inténtalo de nuevo.",
+    retrySessionQueue: "Intentar de nuevo",
     sessionProfileMissing: "No hay un perfil oficial que coincida con este estudiante. Pide a un adulto que lo añada con el mismo nombre en el área de cursos.",
     rewardsShop: "Tienda de Premios",
     settings: "Ajustes",
@@ -1867,6 +1895,7 @@ export function ChildPortalPage({
 
   const activeLearner = (activeChildName ? learners.find((l) => l.name.trim().toLowerCase() === activeChildName.trim().toLowerCase()) : null) || learners.find((l) => l.id === activeLearnerId) || learners[0] || DEFAULT_LEARNERS[0];
   const [sessionProfileError, setSessionProfileError] = useState(false);
+  const [sessionQueueRefreshError, setSessionQueueRefreshError] = useState(false);
 
   // Helper to update active learner data and persist
   const updateActiveLearner = (updater: Partial<ChildLearner> | ((prev: ChildLearner) => ChildLearner)) => {
@@ -2001,6 +2030,10 @@ export function ChildPortalPage({
   };
 
   const [dailyQueue, setDailyQueue] = useState<ValidatedDailyQueue | null>(null);
+  const [dailyQueueLoading, setDailyQueueLoading] = useState(() => isValidBackendChildId(activeChildId));
+  const [sessionLaunchPending, setSessionLaunchPending] = useState(false);
+  const sessionLaunchPendingRef = useRef(false);
+  const sessionLaunchRequestRef = useRef(0);
 
   const stageIdFromDailyQueue = (queue: ValidatedDailyQueue | null): string => {
     if (!queue) return "starter";
@@ -2018,25 +2051,89 @@ export function ChildPortalPage({
     return { stage: officialCoursePath.stages[0], lesson: officialCoursePath.stages[0].lessons[0] };
   };
 
-  const authoritativeLessonId =
-    dailyQueue?.newLesson?.lessonId ||
-    dailyQueue?.completedLesson?.lessonId ||
-    (dailyQueue?.placementStart === "BOOK_1"
-      ? "book1-l01"
-      : dailyQueue?.placementStart === "BASIC"
-      ? "basic-l01"
-      : "starter-l01");
+  const authoritativeLessonId = getDailyQueueLessonId(dailyQueue) || "starter-l01";
 
   const { stage: authoritativeStage, lesson: authoritativeLesson } = findLessonAndStage(authoritativeLessonId);
-  const sessionTargetLessonId = dailyQueue?.newLesson?.lessonId || dailyQueue?.completedLesson?.lessonId ||
-    (dailyQueue?.placementStart === "BOOK_1" ? "book1-l01" : dailyQueue?.placementStart === "BASIC" ? "basic-l01" : dailyQueue?.placementStart === "STARTER" ? "starter-l01" : undefined);
-  const startLearningSession = (mode: "LEARN" | "REVIEW") => {
-    if (!onStartLearningSession || !isValidBackendChildId(activeChildId) || dailyQueue?.childId !== activeChildId || !sessionTargetLessonId) {
+  const sessionTargetLessonId = getDailyQueueLessonId(dailyQueue);
+  const sessionLaunchReady = Boolean(
+    onStartLearningSession && isValidBackendChildId(activeChildId) &&
+    dailyQueue?.childId === activeChildId && sessionTargetLessonId
+  );
+  const sessionLaunchBusy = sessionLaunchPending || dailyQueueLoading;
+  const startLearningSession = async () => {
+    if (!onStartLearningSession || !isValidBackendChildId(activeChildId)) {
       setSessionProfileError(true);
       return;
     }
-    setSessionProfileError(!onStartLearningSession(activeChildId, sessionTargetLessonId, mode));
+    if (!sessionLaunchReady && !sessionQueueRefreshError) return;
+    if (sessionLaunchPendingRef.current) return;
+
+    const requestedChildId = activeChildId;
+    const requestId = ++sessionLaunchRequestRef.current;
+    const isCurrentRequest = () => requestId === sessionLaunchRequestRef.current;
+    sessionLaunchPendingRef.current = true;
+    setSessionLaunchPending(true);
+    setSessionProfileError(false);
+    setSessionQueueRefreshError(false);
+
+    try {
+      const response = await apiFetch(`${API}/api/children/${requestedChildId}/learning-daily-queue`, { cache: "no-store" });
+      if (!response.ok) throw new Error("daily_queue_unavailable");
+      const data: unknown = await response.json();
+      if (!isCurrentRequest() || typeof data !== "object" || data === null ||
+          !("childId" in data) || data.childId !== requestedChildId) {
+        if (isCurrentRequest()) {
+          setDailyQueue(null);
+          setSessionQueueRefreshError(true);
+        }
+        return;
+      }
+
+      const freshQueue = data as ValidatedDailyQueue;
+      const freshLessonId = getDailyQueueLessonId(freshQueue);
+      if (!freshLessonId) {
+        setDailyQueue(null);
+        setSessionQueueRefreshError(true);
+        return;
+      }
+
+      setDailyQueue(freshQueue);
+      setSessionQueueRefreshError(false);
+      const found = findLessonAndStage(freshLessonId);
+      setSelectedStageId(found.stage.id);
+      setSelectedOfficialLessonId(found.lesson.id);
+
+      const mode = freshQueue.currentLessonComplete
+        ? (freshQueue.review?.dueCount ?? 0) > 0 ? "REVIEW" : null
+        : "LEARN";
+      if (!mode) return;
+      setSessionProfileError(!onStartLearningSession(requestedChildId, freshLessonId, mode));
+    } catch {
+      if (isCurrentRequest()) {
+        setDailyQueue(null);
+        setSessionQueueRefreshError(true);
+      }
+    } finally {
+      if (isCurrentRequest()) {
+        sessionLaunchPendingRef.current = false;
+        setSessionLaunchPending(false);
+      }
+    }
   };
+
+  useEffect(() => () => {
+    sessionLaunchRequestRef.current += 1;
+    sessionLaunchPendingRef.current = false;
+  }, []);
+
+  useEffect(() => {
+    sessionLaunchRequestRef.current += 1;
+    sessionLaunchPendingRef.current = false;
+    setSessionLaunchPending(false);
+    setDailyQueueLoading(isValidBackendChildId(activeChildId));
+    setSessionProfileError(false);
+    setSessionQueueRefreshError(false);
+  }, [activeChildId]);
 
   const [selectedStageId, setSelectedStageId] = useState<string>("starter");
   const [selectedOfficialLessonId, setSelectedOfficialLessonId] = useState<string>("starter-l01");
@@ -2046,23 +2143,47 @@ export function ChildPortalPage({
     const targetChildId = activeChildId;
     setDailyQueue(null);
     if (!isValidBackendChildId(targetChildId)) {
+      setDailyQueueLoading(false);
       return () => { cancelled = true; };
     }
 
-    apiFetch(`${API}/api/children/${targetChildId}/learning-daily-queue`)
-      .then((res) => (res.ok ? res.json() as Promise<unknown> : null))
+    setDailyQueueLoading(true);
+    setSessionQueueRefreshError(false);
+    apiFetch(`${API}/api/children/${targetChildId}/learning-daily-queue`, { cache: "no-store" })
+      .then((res) => {
+        if (!res.ok) throw new Error("daily_queue_unavailable");
+        return res.json() as Promise<unknown>;
+      })
       .then((data: unknown) => {
-        if (!cancelled && typeof data === "object" && data !== null &&
+        if (cancelled) return;
+        if (typeof data === "object" && data !== null &&
             "childId" in data && data.childId === targetChildId) {
           const queueData = data as ValidatedDailyQueue;
-          setDailyQueue(queueData);
-          const authId = queueData.newLesson?.lessonId || queueData.completedLesson?.lessonId || (queueData.placementStart === "BOOK_1" ? "book1-l01" : queueData.placementStart === "BASIC" ? "basic-l01" : "starter-l01");
-          const found = findLessonAndStage(authId);
-          setSelectedStageId(found.stage.id);
-          setSelectedOfficialLessonId(found.lesson.id);
+          const authId = getDailyQueueLessonId(queueData);
+          if (authId) {
+            setDailyQueue(queueData);
+            setSessionQueueRefreshError(false);
+            const found = findLessonAndStage(authId);
+            setSelectedStageId(found.stage.id);
+            setSelectedOfficialLessonId(found.lesson.id);
+          } else {
+            setDailyQueue(null);
+            setSessionQueueRefreshError(true);
+          }
+        } else {
+          setDailyQueue(null);
+          setSessionQueueRefreshError(true);
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!cancelled) {
+          setDailyQueue(null);
+          setSessionQueueRefreshError(true);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setDailyQueueLoading(false);
+      });
 
     return () => {
       cancelled = true;
@@ -2584,7 +2705,7 @@ export function ChildPortalPage({
       <div className="child-portal-source-note" role="note">
         <span>{t("draftContentNotice")}</span>
         <button type="button" onClick={onOpenCurriculum}>{t("openVerifiedCurriculum")}</button>
-          {onStartLearningSession && <button type="button" className="validated-session-entry" onClick={() => startLearningSession("LEARN")}>{t("startValidatedSession")}</button>}
+          {onStartLearningSession && <button type="button" className="validated-session-entry" aria-busy={sessionLaunchBusy} disabled={!sessionLaunchReady || sessionLaunchBusy} onClick={() => void startLearningSession()}>{sessionLaunchBusy ? t("sessionQueueChecking") : t("startValidatedSession")}</button>}
           {sessionProfileError && <span className="session-profile-error" role="alert">{t("sessionProfileMissing")}</span>}
       </div>
 
@@ -2769,12 +2890,12 @@ export function ChildPortalPage({
                   <button
                     type="button"
                     className="launch-quiz-cta-btn validated-session-entry"
-                    onClick={() => {
-                      startLearningSession("REVIEW");
-                    }}
+                    aria-busy={sessionLaunchBusy}
+                    disabled={!sessionLaunchReady || sessionLaunchBusy}
+                    onClick={() => { void startLearningSession(); }}
                   >
                     <Play size={20} fill="currentColor" />
-                    <span>{t("startReviewSession").replace("{n}", String(dailyQueue.review.dueCount))}</span>
+                    <span>{sessionLaunchBusy ? t("sessionQueueChecking") : t("startReviewSession").replace("{n}", String(dailyQueue.review.dueCount))}</span>
                   </button>
                 ) : (
                   <button
@@ -2790,18 +2911,33 @@ export function ChildPortalPage({
                 <button
                   type="button"
                   className="launch-quiz-cta-btn validated-session-entry"
-                  onClick={() => {
-                    startLearningSession("LEARN");
-                  }}
+                  aria-busy={sessionLaunchBusy}
+                  disabled={!sessionLaunchReady || sessionLaunchBusy}
+                  onClick={() => { void startLearningSession(); }}
                 >
                   <Play size={20} fill="currentColor" />
-                  <span>{t("startValidatedSession")}</span>
+                  <span>{sessionLaunchBusy ? t("sessionQueueChecking") : t("startValidatedSession")}</span>
                 </button>
               )}
               {sessionProfileError && (
                 <span className="session-profile-error" role="alert">
                   {t("sessionProfileMissing")}
                 </span>
+              )}
+              {sessionQueueRefreshError && (
+                <div className="session-queue-refresh-error" role="alert">
+                  <span>{t("sessionQueueRefreshFailed")}</span>
+                  <button
+                    type="button"
+                    className="button button-text"
+                    data-testid="session-queue-retry"
+                    aria-busy={sessionLaunchBusy}
+                    disabled={sessionLaunchBusy}
+                    onClick={() => { void startLearningSession(); }}
+                  >
+                    {sessionLaunchBusy ? t("sessionQueueChecking") : t("retrySessionQueue")}
+                  </button>
+                </div>
               )}
             </div>
           </div>

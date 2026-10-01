@@ -93,7 +93,33 @@ function installPlannerSessionMock(
   return requests;
 }
 
-async function advanceToPlannerStep(container: HTMLElement, targetStepKey: string, options: { completeReflection?: boolean } = {}) {
+function installSpeechSynthesisMock(options: { throwOnSpeak?: boolean } = {}) {
+  type MockUtterance = {
+    text: string;
+    lang: string;
+    rate: number;
+    onend: (() => void) | null;
+    onerror: (() => void) | null;
+  };
+  const utterances: MockUtterance[] = [];
+  const cancel = vi.fn();
+  const speak = vi.fn((utterance: MockUtterance) => {
+    if (options.throwOnSpeak) throw new Error("speech provider failed synchronously");
+    utterances.push(utterance);
+  });
+  class MockSpeechSynthesisUtterance implements MockUtterance {
+    lang = "";
+    rate = 1;
+    onend: (() => void) | null = null;
+    onerror: (() => void) | null = null;
+    constructor(public text: string) {}
+  }
+  vi.stubGlobal("SpeechSynthesisUtterance", MockSpeechSynthesisUtterance);
+  vi.stubGlobal("speechSynthesis", { cancel, speak });
+  return { utterances, cancel, speak };
+}
+
+async function advanceToPlannerStep(container: HTMLElement, targetStepKey: string, options: { completeReflection?: boolean; completeListeningPlayback?: () => void } = {}) {
   const lessonId = container.querySelector<HTMLElement>(".lesson-player-container")?.dataset.lessonId ?? "book1-l01";
   const pkg = getLessonPackage(lessonId as any) ?? getLessonPackage("book1-l01")!;
   let lastStep = "unknown";
@@ -116,7 +142,10 @@ async function advanceToPlannerStep(container: HTMLElement, targetStepKey: strin
         ? container.querySelector<HTMLButtonElement>(`.step-context-body [data-choice-id="${expectedId}"]`)
         : container.querySelector<HTMLButtonElement>(".step-context-body .choice-card-btn");
       if (choice) {
-        await act(async () => { choice.click(); });
+        await act(async () => { choice.click(); await new Promise((resolve) => setTimeout(resolve, 0)); });
+        if (options.completeListeningPlayback) {
+          await act(async () => { options.completeListeningPlayback?.(); await new Promise((resolve) => setTimeout(resolve, 0)); });
+        }
       } else {
         const audio = container.querySelector<HTMLButtonElement>(".step-context-body .audio-play-large-btn");
         if (!audio) throw new Error("Planner context interaction is unavailable");
@@ -1299,13 +1328,17 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
   });
 
   // Test 21
-  it("21. Listening evidence retries the same provider attempt without a standalone completion request", async () => {
-    const postedUrls: string[] = []; const evidenceBodies: Array<Record<string, unknown>> = []; const session = authoritativeSessionFixture("book1-l01", "session-flow-1");
+  it("21. Listening evidence waits for onEnd and retries the same HEAR attempt without a standalone completion request", async () => {
+    const playback = installSpeechSynthesisMock();
+    const postedUrls: string[] = []; const evidenceBodies: Array<Record<string, unknown>> = []; const attemptBodies: Array<Record<string, unknown>> = []; const session = authoritativeSessionFixture("book1-l01", "session-flow-1");
     let evidenceRequestCount = 0;
     installPlannerSessionMock(session, (url, init) => {
       if (init?.method !== "POST") return undefined;
       postedUrls.push(url);
-      if (url.includes("/listening-attempts") && !url.includes("/complete")) return new Response(JSON.stringify({ id: "listen-attempt-1" }), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.includes("/listening-attempts") && !url.includes("/complete")) {
+        attemptBodies.push(JSON.parse(init.body as string));
+        return new Response(JSON.stringify({ id: "listen-attempt-1" }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
       if (url.includes(`/tasks/${session.id}:listen/evidence`)) {
         evidenceBodies.push(JSON.parse(init.body as string));
         evidenceRequestCount += 1;
@@ -1320,16 +1353,77 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     expect(container.querySelector("[data-step-key='context']")).toBeTruthy();
     await act(async () => { (container.querySelector(".next-step-cta-btn") as HTMLButtonElement).click(); });
     expect(session.tasks.find((task) => task.key === "listen")?.state).toBe("PENDING");
-    await act(async () => { (container.querySelector(".next-step-cta-btn") as HTMLButtonElement).click(); });
+    expect(playback.utterances).toHaveLength(1);
+    expect(postedUrls.some((url) => url.includes("/listening-attempts"))).toBe(false);
+    expect(postedUrls.some((url) => url.includes(`/tasks/${session.id}:listen/evidence`))).toBe(false);
+    await act(async () => { playback.utterances[0].onend?.(); await new Promise((resolve) => setTimeout(resolve, 0)); });
     expect(postedUrls.some((url) => url.includes("/listening-attempts"))).toBe(true);
+    expect(postedUrls.some((url) => url.includes(`/tasks/${session.id}:listen/evidence`))).toBe(true);
+    expect(session.tasks.find((task) => task.key === "listen")?.state).toBe("PENDING");
+    await act(async () => { (container.querySelector(".next-step-cta-btn") as HTMLButtonElement).click(); });
+    expect(playback.utterances).toHaveLength(2);
+    expect(evidenceBodies).toHaveLength(1);
+    expect(session.tasks.find((task) => task.key === "listen")?.state).toBe("PENDING");
+    await act(async () => { playback.utterances[1].onend?.(); await new Promise((resolve) => setTimeout(resolve, 0)); });
     expect(postedUrls.some((url) => url.endsWith("/complete"))).toBe(false);
     expect(postedUrls.filter((url) => url.endsWith("/listening-attempts"))).toHaveLength(1);
     expect(postedUrls.some((url) => url.includes(`/tasks/${session.id}:listen/evidence`))).toBe(true);
+    expect(attemptBodies).toEqual([{
+      item_id: session.tasks.find((task) => task.key === "listen")?.itemId,
+      lesson_id: "book1-l01",
+    }]);
     expect(evidenceBodies).toEqual([
       { evidence_ref: "listen-attempt-1", duration_ms: 1500 },
       { evidence_ref: "listen-attempt-1", duration_ms: 1500 },
     ]);
     expect(session.tasks.find((task) => task.key === "listen")?.state).toBe("COMPLETED");
+    root.unmount(); container.remove(); vi.unstubAllGlobals();
+  });
+
+  it("does not create listening evidence when browser speech reports onError", async () => {
+    const playback = installSpeechSynthesisMock();
+    const session = authoritativeSessionFixture("book1-l01", "session-listen-error");
+    const postedUrls = installPlannerSessionMock(session);
+    const container = document.createElement("div"); document.body.appendChild(container); const root = createRoot(container);
+    await act(async () => { root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} />); });
+    await act(async () => { (container.querySelector(".audio-play-large-btn") as HTMLButtonElement).click(); });
+    expect(playback.utterances).toHaveLength(1);
+    await act(async () => { playback.utterances[0].onerror?.(); await new Promise((resolve) => setTimeout(resolve, 0)); });
+    expect(postedUrls.some((url) => url.includes("/listening-attempts"))).toBe(false);
+    expect(postedUrls.some((url) => url.includes(`/tasks/${session.id}:listen/evidence`))).toBe(false);
+    expect(session.tasks.find((task) => task.key === "listen")?.state).toBe("PENDING");
+    root.unmount(); container.remove(); vi.unstubAllGlobals();
+  });
+
+  it("does not create listening evidence when the speech provider throws synchronously", async () => {
+    installSpeechSynthesisMock({ throwOnSpeak: true });
+    const session = authoritativeSessionFixture("book1-l01", "session-listen-throw");
+    const postedUrls = installPlannerSessionMock(session);
+    const container = document.createElement("div"); document.body.appendChild(container); const root = createRoot(container);
+    await act(async () => { root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} />); });
+    await act(async () => { (container.querySelector(".audio-play-large-btn") as HTMLButtonElement).click(); await new Promise((resolve) => setTimeout(resolve, 0)); });
+    expect(postedUrls.some((url) => url.includes("/listening-attempts"))).toBe(false);
+    expect(postedUrls.some((url) => url.includes(`/tasks/${session.id}:listen/evidence`))).toBe(false);
+    expect(session.tasks.find((task) => task.key === "listen")?.state).toBe("PENDING");
+    root.unmount(); container.remove(); vi.unstubAllGlobals();
+  });
+
+  it("ignores a late onEnd from listening playback interrupted by a second playback", async () => {
+    const playback = installSpeechSynthesisMock();
+    const session = authoritativeSessionFixture("book1-l01", "session-listen-interrupted");
+    const postedUrls = installPlannerSessionMock(session);
+    const container = document.createElement("div"); document.body.appendChild(container); const root = createRoot(container);
+    await act(async () => { root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} />); });
+    const audioButton = container.querySelector(".audio-play-large-btn") as HTMLButtonElement;
+    await act(async () => { audioButton.click(); });
+    await act(async () => { audioButton.click(); });
+    expect(playback.utterances).toHaveLength(2);
+    await act(async () => { playback.utterances[0].onend?.(); await new Promise((resolve) => setTimeout(resolve, 0)); });
+    expect(postedUrls.some((url) => url.includes("/listening-attempts"))).toBe(false);
+    expect(postedUrls.some((url) => url.includes(`/tasks/${session.id}:listen/evidence`))).toBe(false);
+    await act(async () => { playback.utterances[1].onerror?.(); await new Promise((resolve) => setTimeout(resolve, 0)); });
+    expect(postedUrls.some((url) => url.includes("/listening-attempts"))).toBe(false);
+    expect(session.tasks.find((task) => task.key === "listen")?.state).toBe("PENDING");
     root.unmount(); container.remove(); vi.unstubAllGlobals();
   });
 
@@ -1516,6 +1610,7 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
 
   // Test 25
   it("25. Full Book 1 L1 UI-to-backend completion flow satisfies all required tasks in sequence and authoritatively completes session", async () => {
+    const playback = installSpeechSynthesisMock();
     let completedLessonId: string | null = null;
     let completedResult: { sessionCompleted: boolean; masteryGranted: boolean } | null = null;
     const session = authoritativeSessionFixture("book1-l01", "session-e2e-1", { speaking: "COMPLETED", pronunciation: "COMPLETED" }, {}, true);
@@ -1544,7 +1639,13 @@ describe("Lesson Player v1 & Learning Path v2 Regression Suite", () => {
     });
     const container = document.createElement("div"); document.body.appendChild(container); const root = createRoot(container);
     await act(async () => { root.render(<LessonPlayerPage lessonId="book1-l01" activeChildId={1} onBack={() => {}} onCompleteLesson={(id, result) => { completedLessonId = id; completedResult = result; }} />); });
-    await advanceToPlannerStep(container, "wrap_up");
+    await advanceToPlannerStep(container, "wrap_up", {
+      completeListeningPlayback: () => {
+        const utterance = playback.utterances.at(-1);
+        if (!utterance) throw new Error("Listening playback did not start");
+        utterance.onend?.();
+      },
+    });
     expect(container.querySelector("[data-step-key='wrap_up']")).toBeTruthy();
     await act(async () => { (container.querySelector(".finish-session-cta-btn") as HTMLButtonElement).click(); await new Promise((resolve) => setTimeout(resolve, 0)); });
     expect(completedLessonId).toBe("book1-l01");

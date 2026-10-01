@@ -1156,6 +1156,9 @@ body { background:var(--canvas); }
 .child-portal-source-note button.validated-session-entry { align-items: center; background: var(--teal); border: 0; border-radius: 14px; box-shadow: 0 3px 0 var(--teal-deep); color: #fffefa; display: inline-flex; justify-content: center; min-height: 44px; padding: 0 15px; text-decoration: none; }
 .child-portal-source-note button.validated-session-entry:hover { background: var(--teal-deep); }
 .child-portal-source-note button.validated-session-entry:active { box-shadow: 0 1px 0 var(--teal-deep); transform: translateY(2px); }
+.child-portal-source-note button.validated-session-entry:disabled { background: var(--teal); box-shadow: none; cursor: not-allowed; filter: grayscale(.16); opacity: .58; transform: none; }
+.child-portal-source-note button.validated-session-entry:disabled:hover,
+.child-portal-source-note button.validated-session-entry:disabled:active { background: var(--teal); box-shadow: none; transform: none; }
 .child-portal-source-note .session-profile-error { color: #8a3027; flex-basis: 100%; font-size: .82rem; font-weight: 800; }
 @media (max-width: 560px) {
   .child-portal-source-note button.validated-session-entry { width: 100%; }
@@ -11460,6 +11463,32 @@ body.is-dark-eyecare-global .sponsor-feedback-btn:hover {
 .hero-primary-cta-row .validated-session-entry:active {
   box-shadow: 0 1px 0 #0f766e;
   transform: translateY(3px);
+}
+
+.hero-primary-cta-row .validated-session-entry:disabled:not(.is-completed-btn) {
+  background: var(--teal, #0d9488);
+  box-shadow: none;
+  cursor: not-allowed;
+  filter: grayscale(.16);
+  opacity: .58;
+  transform: none;
+}
+
+.hero-primary-cta-row .validated-session-entry:disabled:not(.is-completed-btn):hover,
+.hero-primary-cta-row .validated-session-entry:disabled:not(.is-completed-btn):active {
+  background: var(--teal, #0d9488);
+  box-shadow: none;
+  transform: none;
+}
+
+.session-queue-refresh-error {
+  align-items: center;
+  color: #8a3027;
+  display: flex;
+  flex-basis: 100%;
+  font-size: .82rem;
+  font-weight: 800;
+  gap: 8px;
 }
 
 /* Authored Draft Practice Section */
