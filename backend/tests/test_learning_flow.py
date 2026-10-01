@@ -70,7 +70,7 @@ def complete_session(api: TestClient, child_id: int, current: dict, assisted_sco
             assert response.status_code == 200, response.text
         elif task["taskType"] in {"SPEAKING_ATTEMPT", "PRONUNCIATION_ATTEMPT"}:
             domain = "pronunciation" if task["taskType"] == "PRONUNCIATION_ATTEMPT" else "speaking"
-            attempt = api.post("/api/reading-aloud/attempts/start?child_id=" + str(child_id), json={"text": task["taskData"]["text"], "text_kind": task["taskData"].get("textKind", "character"), "locale": "zh-TW", "source_type": task["taskData"].get("sourceType", "CURRICULUM"), "source_id": task["itemId"], "activity_domain": domain})
+            attempt = api.post("/api/reading-aloud/attempts/start?child_id=" + str(child_id), json={"text": task["taskData"]["text"], "text_kind": task["taskData"].get("textKind", "character"), "locale": task["taskData"].get("locale", "zh-TW"), "source_type": task["taskData"].get("sourceType", "CURRICULUM"), "source_id": task["itemId"], "activity_domain": domain})
             assert attempt.status_code == 200, attempt.text
             attempt_id = attempt.json()["id"]
             response = api.post(f"/api/children/{child_id}/learning-sessions/{current['id']}/tasks/{task['id']}/evidence", json={"evidence_ref": attempt_id, "duration_ms": 500})
@@ -78,6 +78,16 @@ def complete_session(api: TestClient, child_id: int, current: dict, assisted_sco
         elif task["taskType"] in {"RECOGNITION", "REVIEW_RECOGNITION", "MINI_CHECK", "VOCABULARY", "SENTENCE_PATTERN"}:
             if task["taskData"].get("mode") == "reflection":
                 selected = next((option["id"] for option in task["taskData"]["choices"] if option["id"] == "practiced"), task["taskData"]["choices"][0]["id"])
+            elif task["taskData"].get("mode") in {"context-choice", "exit_ticket"}:
+                from app.learning_flow import get_lesson_package
+                package = get_lesson_package(task["lessonId"])
+                if task["taskData"]["mode"] == "context-choice":
+                    package_step = next(step for step in package["taskBlueprint"]["learnSteps"] if step["stepKey"] == "context")
+                    selected = package_step["data"]["correctChoiceId"]
+                else:
+                    package_step = next(step for step in package["taskBlueprint"]["learnSteps"] if step["stepKey"] == "exit_ticket")
+                    question = next(item for item in package_step["data"]["questions"] if item["id"] == task["taskData"]["questionId"])
+                    selected = question["correctChoiceId"]
             elif task["taskType"] == "VOCABULARY":
                 selected = next(option["id"] for option in task["taskData"]["choices"] if option["id"] in {"greeting", "opt-hello", "age-seven", "family-parents", "younger-sister"} or "打招呼" in option["label"])
             elif task["taskType"] == "SENTENCE_PATTERN":
@@ -87,7 +97,9 @@ def complete_session(api: TestClient, child_id: int, current: dict, assisted_sco
                     expected = task["taskData"]["audioText"]
                 else:
                     with connect() as db:
-                        expected = db.execute("SELECT character FROM learning_items WHERE child_id=? AND id=?", (child_id, task["itemId"])).fetchone()[0]
+                        material = db.execute("SELECT character FROM learning_items WHERE child_id=? AND id=?", (child_id, task["itemId"])).fetchone()
+                        assert material is not None, f"missing recognition material for {task['id']}"
+                        expected = material["character"]
                 selected = next(option["id"] for option in task["taskData"]["choices"] if option["label"] == expected)
             current = answer_task(api, child_id, current, task, selected, assisted_scores and task["taskType"] in {"RECOGNITION", "REVIEW_RECOGNITION", "VOCABULARY", "MINI_CHECK"})
         elif task["taskType"] == "PHONETICS":
@@ -1316,8 +1328,8 @@ def test_speaking_evidence_operation_atomically_completes_provider_and_flow_task
         task = next(t for t in current["tasks"] if t["taskType"] == "SPEAKING_ATTEMPT")
         current = start_task(api, child_id, current, task)
         attempt_response = api.post("/api/reading-aloud/attempts/start", params={"child_id": child_id}, json={
-            "text": task["taskData"]["text"], "text_kind": "character", "locale": "zh-TW",
-            "source_type": "CURRICULUM", "source_id": task["itemId"], "activity_domain": "speaking",
+            "text": task["taskData"]["text"], "text_kind": task["taskData"]["textKind"], "locale": task["taskData"]["locale"],
+            "source_type": task["taskData"]["sourceType"], "source_id": task["itemId"], "activity_domain": "speaking",
         })
         assert attempt_response.status_code == 200, attempt_response.text
         attempt_id = attempt_response.json()["id"]
@@ -1359,8 +1371,8 @@ def test_speaking_evidence_failure_rolls_back_all_writes_and_retry_commits_once(
         task = next(t for t in current["tasks"] if t["taskType"] == "SPEAKING_ATTEMPT")
         current = start_task(api, child_id, current, task)
         attempt_response = api.post("/api/reading-aloud/attempts/start", params={"child_id": child_id}, json={
-            "text": task["taskData"]["text"], "text_kind": "character", "locale": "zh-TW",
-            "source_type": "CURRICULUM", "source_id": task["itemId"], "activity_domain": "speaking",
+            "text": task["taskData"]["text"], "text_kind": task["taskData"]["textKind"], "locale": task["taskData"]["locale"],
+            "source_type": task["taskData"]["sourceType"], "source_id": task["itemId"], "activity_domain": "speaking",
         })
         assert attempt_response.status_code == 200, attempt_response.text
         attempt_id = attempt_response.json()["id"]

@@ -177,7 +177,7 @@ def complete_attempt(*, child_id: int, attempt_id: str, duration_ms: int | None)
         row = db.execute("SELECT source_type,source_id,activity_domain FROM reading_aloud_attempts WHERE id=? AND child_id=?", (attempt_id, child_id)).fetchone()
         if row is None:
             raise ValueError("reading_aloud_attempt_not_found")
-        if row["source_type"] == "CURRICULUM" and row["source_id"] and row["activity_domain"] in {"speaking", "pronunciation"}:
+        if row["source_type"] in {"CURRICULUM", "SENTENCE"} and row["source_id"] and row["activity_domain"] in {"speaking", "pronunciation"}:
             task_type = "SPEAKING_ATTEMPT" if row["activity_domain"] == "speaking" else "PRONUNCIATION_ATTEMPT"
             flow_task = db.execute(
                 """SELECT 1 FROM learning_flow_tasks t

@@ -76,6 +76,8 @@ function pathAtAppBase(path: string): string {
 export function AppShell() {
   const { t, language, setLanguage } = useLocale();
   const [route, setRoute] = useState<Route>(() => routeFromPath(window.location.pathname));
+  const routeRef = useRef(route);
+  const activeLessonSessionRef = useRef(false);
   const [profiles, setProfiles] = useState<Profile[]>(() => loadProfiles());
   const [activeKey, setActiveKey] = useState(() => localStorage.getItem(ACTIVE_PROFILE_STORAGE_KEY) ?? "child-a");
   const [learningSessionLessonId, setLearningSessionLessonId] = useState<string | undefined>(undefined);
@@ -102,7 +104,7 @@ export function AppShell() {
 
   const activeProfile = selectProfile(profiles, activeKey);
   const activeChild = selectedBackendChild(activeProfile, children);
-  const childName = activeProfile.role === "child" ? activeProfile.name : t("childRole");
+  const childName = activeChild?.name;
   const internalSession = parentSession.authenticated && (parentSession.role === "developer" || parentSession.role === "admin");
   const canManageChildren = !parentSession.authRequired || parentSession.authenticated && parentSession.role === "parent" || internalSession;
 
@@ -111,29 +113,45 @@ export function AppShell() {
     if (profiles.some((profile) => profile.key === activeKey)) localStorage.setItem(ACTIVE_PROFILE_STORAGE_KEY, activeKey);
   }, [activeKey, profiles]);
   useEffect(() => {
+    const handleLessonSessionGuard = (event: Event) => {
+      activeLessonSessionRef.current = (event as CustomEvent<{ active?: boolean }>).detail?.active === true;
+    };
     const syncRoute = () => {
       const redirectPath = canonicalRedirectPath(window.location.pathname);
       if (redirectPath) {
         window.history.replaceState({}, "", redirectPath);
-        setRoute(routeFromPath(redirectPath));
+        const redirectedRoute = routeFromPath(redirectPath);
+        routeRef.current = redirectedRoute;
+        setRoute(redirectedRoute);
         setLearningSessionMode("LEARN");
         return;
       }
       const nextRoute = routeFromPath(window.location.pathname);
+      if (routeRef.current === "learning-session" && nextRoute !== "learning-session" && activeLessonSessionRef.current) {
+        window.history.replaceState({}, "", pathAtAppBase(paths["learning-session"]));
+        window.dispatchEvent(new Event("tongxuan:lesson-exit-request"));
+        return;
+      }
       const latestSession = parentSessionRef.current;
       const sessionAllowed = !latestSession.authRequired || latestSession.authenticated && (latestSession.role === "parent" || latestSession.role === "developer" || latestSession.role === "admin");
       if (!sessionAllowed && nextRoute !== "parent" && nextRoute !== "me") {
         window.history.replaceState({}, "", pathAtAppBase(paths.parent));
+        routeRef.current = "parent";
         setRoute("parent");
         setLearningSessionMode("LEARN");
         return;
       }
+      routeRef.current = nextRoute;
       setRoute(nextRoute);
       if (nextRoute !== "learning-session") setLearningSessionMode("LEARN");
     };
     syncRoute();
+    window.addEventListener("tongxuan:lesson-session-guard", handleLessonSessionGuard);
     window.addEventListener("popstate", syncRoute);
-    return () => window.removeEventListener("popstate", syncRoute);
+    return () => {
+      window.removeEventListener("tongxuan:lesson-session-guard", handleLessonSessionGuard);
+      window.removeEventListener("popstate", syncRoute);
+    };
   }, []);
 
   async function fetchParentSession(): Promise<ParentSession> {
@@ -211,6 +229,7 @@ export function AppShell() {
         setProfiles(reconcileProfiles([], loadProfiles())); setActiveKey("parent");
         if (routeFromPath(window.location.pathname) !== "me" && routeFromPath(window.location.pathname) !== "parent") {
           window.history.replaceState({}, "", pathAtAppBase(paths.parent));
+          routeRef.current = "parent";
           setRoute("parent");
         }
       }
@@ -250,6 +269,7 @@ export function AppShell() {
     const sessionAllowed = !parentSession.authRequired || parentSession.authenticated && (parentSession.role === "parent" || parentSession.role === "developer" || parentSession.role === "admin");
     if (!sessionAllowed && next !== "parent" && next !== "me") next = "parent";
     if (next !== "learning-session") setLearningSessionMode("LEARN");
+    routeRef.current = next;
     setRoute(next);
     window.history.pushState({}, "", pathAtAppBase(paths[next]));
   }

@@ -1,0 +1,11 @@
+[agents]
+enabled = true
+max_concurrent_threads_per_session = 2
+
+[agents.product_governor]
+description = "Product Governor / PM: read-only product decision maker for scope, architecture, evidence, acceptance, and task contracts. Must approve or reduce scope before implementation."
+config_file = "./agents/product-governor.toml"
+
+[agents.implementation_engineer]
+description = "Implementation Engineer / Coding: implements only an approved PM task contract, validates its acceptance criteria, and escalates material conflicts."
+config_file = "./agents/implementation-engineer.toml"

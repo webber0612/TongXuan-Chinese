@@ -50,10 +50,17 @@ describe("BrowserMediaRecorderAdapter", () => {
     expect(track.stop).toHaveBeenCalled();
   });
 
-  it("reports denied and unavailable microphone clearly", async () => {
-    vi.stubGlobal("navigator", { mediaDevices: { getUserMedia: vi.fn().mockRejectedValue(new Error("denied")) } });
+  it.each([
+    { scenario: "permission rejection", failure: Object.assign(new Error("request rejected"), { name: "NotAllowedError" }) },
+    { scenario: "missing device", failure: Object.assign(new Error("no device"), { name: "NotFoundError" }) },
+    { scenario: "generic browser failure", failure: new Error("capture failed") },
+  ])("does not assume a getUserMedia $scenario proves permission denial", async ({ failure }) => {
+    vi.stubGlobal("navigator", { mediaDevices: { getUserMedia: vi.fn().mockRejectedValue(failure) } });
     vi.stubGlobal("MediaRecorder", class {});
-    await expect(new BrowserMediaRecorderAdapter().start()).rejects.toThrow("microphone_permission_denied");
+    await expect(new BrowserMediaRecorderAdapter().start()).rejects.toThrow("microphone_start_failed");
+  });
+
+  it("reports unavailable recording APIs separately", async () => {
     vi.stubGlobal("navigator", {});
     await expect(new BrowserMediaRecorderAdapter().start()).rejects.toThrow("microphone_unavailable");
   });

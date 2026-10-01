@@ -41,6 +41,11 @@ import {
 } from "../data/lessonPackages";
 
 const API = import.meta.env.VITE_API_BASE ?? "";
+const LEARNING_SESSION_POINTER_PREFIX = "tongxuan:learn-session";
+
+function learningSessionPointerKey(childId: number, targetLessonId: string): string {
+  return `${LEARNING_SESSION_POINTER_PREFIX}:${childId}:${targetLessonId}`;
+}
 
 export interface LessonPlayerProps {
   lessonId?: string;
@@ -129,6 +134,19 @@ const copy = {
     nextStep: "下一步",
     prevStep: "上一步",
     finishLesson: "完成今日課程",
+    returnToToday: "返回今日學習",
+    exitPromptTitle: "離開學習？",
+    exitPromptBody: "進度會保存。",
+    stayInLesson: "繼續學習",
+    leaveLesson: "離開課堂",
+    answerRecorded: "已記錄作答。",
+    retryAnswer: "這次沒有答對，請再試一次。",
+    reflectionPrompt: "今天的練習感覺如何？",
+    completeBeforeSettlement: "選一個答案後即可完成今天的學習。",
+    rewardPoints: "獲得點數",
+    completedActivities: "完成的活動",
+    reviewScheduleUnavailable: "複習日期尚未提供。",
+    priorRecognitionRecorded: "這個字的認讀已有紀錄。看完字卡後繼續。",
     correct: "答對了！太棒了！",
     wrong: "再想想看，聽聽看提示喔！",
     listenAudio: "播放語音",
@@ -149,6 +167,7 @@ const copy = {
     reviewCompletedTitle: "本輪複習完成",
     reviewCompletedNotice: "到期項目已記錄。原本的課程進度會保留在今日學習中。",
     sessionCompletedLabel: "今天的練習完成：",
+    yesLabel: "完成",
     lessonPracticedLabel: "本課已練習：",
     masteryStatusLabel: "本課是否達到目前精熟條件：",
     nextReviewLabel: "下一次複習時間：",
@@ -173,6 +192,8 @@ const copy = {
     domainSpeaking: "開口使用",
     retry: "重試",
     taskFailed: "任務操作失敗，請點擊重試",
+    speakingStartError: "無法開始錄音。請檢查裝置麥克風是否可用及瀏覽器權限，再按麥克風重試。也可以返回並選擇離開課堂，之後從首頁繼續同一課程。",
+    speakingEvidenceMissing: "這個口說步驟尚未保存有效證據，因此不能前進。",
     pleaseAnswerQuestion: "請先完成目前題目再繼續",
     noDueReviews: "目前沒有到期的複習項目",
     noDueReviewsDesc: "太棒了！所有進度都已掌握，暫時沒有需要檢索複習的生字或詞彙。",
@@ -193,6 +214,19 @@ const copy = {
     nextStep: "下一步",
     prevStep: "上一步",
     finishLesson: "完成今日课程",
+    returnToToday: "返回今日学习",
+    exitPromptTitle: "离开学习？",
+    exitPromptBody: "进度会保存。",
+    stayInLesson: "继续学习",
+    leaveLesson: "离开课堂",
+    answerRecorded: "已记录作答。",
+    retryAnswer: "这次没有答对，请再试一次。",
+    reflectionPrompt: "今天的练习感觉如何？",
+    completeBeforeSettlement: "选择一个答案后即可完成今天的学习。",
+    rewardPoints: "获得点数",
+    completedActivities: "完成的活动",
+    reviewScheduleUnavailable: "复习日期尚未提供。",
+    priorRecognitionRecorded: "这个字的认读已有记录。看完字卡后继续。",
     correct: "答对了！太棒了！",
     wrong: "再想想看，听听看提示喔！",
     listenAudio: "播放语音",
@@ -213,6 +247,7 @@ const copy = {
     reviewCompletedTitle: "本轮复习完成",
     reviewCompletedNotice: "到期项目已记录。原本的课程进度会保留在今日学习中。",
     sessionCompletedLabel: "今天的练习完成：",
+    yesLabel: "已完成",
     lessonPracticedLabel: "本课已练习：",
     masteryStatusLabel: "本课是否达到目前熟练条件：",
     nextReviewLabel: "下一次复习时间：",
@@ -237,6 +272,8 @@ const copy = {
     domainSpeaking: "开口使用",
     retry: "重试",
     taskFailed: "任务操作失败，请点击重试",
+    speakingStartError: "无法开始录音。请检查设备麦克风是否可用及浏览器权限，然后再次点击麦克风。也可以返回并选择离开课堂，之后从首页继续同一课程。",
+    speakingEvidenceMissing: "这个口语步骤尚未保存有效证据，因此不能继续。",
     pleaseAnswerQuestion: "请先完成当前题目再继续",
     noDueReviews: "目前没有到期的复习项目",
     noDueReviewsDesc: "太棒了！所有进度都已掌握，暂时没有需要检索复习的生字或词汇。",
@@ -257,6 +294,19 @@ const copy = {
     nextStep: "Next Step",
     prevStep: "Previous Step",
     finishLesson: "Finish Today's Lesson",
+    returnToToday: "Return to Today's Learning",
+    exitPromptTitle: "Leave this lesson?",
+    exitPromptBody: "Your progress will be saved.",
+    stayInLesson: "Stay in lesson",
+    leaveLesson: "Leave lesson",
+    answerRecorded: "Your answer was recorded.",
+    retryAnswer: "That answer was not correct. Try again.",
+    reflectionPrompt: "How did today's practice feel?",
+    completeBeforeSettlement: "Choose an answer to finish today's learning.",
+    rewardPoints: "Points earned",
+    completedActivities: "Activities completed",
+    reviewScheduleUnavailable: "A review date is not available yet.",
+    priorRecognitionRecorded: "Recognition for this character is already on record. Review the card, then continue.",
     correct: "Correct! Great job!",
     wrong: "Try again! Listen closely to the hint.",
     listenAudio: "Play Audio",
@@ -277,6 +327,7 @@ const copy = {
     reviewCompletedTitle: "Review Complete",
     reviewCompletedNotice: "Your due reviews are recorded. Your current lesson progress remains in Today's Learning.",
     sessionCompletedLabel: "Today's practice completed:",
+    yesLabel: "Completed",
     lessonPracticedLabel: "Lesson practiced:",
     masteryStatusLabel: "Mastery criteria met:",
     nextReviewLabel: "Next review scheduled:",
@@ -301,6 +352,8 @@ const copy = {
     domainSpeaking: "Speaking",
     retry: "Retry",
     taskFailed: "Task operation failed. Please retry.",
+    speakingStartError: "Recording could not start. Check that a microphone is available and review browser permissions, then try the microphone again. You can also go back, choose Leave lesson, and resume this session from Home.",
+    speakingEvidenceMissing: "No valid speaking evidence was saved for this step, so the lesson cannot advance.",
     pleaseAnswerQuestion: "Please answer the current question to continue",
     noDueReviews: "No due reviews right now",
     noDueReviewsDesc: "Great job! All items are up to date. There are no due SRS retrieval items.",
@@ -321,6 +374,19 @@ const copy = {
     nextStep: "次へ",
     prevStep: "前へ",
     finishLesson: "今日の学習を完了",
+    returnToToday: "今日の学習に戻る",
+    exitPromptTitle: "学習を終了しますか？",
+    exitPromptBody: "進捗は保存されます。",
+    stayInLesson: "学習を続ける",
+    leaveLesson: "レッスンを終了",
+    answerRecorded: "回答を記録しました。",
+    retryAnswer: "正解ではありません。もう一度試してください。",
+    reflectionPrompt: "今日の練習はどうでしたか？",
+    completeBeforeSettlement: "回答を選ぶと今日の学習を完了できます。",
+    rewardPoints: "獲得ポイント",
+    completedActivities: "完了した活動",
+    reviewScheduleUnavailable: "復習日はまだありません。",
+    priorRecognitionRecorded: "この文字の認識記録があります。カードを確認して続けてください。",
     correct: "正解です！よくできました！",
     wrong: "もう一度挑戦してみましょう。",
     listenAudio: "音声を聞く",
@@ -341,6 +407,7 @@ const copy = {
     reviewCompletedTitle: "復習完了",
     reviewCompletedNotice: "期限の来た項目を記録しました。今日の学習の続きは保持されています。",
     sessionCompletedLabel: "本日の練習完了：",
+    yesLabel: "完了",
     lessonPracticedLabel: "練習したレッスン：",
     masteryStatusLabel: "習熟判定：",
     nextReviewLabel: "次回復習日：",
@@ -365,6 +432,8 @@ const copy = {
     domainSpeaking: "発音",
     retry: "再試行",
     taskFailed: "操作に失敗しました。再試行してください。",
+    speakingStartError: "録音を開始できませんでした。マイクが利用できることとブラウザーの権限を確認してから、マイクをもう一度押してください。戻って「レッスンを終了」を選ぶと、ホームから同じセッションを再開できます。",
+    speakingEvidenceMissing: "このステップには有効な発話の証拠が保存されていないため、先に進めません。",
     pleaseAnswerQuestion: "現在の問題に答えてから進んでください",
     noDueReviews: "現在、復習期日の項目はありません",
     noDueReviewsDesc: "素晴らしい！現在復習が必要な項目はありません。",
@@ -385,6 +454,19 @@ const copy = {
     nextStep: "다음",
     prevStep: "이전",
     finishLesson: "오늘 학습 완료",
+    returnToToday: "오늘 학습으로 돌아가기",
+    exitPromptTitle: "학습을 나갈까요?",
+    exitPromptBody: "진행 상황은 저장됩니다.",
+    stayInLesson: "학습 계속하기",
+    leaveLesson: "수업 나가기",
+    answerRecorded: "답변을 기록했어요.",
+    retryAnswer: "정답이 아니에요. 다시 시도해 보세요.",
+    reflectionPrompt: "오늘 연습은 어땠나요?",
+    completeBeforeSettlement: "답변을 선택하면 오늘 학습을 마칠 수 있어요.",
+    rewardPoints: "획득 포인트",
+    completedActivities: "완료한 활동",
+    reviewScheduleUnavailable: "복습 날짜가 아직 없어요.",
+    priorRecognitionRecorded: "이 글자의 인식 기록이 있어요. 글자 카드를 확인한 뒤 계속하세요.",
     correct: "정답입니다! 잘했어요!",
     wrong: "다시 한 번 생각해 보세요.",
     listenAudio: "음성 듣기",
@@ -405,6 +487,7 @@ const copy = {
     reviewCompletedTitle: "복습 완료",
     reviewCompletedNotice: "복습 항목을 기록했어요. 오늘 학습의 진행 상태는 그대로 유지됩니다.",
     sessionCompletedLabel: "오늘 연습 완료:",
+    yesLabel: "완료",
     lessonPracticedLabel: "연습한 수업:",
     masteryStatusLabel: "숙달 기준 충족:",
     nextReviewLabel: "다음 복습 일정:",
@@ -429,6 +512,8 @@ const copy = {
     domainSpeaking: "말하기",
     retry: "다시 시도",
     taskFailed: "작업에 실패했습니다. 다시 시도해 주세요.",
+    speakingStartError: "녹음을 시작할 수 없습니다. 마이크를 사용할 수 있는지와 브라우저 권한을 확인한 뒤 마이크 버튼을 다시 눌러 주세요. 뒤로 가서 수업 나가기를 선택하면 홈에서 같은 세션을 이어갈 수 있습니다.",
+    speakingEvidenceMissing: "이 단계에는 유효한 말하기 증거가 저장되지 않아 다음으로 진행할 수 없습니다.",
     pleaseAnswerQuestion: "현재 문제를 먼저 완료하고 계속 진행하세요",
     noDueReviews: "현재 복습할 항목이 없습니다",
     noDueReviewsDesc: "훌륭합니다! 모든 항목이 최신 상태입니다.",
@@ -449,6 +534,19 @@ const copy = {
     nextStep: "Siguiente",
     prevStep: "Anterior",
     finishLesson: "Terminar lección de hoy",
+    returnToToday: "Volver al aprendizaje de hoy",
+    exitPromptTitle: "¿Salir de la lección?",
+    exitPromptBody: "Tu progreso se guardará.",
+    stayInLesson: "Seguir aprendiendo",
+    leaveLesson: "Salir de la lección",
+    answerRecorded: "Tu respuesta quedó registrada.",
+    retryAnswer: "Esa respuesta no es correcta. Inténtalo de nuevo.",
+    reflectionPrompt: "¿Cómo te fue con la práctica de hoy?",
+    completeBeforeSettlement: "Elige una respuesta para terminar el aprendizaje de hoy.",
+    rewardPoints: "Puntos obtenidos",
+    completedActivities: "Actividades completadas",
+    reviewScheduleUnavailable: "Aún no hay una fecha de repaso.",
+    priorRecognitionRecorded: "El reconocimiento de este carácter ya está registrado. Revisa la tarjeta y continúa.",
     correct: "¡Correcto! ¡Muy bien!",
     wrong: "Inténtalo de nuevo.",
     listenAudio: "Escuchar audio",
@@ -469,6 +567,7 @@ const copy = {
     reviewCompletedTitle: "Repaso completado",
     reviewCompletedNotice: "Los repasos pendientes quedaron registrados. El progreso de la lección de hoy se conserva.",
     sessionCompletedLabel: "Práctica de hoy completada:",
+    yesLabel: "Completada",
     lessonPracticedLabel: "Lección practicada:",
     masteryStatusLabel: "Criterio de dominio alcanzado:",
     nextReviewLabel: "Próximo repaso programado:",
@@ -493,6 +592,8 @@ const copy = {
     domainSpeaking: "Expresión oral",
     retry: "Reintentar",
     taskFailed: "Error en la operación. Intente nuevamente.",
+    speakingStartError: "No se pudo iniciar la grabación. Comprueba que haya un micrófono disponible y revisa los permisos del navegador; después, vuelve a pulsar el micrófono. También puedes volver, elegir Salir de la lección y reanudar esta misma sesión desde Inicio.",
+    speakingEvidenceMissing: "No se guardó evidencia oral válida para este paso, así que la lección no puede avanzar.",
     pleaseAnswerQuestion: "Por favor complete la pregunta actual para continuar",
     noDueReviews: "No hay repasos pendientes en este momento",
     noDueReviewsDesc: "¡Excelente! Todo está al día.",
@@ -531,9 +632,12 @@ export function LessonPlayerPage({
   const [writingSkipped, setWritingSkipped] = useState(false);
   const [exitTicketAnswers, setExitTicketAnswers] = useState<Record<string, string>>({});
   const [exitTicketSubmitted, setExitTicketSubmitted] = useState(false);
+  const [answerFeedbackByTask, setAnswerFeedbackByTask] = useState<Record<string, "correct" | "incorrect">>({});
+  const [answerSubmittingByTask, setAnswerSubmittingByTask] = useState<Record<string, boolean>>({});
   const [weakDomains, setWeakDomains] = useState<string[]>([]);
   const [repairTaskIds, setRepairTaskIds] = useState<string[]>([]);
   const [sessionCompleted, setSessionCompleted] = useState(false);
+  const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
   const [activeCharIndex, setActiveCharIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -550,6 +654,9 @@ export function LessonPlayerPage({
     childId?: number;
     status: string;
     lessonId?: string;
+    scriptMode?: "TRADITIONAL" | "SIMPLIFIED";
+    completedAt?: string | null;
+    reward?: { points: number; earned: boolean; eventKey?: string | null };
     masteryStatus?: string | null;
     targetMinutes?: number;
     curriculumContext?: { stageId?: string; stageTitle?: string; lessonId?: string; lessonMasteredBeforeSession?: boolean; official?: { title?: string; objectiveSummary?: string } };
@@ -581,7 +688,16 @@ export function LessonPlayerPage({
   const submittedAnswersRef = useRef<Record<string, { optionId?: string | null; answersKey?: string }>>({});
   const submittedEvidenceRef = useRef<Record<string, string>>({});
   const listeningAttemptIdsByTaskRef = useRef<Record<string, string>>({});
+  const activeChildIdRef = useRef(activeChildId);
+  activeChildIdRef.current = activeChildId;
+  const listeningPlaybackSequenceRef = useRef(0);
+  const activeListeningPlaybackCancelRef = useRef<(() => void) | null>(null);
+  const mountedRef = useRef(false);
   const submittedSkipsRef = useRef<Record<string, boolean>>({});
+  const submittingTaskIdsRef = useRef<Set<string>>(new Set());
+  const hydratedLearnSessionIdRef = useRef<string | null>(null);
+  const pendingHydrationStepIndexRef = useRef<number | null>(null);
+  const completionInFlightRef = useRef(false);
 
   const [dailyQueueDueItems, setDailyQueueDueItems] = useState<any[]>([]);
   const [dailyQueueStatus, setDailyQueueStatus] = useState<"IDLE" | "SUCCESS" | "ERROR">("IDLE");
@@ -591,6 +707,8 @@ export function LessonPlayerPage({
   // Canonical lesson ID resolution
   const resolvedLessonId = session?.curriculumContext?.lessonId || session?.lessonId || lessonId || "book1-l01";
   const pkg: LessonPackage | null = useMemo(() => getLessonPackage(resolvedLessonId), [resolvedLessonId]);
+  const activeScriptMode = session?.scriptMode ?? (locale === "zh-CN" ? "SIMPLIFIED" : "TRADITIONAL");
+  const activeNotation = activeScriptMode === "TRADITIONAL" ? "zhuyin" : "pinyin";
 
   const authoritativeLearnPlan = useMemo(
     () => mode === "LEARN" && activeChildId && pkg
@@ -624,11 +742,99 @@ export function LessonPlayerPage({
 
   const currentStep = steps[currentStepIndex] ?? null;
   const learnPlanValid = !activeChildId || mode !== "LEARN" || authoritativeLearnPlan?.valid === true;
-  const learnSessionReady = mode !== "LEARN" || !activeChildId || (session?.status === "IN_PROGRESS" && learnPlanValid);
+  const learnSessionReady = mode !== "LEARN" || !activeChildId || ((session?.status === "IN_PROGRESS" || session?.status === "COMPLETED") && learnPlanValid);
   const repairSessionReady = mode !== "REPAIR" || !activeChildId || (
     session?.status === "IN_PROGRESS" && repairTaskIds.length > 0 && new Set(repairTaskIds).size === repairTaskIds.length
   );
   const playerSessionReady = learnSessionReady && repairSessionReady && pendingRepairResume === null;
+  const speakingStepTaskIds = currentStep?.stepKey === "speaking" ? (currentStep.data.taskIds ?? []) : [];
+  const speakingStepTasks: Array<{ state: string } | undefined> = speakingStepTaskIds.map((id: string) =>
+    session?.tasks?.find((task) => task.id === id)
+  );
+  const speakingStepHasCompletedEvidence = speakingStepTaskIds.length > 0 &&
+    speakingStepTasks.length === speakingStepTaskIds.length &&
+    speakingStepTasks.every((task: { state: string } | undefined) => task?.state === "COMPLETED");
+  const speakingStepHasDeferredTask = currentStep?.stepKey === "speaking" &&
+    speakingStepTasks.some((task: { state: string } | undefined) => task?.state === "DEFERRED");
+  const speakingStepCanStart = speakingStepTaskIds.length > 0 &&
+    speakingStepTasks.length === speakingStepTaskIds.length &&
+    session?.status === "IN_PROGRESS" &&
+    speakingStepTasks.every((task: { state: string } | undefined) => task &&
+      (task.state === "COMPLETED" || task.state === "PENDING" || task.state === "IN_PROGRESS")) &&
+    speakingStepTasks.some((task: { state: string } | undefined) => task &&
+      (task.state === "PENDING" || task.state === "IN_PROGRESS"));
+  const visibleError = error ?? (speakingStepHasDeferredTask ? text.speakingEvidenceMissing : null);
+
+  useEffect(() => {
+    if (mode !== "LEARN" || !activeChildId || !session?.id || !learnPlanValid || !steps.length) return;
+    if (hydratedLearnSessionIdRef.current === session.id) return;
+    hydratedLearnSessionIdRef.current = session.id;
+    let restoredIndex: number | null = null;
+    const terminalStepIndex = Math.max(0, steps.findIndex((step) => step.stepKey === "wrap_up"));
+    if (session.status === "COMPLETED") {
+      restoredIndex = terminalStepIndex;
+      setSessionCompleted(true);
+    } else {
+      setSessionCompleted(false);
+      try {
+        const rawPointer = sessionStorage.getItem(learningSessionPointerKey(activeChildId, resolvedLessonId));
+        const pointer = rawPointer ? JSON.parse(rawPointer) as { sessionId?: unknown; lessonId?: unknown; stepIndex?: unknown } : null;
+        if (pointer?.sessionId === session.id && pointer.lessonId === resolvedLessonId &&
+            Number.isInteger(pointer.stepIndex) && Number(pointer.stepIndex) >= 0 && Number(pointer.stepIndex) < steps.length) {
+          restoredIndex = Number(pointer.stepIndex);
+        }
+      } catch {
+        restoredIndex = null;
+      }
+      if (restoredIndex === null) {
+        const taskById = new Map((session.tasks ?? []).map((task) => [task.id, task]));
+        const firstPendingStep = steps.findIndex((step) => {
+          const ids = step.data.taskIds ?? (step.data.taskId ? [step.data.taskId] : []);
+          if (step.stepKey === "speaking") {
+            // A policy deferral after aborted capture attempts is not speaking
+            // evidence. Keep the learner on Step 6 when resuming this session.
+            return ids.length === 0 || ids.some((id: string) => taskById.get(id)?.state !== "COMPLETED");
+          }
+          if (!ids.length) return false;
+          return ids.some((id: string) => {
+            const task = taskById.get(id);
+            return task && task.state !== "COMPLETED" && task.state !== "DEFERRED";
+          });
+        });
+        restoredIndex = firstPendingStep >= 0 ? firstPendingStep : terminalStepIndex;
+      }
+    }
+    pendingHydrationStepIndexRef.current = restoredIndex;
+    setCurrentStepIndex(restoredIndex);
+    if (steps[restoredIndex]?.stepKey === "characters") {
+      const recognitionIds: string[] = steps[restoredIndex].data.taskIds ?? [];
+      const firstPendingCharacter = (session.tasks ?? []).find((task) => recognitionIds.includes(task.id) && task.state !== "COMPLETED" && task.state !== "DEFERRED");
+      const characterIndex = firstPendingCharacter ? Number(firstPendingCharacter.key.match(/^recognition-(\d+)$/)?.[1]) - 1 : NaN;
+      if (Number.isInteger(characterIndex) && characterIndex >= 0) setActiveCharIndex(characterIndex);
+    }
+    const exitStep = steps.find((step) => step.stepKey === "exit_ticket");
+    if (exitStep) {
+      const ids: string[] = exitStep.data.taskIds ?? [];
+      const taskById = new Map((session.tasks ?? []).map((task) => [task.id, task]));
+      setExitTicketSubmitted(ids.length > 0 && ids.every((id) => {
+        const task = taskById.get(id);
+        return task?.state === "COMPLETED" || task?.state === "DEFERRED";
+      }));
+    }
+  }, [activeChildId, learnPlanValid, mode, resolvedLessonId, session?.id, session?.status, steps]);
+
+  useEffect(() => {
+    if (mode !== "LEARN" || !activeChildId || !session?.id || !["IN_PROGRESS", "COMPLETED"].includes(session.status) ||
+        hydratedLearnSessionIdRef.current !== session.id) return;
+    const pendingIndex = pendingHydrationStepIndexRef.current;
+    if (pendingIndex !== null) {
+      if (currentStepIndex !== pendingIndex) return;
+      pendingHydrationStepIndexRef.current = null;
+    }
+    sessionStorage.setItem(learningSessionPointerKey(activeChildId, resolvedLessonId), JSON.stringify({
+      sessionId: session.id, lessonId: resolvedLessonId, stepIndex: currentStepIndex,
+    }));
+  }, [activeChildId, currentStepIndex, mode, resolvedLessonId, session?.id, session?.status]);
 
   useEffect(() => {
     if (mode === "LEARN" && activeChildId && session?.status === "IN_PROGRESS" && !learnPlanValid) {
@@ -767,7 +973,9 @@ export function LessonPlayerPage({
         childId?: number;
         status: string;
         lessonId?: string;
+        scriptMode?: "TRADITIONAL" | "SIMPLIFIED";
         masteryStatus?: string | null;
+        reward?: { points: number; earned: boolean; eventKey?: string | null };
         targetMinutes?: number;
     curriculumContext?: { stageId?: string; stageTitle?: string; lessonId?: string; lessonMasteredBeforeSession?: boolean; official?: { title?: string; objectiveSummary?: string } };
         tasks?: Array<{ id: string; key: string; taskType: string; sourceQueue: string; lessonId: string; state: string; itemId?: string; taskData?: any }>;
@@ -775,9 +983,31 @@ export function LessonPlayerPage({
         `/api/children/${activeChildId}/learning-sessions/current`
       );
       let activeSession = current;
-      if (current?.status === "PAUSED" && mode === "LEARN") {
+      if (!activeSession && mode === "LEARN") {
+        const pointerKey = learningSessionPointerKey(activeChildId, lessonId || "book1-l01");
+        try {
+          const rawPointer = sessionStorage.getItem(pointerKey);
+          const pointer = rawPointer ? JSON.parse(rawPointer) as { sessionId?: unknown; lessonId?: unknown } : null;
+          if (typeof pointer?.sessionId === "string" && pointer.lessonId === (lessonId || "book1-l01")) {
+            const saved = await api<NonNullable<typeof current>>(
+              `/api/children/${activeChildId}/learning-sessions/${encodeURIComponent(pointer.sessionId)}`,
+            );
+            const savedLessonId = saved.curriculumContext?.lessonId || saved.lessonId;
+            if (saved.childId === activeChildId && savedLessonId === (lessonId || "book1-l01") &&
+                ["IN_PROGRESS", "PAUSED", "COMPLETED"].includes(saved.status)) {
+              activeSession = saved;
+            } else {
+              sessionStorage.removeItem(pointerKey);
+            }
+          }
+        } catch {
+          sessionStorage.removeItem(pointerKey);
+        }
+      }
+      if (activeSession?.status === "PAUSED" && mode === "LEARN") {
         // LEARN task mutations require an active session. The start endpoint is also
         // the authoritative resume operation for an existing paused session.
+        const pausedSessionId = activeSession.id;
         activeSession = await api<NonNullable<typeof current>>(
           `/api/children/${activeChildId}/learning-sessions`,
           {
@@ -785,20 +1015,21 @@ export function LessonPlayerPage({
             body: JSON.stringify({
               lesson_id: lessonId || undefined,
               target_minutes: 18,
-              script_mode: locale === "zh-CN" ? "SIMPLIFIED" : "TRADITIONAL",
+              script_mode: activeSession.scriptMode ?? (locale === "zh-CN" ? "SIMPLIFIED" : "TRADITIONAL"),
             }),
           }
         );
-        if (!activeSession || activeSession.id !== current.id || activeSession.status !== "IN_PROGRESS") {
+        if (!activeSession || activeSession.id !== pausedSessionId || activeSession.status !== "IN_PROGRESS") {
           sessionRef.current = null;
           setSession(null);
           setError(text.taskFailed);
           return;
         }
       }
-      if (activeSession && (activeSession.status === "IN_PROGRESS" || (activeSession.status === "PAUSED" && mode !== "LEARN"))) {
+      if (activeSession && (activeSession.status === "IN_PROGRESS" || activeSession.status === "COMPLETED" || (activeSession.status === "PAUSED" && mode !== "LEARN"))) {
         sessionRef.current = activeSession;
         setSession(activeSession);
+        setSessionCompleted(activeSession.status === "COMPLETED");
         if (activeSession.masteryStatus) setMasteryStatus(activeSession.masteryStatus);
       } else {
         const started = await api<{
@@ -807,7 +1038,9 @@ export function LessonPlayerPage({
           childId?: number;
           status: string;
           lessonId?: string;
+          scriptMode?: "TRADITIONAL" | "SIMPLIFIED";
           masteryStatus?: string | null;
+          reward?: { points: number; earned: boolean; eventKey?: string | null };
           targetMinutes?: number;
           curriculumContext?: { stageId?: string; stageTitle?: string; lessonId?: string; lessonMasteredBeforeSession?: boolean; official?: { title?: string; objectiveSummary?: string } };
           tasks?: Array<{ id: string; key: string; taskType: string; sourceQueue: string; lessonId: string; state: string; itemId?: string; taskData?: any }>;
@@ -825,6 +1058,7 @@ export function LessonPlayerPage({
         if (started && started.id) {
           sessionRef.current = started;
           setSession(started);
+          setSessionCompleted(started.status === "COMPLETED");
           if (started.masteryStatus) setMasteryStatus(started.masteryStatus);
         } else {
           sessionRef.current = null;
@@ -940,6 +1174,13 @@ export function LessonPlayerPage({
   }, [initSession]);
 
   // Backend task progression helpers with strict error surfacing and authoritative task state return
+  const rememberAnswerFeedback = (taskId: string, taskState: string, attemptCount?: number) => {
+    if (taskState === "COMPLETED") setAnswerFeedbackByTask((previous) => ({ ...previous, [taskId]: "correct" }));
+    else if (taskState === "IN_PROGRESS" && typeof attemptCount === "number" && attemptCount > 0) {
+      setAnswerFeedbackByTask((previous) => ({ ...previous, [taskId]: "incorrect" }));
+    }
+  };
+
   const submitBackendTaskAnswer = async (
     matcher: (t: { id: string; key: string; taskType: string; state: string; sourceQueue?: string; itemId?: string; taskData?: any; attemptCount?: number; failureCount?: number; completedAt?: string | null }) => boolean,
     selectedOptionId?: string,
@@ -957,6 +1198,7 @@ export function LessonPlayerPage({
       return { persisted: false, deduped: false, taskState: "UNKNOWN" };
     }
     if (matchingTask.state === "COMPLETED" || matchingTask.state === "DEFERRED") {
+      rememberAnswerFeedback(matchingTask.id, matchingTask.state, matchingTask.attemptCount);
       return {
         persisted: true,
         deduped: true,
@@ -972,6 +1214,7 @@ export function LessonPlayerPage({
     if (recorded && recorded.optionId === (selectedOptionId || null) && recorded.answersKey === answersKey) {
       // Re-query latest authoritative state from sessionRef.current
       const latestTask = sessionRef.current?.tasks?.find((t) => t.id === matchingTask.id) ?? matchingTask;
+      rememberAnswerFeedback(latestTask.id, latestTask.state, latestTask.attemptCount);
       return {
         persisted: true,
         deduped: true,
@@ -982,6 +1225,11 @@ export function LessonPlayerPage({
         completedAt: latestTask.completedAt ?? null,
       };
     }
+    if (submittingTaskIdsRef.current.has(matchingTask.id)) {
+      return { persisted: false, deduped: true, taskId: matchingTask.id, taskState: matchingTask.state as any };
+    }
+    submittingTaskIdsRef.current.add(matchingTask.id);
+    setAnswerSubmittingByTask((previous) => ({ ...previous, [matchingTask.id]: true }));
     try {
       setError(null);
       const updated = await api<typeof session>(
@@ -1013,6 +1261,7 @@ export function LessonPlayerPage({
             taskState: "UNKNOWN",
           };
         }
+        rememberAnswerFeedback(postTask.id, postTask.state, postTask.attemptCount);
         return {
           persisted: true,
           deduped: false,
@@ -1038,6 +1287,13 @@ export function LessonPlayerPage({
         taskId: matchingTask.id,
         taskState: "UNKNOWN",
       };
+    } finally {
+      submittingTaskIdsRef.current.delete(matchingTask.id);
+      setAnswerSubmittingByTask((previous) => {
+        const next = { ...previous };
+        delete next[matchingTask.id];
+        return next;
+      });
     }
   };
 
@@ -1207,7 +1463,15 @@ export function LessonPlayerPage({
   };
 
   // Audio helper
+  const interruptListeningPlayback = useCallback(() => {
+    listeningPlaybackSequenceRef.current += 1;
+    const cancel = activeListeningPlaybackCancelRef.current;
+    activeListeningPlaybackCancelRef.current = null;
+    cancel?.();
+  }, []);
+
   const playAudio = useCallback((textToPlay: string) => {
+    interruptListeningPlayback();
     const ttsLocale = locale === "zh-CN" ? "zh-CN" : "zh-TW";
     try {
       speech.speak(
@@ -1226,14 +1490,58 @@ export function LessonPlayerPage({
     } catch {
       // Audio playback is non-blocking fallback
     }
-  }, [locale, speech]);
+  }, [interruptListeningPlayback, locale, speech]);
+
+  const playListeningAudioToCompletion = useCallback((textToPlay: string): Promise<"completed" | "failed" | "cancelled"> => {
+    interruptListeningPlayback();
+    const playbackSequence = listeningPlaybackSequenceRef.current;
+    const ttsLocale = locale === "zh-CN" ? "zh-CN" : "zh-TW";
+
+    return new Promise((resolve) => {
+      let settled = false;
+      const settle = (result: "completed" | "failed" | "cancelled") => {
+        if (settled) return;
+        settled = true;
+        if (activeListeningPlaybackCancelRef.current === cancelPlayback) {
+          activeListeningPlaybackCancelRef.current = null;
+        }
+        resolve(result);
+      };
+      const cancelPlayback = () => settle("cancelled");
+      activeListeningPlaybackCancelRef.current = cancelPlayback;
+
+      try {
+        speech.speak(
+          {
+            provider: "browser",
+            locale: ttsLocale,
+            voice_locale: ttsLocale,
+            text: textToPlay,
+            text_kind: "sentence",
+            rate: 0.85,
+            playback_only: true,
+            persisted: false,
+          },
+          {
+            onEnd: () => settle(playbackSequence === listeningPlaybackSequenceRef.current ? "completed" : "cancelled"),
+            onError: () => settle("failed"),
+          }
+        );
+      } catch {
+        settle("failed");
+      }
+    });
+  }, [interruptListeningPlayback, locale, speech]);
 
   // Listening attempt starter & evidence attacher
   const handlePlayListeningAudio = async (textToPlay: string, exactTaskId?: string): Promise<boolean> => {
-    playAudio(textToPlay);
-    if (!activeChildId) return true;
+    if (!activeChildId) {
+      playAudio(textToPlay);
+      return true;
+    }
     const currentSess = sessionRef.current;
     if (!currentSess?.id || !currentSess.tasks || currentSess.tasks.length === 0) {
+      playAudio(textToPlay);
       setError(text.taskFailed);
       return false;
     }
@@ -1241,11 +1549,33 @@ export function LessonPlayerPage({
       ? t.id === exactTaskId
       : (t.taskType === "LISTENING" || t.key === "listen"));
     if (!listenTask) {
+      playAudio(textToPlay);
       setError(text.taskFailed);
       return false;
     }
     if (listenTask.state === "COMPLETED" || listenTask.state === "DEFERRED") {
+      playAudio(textToPlay);
       delete listeningAttemptIdsByTaskRef.current[listenTask.id];
+      return true;
+    }
+    const playbackChildId = activeChildId;
+    const playbackSessionId = currentSess.id;
+    const playbackResult = await playListeningAudioToCompletion(textToPlay);
+    if (playbackResult !== "completed") {
+      if (playbackResult === "failed" && mountedRef.current) setError(text.taskFailed);
+      return false;
+    }
+    if (!mountedRef.current || activeChildIdRef.current !== playbackChildId || sessionRef.current?.id !== playbackSessionId) {
+      return false;
+    }
+    const completedPlaybackSession = sessionRef.current;
+    const completedPlaybackTask = completedPlaybackSession?.tasks?.find((task) => task.id === listenTask.id);
+    if (!completedPlaybackSession || !completedPlaybackTask) {
+      setError(text.taskFailed);
+      return false;
+    }
+    if (completedPlaybackTask.state === "COMPLETED" || completedPlaybackTask.state === "DEFERRED") {
+      delete listeningAttemptIdsByTaskRef.current[completedPlaybackTask.id];
       return true;
     }
     if (listenTask.itemId) {
@@ -1263,8 +1593,8 @@ export function LessonPlayerPage({
           if (attemptId) listeningAttemptIdsByTaskRef.current[listenTask.id] = attemptId;
         }
         if (attemptId) {
-          const writeResult = await submitBackendTaskEvidence(
-            (t) => t.id === listenTask.id,
+      const writeResult = await submitBackendTaskEvidence(
+            (t) => t.id === completedPlaybackTask.id,
             attemptId,
             1500
           );
@@ -1285,11 +1615,18 @@ export function LessonPlayerPage({
 
   // Clean up
   useEffect(() => {
+    mountedRef.current = true;
     return () => {
+      mountedRef.current = false;
+      interruptListeningPlayback();
       speech.cancel();
       recorder.delete();
     };
-  }, [recorder, speech]);
+  }, [interruptListeningPlayback, recorder, speech]);
+
+  useEffect(() => {
+    interruptListeningPlayback();
+  }, [activeChildId, interruptListeningPlayback]);
 
   // HanziWriter initialization for writing step
   useEffect(() => {
@@ -1489,16 +1826,33 @@ export function LessonPlayerPage({
         setError(text.taskFailed);
         return;
       }
+      const contextChoiceId = currentStep.data.contextChoiceTaskId;
+      if (typeof contextChoiceId === "string" && contextChoiceId.length > 0) {
+        const contextChoiceTask = currentSess.tasks.find((task) => task.id === contextChoiceId);
+        const selectedContextChoice = selectedChoices["context"];
+        if (!contextChoiceTask || !selectedContextChoice) {
+          setError(text.pleaseAnswerQuestion);
+          return;
+        }
+        if (contextChoiceTask.state !== "COMPLETED" && contextChoiceTask.state !== "DEFERRED") {
+          const result = await submitBackendTaskAnswer((task) => task.id === contextChoiceTask.id, selectedContextChoice);
+          if (result.taskState !== "COMPLETED" && result.taskState !== "DEFERRED") {
+            setError(result.taskState === "IN_PROGRESS" ? text.retryAnswer : text.taskFailed);
+            return;
+          }
+        }
+        const savedContextChoice = sessionRef.current?.tasks?.find((task) => task.id === contextChoiceTask.id);
+        if (!savedContextChoice || (savedContextChoice.state !== "COMPLETED" && savedContextChoice.state !== "DEFERRED")) {
+          setError(text.taskFailed);
+          return;
+        }
+      }
     }
 
     // 2. Vocabulary step: ensure vocabulary choice was made and task is COMPLETED / DEFERRED
     if (currentStep.stepKey === "vocabulary") {
       const vocabularyChoiceKey = currentStep.data.taskId ? `vocab-${currentStep.data.taskId}` : "vocab";
       const selected = selectedChoices[vocabularyChoiceKey];
-      if (!selected) {
-        setError(text.pleaseAnswerQuestion);
-        return;
-      }
       if (activeChildId) {
         const sessAfterVocab = sessionRef.current;
         if (!sessAfterVocab || !sessAfterVocab.id || !sessAfterVocab.tasks) {
@@ -1513,9 +1867,13 @@ export function LessonPlayerPage({
           return;
         }
         if (vocabTask.state !== "COMPLETED" && vocabTask.state !== "DEFERRED") {
+          if (!selected) {
+            setError(text.pleaseAnswerQuestion);
+            return;
+          }
           const res = await submitBackendTaskAnswer((t) => t.id === vocabTask.id, selected);
           if (res.taskState !== "COMPLETED" && res.taskState !== "DEFERRED") {
-            setError(text.taskFailed);
+            setError(res.taskState === "IN_PROGRESS" ? text.retryAnswer : text.taskFailed);
             return;
           }
         }
@@ -1524,6 +1882,9 @@ export function LessonPlayerPage({
           setError(text.taskFailed);
           return;
         }
+      } else if (!selected) {
+        setError(text.pleaseAnswerQuestion);
+        return;
       }
     }
 
@@ -1535,15 +1896,11 @@ export function LessonPlayerPage({
         ? (pkg.characters.find((c) => c.char === dueChar) || { char: dueChar || "你" })
         : pkg.characters[activeCharIndex]);
       const exactTaskId = currentStep.data?.taskId || currentStep.data?.dueItem?.id;
+      const plannedTaskIds: string[] = currentStep.data.taskIds ?? [];
       const reviewChoiceKey = `recog-rev-${exactTaskId || charObj?.char}`;
       const currentAnswer = isReviewMode
         ? (selectedChoices[reviewChoiceKey] || (exactTaskId ? selectedChoices[`recog-${exactTaskId}`] : selectedChoices["recog"]))
         : (exactTaskId ? selectedChoices[`recog-${exactTaskId}`] : selectedChoices[`recog-${activeCharIndex}`]);
-
-      if (!currentAnswer) {
-        setError(text.pleaseAnswerQuestion);
-        return;
-      }
 
       if (activeChildId) {
         const currentSessChar = sessionRef.current;
@@ -1562,22 +1919,29 @@ export function LessonPlayerPage({
                      t.key !== "mini-check-reflection"
             );
 
-        if (!charTask) {
+        const expectedKey = `recognition-${activeCharIndex + 1}`;
+        const characterTaskIsPlanned = currentSessChar.tasks.some((task) => plannedTaskIds.includes(task.id) && task.key === expectedKey);
+        if (!charTask && characterTaskIsPlanned) {
           setError(text.taskFailed);
-          return; // Char task missing -> fail closed, block advance!
+          return;
         }
-
-        if (charTask.state !== "COMPLETED" && charTask.state !== "DEFERRED") {
+        if (charTask && charTask.state !== "COMPLETED" && charTask.state !== "DEFERRED") {
+          if (!currentAnswer) {
+            setError(text.pleaseAnswerQuestion);
+            return;
+          }
           const res = await submitBackendTaskAnswer((t) => t.id === charTask.id, currentAnswer);
           if (res.taskState !== "COMPLETED" && res.taskState !== "DEFERRED") {
-            setError(text.taskFailed);
+            setError(res.taskState === "IN_PROGRESS" ? text.retryAnswer : text.taskFailed);
             return;
           }
         }
-        const postCharTask = sessionRef.current?.tasks?.find((t) => t.id === charTask.id);
-        if (!postCharTask || (postCharTask.state !== "COMPLETED" && postCharTask.state !== "DEFERRED")) {
-          setError(text.taskFailed);
-          return; // Remain on current character tab
+        if (charTask) {
+          const postCharTask = sessionRef.current?.tasks?.find((t) => t.id === charTask.id);
+          if (!postCharTask || (postCharTask.state !== "COMPLETED" && postCharTask.state !== "DEFERRED")) {
+            setError(text.taskFailed);
+            return; // Remain on current character tab
+          }
         }
       }
 
@@ -1595,11 +1959,9 @@ export function LessonPlayerPage({
           setError(text.taskFailed);
           return;
         }
-        const pendingRecog = sessAfterRecog.tasks.filter(
-          (t) => (t.taskType === "RECOGNITION" || t.taskType === "REVIEW_RECOGNITION" || t.taskType === "MINI_CHECK" || t.key.startsWith("recognition-") || t.key.startsWith("review-")) &&
-                 t.state !== "COMPLETED" && t.state !== "DEFERRED" && t.key !== "mini-check-reflection"
-        );
-        if (pendingRecog.length > 0) {
+        const exactRecognitionTasks = sessAfterRecog.tasks.filter((task) => plannedTaskIds.includes(task.id));
+        const pendingRecog = exactRecognitionTasks.some((task) => task.state !== "COMPLETED" && task.state !== "DEFERRED");
+        if (plannedTaskIds.length === 0 || exactRecognitionTasks.length !== plannedTaskIds.length || pendingRecog) {
           setError(text.taskFailed);
           return;
         }
@@ -1609,10 +1971,6 @@ export function LessonPlayerPage({
     // 4. Sentence Pattern step: ensure sentence-pattern choice was made and task is COMPLETED / DEFERRED
     if (currentStep.stepKey === "sentence_pattern") {
       const selected = selectedChoices["sentence"];
-      if (!selected) {
-        setError(text.pleaseAnswerQuestion);
-        return;
-      }
       if (activeChildId) {
         const sessAfterSent = sessionRef.current;
         if (!sessAfterSent || !sessAfterSent.id || !sessAfterSent.tasks) {
@@ -1627,9 +1985,13 @@ export function LessonPlayerPage({
           return;
         }
         if (sentTask.state !== "COMPLETED" && sentTask.state !== "DEFERRED") {
+          if (!selected) {
+            setError(text.pleaseAnswerQuestion);
+            return;
+          }
           const res = await submitBackendTaskAnswer((t) => t.id === sentTask.id, selected);
           if (res.taskState !== "COMPLETED" && res.taskState !== "DEFERRED") {
-            setError(text.taskFailed);
+            setError(res.taskState === "IN_PROGRESS" ? text.retryAnswer : text.taskFailed);
             return;
           }
         }
@@ -1638,6 +2000,9 @@ export function LessonPlayerPage({
           setError(text.taskFailed);
           return;
         }
+      } else if (!selected) {
+        setError(text.pleaseAnswerQuestion);
+        return;
       }
     }
 
@@ -1648,7 +2013,8 @@ export function LessonPlayerPage({
       const speakingTasks = (sessAfterSpeaking?.tasks ?? []).filter((t) => stepTaskIds.length
         ? stepTaskIds.includes(t.id)
         : t.taskType === "SPEAKING_ATTEMPT" || t.taskType === "PRONUNCIATION_ATTEMPT" || t.key === "speaking" || t.key === "pronunciation");
-      const allCompleted = speakingTasks.length > 0 && speakingTasks.every((t) => t.state === "COMPLETED" || t.state === "DEFERRED");
+      const allCompleted = stepTaskIds.length > 0 && speakingTasks.length === stepTaskIds.length &&
+        speakingTasks.every((t) => t.state === "COMPLETED");
       if (!allCompleted) {
         setError(text.taskFailed);
         return;
@@ -1695,34 +2061,13 @@ export function LessonPlayerPage({
         setError(text.pleaseAnswerQuestion);
         return;
       }
-      if (mode === "LEARN" && activeChildId && currentStep.data.taskId) {
-        const task = sessionRef.current?.tasks?.find((candidate) => candidate.id === currentStep.data.taskId);
-        if (!task || (task.state !== "COMPLETED" && task.state !== "DEFERRED")) {
-          setError(text.taskFailed);
-          return;
-        }
-      } else if (mode === "LEARN" && activeChildId) {
+      if (mode === "LEARN" && activeChildId) {
         const sessAfterTicket = sessionRef.current;
-        if (!sessAfterTicket || !sessAfterTicket.id || !sessAfterTicket.tasks) {
-          setError(text.taskFailed);
-          return;
-        }
-        const refTask = sessAfterTicket.tasks.find(
-          (t) => (t.key === "mini-check-reflection" || (t.taskType === "MINI_CHECK" && t.taskData?.mode === "reflection"))
-        );
-        if (!refTask) {
-          setError(text.taskFailed);
-          return;
-        }
-        if (refTask.state !== "COMPLETED" && refTask.state !== "DEFERRED") {
-          const res = await submitBackendTaskAnswer((t) => t.id === refTask.id, "practiced");
-          if (res.taskState !== "COMPLETED" && res.taskState !== "DEFERRED") {
-            setError(text.taskFailed);
-            return;
-          }
-        }
-        const postRefTask = sessionRef.current?.tasks?.find((t) => t.id === refTask.id);
-        if (!postRefTask || (postRefTask.state !== "COMPLETED" && postRefTask.state !== "DEFERRED")) {
+        const exactTaskIds: string[] = currentStep.data.taskIds ?? (currentStep.data.taskId ? [currentStep.data.taskId as string] : []);
+        const exactTasks = sessAfterTicket?.tasks?.filter((task) => exactTaskIds.includes(task.id)) ?? [];
+        if (!sessAfterTicket?.id || !exactTaskIds.length || exactTasks.length !== exactTaskIds.length || exactTasks.some((task) =>
+          task.state !== "COMPLETED" && task.state !== "DEFERRED"
+        )) {
           setError(text.taskFailed);
           return;
         }
@@ -1765,6 +2110,30 @@ export function LessonPlayerPage({
       setCurrentStepIndex((prev) => prev - 1);
     }
   };
+
+  const handleRequestExit = useCallback(() => {
+    const currentSess = sessionRef.current;
+    if (mode === "LEARN" && activeChildId && !sessionCompleted && currentSess?.status !== "COMPLETED") {
+      setError(null);
+      setExitConfirmOpen(true);
+      return;
+    }
+    onBack();
+  }, [activeChildId, mode, onBack, sessionCompleted]);
+
+  useEffect(() => {
+    const handleBrowserExit = () => handleRequestExit();
+    window.addEventListener("tongxuan:lesson-exit-request", handleBrowserExit);
+    return () => window.removeEventListener("tongxuan:lesson-exit-request", handleBrowserExit);
+  }, [handleRequestExit]);
+
+  useEffect(() => {
+    const active = mode === "LEARN" && Boolean(activeChildId) && session?.status === "IN_PROGRESS" && !sessionCompleted;
+    window.dispatchEvent(new CustomEvent("tongxuan:lesson-session-guard", { detail: { active } }));
+    return () => {
+      window.dispatchEvent(new CustomEvent("tongxuan:lesson-session-guard", { detail: { active: false } }));
+    };
+  }, [activeChildId, mode, session?.status, sessionCompleted]);
 
   const cleanupAndAbortSpeakingAttempts = async (ids: { speaking?: string; pronunciation?: string }) => {
     const currentSess = sessionRef.current;
@@ -1817,6 +2186,48 @@ export function LessonPlayerPage({
     recorder.delete();
     activeSpeakingAttemptIdsRef.current = {};
     setActiveSpeakingAttemptIds({});
+  };
+
+  const handleConfirmExit = async () => {
+    if (!activeChildId || mode !== "LEARN" || sessionCompleted) {
+      setExitConfirmOpen(false);
+      onBack();
+      return;
+    }
+    const currentSess = sessionRef.current;
+    if (!currentSess?.id) {
+      setError(text.taskFailed);
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const attempts = activeSpeakingAttemptIdsRef.current;
+      if (attempts.speaking || attempts.pronunciation || recording) {
+        await cleanupAndAbortSpeakingAttempts(attempts);
+      }
+      const latestSess = sessionRef.current;
+      if (!latestSess?.id || latestSess.id !== currentSess.id) throw new Error(text.taskFailed);
+      if (latestSess.status === "IN_PROGRESS") {
+        const paused = await api<typeof latestSess>(
+          `/api/children/${activeChildId}/learning-sessions/${latestSess.id}/stop`,
+          { method: "POST", body: JSON.stringify({ reason: "USER_EXIT" }) },
+        );
+        if (paused.id !== latestSess.id || paused.sessionId !== latestSess.id || paused.childId !== activeChildId || paused.status !== "PAUSED") {
+          throw new Error(text.taskFailed);
+        }
+        sessionRef.current = paused;
+        setSession(paused);
+      } else if (latestSess.status !== "PAUSED" && latestSess.status !== "COMPLETED") {
+        throw new Error(text.taskFailed);
+      }
+      setExitConfirmOpen(false);
+      onBack();
+    } catch (err: any) {
+      setError(err?.message || text.taskFailed);
+    } finally {
+      setBusy(false);
+    }
   };
 
   const handleRecordSpeaking = async () => {
@@ -1918,7 +2329,10 @@ export function LessonPlayerPage({
       } catch (err: any) {
         setRecording(false);
         setSpeakingAttempted(false);
-        setError(err?.message || text.taskFailed);
+        const errorCode = err?.message;
+        setError(errorCode === "microphone_start_failed" || errorCode === "microphone_unavailable" || errorCode === "microphone_permission_denied"
+          ? text.speakingStartError
+          : errorCode || text.taskFailed);
         await cleanupAndAbortSpeakingAttempts(ids);
       }
     }
@@ -1929,6 +2343,52 @@ export function LessonPlayerPage({
     setError(null);
 
     if (mode === "LEARN" && activeChildId) {
+      const exactQuestionTasks: string[] = currentStep.data.taskIds ?? [];
+      if (exactQuestionTasks.length > 0) {
+        const sessionTasks = sessionRef.current?.tasks ?? [];
+        const missingAnswers = currentStep.data.questions.filter((question: any) => {
+          const task = sessionTasks.find((candidate) => candidate.id === question.taskId);
+          return task?.state !== "COMPLETED" && task?.state !== "DEFERRED" && !exitTicketAnswers[question.id];
+        });
+        if (missingAnswers.length > 0) {
+          setError(text.pleaseAnswerQuestion);
+          return;
+        }
+        setBusy(true);
+        try {
+          for (const question of currentStep.data.questions) {
+            const taskId = question.taskId as string;
+            const task = sessionRef.current?.tasks?.find((candidate) => candidate.id === taskId);
+            if (!task) {
+              setError(text.taskFailed);
+              return;
+            }
+            if (task.state === "COMPLETED" || task.state === "DEFERRED") continue;
+            const selected = exitTicketAnswers[question.id];
+            if (!selected) {
+              setError(text.pleaseAnswerQuestion);
+              return;
+            }
+            const result = await submitBackendTaskAnswer((candidate) => candidate.id === taskId, selected);
+            if (result.taskState !== "COMPLETED" && result.taskState !== "DEFERRED") {
+              setError(result.taskState === "IN_PROGRESS" ? text.retryAnswer : text.taskFailed);
+              return;
+            }
+          }
+          const settled = currentStep.data.questions.every((question: any) => {
+            const task = sessionRef.current?.tasks?.find((candidate) => candidate.id === question.taskId);
+            return task?.state === "COMPLETED" || task?.state === "DEFERRED";
+          });
+          if (!settled) {
+            setError(text.taskFailed);
+            return;
+          }
+          setExitTicketSubmitted(true);
+          return;
+        } finally {
+          setBusy(false);
+        }
+      }
       const taskId = currentStep.data.taskId;
       const task = sessionRef.current?.tasks?.find((candidate) => candidate.id === taskId);
       if (!taskId || !task) {
@@ -2136,6 +2596,11 @@ export function LessonPlayerPage({
       setError(text.taskFailed);
       return;
     }
+    if (currentSess.status === "COMPLETED") {
+      setSessionCompleted(true);
+      return;
+    }
+    if (completionInFlightRef.current) return;
     if (mode === "LEARN") {
       const wrapUpTaskId = currentStep?.stepKey === "wrap_up" ? currentStep.data.taskId : undefined;
       const wrapUpTask = currentSess.tasks?.find((task) => task.id === wrapUpTaskId && task.taskType === "LESSON_WRAP_UP");
@@ -2146,21 +2611,29 @@ export function LessonPlayerPage({
         setError(text.taskFailed);
         return;
       }
+      const reflectionTaskId = currentStep?.stepKey === "wrap_up" ? currentStep.data.reflectionTaskId : undefined;
+      const reflectionTask = currentSess.tasks?.find((task) => task.id === reflectionTaskId && task.taskType === "MINI_CHECK");
+      if (!reflectionTask || (reflectionTask.state !== "COMPLETED" && reflectionTask.state !== "DEFERRED")) {
+        setError(text.completeBeforeSettlement);
+        return;
+      }
     }
 
+    completionInFlightRef.current = true;
     setBusy(true);
     setError(null);
     try {
-      const completed = await api<{ id: string; status: string; masteryStatus?: string | null }>(
+      const completed = await api<NonNullable<typeof session>>(
         `/api/children/${activeChildId}/learning-sessions/${currentSess.id}/complete`,
         { method: "POST", body: "{}" }
       );
-      if (completed && completed.status === "COMPLETED") {
+      const completedLessonId = completed?.curriculumContext?.lessonId || completed?.lessonId;
+      if (completed && completed.id === currentSess.id && completed.sessionId === currentSess.id &&
+          completed.childId === activeChildId && completedLessonId === resolvedLessonId && completed.status === "COMPLETED") {
+        sessionRef.current = completed;
         setSessionCompleted(true);
-        setSession((prev) => (prev ? { ...prev, status: "COMPLETED", masteryStatus: completed.masteryStatus } : null));
-        if (completed.masteryStatus) {
-          setMasteryStatus(completed.masteryStatus);
-        }
+        setSession(completed);
+        setMasteryStatus(completed.masteryStatus ?? null);
         if (onCompleteLesson) {
           onCompleteLesson(resolvedLessonId, {
             sessionCompleted: true,
@@ -2175,6 +2648,7 @@ export function LessonPlayerPage({
       setSessionCompleted(false);
       // DO NOT call onCompleteLesson on error!
     } finally {
+      completionInFlightRef.current = false;
       setBusy(false);
     }
   };
@@ -2200,6 +2674,10 @@ export function LessonPlayerPage({
     APPROVED: text.reviewStatusApproved,
     REJECTED: text.reviewStatusRejected,
   };
+  const toLearnerVisibleText = (value: string | undefined) => {
+    if (!value || resolvedLessonId !== "book1-l01" || activeScriptMode !== "SIMPLIFIED") return value;
+    return value.replaceAll("大衛", "大卫");
+  };
   const renderScaffold = (scaffoldKey?: string) => {
     if (!scaffoldKey || !Object.prototype.hasOwnProperty.call(pkg.nativeLanguageSupport.entries, scaffoldKey)) return null;
     const info = getScaffoldText(pkg, scaffoldKey, scaffoldMode);
@@ -2221,8 +2699,8 @@ export function LessonPlayerPage({
           </button>
         ) : (
           <div className="scaffold-content">
-            <span className="scaffold-text">{info.visibleText}</span>
-            {info.notes && <span className="scaffold-notes">({info.notes})</span>}
+            <span className="scaffold-text">{toLearnerVisibleText(info.visibleText ?? undefined)}</span>
+            {info.notes && <span className="scaffold-notes">({toLearnerVisibleText(info.notes)})</span>}
             <span className="scaffold-status-pill" title={scaffoldStatusLabels[info.reviewStatus]}>
               {scaffoldStatusLabels[info.reviewStatus]}
             </span>
@@ -2241,15 +2719,17 @@ export function LessonPlayerPage({
   };
 
   return (
-    <main className="lesson-player-container" role="main" aria-label={text.lessonPlayer}>
-      {error && (
+    <main className="lesson-player-container" role="main" aria-label={text.lessonPlayer} data-lesson-id={resolvedLessonId}>
+      {visibleError && (
         <div className="error-strip" role="alert" style={{ margin: "0.5rem 1rem" }}>
-          <span>{error}</span>
-          <button type="button" className="button button-text" onClick={() => pendingRepairResume
-            ? void resumeFastTrackRepair(pendingRepairResume)
-            : void initSession()}>
+          <span>{visibleError}</span>
+          {!speakingStepHasDeferredTask && <button type="button" className="button button-text" onClick={() => error === text.speakingStartError
+            ? void handleRecordSpeaking()
+            : pendingRepairResume
+              ? void resumeFastTrackRepair(pendingRepairResume)
+              : void initSession()}>
             {text.retry}
-          </button>
+          </button>}
         </div>
       )}
       {mode === "LEARN" && activeChildId && !learnSessionReady && busy && (
@@ -2260,7 +2740,7 @@ export function LessonPlayerPage({
         <button
           type="button"
           className="button button-text player-back-btn"
-          onClick={onBack}
+          onClick={handleRequestExit}
           aria-label={text.back}
         >
           <ArrowLeft size={20} />
@@ -2371,8 +2851,8 @@ export function LessonPlayerPage({
               ) : null}
               <span className="step-num-pill">Step {currentStep.stepNumber}</span>
             </div>
-            <h2 className="step-card-title">{currentStep.title}</h2>
-            <p className="step-card-subtitle">{currentStep.subtitle}</p>
+            <h2 className="step-card-title">{toLearnerVisibleText(currentStep.title)}</h2>
+            <p className="step-card-subtitle">{toLearnerVisibleText(currentStep.subtitle)}</p>
           </header>
 
           {/* STEP 1: Situational Context */}
@@ -2408,15 +2888,23 @@ export function LessonPlayerPage({
                       type="button"
                       role="radio"
                       aria-checked={isSelected}
+                      data-choice-id={choice.id}
                       className={`choice-card-btn ${isSelected ? "selected" : ""}`}
                       onClick={() => {
                         setSelectedChoices((prev) => ({ ...prev, context: choice.id }));
-                        void handlePlayListeningAudio(currentStep.data.audioText || "你好", currentStep.data.taskId);
+                        void (async () => {
+                          const answer = await submitBackendTaskAnswer((task) => task.id === currentStep.data.contextChoiceTaskId, choice.id);
+                          if (answer.taskState !== "COMPLETED" && answer.taskState !== "DEFERRED" && answer.taskState !== "IN_PROGRESS") setError(text.taskFailed);
+                          else setError(answer.taskState === "IN_PROGRESS" ? text.retryAnswer : null);
+                          await handlePlayListeningAudio(currentStep.data.audioText || "你好", currentStep.data.taskId);
+                        })();
                       }}
+                      disabled={Boolean(answerSubmittingByTask[currentStep.data.contextChoiceTaskId])}
                     >
                       <span className="choice-label">{choice.label}</span>
                       {choice.subLabel && <span className="choice-sublabel">{choice.subLabel}</span>}
-                      {isSelected && choice.isCorrect && <span className="feedback-badge positive">✓</span>}
+                      {isSelected && answerFeedbackByTask[currentStep.data.contextChoiceTaskId] === "correct" && <span className="feedback-badge positive">✓ {text.correct}</span>}
+                      {isSelected && answerFeedbackByTask[currentStep.data.contextChoiceTaskId] === "incorrect" && <span className="feedback-badge negative">{text.retryAnswer}</span>}
                     </button>
                   );
                 })}
@@ -2430,19 +2918,19 @@ export function LessonPlayerPage({
               <div className="dialogue-lines-container">
                 {currentStep.data.dialogueRows?.map((row) => (
                   <div key={row.id} className="dialogue-line-card">
-                    <div className="dialogue-speaker-avatar">{row.speaker ? row.speaker[0] : "話"}</div>
+                    <div className="dialogue-speaker-avatar">{row.speaker ? toLearnerVisibleText(row.speaker)?.[0] : "話"}</div>
                     <div className="dialogue-bubble">
-                      <div className="speaker-name">{row.speaker}</div>
+                      <div className="speaker-name">{toLearnerVisibleText(row.speaker)}</div>
                       <div className="dialogue-chinese-text">
-                        <span className="char-text">{row.text}</span>
-                        {row.zhuyin && <span className="phonetic-zhuyin">{row.zhuyin}</span>}
-                        {row.pinyin && <span className="phonetic-pinyin">{row.pinyin}</span>}
+                        <span className="char-text">{toLearnerVisibleText(row.text)}</span>
+                        {activeScriptMode === "TRADITIONAL" && row.zhuyin && <span className="phonetic-zhuyin">{row.zhuyin}</span>}
+                        {activeScriptMode === "SIMPLIFIED" && row.pinyin && <span className="phonetic-pinyin">{row.pinyin}</span>}
                       </div>
                       <button
                         type="button"
                         className="button button-text dialogue-audio-btn"
                         onClick={() => playAudio(row.text)}
-                        aria-label={`播放 ${row.speaker} 的語音`}
+                        aria-label={toLearnerVisibleText(`播放 ${row.speaker} 的語音`)}
                       >
                         <Volume2 size={18} />
                         <span>聽這句</span>
@@ -2467,12 +2955,13 @@ export function LessonPlayerPage({
               <div className="step-body step-vocab-body">
                 <div className="vocab-highlight-card">
                   <div className="vocab-word-large">
-                    <span className="vocab-hanzi">{currentStep.data.word || "你好"}</span>
+                    <span className="vocab-hanzi">{toLearnerVisibleText(currentStep.data.word || "你好")}</span>
                     <span className="vocab-role-pill">{text.activeRole}</span>
                   </div>
                   <div className="vocab-phonetics-row">
-                    <span className="pinyin-tag">{currentStep.data.pinyin || "nǐ hǎo"}</span>
-                    <span className="zhuyin-tag">{currentStep.data.zhuyin || "ㄋㄧˇ ㄏㄠˇ"}</span>
+                    {activeScriptMode === "SIMPLIFIED"
+                      ? <span className="pinyin-tag">{currentStep.data.pinyin || "nǐ hǎo"}</span>
+                      : <span className="zhuyin-tag">{currentStep.data.zhuyin || "ㄋㄧˇ ㄏㄠˇ"}</span>}
                     <button
                       type="button"
                       className="button button-icon-subtle"
@@ -2483,32 +2972,37 @@ export function LessonPlayerPage({
                     </button>
                   </div>
                   <div className="vocab-example-sentence">
-                    <p><strong>例句：</strong> {currentStep.data.exampleSentence || "你好！我叫大衛。"}</p>
+                    <p><strong>例句：</strong> {toLearnerVisibleText(currentStep.data.exampleSentence || "你好！我叫大衛。")}</p>
                   </div>
                   {renderStepScaffold(currentStep.data.scaffoldKey)}
                 </div>
 
-                <p className="interaction-prompt">{prompt}</p>
+                <p className="interaction-prompt">{toLearnerVisibleText(prompt)}</p>
 
                 <div className="choices-vertical-list">
                   {choices?.map((choice: { id: string; label: string; isCorrect?: boolean }) => {
                     const vocabularyChoiceKey = currentStep.data.taskId ? `vocab-${currentStep.data.taskId}` : "vocab";
                     const isSelected = selectedChoices[vocabularyChoiceKey] === choice.id;
-                    const isCorrect = choice.id === currentStep.data.correctChoiceId || choice.id === "opt-hello" || choice.id === "greeting" || choice.isCorrect;
+                    const feedback = currentStep.data.taskId ? answerFeedbackByTask[currentStep.data.taskId] : undefined;
                     return (
                       <button
                         key={choice.id}
                         type="button"
                         className={`choice-card-btn ${isSelected ? "selected" : ""}`}
+                        data-choice-id={choice.id}
                         onClick={async () => {
+                          if (currentStep.data.taskId && answerSubmittingByTask[currentStep.data.taskId]) return;
                           setSelectedChoices((prev) => ({ ...prev, [vocabularyChoiceKey]: choice.id }));
-                          await submitBackendTaskAnswer((t) => currentStep.data.taskId
+                          const result = await submitBackendTaskAnswer((t) => currentStep.data.taskId
                             ? t.id === currentStep.data.taskId
                             : t.taskType === "VOCABULARY" || t.key === "vocabulary", choice.id);
+                          setError(result.taskState === "IN_PROGRESS" ? text.retryAnswer : result.taskState === "UNKNOWN" ? text.taskFailed : null);
                         }}
+                        disabled={Boolean(currentStep.data.taskId && answerSubmittingByTask[currentStep.data.taskId])}
                       >
-                        <span className="choice-label">{choice.label}</span>
-                        {isSelected && isCorrect && <span className="feedback-badge positive">✓</span>}
+                        <span className="choice-label">{toLearnerVisibleText(choice.label)}</span>
+                        {isSelected && feedback === "correct" && <span className="feedback-badge positive">✓ {text.correct}</span>}
+                        {isSelected && feedback === "incorrect" && <span className="feedback-badge negative">{text.retryAnswer}</span>}
                       </button>
                     );
                   })}
@@ -2543,7 +3037,7 @@ export function LessonPlayerPage({
               : charTask?.taskData?.audioText || currentStep.data?.dueCharacter || charObj?.char || "你";
             const choices = isReviewMode
               ? charTask?.taskData?.choices ?? []
-              : charTask?.taskData?.choices || currentStep.data.recognitionCheck?.choices || (
+              : charTask?.taskData?.choices || (activeChildId ? [] : currentStep.data.recognitionCheck?.choices) || (
                   charObj?.char === "好"
                     ? [{ id: "opt-ni", label: "你", isCorrect: false }, { id: "opt-hao", label: "好", isCorrect: true }]
                     : [{ id: "opt-ni", label: "你", isCorrect: true }, { id: "opt-hao", label: "好", isCorrect: false }]
@@ -2574,7 +3068,7 @@ export function LessonPlayerPage({
                           onClick={() => setActiveCharIndex(idx)}
                         >
                           <span className="tab-char">{c.char}</span>
-                          <span className="tab-pinyin">{c.pronunciation.pinyin}</span>
+                          <span className="tab-pinyin">{c.pronunciation[activeNotation]}</span>
                           {isDone && <span className="tab-done-indicator">✓</span>}
                         </button>
                       );
@@ -2593,7 +3087,7 @@ export function LessonPlayerPage({
                         aria-label={`播放「${charObj.char}」的發音`}
                       >
                         <Volume2 size={20} />
-                        <span>{charObj.pronunciation?.pinyin || ""} / {charObj.pronunciation?.zhuyin || ""}</span>
+                        <span>{charObj.pronunciation?.[activeNotation] || ""}</span>
                       </button>
                     </div>
 
@@ -2618,57 +3112,59 @@ export function LessonPlayerPage({
 
                 {/* Recognition check */}
                 <div className="recognition-mini-check">
-                  <p className="interaction-prompt">{prompt}</p>
-                  <button
-                    type="button"
-                    className="button button-secondary play-recog-audio-btn"
-                    onClick={() => playAudio(audioText)}
-                  >
-                    <Volume2 size={18} />
-                    <span>播放題目音檔「{audioText}」</span>
-                  </button>
-                  <div className="choices-horizontal-row">
-                    {choices?.map((choice: { id: string; label: string; isCorrect?: boolean }) => {
-                      const isSelected = selectedChoiceVal === choice.id || (!isReviewMode && selectedChoices["recog"] === choice.id);
-                      const isCorrect = choice.id === (charObj?.char === "好" ? "opt-hao" : "opt-ni") || choice.isCorrect;
-                      return (
-                        <button
-                          key={choice.id}
-                          type="button"
-                          className={`char-choice-card ${isSelected ? "selected" : ""}`}
-                          onClick={async () => {
-                            setSelectedChoices((prev) => ({
-                              ...prev,
-                              recog: choice.id,
-                              [reviewChoiceKey]: choice.id,
-                              ...(exactTaskId ? { [`recog-${exactTaskId}`]: choice.id } : {}),
-                              [`recog-${activeCharIndex}`]: choice.id,
-                            }));
-                            if (isReviewMode) {
-                              if (!exactTaskId) {
-                                setError(text.taskFailed);
-                                return;
-                              }
-                              await submitBackendTaskAnswer(
-                                (t) => t.id === exactTaskId,
-                                choice.id
-                              );
-                            } else {
-          await submitBackendTaskAnswer(
-            (t) => exactTaskId
-              ? t.id === exactTaskId
-              : t.id === charTask?.id || t.key === `recognition-${activeCharIndex + 1}`,
-            choice.id
-          );
-                            }
-                          }}
-                        >
-                          <span className="char-choice-text">{choice.label}</span>
-                          {isSelected && isCorrect && <span className="feedback-badge positive">✓</span>}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  {charTask || !activeChildId ? (
+                    <>
+                      <p className="interaction-prompt">{prompt}</p>
+                      <button
+                        type="button"
+                        className="button button-secondary play-recog-audio-btn"
+                        onClick={() => playAudio(audioText)}
+                      >
+                        <Volume2 size={18} />
+                        <span>播放題目音檔「{audioText}」</span>
+                      </button>
+                      {charTask?.state === "COMPLETED" && <p className="feedback-text positive" role="status">{text.answerRecorded}</p>}
+                      {charTask?.state === "IN_PROGRESS" && (charTask.failureCount ?? 0) > 0 && <p className="feedback-text warning" role="status">{text.retryAnswer}</p>}
+                      <div className="choices-horizontal-row">
+                        {choices?.map((choice: { id: string; label: string; isCorrect?: boolean }) => {
+                          const isSelected = selectedChoiceVal === choice.id || (!isReviewMode && selectedChoices["recog"] === choice.id);
+                          const feedback = charTask?.id ? answerFeedbackByTask[charTask.id] : undefined;
+                          const localCorrect = !activeChildId && (choice.id === (charObj?.char === "好" ? "opt-hao" : "opt-ni") || choice.isCorrect);
+                          return (
+                            <button
+                              key={choice.id}
+                              type="button"
+                              className={`char-choice-card ${isSelected ? "selected" : ""}`}
+                              disabled={Boolean(charTask && (charTask.state === "COMPLETED" || charTask.state === "DEFERRED" || answerSubmittingByTask[charTask.id]))}
+                              onClick={async () => {
+                                setSelectedChoices((prev) => ({
+                                  ...prev,
+                                  recog: choice.id,
+                                  [reviewChoiceKey]: choice.id,
+                                  ...(exactTaskId ? { [`recog-${exactTaskId}`]: choice.id } : {}),
+                                  [`recog-${activeCharIndex}`]: choice.id,
+                                }));
+                                if (activeChildId) {
+                                  if (!charTask) {
+                                    setError(text.taskFailed);
+                                    return;
+                                  }
+                                  await submitBackendTaskAnswer((task) => task.id === charTask.id, choice.id);
+                                }
+                              }}
+                            >
+                              <span className="char-choice-text">{choice.label}</span>
+                              {isSelected && feedback === "correct" && <span className="feedback-badge positive">✓ {text.correct}</span>}
+                              {isSelected && feedback === "incorrect" && <span className="feedback-badge negative">{text.retryAnswer}</span>}
+                              {isSelected && localCorrect && <span className="feedback-badge positive">✓ {text.correct}</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </>
+                  ) : (
+                    <p className="feedback-text positive" role="status">{text.priorRecognitionRecorded}</p>
+                  )}
                 </div>
               </div>
             );
@@ -2686,31 +3182,37 @@ export function LessonPlayerPage({
               <div className="step-body step-sentence-body">
                 <div className="sentence-pattern-card">
                   <span className="pattern-badge">常用句型</span>
-                  <h3 className="pattern-formula">你好！我叫 ___。</h3>
-                  <p className="pattern-explanation">見面時打招呼並自我介紹名字的萬用句型。</p>
+                  <h3 className="pattern-formula">{toLearnerVisibleText("你好！我叫 ___。")}</h3>
+                  <p className="pattern-explanation">{toLearnerVisibleText("見面時打招呼並自我介紹名字的萬用句型。")}</p>
                   {renderScaffold("greeting_intro")}
                 </div>
 
-                <p className="interaction-prompt">{prompt}</p>
+                <p className="interaction-prompt">{toLearnerVisibleText(prompt)}</p>
 
                 <div className="choices-vertical-list">
                   {choices?.map((choice: { id: string; label: string; isCorrect?: boolean }) => {
                     const isSelected = selectedChoices["sentence"] === choice.id;
-                    const isCorrect = choice.id === "opt-correct-order" || choice.id === "greeting" || choice.isCorrect;
+                    const feedback = sentTask?.id ? answerFeedbackByTask[sentTask.id] : undefined;
+                    const localCorrect = !activeChildId && (choice.id === "opt-correct-order" || choice.id === "greeting" || choice.isCorrect);
                     return (
                       <button
                         key={choice.id}
                         type="button"
                         className={`choice-card-btn ${isSelected ? "selected" : ""}`}
+                        data-choice-id={choice.id}
                         onClick={async () => {
+                          if (sentTask?.id && answerSubmittingByTask[sentTask.id]) return;
                           setSelectedChoices((prev) => ({ ...prev, sentence: choice.id }));
                           await submitBackendTaskAnswer((t) => currentStep.data.taskId
                             ? t.id === currentStep.data.taskId
                             : t.taskType === "SENTENCE_PATTERN" || t.key === "sentence-pattern", choice.id);
                         }}
+                        disabled={Boolean(sentTask && (sentTask.state === "COMPLETED" || sentTask.state === "DEFERRED" || answerSubmittingByTask[sentTask.id]))}
                       >
-                        <span className="choice-label">{choice.label}</span>
-                        {isSelected && isCorrect && <span className="feedback-badge positive">✓</span>}
+                        <span className="choice-label">{toLearnerVisibleText(choice.label)}</span>
+                        {isSelected && feedback === "correct" && <span className="feedback-badge positive">✓ {text.correct}</span>}
+                        {isSelected && feedback === "incorrect" && <span className="feedback-badge negative">{text.retryAnswer}</span>}
+                        {isSelected && localCorrect && <span className="feedback-badge positive">✓ {text.correct}</span>}
                       </button>
                     );
                   })}
@@ -2734,7 +3236,7 @@ export function LessonPlayerPage({
                   type="button"
                   className={`mic-record-btn ${recording ? "is-recording" : ""} ${speakingAttempted ? "is-attempted" : ""}`}
                   onClick={handleRecordSpeaking}
-                  disabled={!recording && !(session?.tasks ?? []).some((task) => (currentStep.data.taskIds ?? []).includes(task.id) && task.state !== "COMPLETED" && task.state !== "DEFERRED")}
+                  disabled={!recording && !speakingStepCanStart}
                   aria-label={recording ? text.recordStop : text.recordStart}
                 >
                   <Mic size={36} />
@@ -2794,12 +3296,12 @@ export function LessonPlayerPage({
                 {currentStep.data.questions?.map((q, qIndex) => {
                   const selected = exitTicketAnswers[q.id];
                   return (
-                    <div key={q.id} className="exit-ticket-item-card">
+                    <div key={q.id} className="exit-ticket-item-card" data-task-id={q.taskId}>
                       <div className="question-header">
                         <span className="q-badge">題目 {qIndex + 1}</span>
                         <span className="domain-sub-badge">{q.domain}</span>
                       </div>
-                      <p className="q-prompt">{q.prompt}</p>
+                      <p className="q-prompt">{toLearnerVisibleText(q.prompt)}</p>
 
                       {q.audioText && (
                         <button
@@ -2815,17 +3317,20 @@ export function LessonPlayerPage({
                       <div className="choices-vertical-list">
                         {q.choices.map((c) => {
                           const isPicked = selected === c.id;
+                          const ticketTask = session?.tasks?.find((task) => task.id === q.taskId);
+                          const feedback = q.taskId ? answerFeedbackByTask[q.taskId] : undefined;
                           return (
                             <button
-                              key={c.id}
-                              type="button"
-                              className={`choice-card-btn ${isPicked ? "selected" : ""}`}
-                        onClick={() => setExitTicketAnswers((prev) => ({ ...prev, [q.id]: c.id }))}
-                        disabled={busy || pendingRepairResume !== null}
+                            key={c.id}
+                            type="button"
+                            className={`choice-card-btn ${isPicked ? "selected" : ""}`}
+                              data-choice-id={c.id}
+                              onClick={() => setExitTicketAnswers((prev) => ({ ...prev, [q.id]: c.id }))}
+                              disabled={busy || pendingRepairResume !== null || ticketTask?.state === "COMPLETED" || ticketTask?.state === "DEFERRED"}
                             >
                               <span className="choice-label">{c.label}</span>
-                              {exitTicketSubmitted && c.isCorrect && <span className="feedback-badge positive">✓ 正確</span>}
-                              {exitTicketSubmitted && isPicked && !c.isCorrect && <span className="feedback-badge negative">✗</span>}
+                              {isPicked && feedback === "correct" && <span className="feedback-badge positive">✓ {text.correct}</span>}
+                              {isPicked && feedback === "incorrect" && <span className="feedback-badge negative">{text.retryAnswer}</span>}
                             </button>
                           );
                         })}
@@ -2937,14 +3442,53 @@ export function LessonPlayerPage({
             <div className="step-body step-wrap-up-body">
               <div className="session-settlement-card">
                 <div className="settlement-trophy-icon">
-                  <Sparkles size={48} className="sparkle-gold" />
+                  {sessionCompleted ? <CheckCircle2 size={48} /> : <Sparkles size={48} className="sparkle-gold" />}
                 </div>
                 <h3 className="settlement-title">{text.sessionSummaryTitle}</h3>
 
-                <div className="settlement-metrics-grid">
+                {!sessionCompleted && (
+                  <section className="lesson-reflection" aria-labelledby="lesson-reflection-title">
+                    <p id="lesson-reflection-title" className="interaction-prompt">
+                      {currentStep.data.reflectionPrompt || text.reflectionPrompt}
+                    </p>
+                    <div className="choices-vertical-list">
+                      {(currentStep.data.reflectionChoices ?? []).map((choice: { id: string; label: string }) => {
+                        const reflectionTaskId = currentStep.data.reflectionTaskId;
+                        const reflectionTask = session?.tasks?.find((task) => task.id === reflectionTaskId);
+                        const selected = reflectionTaskId ? selectedChoices[`reflection-${reflectionTaskId}`] === choice.id : false;
+                        const feedback = reflectionTaskId ? answerFeedbackByTask[reflectionTaskId] : undefined;
+                        return (
+                          <button
+                            key={choice.id}
+                            type="button"
+                            className={`choice-card-btn ${selected ? "selected" : ""}`}
+                            data-choice-id={choice.id}
+                            disabled={!reflectionTaskId || !reflectionTask || reflectionTask.state === "COMPLETED" || reflectionTask.state === "DEFERRED" || Boolean(answerSubmittingByTask[reflectionTaskId])}
+                            onClick={async () => {
+                              if (!reflectionTaskId) {
+                                setError(text.taskFailed);
+                                return;
+                              }
+                              setSelectedChoices((previous) => ({ ...previous, [`reflection-${reflectionTaskId}`]: choice.id }));
+                              const result = await submitBackendTaskAnswer((task) => task.id === reflectionTaskId, choice.id);
+                              if (result.taskState !== "COMPLETED" && result.taskState !== "DEFERRED") setError(text.taskFailed);
+                            }}
+                          >
+                            <span className="choice-label">{choice.label}</span>
+                            {selected && feedback === "correct" && <span className="feedback-badge positive">✓ {text.answerRecorded}</span>}
+                            {selected && feedback === "incorrect" && <span className="feedback-badge negative">{text.retryAnswer}</span>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {!sessionCompleted && <p className="feedback-text" role="status">{text.completeBeforeSettlement}</p>}
+                  </section>
+                )}
+
+                {sessionCompleted && <div className="settlement-metrics-grid">
                   <div className="metric-row">
                     <span className="metric-label">{text.sessionCompletedLabel}</span>
-                    <strong className="metric-value positive">是 (已獲得 10 顆星星 ⭐)</strong>
+                    <strong className="metric-value positive">{text.yesLabel}</strong>
                   </div>
 
                   <div className="metric-row">
@@ -2960,16 +3504,24 @@ export function LessonPlayerPage({
                   </div>
 
                   <div className="metric-row">
-                    <span className="metric-label">{text.nextReviewLabel}</span>
+                    <span className="metric-label">{text.completedActivities}</span>
                     <strong className="metric-value">
-                      {nextReviewDueAt ? `${nextReviewDueAt} (SRS)` : text.nextReviewTomorrow}
+                      {session?.tasks?.filter((task) => task.taskType !== "LESSON_WRAP_UP" && task.state === "COMPLETED").length ?? 0}
                     </strong>
                   </div>
-                </div>
+                  <div className="metric-row">
+                    <span className="metric-label">{text.rewardPoints}</span>
+                    <strong className="metric-value">{session?.reward?.points ?? 0}</strong>
+                  </div>
+                  <div className="metric-row">
+                    <span className="metric-label">{text.nextReviewLabel}</span>
+                    <strong className="metric-value">
+                      {nextReviewDueAt ? `${nextReviewDueAt} (SRS)` : text.reviewScheduleUnavailable}
+                    </strong>
+                  </div>
+                </div>}
 
-                <div className="settlement-disclaimer-box">
-                  <p>{text.sessionNotice}</p>
-                </div>
+                {sessionCompleted && <div className="settlement-disclaimer-box"><p>{text.sessionNotice}</p></div>}
               </div>
             </div>
           )}
@@ -2994,6 +3546,7 @@ export function LessonPlayerPage({
                   onClick={handleNextStep}
                   disabled={
                     !playerSessionReady ||
+                    (currentStep.stepKey === "speaking" && !speakingStepHasCompletedEvidence) ||
                     (currentStep.stepKey === "exit_ticket" && !exitTicketSubmitted) ||
                     (currentStep.stepKey === "mini_check" && !selectedChoices[currentStep.data.taskId]) ||
                     (mode === "REVIEW" && currentStep.stepKey === "mini_check" && currentStep.domain === "listening" &&
@@ -3007,15 +3560,36 @@ export function LessonPlayerPage({
                 <button
                   type="button"
                   className="button button-primary finish-session-cta-btn"
-                  onClick={mode === "REVIEW" ? handleCompleteReview : mode === "REPAIR" ? handleCompleteRepair : handleCompleteSession}
+                  onClick={mode === "REVIEW" ? handleCompleteReview : mode === "REPAIR" ? handleCompleteRepair : sessionCompleted ? onBack : handleCompleteSession}
+                  disabled={busy || (mode === "LEARN" && Boolean(activeChildId) && !sessionCompleted && (() => {
+                    const reflectionId = currentStep.data.reflectionTaskId;
+                    const task = session?.tasks?.find((item) => item.id === reflectionId);
+                    return !reflectionId || !task || (task.state !== "COMPLETED" && task.state !== "DEFERRED");
+                  })())}
                 >
                   <CheckCircle2 size={18} />
-                  <span>{mode === "REVIEW" ? text.backToToday : text.finishLesson}</span>
+                  <span>{mode === "REVIEW" || sessionCompleted ? text.returnToToday : text.finishLesson}</span>
                 </button>
               )}
             </div>
           </footer>
         </article>
+      )}
+      {exitConfirmOpen && (
+        <div className="dialog-backdrop" role="presentation">
+          <section className="dialog lesson-exit-dialog" role="dialog" aria-modal="true" aria-labelledby="lesson-exit-title" aria-describedby="lesson-exit-description">
+            <h2 id="lesson-exit-title">{text.exitPromptTitle}</h2>
+            <p id="lesson-exit-description">{text.exitPromptBody}</p>
+            <div className="dialog-actions">
+              <button type="button" className="button button-secondary" onClick={() => setExitConfirmOpen(false)} disabled={busy}>
+                {text.stayInLesson}
+              </button>
+              <button type="button" className="button button-primary" onClick={() => void handleConfirmExit()} disabled={busy}>
+                {busy ? t("loading") : text.leaveLesson}
+              </button>
+            </div>
+          </section>
+        </div>
       )}
     </main>
   );

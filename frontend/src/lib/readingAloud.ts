@@ -22,7 +22,7 @@ export class BrowserMediaRecorderAdapter implements ReadingAloudRecorder {
   async start(): Promise<void> {
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") throw new Error("microphone_unavailable");
     if (this.recorder && this.recorder.state !== "inactive") throw new Error("recording_already_started");
-    try { this.stream = await navigator.mediaDevices.getUserMedia({ audio: true }); } catch { throw new Error("microphone_permission_denied"); }
+    try { this.stream = await navigator.mediaDevices.getUserMedia({ audio: true }); } catch { throw new Error("microphone_start_failed"); }
     this.chunks = [];
     this._recording = null;
     this.recorder = new MediaRecorder(this.stream);
