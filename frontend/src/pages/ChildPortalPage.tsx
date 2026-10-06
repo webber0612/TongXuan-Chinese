@@ -1839,11 +1839,13 @@ export function ChildPortalPage({
   activeChildId,
   activeChildName,
   onOpenCurriculum,
+  onOpenCourseZero,
   onStartLearningSession
 }: {
   activeChildId: number | null;
   activeChildName?: string;
   onOpenCurriculum: () => void;
+  onOpenCourseZero?: () => void;
   onStartLearningSession?: (childId: number | null, targetLessonId: string | undefined, mode: "LEARN" | "REVIEW") => boolean;
 }) {
   // Learner Profiles Storage
@@ -2655,6 +2657,30 @@ export function ChildPortalPage({
               ▶
             </button>
           </div>
+          {onOpenCourseZero && (
+            <button
+              type="button"
+              className="course-zero-quick-btn"
+              onClick={onOpenCourseZero}
+              title="進入 Course 0 聲音實驗室（ㄅㄆㄇㄈ / 拼音 / 聲調）"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "6px 14px",
+                borderRadius: "20px",
+                border: "1px solid var(--color-border, #e2e8f0)",
+                background: "var(--color-surface, #f8fafc)",
+                fontSize: "0.85rem",
+                fontWeight: 600,
+                color: "var(--color-primary, #3b82f6)",
+                cursor: "pointer"
+              }}
+            >
+              <Sparkles size={15} />
+              <span>Course 0 · 聲音實驗室 (ㄅㄆㄇ/拼音)</span>
+            </button>
+          )}
         </div>
 
         <div className="compact-sprint-nodes-track">
@@ -2710,16 +2736,44 @@ export function ChildPortalPage({
               <span className="upcoming-course-notice">
                 {t("upcomingLessonNotice")}（目前進行中：《{authoritativeLesson.official.title}》）
               </span>
-              <button
-                type="button"
-                className="upcoming-course-back"
-                onClick={() => {
-                  setSelectedStageId(authoritativeStage.id);
-                  setSelectedOfficialLessonId(authoritativeLesson.id);
-                }}
-              >
-                {t("backToTodayLesson")}
-              </button>
+              <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+                {onStartLearningSession && (
+                  <button
+                    type="button"
+                    className="button button-primary"
+                    onClick={() => {
+                      if (activeChildId) {
+                        onStartLearningSession(activeChildId, upcomingLesson.id, "LEARN");
+                      }
+                    }}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      padding: "8px 16px",
+                      borderRadius: "12px",
+                      background: "var(--color-primary, #3b82f6)",
+                      color: "#fff",
+                      border: "none",
+                      fontWeight: 600,
+                      cursor: "pointer"
+                    }}
+                  >
+                    <Play size={16} fill="currentColor" />
+                    <span>立即體驗第 {upcomingLesson.number} 課</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="upcoming-course-back"
+                  onClick={() => {
+                    setSelectedStageId(authoritativeStage.id);
+                    setSelectedOfficialLessonId(authoritativeLesson.id);
+                  }}
+                >
+                  {t("backToTodayLesson")}
+                </button>
+              </div>
             </div>
           </div>
         )}

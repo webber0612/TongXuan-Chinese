@@ -302,7 +302,7 @@ export function AppShell() {
         {childrenError && !isChildPortal && <div className="offline-strip error-strip" role="alert">{childrenError} <button className="button button-text" onClick={() => void loadChildren()}>{t("retry")}</button></div>}
         {route === "legacy-tombstone" && <main className="app-page"><PageHeading kicker={t("today")} title={t("legacyRouteTitle")} subtitle={t("legacyRouteDescription")} icon={<BookOpen/>}/><button className="button button-primary" onClick={() => navigate("home")}><House size={18}/>{t("today")}</button></main>}
         <Suspense fallback={<AppLoading label={t("loading")} />}>
-        {route === "home" && <ChildPortalPage key={activeChild?.id ?? "unresolved-child"} activeChildId={activeChild?.id ?? null} activeChildName={childName} onOpenCurriculum={() => navigate("curriculum")} onStartLearningSession={showSessionEntry ? (requestedChildId, targetLessonId, mode) => {
+        {route === "home" && <ChildPortalPage key={activeChild?.id ?? "unresolved-child"} activeChildId={activeChild?.id ?? null} activeChildName={childName} onOpenCurriculum={() => navigate("curriculum")} onOpenCourseZero={() => navigate("course-zero")} onStartLearningSession={showSessionEntry ? (requestedChildId, targetLessonId, mode) => {
           if (!isValidBackendChildId(requestedChildId) || !activeChild || requestedChildId !== activeChild.id) return false;
           setLearningSessionLessonId(targetLessonId);
           setLearningSessionMode(mode);
