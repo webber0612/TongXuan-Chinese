@@ -810,6 +810,242 @@ export interface AuthoritativeLearnStepPlan {
   steps: LessonStepDefinition[];
 }
 
+function buildBook1L01StandardSteps(
+  pkg: LessonPackage,
+  tasks: LearningFlowTaskContract[],
+): AuthoritativeLearnStepPlan {
+  const invalid: AuthoritativeLearnStepPlan = { valid: false, steps: [] };
+  const packageSteps = pkg.taskBlueprint.learnSteps;
+  const expectedStepKeys = ["context", "dialogue", "vocabulary", "characters", "sentence_pattern", "speaking", "writing", "exit_ticket", "wrap_up"];
+  if (pkg.lessonId !== "book1-l01" || packageSteps.length !== expectedStepKeys.length ||
+      packageSteps.some((step, index) => step.stepKey !== expectedStepKeys[index])) return invalid;
+  const byStep = Object.fromEntries(packageSteps.map((step) => [step.stepKey, step])) as Record<string, LessonStepDefinition>;
+  const curriculumTasks = tasks.filter((task) => task.sourceQueue === "CURRICULUM");
+  if (curriculumTasks.length === 0) return invalid;
+  const childId = curriculumTasks[0].childId;
+  const sessionId = curriculumTasks[0].sessionId;
+  if (typeof childId !== "number" || !Number.isSafeInteger(childId) || childId <= 0 ||
+      typeof sessionId !== "string" || !sessionId.trim()) return invalid;
+  const taskByKey = new Map<string, LearningFlowTaskContract>();
+  const taskIds = new Set<string>();
+  for (const task of curriculumTasks) {
+    if (
+      typeof task.id !== "string" || task.id !== `${sessionId}:${task.key}` ||
+      typeof task.key !== "string" || taskByKey.has(task.key) || taskIds.has(task.id) ||
+      task.childId !== childId || task.sessionId !== sessionId || task.lessonId !== pkg.lessonId ||
+      task.required === undefined ||
+      !["PENDING", "IN_PROGRESS", "COMPLETED", "DEFERRED"].includes(task.state ?? "") ||
+      task.taskData?.authorship !== "TONGXUAN_AUTHORED_PRACTICE"
+    ) return invalid;
+    taskByKey.set(task.key, task);
+    taskIds.add(task.id);
+  }
+  const data = (key: string) => byStep[key]?.data;
+  const publicChoices = (choices: any[]) => choices.map(({ id, label, subLabel }: any) => ({
+    id, label, ...(typeof subLabel === "string" ? { subLabel } : {}),
+  }));
+  const sameChoices = (actual: unknown, expected: any[]) => Array.isArray(actual) && actual.length === expected.length &&
+    actual.every((choice, index) => choice?.id === expected[index]?.id && choice?.label === expected[index]?.label);
+  const exactTask = (
+    key: string,
+    taskType: string,
+    skillDomain: string | null,
+    required: boolean,
+    itemId: string | null,
+  ) => {
+    const task = taskByKey.get(key);
+    return task && task.taskType === taskType && task.skillDomain === skillDomain &&
+      task.required === required && task.itemId === itemId ? task : null;
+  };
+  const packageCharacters = pkg.characters;
+  const contextData = data("context");
+  const dialogueRows = data("dialogue")?.dialogueRows;
+  const vocabItem = pkg.vocabulary.length === 1 ? pkg.vocabulary[0] : null;
+  const vocabularyData = data("vocabulary");
+  const characterData = data("characters");
+  const recognitionCheck = characterData?.recognitionCheck;
+  const patternData = data("sentence_pattern");
+  const speakingData = data("speaking")?.speakingPrompt;
+  const writingData = data("writing")?.writingTarget;
+  const exitQuestions = data("exit_ticket")?.questions;
+  const wrapSummary = data("wrap_up")?.wrapUpSummary;
+  if (!contextData || !Array.isArray(dialogueRows) || !dialogueRows.length || !vocabItem ||
+      !Array.isArray(characterData?.characterItems) || characterData.characterItems.length !== packageCharacters.length ||
+      !recognitionCheck || !Array.isArray(patternData?.patternItems) || !patternData.patternItems.length ||
+      !speakingData || !writingData || !Array.isArray(exitQuestions) || !exitQuestions.length || !wrapSummary) return invalid;
+
+  const listen = exactTask("listen", "LISTENING", "listening", true, `lf_${childId}_book1-l01_phrase`);
+  const contextChoice = exactTask("context-choice", "MINI_CHECK", null, true, null);
+  const vocabulary = exactTask("vocabulary", "VOCABULARY", null, true, null);
+  const sentence = exactTask("sentence-pattern", "SENTENCE_PATTERN", null, true, null);
+  const speaking = exactTask("speaking", "SPEAKING_ATTEMPT", "speaking", true, `lf_${childId}_book1-l01_sentence`);
+  const scriptMode = speaking?.taskData?.locale === "zh-CN" ? "SIMPLIFIED" : "TRADITIONAL";
+  const pronunciation = taskByKey.get("pronunciation");
+  const reflection = exactTask("mini-check-reflection", "MINI_CHECK", null, true, null);
+  const wrap = exactTask("wrap-up", "LESSON_WRAP_UP", null, true, null);
+  const recognitionTasks = ["recognition-1", "recognition-2"]
+    .map((key) => taskByKey.get(key)).filter((task): task is LearningFlowTaskContract => Boolean(task));
+  const writingTasks = curriculumTasks.filter((task) => task.key?.startsWith("writing-"));
+  const ticketTasks = exitQuestions.map((question: any) => taskByKey.get(`exit-ticket-${question.id}`));
+  const recognizedKeys = new Set(recognitionTasks.map((task) => task.key));
+  const expectedKeys = new Set([
+    "listen", "context-choice", "vocabulary", "sentence-pattern", "speaking",
+    "mini-check-reflection", "wrap-up", ...(pronunciation ? ["pronunciation"] : []),
+    ...ticketTasks.map((_, index) => `exit-ticket-${exitQuestions[index].id}`),
+    ...recognitionTasks.map((task) => task.key), ...writingTasks.map((task) => task.key!),
+  ]);
+  if (!listen || !contextChoice || !vocabulary || !sentence || !speaking || !reflection || !wrap ||
+      writingTasks.length > 1 || expectedKeys.size !== curriculumTasks.length ||
+      curriculumTasks.some((task) => !expectedKeys.has(task.key ?? "")) ||
+      ![1, 2].includes(recognitionTasks.length) ||
+      (pronunciation !== undefined && (pronunciation.taskType !== "PRONUNCIATION_ATTEMPT" || pronunciation.skillDomain !== "pronunciation" ||
+        pronunciation.required !== true || pronunciation.itemId !== `lf_${childId}_book1-l01_phrase` ||
+        pronunciation.taskData?.text !== pkg.curriculumSource.title || pronunciation.taskData?.textKind !== "character" ||
+        pronunciation.taskData?.locale !== speaking.taskData?.locale)) ||
+      recognitionTasks.some((task, index) => {
+        const character = packageCharacters[index]?.char;
+        return task.key !== `recognition-${index + 1}` || task.lessonId !== pkg.lessonId ||
+          task.taskType !== (recognitionTasks.length === 1 ? "MINI_CHECK" : index === 0 ? "RECOGNITION" : "MINI_CHECK") ||
+          task.skillDomain !== "recognition" || task.required !== true ||
+          task.itemId !== `lf_${childId}_book1-l01_char_${index + 1}` ||
+          task.taskData?.audioText !== character ||
+          task.taskData?.prompt !== recognitionCheck.prompt ||
+          !sameChoices(task.taskData?.choices, publicChoices(recognitionCheck.choices));
+      }) ||
+      !Array.isArray(contextData.choices) || contextData.choices.length < 2 || contextChoice.taskData?.mode !== "context-choice" ||
+      contextChoice.taskData.prompt !== contextData.prompt || !sameChoices(contextChoice.taskData.choices, publicChoices(contextData.choices)) ||
+      listen.taskData?.text !== contextData.audioText ||
+      vocabulary.masteryImpact !== "NONE" ||
+      vocabulary.taskData?.wordText !== vocabItem.written ||
+      vocabulary.taskData?.prompt !== vocabularyData.prompt ||
+      vocabulary.taskData?.pinyin !== vocabItem.pronunciation.pinyin ||
+      vocabulary.taskData?.zhuyin !== vocabItem.pronunciation.zhuyin ||
+      !sameChoices(vocabulary.taskData?.choices, publicChoices(vocabularyData.choices ?? [])) ||
+      sentence.taskData?.prompt !== patternData.prompt || !sameChoices(sentence.taskData?.choices, publicChoices(patternData.choices ?? [])) ||
+      speaking.taskData?.text !== speakingData.expectedText || speaking.taskData?.textKind !== "sentence" ||
+      speaking.taskData?.sourceType !== "SENTENCE" || !["zh-TW", "zh-CN"].includes(speaking.taskData?.locale) ||
+      (writingTasks.length === 1 && (
+        writingTasks[0].taskType !== `WRITING_${String(writingTasks[0].taskData?.phase).toUpperCase()}` ||
+        writingTasks[0].skillDomain !== "writing" || writingTasks[0].required !== false ||
+        writingTasks[0].itemId !== writingData.character || writingTasks[0].taskData?.character !== writingData.character ||
+        writingTasks[0].taskData?.scriptMode !== "TRADITIONAL" && writingTasks[0].taskData?.scriptMode !== "SIMPLIFIED"
+      )) || reflection.taskData?.mode !== "reflection" || !Array.isArray(reflection.taskData?.choices) ||
+      wrap.taskData?.label !== "今天的練習完成"
+  ) return invalid;
+
+  const expectedQuestionIds = new Set<string>();
+  const mappedQuestions = exitQuestions.map((question: any) => {
+    const task = taskByKey.get(`exit-ticket-${question.id}`);
+    let expectedPrompt = question.prompt;
+    if (question.audioText) {
+      const character = pkg.characters.find((item) => item.char === question.audioText);
+      const selectedNotation = character?.pronunciation?.[scriptMode === "TRADITIONAL" ? "zhuyin" : "pinyin"];
+      const otherNotations = [character?.pronunciation?.pinyin, character?.pronunciation?.zhuyin].filter(Boolean);
+      if (selectedNotation) {
+        for (const notation of otherNotations) {
+          if (expectedPrompt.includes(notation)) expectedPrompt = expectedPrompt.replace(notation, selectedNotation);
+        }
+      }
+    }
+    if (!task || expectedQuestionIds.has(question.id) || task.taskType !== "MINI_CHECK" ||
+        task.skillDomain !== null || task.required !== true || task.itemId !== null ||
+        task.taskData?.mode !== "exit_ticket" || task.taskData?.questionId !== question.id ||
+        task.taskData?.domain !== question.domain || task.taskData?.prompt !== expectedPrompt ||
+        (task.taskData?.audioText ?? undefined) !== question.audioText ||
+        !sameChoices(task.taskData?.choices, publicChoices(question.choices ?? []))) return null;
+    expectedQuestionIds.add(question.id);
+    return {
+      id: question.id,
+      domain: question.domain,
+      prompt: task.taskData.prompt,
+      ...(question.audioText ? { audioText: question.audioText } : {}),
+      taskId: task.id,
+      choices: publicChoices(question.choices),
+      ...(question.explanation ? { explanation: question.explanation } : {}),
+    };
+  });
+  if (mappedQuestions.some((question: any) => question === null)) return invalid;
+  const questions = mappedQuestions as NonNullable<(typeof mappedQuestions)[number]>[];
+  const exitTicketTasks = ticketTasks as LearningFlowTaskContract[];
+  if (exitTicketTasks.some((task) => !task)) return invalid;
+
+  const mappedIds = new Set<string>([listen.id!, contextChoice.id!, vocabulary.id!, sentence.id!, speaking.id!, reflection.id!, wrap.id!]);
+  for (const task of [...recognitionTasks, ...writingTasks, ...exitTicketTasks]) {
+    if (!task?.id || mappedIds.has(task.id)) return invalid;
+    mappedIds.add(task.id);
+  }
+  if (pronunciation) {
+    if (!pronunciation.id || mappedIds.has(pronunciation.id)) return invalid;
+    mappedIds.add(pronunciation.id);
+  }
+  if (mappedIds.size !== curriculumTasks.length || curriculumTasks.some((task) => !mappedIds.has(task.id!))) return invalid;
+
+  const steps: LessonStepDefinition[] = [
+    {
+      ...byStep.context, stepNumber: 1, required: true,
+      data: {
+        taskId: listen.id, contextChoiceTaskId: contextChoice.id, taskIds: [listen.id, contextChoice.id],
+        prompt: contextData.prompt, audioText: contextData.audioText, sceneLabel: contextData.sceneDescription,
+        choices: publicChoices(contextData.choices),
+      },
+    },
+    { ...byStep.dialogue, stepNumber: 2, required: true, data: { ...data("dialogue"), dialogueRows } },
+    {
+      ...byStep.vocabulary, stepNumber: 3, required: true,
+      data: {
+        taskId: vocabulary.id, prompt: vocabularyData.prompt, choices: publicChoices(vocabulary.taskData?.choices ?? []),
+        word: vocabulary.taskData?.wordText, pinyin: vocabulary.taskData?.pinyin, zhuyin: vocabulary.taskData?.zhuyin,
+        exampleSentence: vocabItem.usage?.[0], vocabItems: [vocabItem],
+      },
+    },
+    {
+      ...byStep.characters, stepNumber: 4, required: true,
+      data: {
+        ...data("characters"), taskIds: recognitionTasks.map((task) => task.id), characterItems: characterData.characterItems,
+        recognitionCheck: {
+          prompt: recognitionCheck.prompt, audioText: recognitionCheck.audioText,
+          choices: publicChoices(recognitionCheck.choices),
+        },
+      },
+    },
+    {
+      ...byStep.sentence_pattern, stepNumber: 5, required: true,
+      data: {
+        ...patternData, taskId: sentence.id, prompt: sentence.taskData?.prompt, choices: sentence.taskData?.choices,
+        correctChoiceId: undefined,
+      },
+    },
+    {
+      ...byStep.speaking, stepNumber: 6, required: true,
+      data: {
+        speakingPrompt: { ...speakingData, instruction: speakingData.instruction, expectedText: speaking.taskData?.text },
+        taskId: speaking.id, taskIds: [speaking.id, ...(pronunciation?.id ? [pronunciation.id] : [])],
+        speakingTasks: [speaking, ...(pronunciation ? [pronunciation] : [])].map((task) => ({ id: task.id, taskType: task.taskType })),
+      },
+    },
+    {
+      ...byStep.writing, stepNumber: 7, required: false,
+      data: {
+        ...writingData, taskId: writingTasks[0]?.id, character: writingData.character,
+        strokeCount: writingData.strokeCount, radical: pkg.characters.find((item) => item.char === writingData.character)?.radical,
+      },
+    },
+    {
+      ...byStep.exit_ticket, stepNumber: 8, required: true,
+      data: { questions, taskIds: exitTicketTasks.map((task) => task.id) },
+    },
+    {
+      ...byStep.wrap_up, stepNumber: 9, required: true,
+      data: {
+        taskId: wrap.id, taskIds: [reflection.id!, wrap.id!], reflectionTaskId: reflection.id,
+        reflectionPrompt: reflection.taskData?.prompt, reflectionChoices: publicChoices(reflection.taskData?.choices ?? []),
+        wrapUpSummary: wrapSummary,
+      },
+    },
+  ];
+  return { valid: true, steps };
+}
+
 /**
  * Bind the production Lesson Player to the exact task rows emitted by Learning
  * Flow. A task that cannot be represented by an existing player interaction
@@ -829,6 +1065,7 @@ export function buildAuthoritativeLearnSteps(
   // extending this lesson's exact planner task set.
   const curriculumTasks = tasks.filter((task) => task?.sourceQueue === "CURRICULUM");
   if (curriculumTasks.length === 0) return { valid: false, steps: [] };
+  if (pkg.lessonId === "book1-l01") return buildBook1L01StandardSteps(pkg, curriculumTasks);
   const starterL02 = pkg.lessonId === "starter-l02";
   const starterL02Context = starterL02 ? pkg.taskBlueprint.learnSteps.find((step) => step.stepKey === "context") : undefined;
   const starterL02Phonetics = starterL02 ? pkg.taskBlueprint.learnSteps.find((step) => step.stepKey === "exit_ticket") : undefined;

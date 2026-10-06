@@ -659,7 +659,8 @@ def test_due_driven_review_retrieval(tmp_path):
             assert srs_row["due_at"] > "2026-09-02T00:00:00Z"
 
 
-def test_real_book1_l01_end_to_end_completion_flow(tmp_path):
+@pytest.mark.parametrize("script_mode", ["TRADITIONAL", "SIMPLIFIED"])
+def test_real_book1_l01_end_to_end_completion_flow(tmp_path, script_mode):
     from app.auth import issue_session
     from app.database import connect
     with make_client(tmp_path) as client:
@@ -677,11 +678,18 @@ def test_real_book1_l01_end_to_end_completion_flow(tmp_path):
         )
 
         # 2. Start learning flow session for book1-l01
-        start_resp = client.post(f"/api/children/{child_id}/learning-sessions", json={"target_minutes": 18, "lesson_id": "book1-l01"})
+        start_resp = client.post(f"/api/children/{child_id}/learning-sessions", json={"target_minutes": 18, "lesson_id": "book1-l01", "script_mode": script_mode})
         assert start_resp.status_code == 200
         session_data = start_resp.json()
         session_id = session_data["id"]
         tasks = session_data["tasks"]
+        package = get_lesson_package("book1-l01")
+        assert session_data["scriptMode"] == script_mode
+        assert [task["key"] for task in tasks if task["sourceQueue"] == "CURRICULUM"] == [
+            "listen", "context-choice", "recognition-1", "recognition-2", "vocabulary", "sentence-pattern",
+            "exit-ticket-et-q1-listen", "exit-ticket-et-q2-recog", "exit-ticket-et-q3-vocab", "exit-ticket-et-q4-sentence",
+            "speaking", "pronunciation", "writing-guided", "mini-check-reflection", "wrap-up",
+        ]
 
         # 3. Step through all tasks providing real provider evidence or answers
         for t in tasks:
@@ -695,28 +703,47 @@ def test_real_book1_l01_end_to_end_completion_flow(tmp_path):
                 ev_resp = client.post(f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{task_id}/evidence", json={"evidence_ref": attempt_id, "duration_ms": 1500})
                 assert ev_resp.status_code == 200
             elif task_type == "RECOGNITION":
-                ans_resp = client.post(f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{task_id}/answer", json={"selected_option_id": "option-2"})
+                expected = t["taskData"]["audioText"]
+                selected = next(choice["id"] for choice in t["taskData"]["choices"] if choice["label"] == expected)
+                ans_resp = client.post(f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{task_id}/answer", json={"selected_option_id": selected})
                 assert ans_resp.status_code == 200
             elif task_type == "MINI_CHECK" and t.get("taskData", {}).get("mode") != "reflection":
-                ans_resp = client.post(f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{task_id}/answer", json={"selected_option_id": "option-1"})
+                task_data = t["taskData"]
+                if task_data.get("mode") == "context-choice":
+                    selected = package["taskBlueprint"]["learnSteps"][0]["data"]["correctChoiceId"]
+                elif task_data.get("mode") == "exit_ticket":
+                    question = next(question for question in package["taskBlueprint"]["learnSteps"] if question["stepKey"] == "exit_ticket")["data"]["questions"]
+                    selected = next(item["correctChoiceId"] for item in question if item["id"] == task_data["questionId"])
+                else:
+                    selected = next(choice["id"] for choice in task_data["choices"] if choice["label"] == task_data["audioText"])
+                if task_data.get("mode") == "exit_ticket" and task_data["questionId"] == "et-q1-listen":
+                    wrong = next(choice["id"] for choice in task_data["choices"] if choice["id"] != selected)
+                    wrong_resp = client.post(f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{task_id}/answer", json={"selected_option_id": wrong})
+                    assert wrong_resp.status_code == 200
+                    wrong_task = next(item for item in wrong_resp.json()["tasks"] if item["id"] == task_id)
+                    assert wrong_task["state"] == "IN_PROGRESS"
+                    assert wrong_task["failureCount"] == 1
+                ans_resp = client.post(f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{task_id}/answer", json={"selected_option_id": selected})
                 assert ans_resp.status_code == 200
             elif task_type == "VOCABULARY":
-                ans_resp = client.post(f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{task_id}/answer", json={"selected_option_id": "greeting"})
+                selected = next(choice["id"] for choice in t["taskData"]["choices"] if choice["id"] == "opt-hello")
+                ans_resp = client.post(f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{task_id}/answer", json={"selected_option_id": selected})
                 assert ans_resp.status_code == 200
             elif task_type == "SENTENCE_PATTERN":
-                ans_resp = client.post(f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{task_id}/answer", json={"selected_option_id": "greeting"})
+                selected = next(choice["id"] for choice in t["taskData"]["choices"] if choice["id"] == "opt-correct-order")
+                ans_resp = client.post(f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{task_id}/answer", json={"selected_option_id": selected})
                 assert ans_resp.status_code == 200
             elif task_type == "SPEAKING_ATTEMPT":
                 sp_start = client.post(f"/api/reading-aloud/attempts/start?child_id={child_id}", json={
-                    "text": "你好", "text_kind": "character", "locale": "zh-TW", "source_type": "CURRICULUM", "source_id": t["itemId"], "activity_domain": "speaking"
+                    "text": t["taskData"]["text"], "text_kind": t["taskData"]["textKind"], "locale": t["taskData"]["locale"], "source_type": t["taskData"]["sourceType"], "source_id": t["itemId"], "activity_domain": "speaking"
                 })
-                assert sp_start.status_code == 200
+                assert sp_start.status_code == 200, sp_start.text
                 attempt_id = sp_start.json()["id"]
                 ev_resp = client.post(f"/api/children/{child_id}/learning-sessions/{session_id}/tasks/{task_id}/evidence", json={"evidence_ref": attempt_id, "duration_ms": 2000})
                 assert ev_resp.status_code == 200
             elif task_type == "PRONUNCIATION_ATTEMPT":
                 pr_start = client.post(f"/api/reading-aloud/attempts/start?child_id={child_id}", json={
-                    "text": "你好", "text_kind": "character", "locale": "zh-TW", "source_type": "CURRICULUM", "source_id": t["itemId"], "activity_domain": "pronunciation"
+                    "text": t["taskData"]["text"], "text_kind": t["taskData"]["textKind"], "locale": t["taskData"]["locale"], "source_type": "CURRICULUM", "source_id": t["itemId"], "activity_domain": "pronunciation"
                 })
                 assert pr_start.status_code == 200
                 attempt_id = pr_start.json()["id"]
@@ -736,12 +763,21 @@ def test_real_book1_l01_end_to_end_completion_flow(tmp_path):
         comp_data = comp_resp.json()
         assert comp_data["status"] == "COMPLETED"
         assert comp_data["reward"]["points"] == 5
+        duplicate_complete = client.post(f"/api/children/{child_id}/learning-sessions/{session_id}/complete")
+        assert duplicate_complete.status_code == 200
+        assert duplicate_complete.json()["reward"]["points"] == 5
+        assert duplicate_complete.json()["status"] == "COMPLETED"
 
         # 5. Verify DB state
         with connect() as db:
             session_row = db.execute("SELECT status, reward_points FROM learning_flow_sessions WHERE id=?", (session_id,)).fetchone()
             assert session_row["status"] == "COMPLETED"
             assert session_row["reward_points"] == 5
+            assert db.execute("SELECT COUNT(*) FROM learning_flow_task_attempts WHERE session_id=? AND task_id=?", (session_id, next(task["id"] for task in tasks if task["key"] == "exit-ticket-et-q1-listen"))).fetchone()[0] == 2
+            evidence = db.execute("SELECT dimension,script,outcome,source_task_id FROM learner_evidence_events WHERE child_id=? AND dimension='ORTHOGRAPHIC_RECOGNITION' ORDER BY occurred_at", (child_id,)).fetchall()
+            assert len(evidence) == 2
+            assert {row["script"] for row in evidence} == {script_mode}
+            assert all(row["source_task_id"] in {task["id"] for task in tasks if task["taskType"] in {"RECOGNITION", "MINI_CHECK"} and task["skillDomain"] == "recognition"} for row in evidence)
 
 
 def test_incomplete_required_evidence_rejects_session_completion(tmp_path):
