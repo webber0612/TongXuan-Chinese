@@ -11,6 +11,7 @@ import { GoogleParentSignIn } from "./components/GoogleParentSignIn";
 import { GoogleDriveSyncCard } from "./components/GoogleDriveSyncCard";
 import { PlacementStatus } from "./components/PlacementStatus";
 import { parentAuthCopy } from "./lib/parentAuthCopy";
+import { APP_VERSION, BUILD_DATE } from "./version";
 
 const API = import.meta.env.VITE_API_BASE ?? "";
 const LearningPage = lazy(async () => ({ default: (await import("./pages/LearningPage")).LearningPage }));
@@ -395,6 +396,9 @@ function SettingsPage({ children, activeChildId, parentSession, canManageChildre
     </section>
     <section className="settings-note"><div><strong>{t("privacy")}</strong><p>{t("privacyText")}</p></div></section>
     <section className="my-secondary-actions"><button onClick={onOpenParent}><CircleUserRound/><span><strong>{t("parentZone")}</strong><small>{t("parentDescription")}</small></span><ChevronDown/></button><button onClick={() => window.location.assign("/diagnostics")}><Settings2/><span><strong>{t("diagnostics")}</strong><small>{t("privacyText")}</small></span><ChevronDown/></button></section>
+    <footer style={{ textAlign: "center", padding: "1.25rem 0 2rem", opacity: 0.35, fontSize: "0.75rem", letterSpacing: "0.03em" }}>
+      TongXuan Chinese v{APP_VERSION} ({BUILD_DATE})
+    </footer>
   </main>;
 }
 
