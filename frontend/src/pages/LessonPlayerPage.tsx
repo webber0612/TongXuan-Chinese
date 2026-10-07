@@ -18,6 +18,7 @@ import {
   Sparkles,
   Volume2,
   Zap,
+  Hand,
 } from "lucide-react";
 
 import { useLocale, currentLearningLocale } from "../lib/i18n";
@@ -576,6 +577,17 @@ export function LessonPlayerPage({
 
   const writerRef = useRef<HanziWriter | null>(null);
   const canvasContainerRef = useRef<HTMLDivElement | null>(null);
+  const [handMode, setHandMode] = useState<"right" | "left">(() => {
+    if (typeof window === "undefined") return "right";
+    const saved = localStorage.getItem("tongxuan_hand_mode");
+    return saved === "left" || saved === "right" ? saved : "right";
+  });
+
+  const toggleHandMode = () => {
+    const next = handMode === "right" ? "left" : "right";
+    setHandMode(next);
+    localStorage.setItem("tongxuan_hand_mode", next);
+  };
   const sessionRef = useRef(session);
   sessionRef.current = session;
   const submittedAnswersRef = useRef<Record<string, { optionId?: string | null; answersKey?: string }>>({});
@@ -2751,8 +2763,20 @@ export function LessonPlayerPage({
 
           {/* STEP 7: Writing */}
           {currentStep.stepKey === "writing" && (
-            <div className="step-body step-writing-body">
-              <div className="hanzi-writing-card">
+            <div className={`step-body step-writing-body ${handMode === "left" ? "is-left-handed" : "is-right-handed"}`}>
+              <div className="writing-top-tools-bar">
+                <button
+                  type="button"
+                  className="handedness-toggle-btn"
+                  onClick={toggleHandMode}
+                  title={handMode === "right" ? "目前為右手模式，點擊換手為左手" : "目前為左手模式，點擊換手為右手"}
+                >
+                  <Hand size={18} />
+                  <span>{handMode === "right" ? "✋ 右手模式（換手）" : "🤚 左手模式（換手）"}</span>
+                </button>
+              </div>
+
+              <div className={`hanzi-writing-card ${handMode === "left" ? "layout-left-hand" : "layout-right-hand"}`}>
                 <div className="writing-canvas-frame" ref={canvasContainerRef} />
                 <div className="writing-actions-row">
                   <button type="button" className="button button-secondary" onClick={animateStrokes}>

@@ -2056,15 +2056,20 @@ export function ChildPortalPage({
     name: string;
     avatar: string;
     scriptMode: ScriptMode;
+    handMode?: HandMode;
     displayLang: DisplayLang;
   }) => {
     localStorage.setItem("tongxuan_onboarded", "true");
     localStorage.setItem("tongxuan_display_lang", config.displayLang);
+    if (config.handMode) {
+      localStorage.setItem("tongxuan_hand_mode", config.handMode);
+    }
     setDisplayLang(config.displayLang);
     updateActiveLearner({
       name: config.name,
       avatar: config.avatar,
-      scriptMode: config.scriptMode
+      scriptMode: config.scriptMode,
+      ...(config.handMode ? { handMode: config.handMode } : {})
     });
     setOnboardingOpen(false);
     if (onStartLearningSession && isValidBackendChildId(activeChildId) && dailyQueue?.childId === activeChildId && sessionTargetLessonId) {
@@ -3472,6 +3477,7 @@ export function InteractiveClassroom({
   const toggleHandMode = () => {
     const next = currentHandMode === "right" ? "left" : "right";
     setCurrentHandMode(next);
+    localStorage.setItem("tongxuan_hand_mode", next);
     if (onUpdateHandMode) onUpdateHandMode(next);
   };
 
@@ -4187,8 +4193,8 @@ export function InteractiveClassroom({
     <div className="writing-split-panel animate-fade">
       {/* 1. TOP BAR: CLEAR TOOL (LEFT) + PROGRESS INDICATOR (RIGHT) */}
       <div className="writing-topbar-row">
-        {/* Left Tool: 🧹 Clear Canvas */}
-        <div className="writing-tools-left">
+        {/* Left Tool: 🧹 Clear Canvas & ✋ Hand Mode Switcher */}
+        <div className="writing-tools-left" style={{ display: "flex", gap: "8px", alignItems: "center" }}>
           <button
             type="button"
             className="tool-circle-btn"
@@ -4196,6 +4202,16 @@ export function InteractiveClassroom({
             title="清除畫布重寫"
           >
             <RotateCcw size={20} />
+          </button>
+          <button
+            type="button"
+            className="handedness-toggle-btn"
+            onClick={toggleHandMode}
+            title={currentHandMode === "right" ? "目前為右手模式（練字在右），點擊切換為左手" : "目前為左手模式（練字在左），點擊切換為右手"}
+            style={{ padding: "4px 10px", fontSize: "0.8rem" }}
+          >
+            <Hand size={16} />
+            <span>{currentHandMode === "right" ? "✋ 右手 (換手)" : "🤚 左手 (換手)"}</span>
           </button>
         </div>
 
@@ -5958,6 +5974,7 @@ function WelcomeOnboardingModal({
     name: string;
     avatar: string;
     scriptMode: ScriptMode;
+    handMode?: HandMode;
     displayLang: DisplayLang;
   }) => void;
   R?: (text: string) => ReactNode;
@@ -5966,15 +5983,22 @@ function WelcomeOnboardingModal({
   const [name, setName] = useState<string>("小明");
   const [avatar, setAvatar] = useState<string>("🐼");
   const [selectedScript, setSelectedScript] = useState<ScriptMode>("dual");
+  const [selectedHand, setSelectedHand] = useState<HandMode>(() => {
+    if (typeof window === "undefined") return "right";
+    const saved = localStorage.getItem("tongxuan_hand_mode");
+    return saved === "left" || saved === "right" ? saved : "right";
+  });
 
   const avatars = ["🐼", "🐯", "🐰", "🦁", "🐨", "🦊", "🐶", "🦄"];
 
   const handleFinish = () => {
     localStorage.setItem("tongxuan_onboarded", "true");
+    localStorage.setItem("tongxuan_hand_mode", selectedHand);
     onComplete({
       name: name.trim() || "小明",
       avatar,
       scriptMode: selectedScript,
+      handMode: selectedHand,
       displayLang
     });
   };
@@ -5990,6 +6014,9 @@ function WelcomeOnboardingModal({
       nameLabel: "小朋友的暱稱或姓名",
       namePlaceholder: "例如：安安、小明、亮亮",
       avatarLabel: "挑選一隻最喜歡的學習夥伴頭像",
+      handLabel: "書寫慣用手（可隨時換手）：",
+      handRight: "右手寫字",
+      handLeft: "左手寫字",
       step2Title: "選擇偏好的學習字體與標音",
       step2Desc: "童軒深度支援繁簡雙軌！簡中用戶可透過雙軌對照輕鬆掌握繁體字形與筆畫。",
       dualTag: "✨ 推薦雙軌",
@@ -6014,6 +6041,9 @@ function WelcomeOnboardingModal({
       nameLabel: "小朋友的昵称或姓名",
       namePlaceholder: "例如：安安、小明、亮亮",
       avatarLabel: "挑选一只最喜欢的学习伙伴头像",
+      handLabel: "书写惯用手（可随时换手）：",
+      handRight: "右手写字",
+      handLeft: "左手写字",
       step2Title: "选择偏好的学习字体与标音",
       step2Desc: "童轩深度支持繁简双轨！简中用户可通过双轨对照轻松掌握繁体字形与笔画。",
       dualTag: "✨ 推荐双轨",
@@ -6038,6 +6068,9 @@ function WelcomeOnboardingModal({
       nameLabel: "Child's Nickname or Name",
       namePlaceholder: "e.g. Leo, Anna, Max",
       avatarLabel: "Pick a favorite learning avatar buddy",
+      handLabel: "Writing Hand (switch anytime):",
+      handRight: "Right Hand",
+      handLeft: "Left Hand",
       step2Title: "Choose Preferred Script & Phonetics",
       step2Desc: "TongXuan supports Traditional, Simplified & Dual-Track. Perfect for Simplified users to learn Traditional!",
       dualTag: "✨ Dual-Track",
@@ -6178,6 +6211,32 @@ function WelcomeOnboardingModal({
                       {avatar === av && <span className="avatar-check-dot">✓</span>}
                     </button>
                   ))}
+                </div>
+              </div>
+
+              {/* Hand Mode Selector: 習慣用手（右手／左手寫字） */}
+              <div className="onboard-field-group">
+                <label className="onboard-field-label">
+                  <span className="label-icon">✍️</span>
+                  <span>{L("handLabel")}</span>
+                </label>
+                <div className="onboard-hand-pills">
+                  <button
+                    type="button"
+                    className={`onboard-hand-btn ${selectedHand === "right" ? "is-selected" : ""}`}
+                    onClick={() => setSelectedHand("right")}
+                  >
+                    <span>✋</span>
+                    <span>{L("handRight")}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`onboard-hand-btn ${selectedHand === "left" ? "is-selected" : ""}`}
+                    onClick={() => setSelectedHand("left")}
+                  >
+                    <span>🤚</span>
+                    <span>{L("handLeft")}</span>
+                  </button>
                 </div>
               </div>
             </div>
