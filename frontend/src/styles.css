@@ -12728,14 +12728,9 @@ body.is-dark-eyecare-global .sponsor-feedback-btn:hover {
   gap: 12px;
 }
 
-.gdrive-badge-icon {
-  font-size: 1.8rem;
-  line-height: 1;
-}
-
 .gdrive-title {
   margin: 0;
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   font-weight: 800;
   color: #0f172a;
   display: flex;
@@ -12750,13 +12745,6 @@ body.is-dark-eyecare-global .sponsor-feedback-btn:hover {
   background: #e0f2fe;
   padding: 2px 8px;
   border-radius: 999px;
-}
-
-.gdrive-subtitle {
-  margin: 4px 0 0 0;
-  font-size: 0.85rem;
-  color: #64748b;
-  line-height: 1.4;
 }
 
 .gdrive-connected-body {
@@ -12850,28 +12838,6 @@ body.is-dark-eyecare-global .sponsor-feedback-btn:hover {
   display: flex;
   flex-direction: column;
   gap: 14px;
-}
-
-.gdrive-features-list {
-  background: #f8fafc;
-  border-radius: 12px;
-  padding: 12px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  font-size: 0.85rem;
-  color: #475569;
-}
-
-.gdrive-feature-item {
-  line-height: 1.45;
-}
-
-.gdrive-feature-item code {
-  background: #e2e8f0;
-  padding: 1px 4px;
-  border-radius: 4px;
-  font-size: 0.8rem;
 }
 
 .gdrive-connect-row {

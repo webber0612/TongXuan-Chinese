@@ -2,10 +2,6 @@ import React, { useState, useEffect } from "react";
 import {
   getSavedDriveAuth,
   performFullDriveSync,
-  uploadProgressToDrive,
-  downloadProgressFromDrive,
-  applyRemotePayloadToLocal,
-  getLocalProgressPayload,
   disconnectGoogleDrive,
   type GoogleDriveAuth
 } from "../lib/googleDriveSync";
@@ -52,51 +48,10 @@ export function GoogleDriveSyncCard({
     }
   };
 
-  const handleForceUpload = async () => {
-    if (!auth) return handleConnectAndSync();
-    setSyncing(true);
-    setStatusMsg("正在備份目前本地進度到雲端...");
-    setIsError(false);
-    try {
-      const local = getLocalProgressPayload();
-      await uploadProgressToDrive(auth.accessToken, local);
-      const updated = { ...auth, lastSyncTime: new Date().toISOString() };
-      setAuth(updated);
-      setStatusMsg("✅ 本地進度已成功備份至 Google Drive！");
-    } catch (err: any) {
-      setIsError(true);
-      setStatusMsg(`備份失敗：${err?.message || "請重新連結"}`);
-    } finally {
-      setSyncing(false);
-    }
-  };
-
-  const handleForceDownload = async () => {
-    if (!auth) return handleConnectAndSync();
-    setSyncing(true);
-    setStatusMsg("正在從雲端載入進度...");
-    setIsError(false);
-    try {
-      const { data } = await downloadProgressFromDrive(auth.accessToken);
-      if (data) {
-        applyRemotePayloadToLocal(data);
-        setStatusMsg("✅ 已從 Google Drive 還原最新進度！");
-        onSyncComplete?.();
-      } else {
-        setStatusMsg("ℹ️ 您的 Google Drive 目前尚無歷史進度檔。");
-      }
-    } catch (err: any) {
-      setIsError(true);
-      setStatusMsg(`下載失敗：${err?.message || "請檢查連線"}`);
-    } finally {
-      setSyncing(false);
-    }
-  };
-
   const handleDisconnect = () => {
     disconnectGoogleDrive();
     setAuth(null);
-    setStatusMsg("已中斷 Google Drive 連結。本地進度仍然安全保留。");
+    setStatusMsg("已中斷 Google Drive 連結。");
     setIsError(false);
   };
 
@@ -134,16 +89,10 @@ export function GoogleDriveSyncCard({
     <div className={`gdrive-sync-card ${auth ? "is-connected" : ""}`}>
       <div className="gdrive-card-header">
         <div className="gdrive-header-left">
-          <span className="gdrive-badge-icon">📁</span>
-          <div>
-            <h4 className="gdrive-title">
-              Google 雲端硬碟進度同步
-              {auth && <span className="gdrive-status-tag">🟢 已連線</span>}
-            </h4>
-            <p className="gdrive-subtitle">
-              資料 100% 存在您自己的 Google 帳號 · 跨裝置（iPad / 手機 / 電腦）無縫互通
-            </p>
-          </div>
+          <h4 className="gdrive-title">
+            雲端進度同步
+            {auth && <span className="gdrive-status-tag">🟢 已連線</span>}
+          </h4>
         </div>
       </div>
 
@@ -172,25 +121,7 @@ export function GoogleDriveSyncCard({
               onClick={handleConnectAndSync}
               disabled={syncing}
             >
-              🔄 {syncing ? "同步中..." : "立即雙向同步"}
-            </button>
-            <button
-              type="button"
-              className="gdrive-btn secondary"
-              onClick={handleForceUpload}
-              disabled={syncing}
-              title="將這台裝置目前的孩子與題目進度上傳覆蓋雲端"
-            >
-              ☁️ 備份到雲端
-            </button>
-            <button
-              type="button"
-              className="gdrive-btn secondary"
-              onClick={handleForceDownload}
-              disabled={syncing}
-              title="從 Google Drive 下載最新存檔"
-            >
-              📥 從雲端下載
+              🔄 {syncing ? "同步中..." : "立即同步"}
             </button>
             <button
               type="button"
@@ -204,21 +135,6 @@ export function GoogleDriveSyncCard({
         </div>
       ) : (
         <div className="gdrive-unconnected-body">
-          <div className="gdrive-features-list">
-            <div className="gdrive-feature-item">
-              <span>🔒 <strong>真正隱私</strong>：</span>
-              <span>所有學習紀錄存於您 Google Drive 的私人空間（<code>drive.appdata</code>），不經任何第三方伺服器。</span>
-            </div>
-            <div className="gdrive-feature-item">
-              <span>📱 <strong>換機無憂</strong>：</span>
-              <span>小孩在 iPad 學完，您在手機或電腦打開網頁，只要登入同一個 Google 帳號，進度即刻同步！</span>
-            </div>
-            <div className="gdrive-feature-item">
-              <span>🆓 <strong>完全免費</strong>：</span>
-              <span>使用您現有的 Google 免費儲存空間（檔案僅約 20KB），終身無任何費用。</span>
-            </div>
-          </div>
-
           {statusMsg && (
             <div className={`gdrive-status-notice ${isError ? "error" : "info"}`}>
               {statusMsg}
@@ -250,7 +166,7 @@ export function GoogleDriveSyncCard({
                   d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
                 />
               </svg>
-              <span>{syncing ? "連接中..." : "連結 Google 雲端硬碟同步進度"}</span>
+              <span>{syncing ? "連接中..." : "連結 Google 帳號"}</span>
             </button>
           </div>
         </div>
