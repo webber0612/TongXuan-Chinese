@@ -137,6 +137,9 @@ export function AppShell() {
   }, []);
 
   async function fetchParentSession(): Promise<ParentSession> {
+    if (!API && import.meta.env.MODE !== "test") {
+      return { authRequired: false, authenticated: false, role: null, parent: null };
+    }
     const requestSerial = ++authRequestSerial.current;
     try {
       const response = await apiFetch(API + "/api/auth/session");

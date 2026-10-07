@@ -60,6 +60,7 @@ import {
 import { renderRuby, RubyText, getCharPhonetic } from "../lib/chinesePhonetics";
 import { useLocale } from "../lib/i18n";
 import appLogoIcon from "../assets/app-logo-icon.png";
+import { GoogleDriveSyncCard } from "../components/GoogleDriveSyncCard";
 import { TONGXUAN_AUTHORED_DRAFT_VOLUMES, type AuthoredDraftVolume, type AuthoredDraftLesson } from "../data/ocacTextbooksData";
 import { searchHanziLexicon, type HanziEntry } from "../data/hanzi5000Database";
 import {
@@ -2337,6 +2338,17 @@ export function ChildPortalPage({
               <span className="learner-name learner-name-large">☀️ {t("morning")} · {activeLearner.name}</span>
               <span className="learner-sub learner-sub-large">{t("levelProgressSub", { n: selectedLevelNum })}</span>
             </div>
+          </button>
+
+          <button
+            type="button"
+            className="header-gdrive-sync-pill"
+            onClick={() => setLoginModalOpen(true)}
+            title="Google 雲端硬碟進度同步"
+            aria-label="Google 雲端硬碟進度同步"
+          >
+            <span>☁️</span>
+            <span className="header-gdrive-sync-label">雲端同步</span>
           </button>
         </div>
 
@@ -5764,6 +5776,15 @@ function LearnerLoginModal({
                 <small>建立全新學習檔案</small>
               </button>
             </div>
+
+            {/* Google Drive User-Owned Cloud Sync Card */}
+            <GoogleDriveSyncCard
+              onSyncComplete={() => {
+                setTimeout(() => {
+                  window.location.reload();
+                }, 400);
+              }}
+            />
           </>
         ) : (
           <form className="add-learner-form" onSubmit={handleCreate}>
