@@ -40,6 +40,10 @@ export function CurriculumPage({ onOpenCourseZero }: { onOpenCourseZero?: () => 
   }
 
   useEffect(() => {
+    if (!API && import.meta.env.MODE !== "test") {
+      setLoading(false);
+      return;
+    }
     void api<Child[]>("/api/children").then((value) => {
       setChildren(value);
       if (value[0]) {

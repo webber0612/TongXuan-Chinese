@@ -43,6 +43,10 @@ export function DashboardPage() {
 
   async function refresh(id = childId, selectedWindow = window) {
     if (!id) return;
+    if (!API && import.meta.env.MODE !== "test") {
+      setReportLoading(false);
+      return;
+    }
     const serial = ++requestSerial.current;
     const { fromAt, toAt } = dashboardRange(selectedWindow);
     setReportLoading(true); setError(""); setLearningFlowError(""); setDashboard(null); setLearningReport(null);
@@ -60,9 +64,13 @@ export function DashboardPage() {
   async function loadChildren() {
     setChildrenLoading(true); setChildrenError("");
     try {
-      const value = await api<Child[]>("/api/children");
-      setChildren(value);
-      if (value[0]) { setChildId(value[0].id); void refresh(value[0].id, window); }
+      if (API || import.meta.env.MODE === "test") {
+        const value = await api<Child[]>("/api/children");
+        setChildren(value);
+        if (value[0]) { setChildId(value[0].id); void refresh(value[0].id, window); }
+        return;
+      }
+      throw new Error("offline");
     } catch (value) {
       try {
         const raw = localStorage.getItem("tongxuan_learners_list");
@@ -81,7 +89,9 @@ export function DashboardPage() {
           }
         }
       } catch {}
-      setChildrenError(value instanceof Error ? value.message : "children_failed");
+      if (API || import.meta.env.MODE === "test") {
+        setChildrenError(value instanceof Error ? value.message : "children_failed");
+      }
     }
     finally { setChildrenLoading(false); }
   }

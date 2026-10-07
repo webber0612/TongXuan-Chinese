@@ -20,7 +20,10 @@ export function TutorPage() {
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState("");
 
-  useEffect(() => { void api<Child[]>("/api/children").then((value) => { setChildren(value); if (value[0]) setChildId(value[0].id); }); }, []);
+  useEffect(() => {
+    if (!API && import.meta.env.MODE !== "test") return;
+    void api<Child[]>("/api/children").then((value) => { setChildren(value); if (value[0]) setChildId(value[0].id); });
+  }, []);
   async function ask() {
     if (!childId || !prompt.trim()) return;
     try { setError(""); setResult(await api<any>(buildTutorPath(childId), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode, prompt, source_type: sourceId ? "CURRICULUM_ITEM" : null, source_id: sourceId || null }) })); }
