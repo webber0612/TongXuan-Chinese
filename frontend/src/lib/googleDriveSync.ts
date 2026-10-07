@@ -7,7 +7,8 @@
  */
 
 export const GOOGLE_CLIENT_ID = "867092172555-k29g47ore92jnte887b0f50tjjh834bu.apps.googleusercontent.com";
-export const DRIVE_APPDATA_SCOPE = "https://www.googleapis.com/auth/drive.appdata";
+export const DRIVE_APPDATA_SCOPE =
+  "https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile";
 
 const GOOGLE_SCRIPT_SRC = "https://accounts.google.com/gsi/client";
 const AUTH_STORAGE_KEY = "tongxuan_gdrive_auth";
@@ -86,14 +87,23 @@ export function saveDriveAuth(auth: GoogleDriveAuth | null): void {
 
 /** Fetch user profile info from Google OAuth */
 async function fetchGoogleUserInfo(accessToken: string): Promise<{ email: string; name: string }> {
-  const resp = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-    headers: { Authorization: `Bearer ${accessToken}` }
-  });
-  if (!resp.ok) throw new Error("fetch_userinfo_failed");
-  const data = await resp.json();
+  try {
+    const resp = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    if (resp.ok) {
+      const data = await resp.json();
+      return {
+        email: data.email || "",
+        name: data.name || data.given_name || "Google 使用者"
+      };
+    }
+  } catch (err) {
+    console.warn("Could not fetch userinfo, continuing with drive sync:", err);
+  }
   return {
-    email: data.email || "",
-    name: data.name || data.given_name || "家長"
+    email: "Google 帳號",
+    name: "家長"
   };
 }
 

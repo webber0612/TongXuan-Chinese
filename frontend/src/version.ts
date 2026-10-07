@@ -1,6 +1,6 @@
 declare const __GIT_COMMIT_HASH__: string | undefined;
 
-export const APP_VERSION = "0.2.0";
+export const APP_VERSION = "0.2.1";
 export const COMMIT_HASH = typeof __GIT_COMMIT_HASH__ !== "undefined" ? __GIT_COMMIT_HASH__ : "local";
 export const FULL_VERSION = `v${APP_VERSION} (${COMMIT_HASH})`;
 export const BUILD_DATE = "2026-10-07";
