@@ -12,6 +12,7 @@ import { GoogleDriveSyncCard } from "./components/GoogleDriveSyncCard";
 import { PlacementStatus } from "./components/PlacementStatus";
 import { parentAuthCopy } from "./lib/parentAuthCopy";
 import { APP_VERSION, COMMIT_HASH, BUILD_DATE } from "./version";
+import appLogoIcon from "./assets/app-logo-icon.png";
 
 const API = import.meta.env.VITE_API_BASE ?? "";
 const LearningPage = lazy(async () => ({ default: (await import("./pages/LearningPage")).LearningPage }));
@@ -295,13 +296,49 @@ export function AppShell() {
 
   return <div className={`app-shell ${isChildPortal ? "app-shell-child-portal" : ""}`}>
     <header className={`app-header ${isChildPortal ? "app-header-hidden" : ""}`}>
-      <button className="brand" onClick={() => navigate("home")} aria-label="TongXuan home"><span className="brand-mark" aria-hidden="true">文</span><span><strong>TongXuan</strong><small>Chinese learning</small></span></button>
+      <div className="header-left-cluster">
+        <button className="brand" onClick={() => navigate("home")} aria-label="TongXuan home">
+          <img src={appLogoIcon} alt="TongXuan Logo" className="brand-logo-img" />
+          <div className="brand-title-box">
+            <strong className="brand-title-main">童軒中文</strong>
+            <small className="brand-title-sub">TONGXUAN CHINESE</small>
+          </div>
+        </button>
+      </div>
       <div className="header-actions">
+        {route !== "home" && (
+          <button
+            type="button"
+            className="button button-secondary return-home-pill-btn"
+            onClick={() => navigate("home")}
+          >
+            <House size={16} />
+            <span>返回學習主畫面</span>
+          </button>
+        )}
         <div className="profile-select">
-          <button className="profile-trigger" aria-expanded={profileOpen} aria-haspopup="menu" onClick={() => setProfileOpen((open) => !open)}><span className={`avatar avatar-${activeProfile.color}`}>{activeProfile.name.slice(-1)}</span><span className="profile-name">{activeProfile.name}</span><ChevronDown size={16}/></button>
-          {profileOpen && <div className="app-popover profile-menu" role="menu" aria-label={t("chooseLearner")}>
-            {profiles.map((profile) => <button key={profile.key} className="profile-option" role="menuitemradio" aria-checked={profile.key === activeProfile.key} onClick={() => chooseProfile(profile.key)}><span className={`avatar avatar-${profile.color}`}>{profile.name.slice(-1)}</span><span><strong>{profile.name}</strong><small>{profile.role === "parent" ? t("parentRole") : t("childRole")}</small></span>{profile.key === activeProfile.key && <span aria-hidden="true">✓</span>}</button>)}
-          </div>}
+          <button className="profile-trigger" aria-expanded={profileOpen} aria-haspopup="menu" onClick={() => setProfileOpen((open) => !open)}>
+            <span className={`avatar avatar-${activeProfile.color}`}>{activeProfile.name.slice(-1)}</span>
+            <span className="profile-name">{activeProfile.name}</span>
+            <ChevronDown size={16}/>
+          </button>
+          {profileOpen && (
+            <div className="app-popover profile-menu" role="menu" aria-label={t("chooseLearner")}>
+              {profiles.map((profile) => (
+                <button
+                  key={profile.key}
+                  className="profile-option"
+                  role="menuitemradio"
+                  aria-checked={profile.key === activeProfile.key}
+                  onClick={() => chooseProfile(profile.key)}
+                >
+                  <span className={`avatar avatar-${profile.color}`}>{profile.name.slice(-1)}</span>
+                  <span><strong>{profile.name}</strong><small>{profile.role === "parent" ? t("parentRole") : t("childRole")}</small></span>
+                  {profile.key === activeProfile.key && <span aria-hidden="true">✓</span>}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </header>
@@ -312,7 +349,7 @@ export function AppShell() {
         {childrenError && !isChildPortal && <div className="offline-strip error-strip" role="alert">{childrenError} <button className="button button-text" onClick={() => void loadChildren()}>{t("retry")}</button></div>}
         {route === "legacy-tombstone" && <main className="app-page"><PageHeading kicker={t("today")} title={t("legacyRouteTitle")} subtitle={t("legacyRouteDescription")} icon={<BookOpen/>}/><button className="button button-primary" onClick={() => navigate("home")}><House size={18}/>{t("today")}</button></main>}
         <Suspense fallback={<AppLoading label={t("loading")} />}>
-        {route === "home" && <ChildPortalPage key={activeChild?.id ?? "unresolved-child"} activeChildId={activeChild?.id ?? null} activeChildName={childName} onOpenCurriculum={() => navigate("curriculum")} onOpenCourseZero={() => navigate("course-zero")} onStartLearningSession={showSessionEntry ? (requestedChildId, targetLessonId, mode) => {
+        {route === "home" && <ChildPortalPage key={activeChild?.id ?? "unresolved-child"} activeChildId={activeChild?.id ?? null} activeChildName={childName} onOpenCurriculum={() => navigate("curriculum")} onOpenCourseZero={() => navigate("home")} onStartLearningSession={showSessionEntry ? (requestedChildId, targetLessonId, mode) => {
           if (!isValidBackendChildId(requestedChildId) || !activeChild || requestedChildId !== activeChild.id) return false;
           setLearningSessionLessonId(targetLessonId);
           setLearningSessionMode(mode);
@@ -322,9 +359,9 @@ export function AppShell() {
         {route === "learning-session" && <LessonPlayerPage lessonId={learningSessionLessonId} activeChildId={activeChild?.id ?? null} initialMode={learningSessionMode} onBack={() => { setLearningSessionMode("LEARN"); navigate("home"); }} />}
         {route === "practice" && <div className="app-page practice-page" key={activeProfile.key}><PageHeading kicker={t("practice")} title={t("practiceTitle")} subtitle={t("practiceHint")} icon={<Sparkles/>}/><LearningPage activeChildId={activeChild?.id ?? null} /></div>}
         {route === "parent" && <ParentAreaPage parentSession={parentSession} onSignedIn={onParentSignedIn} onSignOut={() => void onParentSignOut()} onOpenSettings={() => navigate("me")} />}
-        {route === "curriculum" && <CurriculumPage onOpenCourseZero={() => navigate("course-zero")} />}
-        {route === "course-zero" && <CourseZeroPage onBack={() => navigate("curriculum")} onStartFirstLesson={() => navigate("first-lesson")} />}
-        {route === "first-lesson" && <FirstLessonPage onBack={() => navigate("curriculum")} onOpenPractice={() => navigate("practice")} />}
+        {route === "curriculum" && <CurriculumPage onOpenCourseZero={() => navigate("home")} />}
+        {route === "course-zero" && <ChildPortalPage key={activeChild?.id ?? "unresolved-child"} activeChildId={activeChild?.id ?? null} activeChildName={childName} onOpenCurriculum={() => navigate("curriculum")} onOpenCourseZero={() => navigate("home")} />}
+        {route === "first-lesson" && <LessonPlayerPage lessonId="book1-l01" activeChildId={activeChild?.id ?? null} initialMode="LEARN" onBack={() => { setLearningSessionMode("LEARN"); navigate("home"); }} />}
         {route === "tutor" && <div className="app-page"><TutorPage /></div>}
         {route === "commercialization" && <div className="app-page"><CommercializationPage /></div>}
         {route === "diagnostics" && <div className="app-page"><DiagnosticsPage /></div>}
@@ -337,7 +374,7 @@ export function AppShell() {
         </>}
       </div>
     </div>
-    <nav className={`app-tabbar ${isChildPortal ? "app-tabbar-hidden" : ""}`} aria-label={activeProfile.role === "parent" ? t("parent") : t("today")}>
+    <nav className={`app-tabbar ${isChildPortal || route === "parent" ? "app-tabbar-hidden" : ""}`} aria-label={activeProfile.role === "parent" ? t("parent") : t("today")}>
       {navItems.map(({ id, label, icon: Icon }) => <button key={id} className={route === id ? "app-tab active" : "app-tab"} aria-current={route === id ? "page" : undefined} onClick={() => navigate(id)}><Icon size={22} strokeWidth={route === id ? 2.5 : 2}/><span>{label}</span></button>)}
       {activeProfile.role === "parent" && <button className="app-tab" onClick={() => navigate("practice")}><Sparkles size={22}/><span>{t("practice")}</span></button>}
     </nav>
@@ -408,6 +445,103 @@ function ParentAreaPage({ parentSession, onSignedIn, onSignOut, onOpenSettings }
   const { t, language } = useLocale();
   const authCopy = parentAuthCopy(language);
   const needsParentSignIn = parentSession.authRequired && !(parentSession.authenticated && (parentSession.role === "parent" || parentSession.role === "developer" || parentSession.role === "admin"));
-  if (needsParentSignIn) return <main className="app-page parent-intro"><PageHeading kicker={t("parent")} title={authCopy.heading} subtitle={authCopy.description} icon={<CircleUserRound/>}/><section className="settings-section parent-auth-block"><GoogleParentSignIn onSignedIn={onSignedIn}/><button className="button button-text" onClick={onOpenSettings}>{t("settings")}</button></section></main>;
-  return <><section className="app-page parent-intro"><PageHeading kicker={t("parent")} title={t("parentTitle")} subtitle={t("parentDescription")} icon={<CircleUserRound/>}/><GoogleDriveSyncCard /><section className="parent-shortcuts"><button onClick={() => document.getElementById("weekly-tests")?.scrollIntoView({ behavior: "smooth", block: "start" })}><BookOpen/><span><strong>{t("scores")}</strong><small>{t("scoresHint")}</small></span><ChevronDown className="shortcut-chevron"/></button><button onClick={onOpenSettings}><Settings2/><span><strong>{t("familySettings")}</strong><small>{t("languagePrivacy")}</small></span><ChevronDown className="shortcut-chevron"/></button></section>{parentSession.role === "parent" && <button className="button button-text" onClick={onSignOut}>{authCopy.signOut}</button>}</section><div className="app-page parent-data"><DashboardPage /></div></>;
+
+  if (needsParentSignIn) {
+    return (
+      <main className="app-page parent-intro parent-portal-screen">
+        <div className="parent-hero-card">
+          <div className="parent-hero-icon-box">🛡️</div>
+          <div className="parent-hero-content">
+            <span className="parent-pill-tag">安全防護鎖</span>
+            <h1>{authCopy.heading}</h1>
+            <p className="parent-hero-desc">{authCopy.description}</p>
+          </div>
+        </div>
+        <section className="settings-section parent-auth-block parent-auth-card">
+          <div className="auth-card-inner">
+            <GoogleParentSignIn onSignedIn={onSignedIn} />
+            <div className="auth-card-actions">
+              <button className="button button-text" onClick={onOpenSettings}>
+                ⚙️ {t("settings")}
+              </button>
+            </div>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  return (
+    <div className="parent-portal-screen">
+      <section className="app-page parent-intro">
+        <div className="parent-hero-card">
+          <div className="parent-hero-icon-box">👨‍👩‍👧</div>
+          <div className="parent-hero-content">
+            <span className="parent-pill-tag">安全家長專區 · PARENT PORTAL</span>
+            <h1>{t("parentTitle")}</h1>
+            <p className="parent-hero-desc">{t("parentDescription")}</p>
+          </div>
+          <div className="parent-hero-actions">
+            <button
+              type="button"
+              className="button button-secondary back-to-home-btn"
+              onClick={() => {
+                window.history.pushState({}, "", "/");
+                window.dispatchEvent(new PopStateEvent("popstate"));
+              }}
+              aria-label="TongXuan home"
+            >
+              <House size={18} />
+              <span>返回學習首頁</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="parent-grid-two-col">
+          <div className="parent-sync-col">
+            <GoogleDriveSyncCard />
+          </div>
+          <div className="parent-nav-col">
+            <section className="parent-shortcuts">
+              <button
+                type="button"
+                className="shortcut-card-btn"
+                onClick={() => document.getElementById("weekly-tests")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+              >
+                <div className="shortcut-icon-circle"><BookOpen size={20} /></div>
+                <span>
+                  <strong>{t("scores")}</strong>
+                  <small>{t("scoresHint")}</small>
+                </span>
+                <ChevronDown className="shortcut-chevron" />
+              </button>
+              <button
+                type="button"
+                className="shortcut-card-btn"
+                onClick={onOpenSettings}
+              >
+                <div className="shortcut-icon-circle"><Settings2 size={20} /></div>
+                <span>
+                  <strong>{t("familySettings")}</strong>
+                  <small>{t("languagePrivacy")}</small>
+                </span>
+                <ChevronDown className="shortcut-chevron" />
+              </button>
+            </section>
+            {parentSession.role === "parent" && (
+              <div className="parent-signout-row">
+                <button className="button button-text parent-signout-btn" onClick={onSignOut}>
+                  🚪 {authCopy.signOut}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <div className="app-page parent-data">
+        <DashboardPage />
+      </div>
+    </div>
+  );
 }

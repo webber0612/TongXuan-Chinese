@@ -1,10 +1,10 @@
 declare const __GIT_COMMIT_HASH__: string | undefined;
 
-export const APP_VERSION = "0.2.3";
+export const APP_VERSION = "0.2.4";
 export const COMMIT_HASH = typeof __GIT_COMMIT_HASH__ !== "undefined" ? __GIT_COMMIT_HASH__ : "local";
 export const FULL_VERSION = `v${APP_VERSION} (${COMMIT_HASH})`;
 export const BUILD_DATE = "2026-10-07";
-export const APP_CODENAME = "Handedness Harmony (Ambidextrous Writing & Quick Hand Switch)";
+export const APP_CODENAME = "System B Eradication & Warm Design Unification";
 
 /**
  * Outputs a subtle, styled build/version badge in the F12 developer console
