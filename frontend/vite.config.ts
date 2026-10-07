@@ -1,9 +1,21 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
+// @ts-ignore
+import { execSync } from "node:child_process";
+
+let gitCommitHash = "dev";
+try {
+  gitCommitHash = execSync("git rev-parse --short HEAD").toString().trim();
+} catch {
+  gitCommitHash = "unknown";
+}
 
 export default defineConfig({
   base: "/TongXuan-Chinese/",
+  define: {
+    __GIT_COMMIT_HASH__: JSON.stringify(gitCommitHash),
+  },
   plugins: [
     react(),
     VitePWA({

@@ -22,8 +22,14 @@ const routes = [
   "kids"
 ];
 
+const faviconPath = new URL("../dist/favicon.png", import.meta.url);
+const iconPath = new URL("../dist/icon-192.png", import.meta.url);
+
 for (const route of routes) {
   const targetDir = new URL(`../dist/${route}/`, import.meta.url);
   await mkdir(targetDir, { recursive: true });
   await copyFile(indexPath, new URL(`../dist/${route}/index.html`, import.meta.url));
+  await copyFile(faviconPath, new URL(`../dist/${route}/favicon.png`, import.meta.url)).catch(() => undefined);
+  await copyFile(iconPath, new URL(`../dist/${route}/icon-192.png`, import.meta.url)).catch(() => undefined);
 }
+
