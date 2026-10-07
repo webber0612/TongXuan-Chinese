@@ -1921,6 +1921,11 @@ export function ChildPortalPage({
   const [aboutModalOpen, setAboutModalOpen] = useState(false);
   const [aboutInitialTab, setAboutInitialTab] = useState<"about" | "roadmap" | "legal" | "disclaimer">("about");
   const [customPracticePlan, setCustomPracticePlan] = useState<DailyDayPlan | null>(null);
+  const [onboardingOpen, setOnboardingOpen] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    if (import.meta.env.MODE === "test") return false;
+    return !localStorage.getItem("tongxuan_onboarded");
+  });
 
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -2031,12 +2036,42 @@ export function ChildPortalPage({
   const { stage: authoritativeStage, lesson: authoritativeLesson } = findLessonAndStage(authoritativeLessonId);
   const sessionTargetLessonId = dailyQueue?.newLesson?.lessonId || dailyQueue?.completedLesson?.lessonId ||
     (dailyQueue?.placementStart === "BOOK_1" ? "book1-l01" : dailyQueue?.placementStart === "BASIC" ? "basic-l01" : dailyQueue?.placementStart === "STARTER" ? "starter-l01" : undefined);
+
+  function startLessonAtStep(step: 1 | 2 | 3 | 4 | 5, mode: "char" | "vocab" | "idiom" = "char") {
+    setCustomPracticePlan(null);
+    setClassroomInitialStep(step);
+    setClassroomMode(mode);
+    setInClassroom(true);
+  }
+
   const startLearningSession = (mode: "LEARN" | "REVIEW") => {
     if (!onStartLearningSession || !isValidBackendChildId(activeChildId) || dailyQueue?.childId !== activeChildId || !sessionTargetLessonId) {
       setSessionProfileError(true);
       return;
     }
     setSessionProfileError(!onStartLearningSession(activeChildId, sessionTargetLessonId, mode));
+  };
+
+  const handleOnboardingComplete = (config: {
+    name: string;
+    avatar: string;
+    scriptMode: ScriptMode;
+    displayLang: DisplayLang;
+  }) => {
+    localStorage.setItem("tongxuan_onboarded", "true");
+    localStorage.setItem("tongxuan_display_lang", config.displayLang);
+    setDisplayLang(config.displayLang);
+    updateActiveLearner({
+      name: config.name,
+      avatar: config.avatar,
+      scriptMode: config.scriptMode
+    });
+    setOnboardingOpen(false);
+    if (onStartLearningSession && isValidBackendChildId(activeChildId) && dailyQueue?.childId === activeChildId && sessionTargetLessonId) {
+      startLearningSession("LEARN");
+    } else {
+      startLessonAtStep(1, "char");
+    }
   };
 
   const [selectedStageId, setSelectedStageId] = useState<string>("starter");
@@ -2246,12 +2281,7 @@ export function ChildPortalPage({
     }
   };
 
-  const startLessonAtStep = (step: 1 | 2 | 3 | 4 | 5, mode: "char" | "vocab" | "idiom" = "char") => {
-    setCustomPracticePlan(null); // 使用當日主線課程
-    setClassroomInitialStep(step);
-    setClassroomMode(mode);
-    setInClassroom(true);
-  };
+
 
 
 
@@ -2419,11 +2449,11 @@ export function ChildPortalPage({
 
                   <button
                     type="button"
-                    className="menu-item-row official-course-menu-action"
-                    onClick={() => { setMenuOpen(false); onOpenCurriculum(); }}
+                    className="menu-item-row"
+                    onClick={() => { setMenuOpen(false); setOnboardingOpen(true); }}
                   >
-                    <span className="menu-item-icon">📚</span>
-                    <span className="menu-item-info"><strong>{t("openVerifiedCurriculum")}</strong><small>{t("draftContentNotice")}</small></span>
+                    <span className="menu-item-icon">🚀</span>
+                    <span className="menu-item-info"><strong>{displayLang === "en" ? "First-time Setup" : "初次設定導引"}</strong><small>{displayLang === "en" ? "Change learner name, avatar & script" : "重新設定學習角色、頭像與字體"}</small></span>
                     <ArrowRight size={17} />
                   </button>
 
@@ -2628,11 +2658,8 @@ export function ChildPortalPage({
         </div>
       </header>
 
-      <div className="child-portal-source-note" role="note">
+      <div className="child-portal-source-note" role="note" style={{ display: "none" }}>
         <span>{t("draftContentNotice")}</span>
-        <button type="button" onClick={onOpenCurriculum}>{t("openVerifiedCurriculum")}</button>
-          {onStartLearningSession && <button type="button" className="validated-session-entry" onClick={() => startLearningSession("LEARN")}>{t("startValidatedSession")}</button>}
-          {sessionProfileError && <span className="session-profile-error" role="alert">{t("sessionProfileMissing")}</span>}
       </div>
 
       {/* 2. COMPACT SPRINT TRACK: Official Stages & Lessons */}
@@ -3145,6 +3172,23 @@ export function ChildPortalPage({
           </div>
         </footer>
       </main>
+
+      {/* 0. Welcome & First-time Onboarding Modal */}
+      {onboardingOpen && (
+        <WelcomeOnboardingModal
+          displayLang={displayLang}
+          setDisplayLang={(lang) => {
+            setDisplayLang(lang);
+            localStorage.setItem("tongxuan_display_lang", lang);
+          }}
+          onClose={() => {
+            localStorage.setItem("tongxuan_onboarded", "true");
+            setOnboardingOpen(false);
+          }}
+          onComplete={handleOnboardingComplete}
+          R={R}
+        />
+      )}
 
       {/* 1. Login & Learner Management Switcher Modal */}
       {loginModalOpen && (
@@ -5914,8 +5958,7 @@ function WelcomeOnboardingModal({
     name: string;
     avatar: string;
     scriptMode: ScriptMode;
-    volumeNum: number;
-    dailyMinutes: number;
+    displayLang: DisplayLang;
   }) => void;
   R?: (text: string) => ReactNode;
 }) {
@@ -5923,8 +5966,6 @@ function WelcomeOnboardingModal({
   const [name, setName] = useState<string>("小明");
   const [avatar, setAvatar] = useState<string>("🐼");
   const [selectedScript, setSelectedScript] = useState<ScriptMode>("dual");
-  const [selectedVolume, setSelectedVolume] = useState<number>(1);
-  const [dailyMinutes, setDailyMinutes] = useState<number>(25);
 
   const avatars = ["🐼", "🐯", "🐰", "🦁", "🐨", "🦊", "🐶", "🦄"];
 
@@ -5934,8 +5975,7 @@ function WelcomeOnboardingModal({
       name: name.trim() || "小明",
       avatar,
       scriptMode: selectedScript,
-      volumeNum: selectedVolume,
-      dailyMinutes
+      displayLang
     });
   };
 
@@ -5945,8 +5985,6 @@ function WelcomeOnboardingModal({
       langLabel: "介面語言：",
       step1: "學習角色",
       step2: "字體偏好",
-      step3: "教材起點",
-      step4: "學習目標",
       heroTitle: "歡迎來到 童軒中文！",
       heroDesc: "為寶貝建立專屬學習身分，開啟溫暖有趣的漢字探索之旅！",
       nameLabel: "小朋友的暱稱或姓名",
@@ -5963,31 +6001,14 @@ function WelcomeOnboardingModal({
       cnTag: "🔤 規範漢字",
       cnTitle: "簡體中文 + 漢語拼音（pīnyīn）",
       cnDesc: "國際通用漢語拼音輔助發音，簡化筆畫快速開展識字與閱讀。",
-      step3Title: "選擇童軒自編示範起點",
-      step3Desc: "這些舊關卡是內部示範資料，尚未逐課驗證為官方教材。官方路線僅列入門冊、基礎冊與第一冊前三課。",
-      step4Title: "設定每天的小小學習目標",
-      step4Desc: "養成溫和規律的每天練習微習慣，週日即可開箱領取神秘大禮物！",
-      goal15Title: "輕鬆啟蒙",
-      goal15Desc: "每日 15 分鐘 · 4 個核心生字聽說讀寫",
-      goal15Tag: "建立微習慣",
-      goal25Title: "標準循序（推薦）",
-      goal25Desc: "每日 25 分鐘 · 6 個核心生字 + 生活造句朗讀",
-      goal25Tag: "多數家長推薦",
-      goal35Title: "進階飛躍",
-      goal35Desc: "每日 35 分鐘 · 生字 + 詞彙造句 + 成語深度閱讀",
-      goal35Tag: "深度沉浸",
       nextBtnScript: "下一步：選擇學習字體",
-      nextBtnVol: "下一步：選擇教材冊次",
-      nextBtnGoal: "下一步：設定學習目標",
-      finishBtn: "🚀 完成設定 · 開啟學習之旅！",
+      finishBtn: "🚀 完成設定 · 開始第一課！",
       backBtn: "上一步"
     },
     "zh-Hans": {
       langLabel: "界面语言：",
       step1: "学习角色",
       step2: "字体偏好",
-      step3: "教材起点",
-      step4: "学习目标",
       heroTitle: "欢迎来到 童轩中文！",
       heroDesc: "为宝贝建立专属学习身分，开启温暖有趣的汉字探索之旅！",
       nameLabel: "小朋友的昵称或姓名",
@@ -6004,31 +6025,14 @@ function WelcomeOnboardingModal({
       cnTag: "🔤 规范汉字",
       cnTitle: "简体中文 + 汉语拼音（pīnyīn）",
       cnDesc: "国际通用汉语拼音辅助发音，简化笔画快速开展识字与阅读。",
-      step3Title: "选择童轩自编示范起点",
-      step3Desc: "这些旧关卡是内部示范资料，尚未逐课验证为官方教材。官方路线仅列入门册、基础册与第一册前三课。",
-      step4Title: "设定每天的小小学习目标",
-      step4Desc: "养成温和规律的每天练习微习惯，周日即可开箱领取神秘大礼物！",
-      goal15Title: "轻松启蒙",
-      goal15Desc: "每日 15 分钟 · 4 个核心生字听说读写",
-      goal15Tag: "建立微习惯",
-      goal25Title: "标准循序（推荐）",
-      goal25Desc: "每日 25 分钟 · 6 个核心生字 + 生活造句朗读",
-      goal25Tag: "多数家长推荐",
-      goal35Title: "进阶飞跃",
-      goal35Desc: "每日 35 分钟 · 生字 + 词汇造句 + 成语深度阅读",
-      goal35Tag: "深度沉浸",
       nextBtnScript: "下一步：选择学习字体",
-      nextBtnVol: "下一步：选择教材册次",
-      nextBtnGoal: "下一步：设定学习目标",
-      finishBtn: "🚀 完成设定 · 开启学习之旅！",
+      finishBtn: "🚀 完成设定 · 开始第一课！",
       backBtn: "上一步"
     },
     "en": {
       langLabel: "Language:",
       step1: "Profile",
       step2: "Script",
-      step3: "Level",
-      step4: "Goal",
       heroTitle: "Welcome to TongXuan Chinese!",
       heroDesc: "Create a personalized learner profile and start a warm, engaging Chinese adventure!",
       nameLabel: "Child's Nickname or Name",
@@ -6045,23 +6049,8 @@ function WelcomeOnboardingModal({
       cnTag: "🔤 Simplified",
       cnTitle: "Simplified Chinese + Pinyin (pīnyīn)",
       cnDesc: "Global standard Pinyin with simplified strokes for fast vocabulary acquisition and reading.",
-      step3Title: "Choose a TongXuan sample starting point",
-      step3Desc: "These existing levels are internal samples, not verified official lessons. The verified path covers Starter, Basic, and Book 1 lessons 1–3.",
-      step4Title: "Set Daily Learning Goal",
-      step4Desc: "Build a consistent daily micro-habit to unlock Sunday mystery treasure chests!",
-      goal15Title: "Gentle Start",
-      goal15Desc: "15 mins daily · 4 core characters listen, speak & write",
-      goal15Tag: "Micro-Habit",
-      goal25Title: "Standard (Recommended)",
-      goal25Desc: "25 mins daily · 6 core characters + story reading",
-      goal25Tag: "Most Popular",
-      goal35Title: "Advanced Immersion",
-      goal35Desc: "35 mins daily · Characters + phrases + idiom stories",
-      goal35Tag: "Deep Study",
       nextBtnScript: "Next: Choose Script Mode",
-      nextBtnVol: "Next: Choose Level",
-      nextBtnGoal: "Next: Set Daily Goal",
-      finishBtn: "🚀 Complete Setup · Start Learning!",
+      finishBtn: "🚀 Complete Setup · Start Lesson 1!",
       backBtn: "Back"
     }
   };
@@ -6072,9 +6061,7 @@ function WelcomeOnboardingModal({
 
   const stepsData = [
     { num: 1, title: L("step1"), icon: "👤" },
-    { num: 2, title: L("step2"), icon: "🔤" },
-    { num: 3, title: L("step3"), icon: "📚" },
-    { num: 4, title: L("step4"), icon: "🎯" }
+    { num: 2, title: L("step2"), icon: "🔤" }
   ];
 
   return (
@@ -6112,12 +6099,12 @@ function WelcomeOnboardingModal({
           </div>
         </div>
 
-        {/* Top Step Progress Bar with Connected Line */}
+        {/* Top Step Progress Bar */}
         <div className="onboard-stepper-container">
           <div className="onboard-stepper-track">
             <div
               className="onboard-stepper-progress-fill"
-              style={{ width: `${((step - 1) / 3) * 100}%` }}
+              style={{ width: `${((step - 1) / (stepsData.length - 1 || 1)) * 100}%` }}
             />
           </div>
           <div className="onboard-stepper-steps-row">
@@ -6274,140 +6261,11 @@ function WelcomeOnboardingModal({
               </button>
               <button
                 type="button"
-                className="onboard-primary-btn"
-                onClick={() => setStep(3)}
-              >
-                <span>{L("nextBtnVol")}</span>
-                <ArrowRight size={20} />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* STEP 3: 選擇華語分級教材起點 */}
-        {step === 3 && (
-          <div className="onboard-step-content animate-fade">
-            <div className="onboard-hero-center">
-              <div className="step-icon-badge-round">📚</div>
-              <h2 className="onboard-main-title">{L("step3Title")}</h2>
-              <p className="onboard-sub-desc">{L("step3Desc")}</p>
-            </div>
-
-            <div className="volumes-selector-grid">
-              {TONGXUAN_AUTHORED_DRAFT_VOLUMES.map((vol) => {
-                const isSelected = selectedVolume === vol.volume;
-                return (
-                  <div
-                    key={vol.volume}
-                    className={`volume-tile-card ${isSelected ? "is-selected" : ""}`}
-                    onClick={() => setSelectedVolume(vol.volume)}
-                    style={{
-                      borderColor: isSelected ? vol.colorTheme : undefined
-                    }}
-                  >
-                    <span className="volume-tile-icon">{vol.badgeIcon}</span>
-                    <div className="volume-tile-meta">
-              <strong className="volume-tile-title">示範 {vol.volume}</strong>
-                      <span className="volume-tile-grade">
-                        {vol.gradeName.split("·")[1] || vol.gradeName}
-                      </span>
-                    </div>
-                    {isSelected && <span className="volume-selected-mark">✓</span>}
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="onboard-bottom-actions dual-actions">
-              <button
-                type="button"
-                className="onboard-ghost-btn"
-                onClick={() => setStep(2)}
-              >
-                {L("backBtn")}
-              </button>
-              <button
-                type="button"
-                className="onboard-primary-btn"
-                onClick={() => setStep(4)}
-              >
-                <span>{L("nextBtnGoal")}</span>
-                <ArrowRight size={20} />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* STEP 4: 設定每日學習目標 */}
-        {step === 4 && (
-          <div className="onboard-step-content animate-fade">
-            <div className="onboard-hero-center">
-              <div className="step-icon-badge-round">🎯</div>
-              <h2 className="onboard-main-title">{L("step4Title")}</h2>
-              <p className="onboard-sub-desc">{L("step4Desc")}</p>
-            </div>
-
-            <div className="goals-options-stack">
-              {[
-                {
-                  min: 15,
-                  label: L("goal15Title"),
-                  desc: L("goal15Desc"),
-                  icon: "🌱",
-                  tag: L("goal15Tag")
-                },
-                {
-                  min: 25,
-                  label: L("goal25Title"),
-                  desc: L("goal25Desc"),
-                  icon: "⭐",
-                  tag: L("goal25Tag")
-                },
-                {
-                  min: 35,
-                  label: L("goal35Title"),
-                  desc: L("goal35Desc"),
-                  icon: "🚀",
-                  tag: L("goal35Tag")
-                }
-              ].map((g) => {
-                const isSelected = dailyMinutes === g.min;
-                return (
-                  <div
-                    key={g.min}
-                    className={`goal-plan-card ${isSelected ? "is-selected" : ""}`}
-                    onClick={() => setDailyMinutes(g.min)}
-                  >
-                    <span className="goal-plan-icon">{g.icon}</span>
-                    <div className="goal-plan-body">
-                      <div className="goal-plan-heading-row">
-                        <h3 className="goal-plan-title">{g.label}</h3>
-                        <span className="goal-plan-tag">{g.tag}</span>
-                      </div>
-                      <p className="goal-plan-desc">{g.desc}</p>
-                    </div>
-                    <div className="goal-plan-check">
-                      <span className="radio-dot">{isSelected ? "✓" : ""}</span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="onboard-bottom-actions dual-actions">
-              <button
-                type="button"
-                className="onboard-ghost-btn"
-                onClick={() => setStep(3)}
-              >
-                {L("backBtn")}
-              </button>
-              <button
-                type="button"
                 className="onboard-primary-btn launch-finish-btn"
                 onClick={handleFinish}
               >
                 <span>{L("finishBtn")}</span>
+                <ArrowRight size={20} />
               </button>
             </div>
           </div>

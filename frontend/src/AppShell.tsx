@@ -283,12 +283,10 @@ export function AppShell() {
 
   const navItems = useMemo(() => activeProfile.role === "parent" ? [
     { id: "parent" as Route, label: t("parent"), icon: CircleUserRound },
-    { id: "curriculum" as Route, label: t("library"), icon: BookOpen },
     { id: "me" as Route, label: t("mySpace"), icon: UserRound },
   ] : [
     { id: "home" as Route, label: t("today"), icon: House },
     { id: "practice" as Route, label: t("practice"), icon: Sparkles },
-    { id: "curriculum" as Route, label: t("library"), icon: Compass },
     { id: "me" as Route, label: t("mySpace"), icon: UserRound },
   ], [activeProfile.role, language]);
 
