@@ -8,6 +8,7 @@ import { Profile, ACTIVE_PROFILE_STORAGE_KEY, BackendChild, defaultProfiles, isV
 import { apiFetch, setApiCsrfToken } from "./lib/apiFetch";
 import { ANNOTATION_MODE_KEY, currentAnnotationMode, currentLearningLocale, LEARNING_LOCALE_KEY, useLocale, type AnnotationMode, type DisplayLanguage, type LearningLocale } from "./lib/i18n";
 import { GoogleParentSignIn } from "./components/GoogleParentSignIn";
+import { GoogleDriveSyncCard } from "./components/GoogleDriveSyncCard";
 import { PlacementStatus } from "./components/PlacementStatus";
 import { parentAuthCopy } from "./lib/parentAuthCopy";
 
@@ -172,6 +173,13 @@ export function AppShell() {
       childrenRequestSerial.current += 1;
       setChildren([]); setChildrenError(""); setChildrenLoading(false);
       setProfiles(reconcileProfiles([], loadProfiles()));
+      return;
+    }
+    if (!API && import.meta.env.MODE !== "test") {
+      setChildrenLoading(false);
+      setChildrenError("");
+      setChildren([]);
+      setProfiles(loadProfiles());
       return;
     }
     const requestSerial = ++childrenRequestSerial.current;
@@ -399,5 +407,5 @@ function ParentAreaPage({ parentSession, onSignedIn, onSignOut, onOpenSettings }
   const authCopy = parentAuthCopy(language);
   const needsParentSignIn = parentSession.authRequired && !(parentSession.authenticated && (parentSession.role === "parent" || parentSession.role === "developer" || parentSession.role === "admin"));
   if (needsParentSignIn) return <main className="app-page parent-intro"><PageHeading kicker={t("parent")} title={authCopy.heading} subtitle={authCopy.description} icon={<CircleUserRound/>}/><section className="settings-section parent-auth-block"><GoogleParentSignIn onSignedIn={onSignedIn}/><button className="button button-text" onClick={onOpenSettings}>{t("settings")}</button></section></main>;
-  return <><section className="app-page parent-intro"><PageHeading kicker={t("parent")} title={t("parentTitle")} subtitle={t("parentDescription")} icon={<CircleUserRound/>}/><section className="parent-shortcuts"><button onClick={() => document.getElementById("weekly-tests")?.scrollIntoView({ behavior: "smooth", block: "start" })}><BookOpen/><span><strong>{t("scores")}</strong><small>{t("scoresHint")}</small></span><ChevronDown className="shortcut-chevron"/></button><button onClick={onOpenSettings}><Settings2/><span><strong>{t("familySettings")}</strong><small>{t("languagePrivacy")}</small></span><ChevronDown className="shortcut-chevron"/></button></section>{parentSession.role === "parent" && <button className="button button-text" onClick={onSignOut}>{authCopy.signOut}</button>}</section><div className="app-page parent-data"><DashboardPage /></div></>;
+  return <><section className="app-page parent-intro"><PageHeading kicker={t("parent")} title={t("parentTitle")} subtitle={t("parentDescription")} icon={<CircleUserRound/>}/><GoogleDriveSyncCard /><section className="parent-shortcuts"><button onClick={() => document.getElementById("weekly-tests")?.scrollIntoView({ behavior: "smooth", block: "start" })}><BookOpen/><span><strong>{t("scores")}</strong><small>{t("scoresHint")}</small></span><ChevronDown className="shortcut-chevron"/></button><button onClick={onOpenSettings}><Settings2/><span><strong>{t("familySettings")}</strong><small>{t("languagePrivacy")}</small></span><ChevronDown className="shortcut-chevron"/></button></section>{parentSession.role === "parent" && <button className="button button-text" onClick={onSignOut}>{authCopy.signOut}</button>}</section><div className="app-page parent-data"><DashboardPage /></div></>;
 }

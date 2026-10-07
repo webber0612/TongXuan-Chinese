@@ -7,7 +7,16 @@ type Child = { id: number; name: string };
 
 async function api<T>(path: string): Promise<T> {
   const response = await apiFetch(`${API}${path}`);
-  if (!response.ok) throw new Error((await response.json()).detail ?? "Request failed");
+  if (!response.ok) {
+    let detail = "Request failed";
+    try {
+      const data = await response.json();
+      detail = data.detail ?? detail;
+    } catch {
+      detail = `HTTP ${response.status}`;
+    }
+    throw new Error(detail);
+  }
   return response.json();
 }
 
@@ -54,7 +63,26 @@ export function DashboardPage() {
       const value = await api<Child[]>("/api/children");
       setChildren(value);
       if (value[0]) { setChildId(value[0].id); void refresh(value[0].id, window); }
-    } catch (value) { setChildrenError(value instanceof Error ? value.message : "children_failed"); }
+    } catch (value) {
+      try {
+        const raw = localStorage.getItem("tongxuan_learners_list");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const localList: Child[] = parsed.map((item: any, idx: number) => ({
+              id: typeof item.id === "number" ? item.id : idx + 1,
+              name: item.name || `學習者 ${idx + 1}`
+            }));
+            setChildren(localList);
+            setChildId(localList[0].id);
+            setChildrenError("");
+            setChildrenLoading(false);
+            return;
+          }
+        }
+      } catch {}
+      setChildrenError(value instanceof Error ? value.message : "children_failed");
+    }
     finally { setChildrenLoading(false); }
   }
   useEffect(() => { void loadChildren(); return () => { requestSerial.current += 1; }; }, []);
