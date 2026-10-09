@@ -2,8 +2,6 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } 
 import { BookOpen, ChevronDown, CircleUserRound, Compass, House, Languages, Plus, Settings2, Sparkles, UserRound, X } from "lucide-react";
 import { Button as AriaButton, ListBox, ListBoxItem, Popover, Select, SelectValue, Label } from "react-aria-components";
 import { ChildPortalPage } from "./pages/ChildPortalPage";
-import { CourseZeroPage } from "./pages/CourseZeroPage";
-import { FirstLessonPage } from "./pages/FirstLessonPage";
 import { Profile, ACTIVE_PROFILE_STORAGE_KEY, BackendChild, defaultProfiles, isValidBackendChildId, loadProfiles, normalizeBackendChildren, reconcileProfiles, saveProfiles, selectedBackendChild, selectProfile } from "./lib/profiles";
 import { apiFetch, setApiCsrfToken } from "./lib/apiFetch";
 import { ANNOTATION_MODE_KEY, currentAnnotationMode, currentLearningLocale, LEARNING_LOCALE_KEY, useLocale, type AnnotationMode, type DisplayLanguage, type LearningLocale } from "./lib/i18n";
@@ -26,7 +24,7 @@ type Child = BackendChild;
 type ParentIdentity = { id: number; email: string; displayName: string };
 type ParentSession = { authRequired: boolean; authenticated: boolean; role: string | null; parent: ParentIdentity | null };
 const LOCAL_SESSION: ParentSession = { authRequired: false, authenticated: false, role: null, parent: null };
-type Route = "home" | "practice" | "parent" | "curriculum" | "course-zero" | "first-lesson" | "learning-session" | "tutor" | "me" | "commercialization" | "diagnostics" | "legacy-tombstone" | "redirect-home";
+type Route = "home" | "practice" | "parent" | "curriculum" | "learning-session" | "tutor" | "me" | "commercialization" | "diagnostics" | "legacy-tombstone" | "redirect-home";
 
 function appBaseAt(pathname: string): string {
   const normalized = pathname.replace(/\/+$/, "") || "/";
@@ -54,8 +52,6 @@ export function routeFromPath(pathname: string): Route {
   if (["/preview-kids", "/preview-2", "/preview-b", "/preview", "/preview-pixel", "/preview-reference", "/preview-directions", "/learning-desk", "/learning-calendar"].includes(appPath)) return "legacy-tombstone";
   if (appPath === "/parent-dashboard") return "parent";
   if (appPath === "/curriculum") return "curriculum";
-  if (appPath === "/course-zero") return "course-zero";
-  if (appPath === "/first-lesson") return "first-lesson";
   if (appPath === "/learning-session") return "learning-session";
   if (appPath === "/tutor") return "tutor";
   if (appPath === "/admin/commercialization") return "commercialization";
@@ -65,7 +61,7 @@ export function routeFromPath(pathname: string): Route {
   return "legacy-tombstone";
 }
 
-const paths: Record<Exclude<Route, "legacy-tombstone" | "redirect-home">, string> = { home: "/", practice: "/practice", parent: "/parent-dashboard", curriculum: "/curriculum", "course-zero": "/course-zero", "first-lesson": "/first-lesson", "learning-session": "/learning-session", tutor: "/tutor", me: "/me", commercialization: "/admin/commercialization", diagnostics: "/diagnostics" };
+const paths: Record<Exclude<Route, "legacy-tombstone" | "redirect-home">, string> = { home: "/", practice: "/practice", parent: "/parent-dashboard", curriculum: "/curriculum", "learning-session": "/learning-session", tutor: "/tutor", me: "/me", commercialization: "/admin/commercialization", diagnostics: "/diagnostics" };
 
 export function isCanonicalHomePath(pathname: string): boolean {
   return appPathAt(pathname) === "/";
@@ -300,7 +296,7 @@ export function AppShell() {
         <button className="brand" onClick={() => navigate("home")} aria-label="TongXuan home">
           <img src={appLogoIcon} alt="TongXuan Logo" className="brand-logo-img" />
           <div className="brand-title-box">
-            <strong className="brand-title-main">童軒中文</strong>
+            <strong className="brand-title-main">桐軒中文</strong>
             <small className="brand-title-sub">TONGXUAN CHINESE</small>
           </div>
         </button>
@@ -360,8 +356,6 @@ export function AppShell() {
         {route === "practice" && <div className="app-page practice-page" key={activeProfile.key}><PageHeading kicker={t("practice")} title={t("practiceTitle")} subtitle={t("practiceHint")} icon={<Sparkles/>}/><LearningPage activeChildId={activeChild?.id ?? null} /></div>}
         {route === "parent" && <ParentAreaPage parentSession={parentSession} onSignedIn={onParentSignedIn} onSignOut={() => void onParentSignOut()} onOpenSettings={() => navigate("me")} />}
         {route === "curriculum" && <CurriculumPage onOpenCourseZero={() => navigate("home")} />}
-        {route === "course-zero" && <ChildPortalPage key={activeChild?.id ?? "unresolved-child"} activeChildId={activeChild?.id ?? null} activeChildName={childName} onOpenCurriculum={() => navigate("curriculum")} onOpenCourseZero={() => navigate("home")} />}
-        {route === "first-lesson" && <LessonPlayerPage lessonId="book1-l01" activeChildId={activeChild?.id ?? null} initialMode="LEARN" onBack={() => { setLearningSessionMode("LEARN"); navigate("home"); }} />}
         {route === "tutor" && <div className="app-page"><TutorPage /></div>}
         {route === "commercialization" && <div className="app-page"><CommercializationPage /></div>}
         {route === "diagnostics" && <div className="app-page"><DiagnosticsPage /></div>}

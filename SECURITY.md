@@ -1,6 +1,6 @@
 # 隱私與安全性政策 (Security & Privacy Policy)
 
-**TongXuan Chinese（童軒中文）** 是一套專為幼童與家庭設計的學習系統。我們深知兒少隱私的重要性，遵循 COPPA / GDPR-K 隱私原則。
+**TongXuan Chinese（桐軒中文）** 是一套專為幼童與家庭設計的學習系統。我們深知兒少隱私的重要性，遵循 COPPA / GDPR-K 隱私原則。
 
 ---
 

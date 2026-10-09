@@ -150,12 +150,12 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     morning: "早安",
     weekN: "第 {n} 週",
     menu: "選單",
-    brandTitle: "童軒中文",
+    brandTitle: "桐軒中文",
     brandEnSubtitle: "TONGXUAN",
     levelProgressSub: "🎯 第 {n} 關 · 挑戰中 🔄",
     pinkyPactChip: "🤙 打勾勾約定：{current}/{total} 天",
     myAchievements: "我的成就",
-    draftContentNotice: "下方關卡是童軒自編示範內容，尚未納入官方課程。",
+    draftContentNotice: "下方關卡是桐軒自編示範內容，尚未納入官方課程。",
     openVerifiedCurriculum: "查看官方課程",
     startValidatedSession: "開始今日學習",
     sessionProfileMissing: "找不到這位學習者的正式課程檔案，請家長先從課程頁新增相同名稱的學習者。",
@@ -200,7 +200,7 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     playSentence: "播放單句",
     repeatSentence: "🎙️ 復誦跟讀",
     doneRecording: "⏹️ 完成跟讀",
-    communityFooterText: "☕ 童軒中文為免費開源專案 · 歡迎回饋使用體驗與建議！",
+    communityFooterText: "☕ 桐軒中文為免費開源專案 · 歡迎回饋使用體驗與建議！",
     betaDisclaimerLink: "⚠️ 目前為公開測試版 (Beta) · 點此查看《免責聲明與隱私條款》",
     feedbackBtn: "問題與建議回報",
     sponsorBtn: "請作者喝咖啡",
@@ -263,7 +263,7 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     parentPlanLabel: "🎯 每日學習量與目標時長",
     parentCurriculumLabel: "📚 僑委會主線教材冊次",
     saveSettings: "儲存學習設定",
-    aboutModalTitle: "童軒中文 · 關於、藍圖與使用條款",
+    aboutModalTitle: "桐軒中文 · 關於、藍圖與使用條款",
     aboutModalSub: "專為海外兒童與初學者量身打造 · 溫暖、趣味、系統化的華語全景學習平臺",
     tabAbout: "🌟 理念與特色",
     tabRoadmap: "🗺️ 全景進階路線與檢定目標",
@@ -273,8 +273,8 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     aboutFeat1Desc: "提示會依孩子的書寫狀態逐步減少，並在需要時安排針對性重試。",
     aboutFeat2Title: "繁簡注拼雙軌並進",
     aboutFeat2Desc: "同步支援臺灣注音符號（ㄅㄆㄇ）與國際漢語拼音（pīnyīn），繁簡同字或異字自動對照，無縫切換。",
-    aboutFeat3Title: "童軒自編示範課程",
-    aboutFeat3Desc: "本頁保留的關卡與生字是童軒自編示範；已驗證的官方課程範圍請查看學習地圖。",
+    aboutFeat3Title: "桐軒自編示範課程",
+    aboutFeat3Desc: "本頁保留的關卡與生字是桐軒自編示範；已驗證的官方課程範圍請查看學習地圖。",
     aboutFeat4Title: "正向激勵與護眼承諾",
     aboutFeat4Desc: "無噪音式手遊誘導，透過星星打卡與週日開箱微習慣，並提供低藍光深色護眼模式呵護視力。",
     disclaimerTitle: "📜 公開測試版 (Beta) 免責聲明與隱私條款",
@@ -286,13 +286,13 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     disclaimerPoint3Desc: "本系統為個人開發之自主自學輔助工具，非教育部或官方認證之正式學校機構。本系統不對任何使用者的識字速度、發音標準度、考試成績或特定學習結果提供任何形式之保證。",
     disclaimerPoint4Title: "☕ 開源與贊助性質：",
     disclaimerPoint4Desc: "本專案程式碼採 MIT 授權開源發布。請作者喝咖啡（Sponsor）屬於個人自願贊助與鼓勵性質，不構成任何商業契約、付費訂閱服務或專屬客服義務。",
-    disclaimerFooter: "童軒中文恪守兒少隱私安全規範 · 感謝所有測試家長與教育工作者的理解與支持",
+    disclaimerFooter: "桐軒中文恪守兒少隱私安全規範 · 感謝所有測試家長與教育工作者的理解與支持",
     officialCurriculumBadge: "官方課綱 · 授權審查中",
     curriculumObjectives: "本課學習目標",
     practiceTargetsLabel: "核心練習重點",
     domainsLabel: "涵蓋學習領域",
-    extraPracticeSectionTitle: "童軒自編示範練習區",
-    extraPracticeSectionNote: "此區為童軒早期自編原型內容，供延伸體驗與筆順演練，非僑委會官方教材。",
+    extraPracticeSectionTitle: "桐軒自編示範練習區",
+    extraPracticeSectionNote: "此區為桐軒早期自編原型內容，供延伸體驗與筆順演練，非僑委會官方教材。",
     listeningDomain: "聽力",
     speakingDomain: "口說",
     recognitionDomain: "識字",
@@ -645,12 +645,12 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     morning: "おはよう",
     weekN: "第 {n} 週",
     menu: "メニュー",
-    brandTitle: "童軒中国語",
+    brandTitle: "桐軒中国語",
     brandEnSubtitle: "TONGXUAN",
     levelProgressSub: "🎯 第 {n} レベル · 挑戦中 🔄",
     pinkyPactChip: "🤙 指切り約束：{current}/{total} 日",
     myAchievements: "実績・バッジ",
-    draftContentNotice: "以下のレベルは童軒が作成したサンプルで、公式教材として検証されていません。",
+    draftContentNotice: "以下のレベルは桐軒が作成したサンプルで、公式教材として検証されていません。",
     openVerifiedCurriculum: "公式コースを見る",
     startValidatedSession: "今日の学習を始める",
     sessionProfileMissing: "この学習者に一致する公式学習プロフィールがありません。保護者の方はコース画面で同じ名前の学習者を追加してください。",
@@ -695,7 +695,7 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     playSentence: "再生",
     repeatSentence: "🎙️ シャドーイング",
     doneRecording: "⏹️ 完了",
-    communityFooterText: "☕ 童軒中国語は無料のオープンソースです · ご意見やフィードバックを歓迎します！",
+    communityFooterText: "☕ 桐軒中国語は無料のオープンソースです · ご意見やフィードバックを歓迎します！",
     betaDisclaimerLink: "⚠️ 現在オープンベータ版です · 免責事項とプライバシーポリシーを見る",
     feedbackBtn: "ご意見・問題報告",
     sponsorBtn: "開発者にコーヒーを奢る",
@@ -758,7 +758,7 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     parentPlanLabel: "🎯 毎日の学習時間",
     parentCurriculumLabel: "📚 教材コース",
     saveSettings: "設定を保存",
-    aboutModalTitle: "童軒中国語 · 概要・ロードマップ・利用規約",
+    aboutModalTitle: "桐軒中国語 · 概要・ロードマップ・利用規約",
     aboutModalSub: "海外の子供や初心者のために作られた、体系的で楽しい中国語学習プラットフォーム",
     tabAbout: "🌟 理念と特徴",
     tabRoadmap: "🗺️ ロードマップと検定目標",
@@ -768,8 +768,8 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     aboutFeat1Desc: "学習者の書写状況に合わせてヒントを減らし、必要な字だけ再練習します。",
     aboutFeat2Title: "注音・ピンインのデュアル対応",
     aboutFeat2Desc: "台湾注音（ボポモフォ）と国際漢語ピンインの両方に対応し、繁体・簡体をシームレスに学習。",
-    aboutFeat3Title: "童軒作成の学習サンプル",
-    aboutFeat3Desc: "このページのレベルと漢字は童軒が作成したサンプルです。検証済みの公式コースは学習マップをご覧ください。",
+    aboutFeat3Title: "桐軒作成の学習サンプル",
+    aboutFeat3Desc: "このページのレベルと漢字は桐軒が作成したサンプルです。検証済みの公式コースは学習マップをご覧ください。",
     aboutFeat4Title: "子供に安心な学習環境",
     aboutFeat4Desc: "広告や過度なゲーム要素を排除し、目に優しいダークモードで視力を保護します。",
     disclaimerTitle: "📜 オープンベータ版 免責事項とプライバシーポリシー",
@@ -781,7 +781,7 @@ const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     disclaimerPoint3Desc: "本システムは個人の自主学習補助ツールです。公式の教育機関ではなく、学習進度や試験結果を保証するものではありません。",
     disclaimerPoint4Title: "☕ オープンソースとサポート：",
     disclaimerPoint4Desc: "本コードはMITライセンスで公開されています。Buy Me a Coffeeでのご支援は自発的な寄付であり、商用契約や個別サポートを保証するものではありません。",
-    disclaimerFooter: "童軒中国語は青少年のプライバシーと安全を遵守します · ご理解とご協力に感謝いたします",
+    disclaimerFooter: "桐軒中国語は青少年のプライバシーと安全を遵守します · ご理解とご協力に感謝いたします",
     officialCurriculumBadge: "公式カリキュラム · 許諾審査中",
     curriculumObjectives: "学習目標",
     practiceTargetsLabel: "練習のポイント",
@@ -2172,7 +2172,7 @@ export function ChildPortalPage({
     localStorage.setItem("tongxuan_active_learner_id", newLearner.id);
     setSelectedLevelNum(1);
     setLoginModalOpen(false);
-    playSound(`歡迎來到童軒中文，${newLearner.name}！開始我們的華語探索之旅吧！`);
+    playSound(`歡迎來到桐軒中文，${newLearner.name}！開始我們的華語探索之旅吧！`);
   };
 
   // 家長在後台贈送點數給孩子
@@ -3152,7 +3152,7 @@ export function ChildPortalPage({
             </div>
             <div className="sponsor-actions-row">
               <a
-                href="mailto:webber0612@gmail.com?subject=【童軒中文】問題回報與改進建議&body=您好！我在使用童軒中文時有以下反饋：%0D%0A%0D%0A1. 使用設備（iPad/電腦/手機）：%0D%0A2. 遇到的問題或建議：%0D%0A"
+                href="mailto:webber0612@gmail.com?subject=【桐軒中文】問題回報與改進建議&body=您好！我在使用桐軒中文時有以下反饋：%0D%0A%0D%0A1. 使用設備（iPad/電腦/手機）：%0D%0A2. 遇到的問題或建議：%0D%0A"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="sponsor-feedback-btn"
@@ -4940,7 +4940,7 @@ function ParentLockModal({
           <div className="parent-dashboard-header">
             <div className="parent-dash-badge">👨‍👩‍👧</div>
             <div>
-              <h2>童軒中文 · 家長管理與學習監督後台</h2>
+              <h2>桐軒中文 · 家長管理與學習監督後台</h2>
               <p className="gate-desc">
                 在此設定每日學習步調、贈送點數獎勵、監督孩子學習進度，並管理特權獎勵品庫。
               </p>
@@ -6009,7 +6009,7 @@ function WelcomeOnboardingModal({
       langLabel: "介面語言：",
       step1: "學習角色",
       step2: "字體偏好",
-      heroTitle: "歡迎來到 童軒中文！",
+      heroTitle: "歡迎來到 桐軒中文！",
       heroDesc: "為寶貝建立專屬學習身分，開啟溫暖有趣的漢字探索之旅！",
       nameLabel: "小朋友的暱稱或姓名",
       namePlaceholder: "例如：安安、小明、亮亮",
@@ -6018,7 +6018,7 @@ function WelcomeOnboardingModal({
       handRight: "右手寫字",
       handLeft: "左手寫字",
       step2Title: "選擇偏好的學習字體與標音",
-      step2Desc: "童軒深度支援繁簡雙軌！簡中用戶可透過雙軌對照輕鬆掌握繁體字形與筆畫。",
+      step2Desc: "桐軒深度支援繁簡雙軌！簡中用戶可透過雙軌對照輕鬆掌握繁體字形與筆畫。",
       dualTag: "✨ 推薦雙軌",
       dualTitle: "繁體注音 + 簡體拼音（雙軌模式）",
       dualDesc: "同步掌握繁體字形結構之美與簡體常用規範。簡中用戶能藉由對照快速認寫繁體！",
@@ -6361,7 +6361,7 @@ function DraftCurriculumSamplesModal({
         <div className="curriculum-hub-header">
           <div className="hub-badge-icon">📚</div>
           <div>
-            <h2>童軒自編示範素材（內部草稿）</h2>
+            <h2>桐軒自編示範素材（內部草稿）</h2>
             <p className="hub-sub">以下舊素材未逐課對照官方教材，僅保留作為內部草稿，不代表官方課程範圍。</p>
           </div>
         </div>
@@ -6983,7 +6983,7 @@ function RewardsStoreModal({
 }
 
 /* ========================================================
-   5. 關於童軒中文、版權宣告與檢定進階路線 (About & Roadmap)
+   5. 關於桐軒中文、版權宣告與檢定進階路線 (About & Roadmap)
    ======================================================== */
 function AboutTongXuanModal({
   initialTab = "about",
@@ -7097,7 +7097,7 @@ function AboutTongXuanModal({
                   <span className="stage-age">小學 1~2 年級</span>
                 </div>
                 <div className="stage-body">
-                  <h4>📖 基礎字詞：童軒舊版階段草稿</h4>
+                  <h4>📖 基礎字詞：桐軒舊版階段草稿</h4>
                   <p>日常生活會話、看圖說話、標準田字格筆順書寫、基礎短句拼讀與朗讀評測。</p>
                   <div className="exam-target-chips">
                     <span className="exam-chip">🎯 兒童華檢 CCCC 成長級</span>
@@ -7114,7 +7114,7 @@ function AboutTongXuanModal({
                   <span className="stage-age">小學 3~4 年級</span>
                 </div>
                 <div className="stage-body">
-                  <h4>🚀 獨立閱讀：童軒舊版階段草稿</h4>
+                  <h4>🚀 獨立閱讀：桐軒舊版階段草稿</h4>
                   <p>寓言童話、成語故事典故、段落敘事寫作、繁簡異體對照精熟與流利朗讀。</p>
                   <div className="exam-target-chips">
                     <span className="exam-chip">🎯 兒童華檢 CCCC 茁壯級</span>
@@ -7131,7 +7131,7 @@ function AboutTongXuanModal({
                   <span className="stage-age">小學 5~6 年級</span>
                 </div>
                 <div className="stage-body">
-                  <h4>🌳 文化深讀：童軒舊版階段草稿</h4>
+                  <h4>🌳 文化深讀：桐軒舊版階段草稿</h4>
                   <p>歷史地理、社會文化、說明文與邏輯表達、成語深讀與主題式寫作。</p>
                   <div className="exam-target-chips">
                     <span className="exam-chip">🎯 TOCFL Band B1 (進階級)</span>
@@ -7147,7 +7147,7 @@ function AboutTongXuanModal({
                   <span className="stage-age">中學 7~12 年級</span>
                 </div>
                 <div className="stage-body">
-                  <h4>🎓 學術中文與高階檢定專題：童軒舊版階段草稿</h4>
+                  <h4>🎓 學術中文與高階檢定專題：桐軒舊版階段草稿</h4>
                   <p>文言文閱讀、時事評論、AP Chinese & Culture 專題備考、IB Chinese 文學解析。</p>
                   <div className="exam-target-chips">
                     <span className="exam-chip gold">⭐ AP Chinese (滿分 5 分目標)</span>
@@ -7168,7 +7168,7 @@ function AboutTongXuanModal({
               <h3>⚖️ 著作權出處與資源授權聲明</h3>
               <ul className="legal-points-list">
                 <li>
-                  <strong>童軒自編示範內容：</strong>
+                  <strong>桐軒自編示範內容：</strong>
                   這些舊關卡與生字資料是內部草稿，未逐課驗證為僑務委員會（OCAC）《學華語向前走》教材。官方課程路線與目標請查看學習地圖中的已驗證切片。
                 </li>
                 <li>
@@ -7185,7 +7185,7 @@ function AboutTongXuanModal({
                 </li>
               </ul>
               <div className="legal-footer-note">
-                <span>© 2026 童軒中文 (TongXuan Chinese) · 陪伴每一位孩子探索漢字之美</span>
+                <span>© 2026 桐軒中文 (TongXuan Chinese) · 陪伴每一位孩子探索漢字之美</span>
               </div>
             </div>
           </div>

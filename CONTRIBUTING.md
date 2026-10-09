@@ -1,6 +1,6 @@
 # 專案參與與反饋指引 (Contribution Guidelines)
 
-感謝您關注 **TongXuan Chinese（童軒中文）**！
+感謝您關注 **TongXuan Chinese（桐軒中文）**！
 
 本專案旨在為學齡前後的幼童與海外家庭提供一套溫暖、安全、專注且符合認知規律的中文自學系統。
 

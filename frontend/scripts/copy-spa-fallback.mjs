@@ -11,8 +11,6 @@ const routes = [
   "parent-dashboard",
   "practice",
   "curriculum",
-  "course-zero",
-  "first-lesson",
   "learning-session",
   "tutor",
   "admin/commercialization",

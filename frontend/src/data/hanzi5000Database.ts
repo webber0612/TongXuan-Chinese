@@ -68,7 +68,7 @@ const LEGACY_HANZI_DRAFT_ROWS: Omit<HanziEntry, "sourceKind" | "sourceName" | "s
   { id: 37, char: "大", charHans: "大", zhuyin: "ㄉㄚˋ", pinyin: "dà", radical: "大", strokes: 3, level: 2, meaning: "巨大、長大", meaningEn: "big; large", frequencyRank: 37, commonWords: ["大人", "大家", "長大"] },
   { id: 38, char: "小", charHans: "小", zhuyin: "ㄒㄧㄠˇ", pinyin: "xiǎo", radical: "小", strokes: 3, level: 2, meaning: "微小、幼小", meaningEn: "small; little", frequencyRank: 38, commonWords: ["小孩", "小手", "小心"] },
   { id: 39, char: "中", charHans: "中", zhuyin: "ㄓㄨㄥ", pinyin: "zhōng", radical: "丨", strokes: 4, level: 2, meaning: "中心、中文", meaningEn: "middle; Chinese", frequencyRank: 39, commonWords: ["中文", "中間", "心中"] },
-  { id: 40, char: "文", charHans: "文", zhuyin: "ㄨㄣˊ", pinyin: "wén", radical: "文", strokes: 4, level: 2, meaning: "文字、文化", meaningEn: "culture; writing", frequencyRank: 40, commonWords: ["文章", "文化", "童軒"] },
+  { id: 40, char: "文", charHans: "文", zhuyin: "ㄨㄣˊ", pinyin: "wén", radical: "文", strokes: 4, level: 2, meaning: "文字、文化", meaningEn: "culture; writing", frequencyRank: 40, commonWords: ["文章", "文化", "桐軒"] },
   { id: 41, char: "爸", charHans: "爸", zhuyin: "ㄅㄚˋ", pinyin: "bà", radical: "父", strokes: 8, level: 2, meaning: "爸爸、父親", meaningEn: "father; dad", frequencyRank: 41, commonWords: ["爸爸", "老爸"] },
   { id: 42, char: "媽", charHans: "妈", zhuyin: "ㄇㄚ", pinyin: "mā", radical: "女", strokes: 13, strokesHans: 6, level: 2, meaning: "媽媽、母親", meaningEn: "mother; mom", frequencyRank: 42, commonWords: ["媽媽", "老媽"] },
   { id: 43, char: "學", charHans: "学", zhuyin: "ㄒㄩㄝˊ", pinyin: "xué", radical: "子", strokes: 16, strokesHans: 8, level: 2, meaning: "學習、學校", meaningEn: "learn; study", frequencyRank: 43, commonWords: ["學生", "學校", "自學"] },

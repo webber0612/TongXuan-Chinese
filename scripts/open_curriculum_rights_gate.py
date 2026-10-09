@@ -87,8 +87,6 @@ SCOPE_FILES = {
     "docs/learning-path-v2.md",
     "docs/learning-session-policy-v1.md",
     "frontend/src/pages/ChildPortalPage.tsx",
-    "frontend/src/pages/CourseZeroPage.tsx",
-    "frontend/src/pages/FirstLessonPage.tsx",
     "frontend/src/pages/LearningPage.tsx",
     "frontend/src/pages/LessonPlayerPage.tsx",
     "frontend/src/components/PlacementStatus.tsx",
@@ -257,6 +255,29 @@ def seed_inventory_template() -> dict[str, Any]:
         },
         "entries": entries,
     }
+
+
+def sync_inventory(audit: Mapping[str, Any]) -> dict[str, Any]:
+    """Reconcile the inventory with the tracked tree without changing any classification.
+
+    Existing entries keep their classification, sources, evidence, and reason.
+    Newly tracked candidates are added blocked-by-default; entries whose path is
+    no longer a tracked candidate are dropped. Digests are refreshed for all.
+    """
+    existing = {
+        entry["path"]: entry
+        for entry in audit.get("entries", [])
+        if isinstance(entry, dict) and isinstance(entry.get("path"), str)
+    }
+    template = seed_inventory_template()
+    entries = []
+    for seeded in template["entries"]:
+        kept = existing.get(seeded["path"])
+        if kept is None:
+            entries.append(seeded)
+            continue
+        entries.append({**kept, "digestMode": seeded["digestMode"], "sha256": seeded["sha256"], "sizeBytes": seeded["sizeBytes"]})
+    return {**audit, "scope": template["scope"], "entries": entries}
 
 
 def validate_inventory(audit: Mapping[str, Any]) -> list[str]:
@@ -481,6 +502,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--check", action="store_true", help="validate registry, tracked-path audit, and all tracked Open Curriculum packs")
     parser.add_argument("--seed-inventory", action="store_true", help="write a blocked-by-default inventory template")
     parser.add_argument("--refresh-digests", action="store_true", help="refresh digest mode, SHA-256, and canonical size while preserving classifications")
+    parser.add_argument("--sync-inventory", action="store_true", help="add new candidates blocked-by-default, drop untracked paths, and refresh digests while preserving classifications")
     parser.add_argument("--publishable-path", action="append", default=[], help="repo-relative path proposed for a public curriculum artifact")
     parser.add_argument("--publishable-pack", type=Path, help="validate a PUBLISHABLE pack and require tracked path clearance")
     args = parser.parse_args(argv)
@@ -488,6 +510,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.seed_inventory:
         AUDIT_PATH.write_text(json.dumps(seed_inventory_template(), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         print(f"Wrote blocked-by-default inventory template: {AUDIT_PATH.relative_to(ROOT)}")
+        return 0
+
+    if args.sync_inventory:
+        synced = sync_inventory(_read_json(AUDIT_PATH))
+        AUDIT_PATH.write_text(json.dumps(synced, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        print(f"Synchronized inventory with tracked candidates: {AUDIT_PATH.relative_to(ROOT)}")
         return 0
 
     if args.refresh_digests:

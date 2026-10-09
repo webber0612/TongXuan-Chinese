@@ -27,12 +27,11 @@ The canonical design skill is the project-local `better-web-ui` installation und
 
 1. Read `.better-web-ui.md` and the relevant skill.
 2. Identify the child task and the single primary action for the screen.
-3. Produce at least three materially different layout/style directions in a short design note before implementing a substantial redesign. Record the selected direction and why it fits the task.
-4. Establish hierarchy, spacing, typography, color, radius, elevation, and motion tokens before adding decorative effects.
-5. Implement the smallest functional slice. Do not imply a feature is working when it is only a visual placeholder.
-6. Verify the result through the canonical `/` route and at a narrow viewport. Check keyboard focus, reduced motion, touch/mouse drag, and overflow. Legacy URLs are not visual verification targets.
-7. Run `npm run test` and `npm run build` from `frontend/` after UI changes.
-8. Perform a separate visual/a11y review using `.agents/roles/frontend-auditor.md`. The implementer may not approve their own visual result without this review checklist.
+3. Establish hierarchy, spacing, typography, color, radius, elevation, and motion tokens before adding decorative effects.
+4. Implement the smallest functional slice. Do not imply a feature is working when it is only a visual placeholder.
+5. Verify the result through the canonical `/` route and at a narrow viewport. Check keyboard focus, reduced motion, touch/mouse drag, and overflow. Legacy URLs are not visual verification targets.
+6. Run `npm run test` and `npm run build` from `frontend/` after UI changes.
+7. Perform a separate visual/a11y review using `.agents/roles/frontend-auditor.md`. The implementer may not approve their own visual result without this review checklist.
 
 ## Information architecture
 

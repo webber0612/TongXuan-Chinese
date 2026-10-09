@@ -22,7 +22,7 @@ export function logVersionInfo(): void {
     "background: #e6f4f1; color: #205c53; padding: 3px 7px; border-radius: 0 4px 4px 0; font-size: 11px;";
 
   console.log(
-    `%c同軒中文 TongXuan%cv${APP_VERSION} #${COMMIT_HASH}%c${BUILD_DATE}`,
+    `%c桐軒中文 TongXuan%cv${APP_VERSION} #${COMMIT_HASH}%c${BUILD_DATE}`,
     brandStyle,
     versionStyle,
     dateStyle

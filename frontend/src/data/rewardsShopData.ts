@@ -1,4 +1,4 @@
-// 童軒中文 · 獎勵品庫與家長核銷帳本 (Rewards Store & Voucher Ledger)
+// 桐軒中文 · 獎勵品庫與家長核銷帳本 (Rewards Store & Voucher Ledger)
 
 export type RewardCategory = "privilege" | "time" | "food" | "adventure" | "wish" | "stationery" | "badge" | "physical";
 

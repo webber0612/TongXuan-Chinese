@@ -1,3 +1,5 @@
+> **SUPERSEDED 2026-10-10.** The "Neo Study" direction below was replaced; see `docs/project-handoff.md` and `docs/learning-loop-v1.md`. Kept in place only because the rights gate tracks this path.
+
 # TongXuan 前端重構計畫
 
 ## 目標
