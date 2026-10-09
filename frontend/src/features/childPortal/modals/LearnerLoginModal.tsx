@@ -52,7 +52,7 @@ export function LearnerLoginModal({
       scriptMode: newScript,
       phoneticAssist: newPhonetic,
       handMode: newHand,
-      points: { coins: 100, stars: 0 },
+      points: { coins: 0, stars: 0 },
       levelsProgress: getLearnerLevelsProgress(),
       redemptions: [],
       totalMinutesLearned: 0,

@@ -3,7 +3,7 @@
 > 這份文件只記錄**已驗證的現況**。每一句都要能用指令或實測重現；做不到就不要寫進來。
 > 歷史紀錄在 `docs/archive/project-handoff-until-2026-10-09.md`，內容已過期，不可當作現況依據。
 
-最後驗證：2026-10-10，分支 `rebuild/2026-10`。
+最後驗證：2026-10-10，分支 `rebuild/2026-10`。前端 199 個測試通過、建置通過；後端 335 個測試通過。
 
 ## 產品定位
 
@@ -28,13 +28,18 @@
 frontend/src/main.tsx → frontend/src/AppShell.tsx
 ```
 
-| 路由 | 用途 | 沒有後端時 |
+前端有兩種執行模式，由 `frontend/src/lib/runtimeMode.ts` 判斷：
+
+- **static**（正式產品）：沒有設定 `VITE_API_BASE`。首頁是 `features/home/` 的新版畫面。
+- **backend**：有設定 `VITE_API_BASE`，或在測試中。首頁是 `features/childPortal/LegacyHomeView.tsx`，由後端的每日佇列驅動。既有的 170 多個前端測試驗證的是這個模式。
+
+| 路由 | static 模式 | backend 模式 |
 |---|---|---|
-| `/` | 兒童首頁 | 可用 |
-| `/learning-session` | 課程播放器（9 步） | 可用（本機預覽模式） |
-| `/parent-dashboard` | 家長專區、Google Drive 同步 | 同步可用；後端報表顯示離線提示 |
-| `/me` | 設定 | 語言設定可用；孩子清單依賴後端 |
-| `/practice`、`/curriculum`、`/tutor`、`/diagnostics`、`/admin/commercialization` | 後端時期的工具頁 | 大多無資料 |
+| `/` | 新版首頁：今日關卡、路線、三個練習入口、右上角選單 | 舊版首頁 |
+| `/learning-session` | 會話課播放器（本機模式，完成狀態存 localStorage） | 後端學習流程 |
+| `/parent-dashboard`、`/me`、`/practice`、`/curriculum`、`/tutor`、`/diagnostics`、`/admin/commercialization` | 顯示「此路徑已停用」並提供回首頁按鈕 | 原有頁面 |
+
+static 模式的家長功能在首頁選單的「家長專區」（PIN 保護），設定也在同一個選單裡。
 
 修改 UI 前仍須依 `docs/frontend-architecture.md` 確認目標在正式 import 鏈上。
 
@@ -73,8 +78,16 @@ python scripts/open_curriculum_rights_gate.py --sync-inventory
 |---|---|---|
 | 0 | 備份未提交的工作、定名 | 完成 |
 | 1 | 修復 CI、清除死路由、改寫換手文件 | 完成 |
-| 2 | 學習規則定案（`docs/learning-loop-v1.md`） | 進行中 |
-| 3 | 前端結構重構（畫面不變） | 未開始 |
-| 4 | UX 翻新，完成後由擁有者審查畫面 | 未開始 |
+| 2 | 學習規則定案（`docs/learning-loop-v1.md`） | 暫定版完成，待擁有者審查 |
+| 3 | 前端結構重構（畫面不變） | 完成；仍有 4 個檔案超過 800 行 |
+| 4 | UX 翻新 | 首頁、選單、會話課入口完成，待擁有者審查畫面 |
 | 5 | 學習規則實作為前端模組 | 未開始 |
 | 6 | 學習內容擴充 | 未開始 |
+
+### 第 4 階段還沒做的畫面
+
+教室（`InteractiveClassroom`）、會話課播放器、新手引導、獎勵舖、成就、學習者切換、家長專區彈窗、階段檢核測驗。它們功能正常，但外觀仍是舊樣式，與新首頁不一致。
+
+### 仍超過 800 行的檔案
+
+`pages/LessonPlayerPage.tsx`（約 2,660）、`features/childPortal/InteractiveClassroom.tsx`（約 1,210）、`features/childPortal/modals/ParentLockModal.tsx`（約 1,050）、`features/childPortal/uiText.ts`（約 990，純文字表）。

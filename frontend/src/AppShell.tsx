@@ -9,6 +9,8 @@ import { GoogleParentSignIn } from "./components/GoogleParentSignIn";
 import { GoogleDriveSyncCard } from "./components/GoogleDriveSyncCard";
 import { PlacementStatus } from "./components/PlacementStatus";
 import { parentAuthCopy } from "./lib/parentAuthCopy";
+import { markDialogueDone } from "./features/home/dialogueLessons";
+import { detectRuntimeMode } from "./lib/runtimeMode";
 import { APP_VERSION, COMMIT_HASH, BUILD_DATE } from "./version";
 import appLogoIcon from "./assets/app-logo-icon.png";
 
@@ -40,6 +42,8 @@ function appPathAt(pathname: string): string {
     ? normalized.slice(appBase.length) || "/"
     : normalized;
 }
+
+const BACKEND_ONLY_ROUTES: ReadonlySet<Route> = new Set<Route>(["practice", "parent", "curriculum", "tutor", "me", "commercialization", "diagnostics"]);
 
 export function canonicalRedirectPath(pathname: string): string | null {
   return appPathAt(pathname) === "/kids" ? appBaseAt(pathname) : null;
@@ -74,7 +78,7 @@ function pathAtAppBase(path: string): string {
 
 export function AppShell() {
   const { t, language, setLanguage } = useLocale();
-  const [route, setRoute] = useState<Route>(() => routeFromPath(window.location.pathname));
+  const [requestedRoute, setRoute] = useState<Route>(() => routeFromPath(window.location.pathname));
   const [profiles, setProfiles] = useState<Profile[]>(() => loadProfiles());
   const [activeKey, setActiveKey] = useState(() => localStorage.getItem(ACTIVE_PROFILE_STORAGE_KEY) ?? "child-a");
   const [learningSessionLessonId, setLearningSessionLessonId] = useState<string | undefined>(undefined);
@@ -287,6 +291,8 @@ export function AppShell() {
     { id: "me" as Route, label: t("mySpace"), icon: UserRound },
   ], [activeProfile.role, language]);
 
+  // Without a backend these pages have nothing to show; their settings live in the home menu instead.
+  const route: Route = detectRuntimeMode() === "static" && BACKEND_ONLY_ROUTES.has(requestedRoute) ? "legacy-tombstone" : requestedRoute;
   const isChildPortal = route === "home" || route === "legacy-tombstone" || route === "redirect-home" || route === "learning-session";
   const showSessionEntry = isCanonicalHomePath(window.location.pathname);
 
@@ -345,14 +351,14 @@ export function AppShell() {
         {childrenError && !isChildPortal && <div className="offline-strip error-strip" role="alert">{childrenError} <button className="button button-text" onClick={() => void loadChildren()}>{t("retry")}</button></div>}
         {route === "legacy-tombstone" && <main className="app-page"><PageHeading kicker={t("today")} title={t("legacyRouteTitle")} subtitle={t("legacyRouteDescription")} icon={<BookOpen/>}/><button className="button button-primary" onClick={() => navigate("home")}><House size={18}/>{t("today")}</button></main>}
         <Suspense fallback={<AppLoading label={t("loading")} />}>
-        {route === "home" && <ChildPortalPage key={activeChild?.id ?? "unresolved-child"} activeChildId={activeChild?.id ?? null} activeChildName={childName} onOpenCurriculum={() => navigate("curriculum")} onOpenCourseZero={() => navigate("home")} onStartLearningSession={showSessionEntry ? (requestedChildId, targetLessonId, mode) => {
+        {route === "home" && <ChildPortalPage key={activeChild?.id ?? "unresolved-child"} activeChildId={activeChild?.id ?? null} activeChildName={childName} onOpenCurriculum={() => navigate("curriculum")} onOpenCourseZero={() => navigate("home")} onOpenDialogueLesson={(lessonId) => { setLearningSessionLessonId(lessonId); setLearningSessionMode("LEARN"); navigate("learning-session"); }} onStartLearningSession={showSessionEntry ? (requestedChildId, targetLessonId, mode) => {
           if (!isValidBackendChildId(requestedChildId) || !activeChild || requestedChildId !== activeChild.id) return false;
           setLearningSessionLessonId(targetLessonId);
           setLearningSessionMode(mode);
           navigate("learning-session");
           return true;
         } : undefined} />}
-        {route === "learning-session" && <LessonPlayerPage lessonId={learningSessionLessonId} activeChildId={activeChild?.id ?? null} initialMode={learningSessionMode} onBack={() => { setLearningSessionMode("LEARN"); navigate("home"); }} />}
+        {route === "learning-session" && <LessonPlayerPage lessonId={learningSessionLessonId} activeChildId={activeChild?.id ?? null} initialMode={learningSessionMode} onCompleteLesson={(finishedLessonId) => { if (!activeChild) markDialogueDone(localStorage.getItem("tongxuan_active_learner_id") || "learner-1", finishedLessonId); }} onBack={() => { setLearningSessionMode("LEARN"); navigate("home"); }} />}
         {route === "practice" && <div className="app-page practice-page" key={activeProfile.key}><PageHeading kicker={t("practice")} title={t("practiceTitle")} subtitle={t("practiceHint")} icon={<Sparkles/>}/><LearningPage activeChildId={activeChild?.id ?? null} /></div>}
         {route === "parent" && <ParentAreaPage parentSession={parentSession} onSignedIn={onParentSignedIn} onSignOut={() => void onParentSignOut()} onOpenSettings={() => navigate("me")} />}
         {route === "curriculum" && <CurriculumPage onOpenCourseZero={() => navigate("home")} />}

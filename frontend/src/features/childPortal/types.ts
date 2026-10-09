@@ -138,5 +138,7 @@ export interface ChildLearner {
   totalMinutesLearned: number;
   streakDays: number;
   activePinkyPromise?: PinkyPromisePact | null;
+  /** Local day (YYYY-MM-DD) of the last finished level; drives the day-based streak. */
+  lastActiveDay?: string | null;
 }
 
