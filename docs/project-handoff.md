@@ -1,13 +1,35 @@
 # ChatGPT ↔ Codex Project Handoff
 
 
-> ## ACTIVE HANDOFF SNAPSHOT — 2026-09-28
+> ## ACTIVE HANDOFF SNAPSHOT — 2026-10-10 (v0.2.4 — Commit e7f0794)
 >
 > **Read this section first. It is the authoritative handoff and supersedes the old Phase-based and manual-relay instructions below for Issue #38.**
 >
 > Repository: `webber0612/TongXuan-Chinese`
 >
-> ### Current autonomous mainline state
+> **Latest Release**: `v0.2.4` (Commit: `e7f0794`)
+>
+> ### Active Milestone: System B Eradication, Design System Unification & UX Overhaul (v0.2.4)
+>
+> - **Eradication of "System B" (Neo-Brutalist Theme)**:
+>   - Completely purged fragmented neo-brutalist styling rules, dark backgrounds (`#171823`), thick harsh borders, brutalist pill badges, and conflicting CSS overrides from `frontend/src/styles.css`.
+> - **System A Warm Design System Unification**:
+>   - Unified all UI views under the approved warm, tactile, child-first design system (`#fcfbf7` cream background, soft jade/amber accents, consistent `--radius-lg` card radii, and gentle shadow tokens).
+>   - Global header standardized across all views: official brand logo (`app-logo-icon.png`), "童軒中文 / TONGXUAN CHINESE" title, and a universal `🏠 返回學習主畫面` button on sub-routes.
+> - **Single Canonical Onboarding Flow**:
+>   - Retired duplicate/fragmented onboarding surfaces (`/course-zero`, `/first-lesson`).
+>   - Consolidated into a canonical 2-step onboarding modal (`WelcomeOnboardingModal`) on `/` (Child name, learning script, display language, and writing handedness), automatically guiding first-time users directly into Lesson 1 (`book1-l01`).
+>   - Removed public unauthenticated exposure of full course outlines and raw curriculum dumps.
+> - **Parent Dashboard (`/parent-dashboard`) Redesign**:
+>   - Completely redesigned `ParentAreaPage` and `DashboardPage` to match System A warm visual aesthetics: warm hero banner (👨‍👩‍👧), Google Drive cloud sync card, 9-skill card grid, clean activity KPI metrics, and points ledger.
+> - **Handwriting Handedness Support**:
+>   - Implemented left-handed and right-handed writing toggle (`handMode: "right" | "left"`) in Lesson Player Step 7, Tianzige writing canvas, and Onboarding Step 1.
+> - **Verification & Quality Gate**:
+>   - Full Vitest suite: **181/181 passed** across 15 test files.
+>   - Production build and canonical import guard: **PASS (41 modules)**.
+>   - Working tree clean on `main` branch.
+>
+> ### Autonomous mainline & curriculum state
 >
 > - Current work order: PR #111 `codex/learning-system-architecture` received the README corrections and is Draft/unmerged at `19bdf535358978da871e4227e56567dd354b8176`. PR #112 `codex/evidence-foundation-v1` is stacked on that exact #111 head and must remain Draft/unmerged. This update fixes the four Architect findings: canonical NFC exact-form identity scoped by script; non-lossy `inputByMethod`; partial placement-v2 updates with empty payload rejection; and separate `PHONETIC_NOTATION` evidence with schema v8 migration. No lessons, target expansion, UI, or mastery policy changes. `docs/learner-evidence-foundation-v1.md` records the implementation contract. PR #112's description is the source of truth for its current exact head, verification counts, exact-head Rights Gate run, Actions status, and review state; never carry forward statuses from an earlier head. Current rights inventory: 117 candidates (110 `RIGHTS_UNCLEAR`, 7 `REFERENCE_ONLY`); no rights classifications changed.
 >
@@ -526,6 +548,10 @@ Final state:
 - The Phase UI audit also updated `scripts/final_smoke.py` to provide and restore the production
   parent-password environment during the canonical root smoke command, keeping fail-closed
   readiness checks compatible with the release-candidate harness.
+- v0.2.4 UI overhaul & System B eradication (2026-10-10): Purged legacy System B neo-brutalist
+  overrides; unified styles under System A warm tactile aesthetic; streamlined onboarding into
+  a single canonical 2-step flow launching Lesson 1 directly; removed public curriculum outline dump;
+  redesigned Parent Dashboard; added left/right handwriting mode; Vitest 181/181 PASS, build 41 modules PASS.
 
 Remaining validation:
 - real iPad Safari;
