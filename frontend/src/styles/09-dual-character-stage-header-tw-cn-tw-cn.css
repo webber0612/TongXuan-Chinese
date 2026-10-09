@@ -1,0 +1,273 @@
+/* ========================================================
+   DUAL CHARACTER STAGE HEADER: TW (木) = CN (木) / TW (風) ⇄ CN (风)
+   ======================================================== */
+
+.writing-topbar-right {
+  display: flex;
+  align-items: center;
+}
+
+/* Top-Right Practice Status Indicator */
+.practice-status-pill {
+  background: #fffbeb;
+  border: 2px solid #fde68a;
+  border-radius: 999px;
+  padding: 6px 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.12);
+  user-select: none;
+}
+
+.practice-status-pill.is-finished {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.12);
+}
+
+.practice-pill-icon {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.practice-pill-text {
+  font-size: 0.88rem;
+  font-weight: 850;
+  color: #92400e;
+}
+
+.practice-status-pill.is-finished .practice-pill-text {
+  color: #047857;
+}
+
+.practice-count-badge {
+  background: #f59e0b;
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 900;
+  padding: 3px 9px;
+  border-radius: 999px;
+  box-shadow: 0 1px 3px rgba(217, 119, 6, 0.25);
+  white-space: nowrap;
+}
+
+/* 2. Center Canvas */
+.writing-canvas-viewport {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 0;
+  touch-action: none;
+}
+
+.touch-tianzi-canvas-mega {
+  width: 340px;
+  height: 340px;
+  background: #fffdfa;
+  border: 3.5px dashed #d97706;
+  border-radius: 32px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.04);
+}
+
+.grid-center-h {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1.5px;
+  background: repeating-linear-gradient(to right, #fde68a 0, #fde68a 6px, transparent 6px, transparent 12px);
+}
+
+.grid-center-v {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1.5px;
+  background: repeating-linear-gradient(to bottom, #fde68a 0, #fde68a 6px, transparent 6px, transparent 12px);
+}
+
+.grid-diag-1 {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top right, transparent calc(50% - 0.75px), #fef3c7 50%, transparent calc(50% + 0.75px));
+  opacity: 0.65;
+}
+
+.grid-diag-2 {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom right, transparent calc(50% - 0.75px), #fef3c7 50%, transparent calc(50% + 0.75px));
+  opacity: 0.65;
+}
+
+.hanzi-writer-svg-layer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  touch-action: none;
+  user-select: none;
+}
+
+.hanzi-writer-svg-layer svg {
+  display: block;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.child-authentic-ink-canvas {
+  position: absolute;
+  width: 310px;
+  height: 310px;
+  pointer-events: none;
+  z-index: 15;
+}
+
+.writing-toast-pill {
+  position: absolute;
+  bottom: 18px;
+  background: rgba(15, 23, 42, 0.88);
+  color: #ffffff;
+  padding: 8px 18px;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 800;
+  z-index: 25;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  pointer-events: none;
+}
+
+/* 3. Bottom Bar */
+.writing-bottombar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 14px;
+  border-top: 1.5px solid #f1f5f9;
+}
+
+/* Left: Play Stroke Order Animation Button */
+.play-stroke-order-btn {
+  background: #eff6ff;
+  border: 2px solid #bfdbfe;
+  border-radius: 999px;
+  padding: 8px 18px;
+  font-size: 0.92rem;
+  font-weight: 850;
+  color: #1d4ed8;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  box-shadow: 0 3px 0 #93c5fd, 0 4px 12px rgba(59, 130, 246, 0.12);
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.play-stroke-order-btn:hover {
+  background: #dbeafe;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 0 #93c5fd, 0 6px 14px rgba(59, 130, 246, 0.18);
+}
+
+.play-stroke-order-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #93c5fd;
+}
+
+.play-stroke-order-btn.is-playing {
+  background: #fef3c7;
+  border-color: #fde68a;
+  color: #b45309;
+  box-shadow: 0 3px 0 #fcd34d;
+}
+
+/* Right: UNIFIED SPEAKER + SPEED SWITCHER CAPSULE */
+.writing-sound-right {
+  display: flex;
+  align-items: center;
+}
+
+.unified-sound-speed-capsule {
+  display: inline-flex;
+  align-items: center;
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 999px;
+  padding: 4px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.04);
+}
+
+.capsule-speaker-side-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: #3b82f6;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 0 #1d4ed8, 0 3px 8px rgba(59, 130, 246, 0.25);
+  transition: all 0.15s ease;
+}
+
+.capsule-speaker-side-btn:hover {
+  transform: scale(1.06);
+  background: #2563eb;
+}
+
+.capsule-speaker-side-btn:active {
+  transform: scale(0.96);
+  box-shadow: 0 1px 0 #1d4ed8;
+}
+
+.capsule-divider {
+  width: 1.5px;
+  height: 24px;
+  background: #cbd5e1;
+  margin: 0 6px;
+}
+
+.capsule-speed-toggle-side {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: #f1f5f9;
+  border-radius: 999px;
+  padding: 2px;
+}
+
+.speed-option-btn {
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 0.82rem;
+  font-weight: 850;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.speed-option-btn:hover {
+  color: #1e293b;
+}
+
+.speed-option-btn.active {
+  background: #10b981;
+  color: #ffffff;
+  box-shadow: 0 2px 0 #059669, 0 2px 6px rgba(16, 185, 129, 0.25);
+}

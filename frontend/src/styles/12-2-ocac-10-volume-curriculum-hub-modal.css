@@ -1,0 +1,260 @@
+/* ========================================================
+   2. OCAC 10-VOLUME CURRICULUM HUB MODAL
+   ======================================================== */
+.curriculum-hub-modal-card {
+  background: #ffffff;
+  border-radius: 28px;
+  padding: 28px;
+  max-width: 960px;
+  width: 94vw;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.2);
+}
+
+.curriculum-hub-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.hub-badge-icon {
+  font-size: 2.2rem;
+  background: #eff6ff;
+  border: 2px solid #bfdbfe;
+  border-radius: 18px;
+  width: 54px;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.curriculum-hub-header h2 {
+  font-size: 1.35rem;
+  font-weight: 900;
+  color: #0f172a;
+  margin: 0 0 2px;
+}
+
+.hub-sub {
+  font-size: 0.84rem;
+  color: #64748b;
+  margin: 0;
+}
+
+.volume-tabs-scroller {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  margin-bottom: 14px;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.vol-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: #f8fafc;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  font-size: 0.86rem;
+  font-weight: 800;
+  color: #64748b;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.vol-tab-btn:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+.vol-tab-btn.active {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-bottom-width: 3px;
+}
+
+.vol-tab-icon {
+  font-size: 1.1rem;
+}
+
+.volume-detail-hero {
+  background: #f8fafc;
+  border-left: 6px solid #3b82f6;
+  border-radius: 14px;
+  padding: 14px 18px;
+  margin-bottom: 16px;
+}
+
+.vol-hero-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.vol-hero-main h3 {
+  font-size: 1.1rem;
+  font-weight: 900;
+  color: #0f172a;
+  margin: 0;
+}
+
+.vol-target-chip,
+.vol-chars-count-chip {
+  font-size: 0.76rem;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+}
+
+.vol-desc-text {
+  font-size: 0.82rem;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.volume-lessons-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.curriculum-lesson-card {
+  background: #ffffff;
+  border: 2px solid #e2e8f0;
+  border-radius: 18px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.2s ease;
+}
+
+.curriculum-lesson-card:hover {
+  border-color: #93c5fd;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
+}
+
+.lesson-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.lesson-num-badge {
+  font-size: 0.76rem;
+  font-weight: 900;
+  background: #3b82f6;
+  color: #ffffff;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.lesson-card-header h4 {
+  font-size: 0.98rem;
+  font-weight: 900;
+  color: #0f172a;
+  margin: 0;
+  flex: 1;
+}
+
+.lesson-theme-pill {
+  font-size: 0.72rem;
+  font-weight: 800;
+  background: #f1f5f9;
+  color: #475569;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.lesson-subtitle-desc {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin: 0 0 10px;
+  line-height: 1.35;
+}
+
+.lesson-chars-cue-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.lesson-char-cue-pill {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 4px 8px;
+  min-width: 32px;
+}
+
+.lesson-char-cue-pill b {
+  font-size: 1.05rem;
+  color: #1e293b;
+}
+
+.lesson-char-cue-pill small {
+  font-size: 0.68rem;
+  color: #64748b;
+}
+
+.lesson-action-bottom {
+  margin-top: auto;
+}
+
+.launch-lesson-btn {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 0;
+  background: #3b82f6;
+  color: #ffffff;
+  font-size: 0.88rem;
+  font-weight: 900;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.launch-lesson-btn:hover {
+  background: #2563eb;
+}
+
+.empty-vol-state {
+  text-align: center;
+  padding: 40px 20px;
+  grid-column: 1 / -1;
+  color: #64748b;
+}
+
+.empty-vol-state span {
+  font-size: 2.5rem;
+  display: block;
+  margin-bottom: 8px;
+}

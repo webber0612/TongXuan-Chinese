@@ -1,0 +1,335 @@
+/* ========================================================
+   SECTION ②: INFO PANEL (解釋、部首、筆順、詞彙、造句)
+   ======================================================== */
+.info-split-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: left;
+}
+
+.info-card {
+  background: #ffffff;
+  border: 2px solid #ede4d6;
+  border-radius: 22px;
+  padding: 14px 16px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.03);
+}
+
+/* Card A: Hero Character & Phonetics */
+.char-hero-card {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-color: #cbd5e1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 16px 14px 12px;
+}
+
+.info-card-top-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.info-char-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.info-phonetic-badge-box {
+  background: #dbeafe;
+  border-radius: 999px;
+  padding: 2px 10px;
+}
+
+.zhuyin-text-clean, .pinyin-text-clean, .dual-text-clean {
+  font-size: 0.95rem;
+  font-weight: 900;
+  color: #1e40af;
+}
+
+.info-char-glyph-row {
+  margin: 4px 0;
+}
+
+.single-info-glyph-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 0;
+}
+
+.info-glyph-text {
+  font-size: 3.6rem;
+  font-weight: 900;
+  color: #0f172a;
+  line-height: 1.1;
+  background: transparent;
+  border: none;
+  font-family: inherit;
+}
+
+.dual-info-glyph-duo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.dual-info-glyph-duo .info-glyph-text {
+  cursor: pointer;
+  padding: 0 6px;
+  border-radius: 12px;
+  opacity: 0.4;
+  transition: all 0.2s ease;
+}
+
+.dual-info-glyph-duo .info-glyph-text.is-active-variant {
+  opacity: 1;
+  color: #1e40af;
+  transform: scale(1.06);
+}
+
+.glyph-duo-sep {
+  font-size: 1.8rem;
+  color: #cbd5e1;
+}
+
+.info-meta-chips-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.meta-chip {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 0.74rem;
+  font-weight: 850;
+  color: #475569;
+}
+
+.variant-indicator-chip {
+  background: #dbeafe;
+  border-color: #bfdbfe;
+  color: #1e40af;
+  font-weight: 900;
+}
+
+/* Card B: Stroke Steps */
+.card-mini-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.card-mini-title span {
+  font-size: 0.8rem;
+  font-weight: 900;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.stroke-steps-grid-compact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.stroke-step-tag {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 3px 8px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: #334155;
+}
+
+.stroke-step-tag b {
+  color: #2563eb;
+  margin-right: 2px;
+}
+
+/* Card C: Vocabulary Words */
+.vocab-tags-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.vocab-audio-tag-btn {
+  background: #f5f3ff;
+  border: 1.5px solid #ddd6fe;
+  border-radius: 12px;
+  padding: 4px 10px;
+  font-size: 0.85rem;
+  font-weight: 900;
+  color: #5b21b6;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.vocab-audio-tag-btn:hover {
+  background: #ede9fe;
+  transform: translateY(-1px);
+}
+
+/* Card D: Sentence */
+.info-sentence-text {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #831843;
+  margin: 0 0 6px;
+  line-height: 1.4;
+}
+
+.sentence-play-micro-btn {
+  background: #fdf2f8;
+  border: 1px solid #fbcfe8;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 0.74rem;
+  font-weight: 850;
+  color: #be185d;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sentence-play-micro-btn:hover {
+  background: #fce7f3;
+}
+
+/* ========================================================
+   DARK EYE-CARE MODE FOR SPLIT-SCREEN WORKSPACE
+   ======================================================== */
+body.is-dark-eyecare-global .writing-split-panel,
+body.is-dark-eyecare-global .info-card {
+  background: #1e293b;
+  border-color: #334155;
+  color: #f1f5f9;
+}
+
+body.is-dark-eyecare-global .writing-topbar-row,
+body.is-dark-eyecare-global .writing-bottombar-row {
+  border-color: #334155;
+}
+
+body.is-dark-eyecare-global .mode-tab-btn {
+  color: #94a3b8;
+}
+
+body.is-dark-eyecare-global .tool-circle-btn {
+  background: #0f172a;
+  border-color: #334155;
+  color: #cbd5e1;
+}
+
+body.is-dark-eyecare-global .touch-tianzi-canvas-mega {
+  background: #0f172a;
+  border-color: #d97706;
+}
+
+body.is-dark-eyecare-global .char-hero-card {
+  background: #0f172a;
+  border-color: #334155;
+}
+
+body.is-dark-eyecare-global .info-glyph-text {
+  color: #f8fafc;
+}
+
+body.is-dark-eyecare-global .meta-chip,
+body.is-dark-eyecare-global .stroke-step-tag {
+  background: #0f172a;
+  border-color: #334155;
+  color: #cbd5e1;
+}
+
+body.is-dark-eyecare-global .vocab-audio-tag-btn {
+  background: #1e1b4b;
+  border-color: #4338ca;
+  color: #c7d2fe;
+}
+
+body.is-dark-eyecare-global .info-sentence-text {
+  color: #fbcfe8;
+}
+
+body.is-dark-eyecare-global .pill-dot {
+  background: #1e293b;
+  border-color: #334155;
+  color: #cbd5e1;
+}
+
+body.is-dark-eyecare-global .pill-dot.is-char-completed {
+  background: #064e3b;
+  border-color: #10b981;
+  color: #a7f3d0;
+}
+
+body.is-dark-eyecare-global .handedness-toggle-btn {
+  background: #1e293b;
+  border-color: #3b82f6;
+  color: #93c5fd;
+}
+
+/* Tablet & Mobile responsive stacking */
+@media (max-width: 860px) {
+  .classroom-split-layout,
+  .classroom-split-layout.layout-left-hand {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .touch-tianzi-canvas-mega {
+    width: 280px;
+    height: 280px;
+  }
+}
+
+/* ========================================================
+   FEATURE CAPSULE BUTTONS IN NAVBAR
+   ======================================================== */
+
+.feature-action-capsule-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 13px;
+  border-radius: 999px;
+  font-size: 0.86rem;
+  font-weight: 800;
+  cursor: pointer;
+  border: 2px solid transparent;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.feature-action-capsule-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.feature-action-capsule-btn:active {
+  transform: translateY(0);
+}
+
+.feature-action-capsule-btn.rewards-btn {
+  background: #fefce8;
+  border-color: #fcd34d;
+  color: #b45309;
+}

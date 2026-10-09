@@ -1,0 +1,445 @@
+/* ========================================================
+   5. ABOUT TONGXUAN & ROADMAP MODAL
+   ======================================================== */
+.about-tongxuan-modal-card {
+  background: #ffffff;
+  border-radius: 28px;
+  padding: 30px;
+  max-width: 900px;
+  width: 94vw;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.2);
+  border: 2px solid #e2e8f0;
+}
+
+.about-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.about-brand-badge {
+  font-size: 2.2rem;
+  background: #fefce8;
+  border: 2px solid #fde047;
+  border-radius: 18px;
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.about-modal-header h2 {
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: #0f172a;
+  margin: 0 0 4px;
+}
+
+.about-sub-lead {
+  font-size: 0.86rem;
+  color: #64748b;
+  margin: 0;
+}
+
+.about-tabs-row {
+  display: flex;
+  gap: 10px;
+  border-bottom: 2px solid #e2e8f0;
+  padding-bottom: 8px;
+  margin-bottom: 18px;
+  overflow-x: auto;
+}
+
+.about-tab-btn {
+  padding: 8px 16px;
+  border-radius: 12px;
+  border: 2px solid transparent;
+  background: #f8fafc;
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #64748b;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.about-tab-btn:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+.about-tab-btn.active {
+  background: #eff6ff;
+  border-color: #3b82f6;
+  color: #1d4ed8;
+}
+
+.about-tab-pane {
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.about-feature-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.about-feature-box {
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 18px;
+  padding: 18px;
+}
+
+.about-feature-box .feat-icon {
+  font-size: 2rem;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.about-feature-box h4 {
+  font-size: 1.05rem;
+  font-weight: 900;
+  color: #0f172a;
+  margin: 0 0 6px;
+}
+
+.about-feature-box p {
+  font-size: 0.82rem;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.45;
+}
+
+/* Roadmap timeline */
+.roadmap-timeline-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.roadmap-stage-card {
+  display: flex;
+  gap: 18px;
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 18px;
+  padding: 16px 20px;
+  align-items: flex-start;
+  transition: all 0.2s ease;
+}
+
+.roadmap-stage-card:hover {
+  border-color: #93c5fd;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
+}
+
+.stage-left-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 90px;
+  text-align: center;
+}
+
+.stage-num-tag {
+  font-size: 0.76rem;
+  font-weight: 900;
+  background: #3b82f6;
+  color: #ffffff;
+  padding: 3px 10px;
+  border-radius: 999px;
+  margin-bottom: 4px;
+}
+
+.stage-age {
+  font-size: 0.72rem;
+  color: #64748b;
+  font-weight: 700;
+}
+
+.stage-body {
+  flex: 1;
+}
+
+.stage-body h4 {
+  font-size: 1.02rem;
+  font-weight: 900;
+  color: #0f172a;
+  margin: 0 0 4px;
+}
+
+.stage-body p {
+  font-size: 0.82rem;
+  color: #64748b;
+  margin: 0 0 10px;
+  line-height: 1.4;
+}
+
+.exam-target-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.exam-chip {
+  font-size: 0.74rem;
+  font-weight: 800;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+.exam-chip.gold {
+  background: #fef3c7;
+  border-color: #fde047;
+  color: #b45309;
+}
+
+/* Legal Notice Box */
+.legal-notice-box {
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 20px;
+  padding: 22px 26px;
+}
+
+.legal-notice-box h3 {
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: #0f172a;
+  margin: 0 0 14px;
+}
+
+.legal-points-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.legal-points-list li {
+  font-size: 0.84rem;
+  color: #475569;
+  line-height: 1.5;
+}
+
+.legal-points-list li strong {
+  color: #0f172a;
+}
+
+.legal-footer-note {
+  border-top: 1px solid #e2e8f0;
+  padding-top: 12px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #94a3b8;
+  text-align: center;
+}
+
+/* Dark mode for About modal */
+body.is-dark-eyecare-global .about-tongxuan-modal-card {
+  background: #0f172a;
+  border-color: #334155;
+  color: #f8fafc;
+}
+
+body.is-dark-eyecare-global .about-modal-header h2,
+body.is-dark-eyecare-global .about-feature-box h4,
+body.is-dark-eyecare-global .stage-body h4,
+body.is-dark-eyecare-global .legal-notice-box h3,
+body.is-dark-eyecare-global .legal-points-list li strong {
+  color: #f8fafc;
+}
+
+body.is-dark-eyecare-global .about-sub-lead,
+body.is-dark-eyecare-global .about-feature-box p,
+body.is-dark-eyecare-global .stage-body p,
+body.is-dark-eyecare-global .legal-points-list li {
+  color: #94a3b8;
+}
+
+body.is-dark-eyecare-global .about-tab-btn,
+body.is-dark-eyecare-global .about-feature-box,
+body.is-dark-eyecare-global .roadmap-stage-card,
+body.is-dark-eyecare-global .legal-notice-box {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+body.is-dark-eyecare-global .about-tab-btn.active {
+  background: #172554;
+  border-color: #3b82f6;
+  color: #93c5fd;
+}
+
+body.is-dark-eyecare-global .exam-chip {
+  background: #172554;
+  border-color: #1e40af;
+  color: #93c5fd;
+}
+
+body.is-dark-eyecare-global .exam-chip.gold {
+  background: #451a03;
+  border-color: #92400e;
+  color: #fde68a;
+}
+
+/* Dark mode for Parent Dashboard & PIN Pad */
+body.is-dark-eyecare-global .parent-dashboard-card,
+body.is-dark-eyecare-global .parent-gate-card,
+body.is-dark-eyecare-global .add-reward-subcard {
+  background: #0f172a;
+  border-color: #334155;
+  color: #f8fafc;
+}
+
+body.is-dark-eyecare-global .parent-dashboard-header h2,
+body.is-dark-eyecare-global .parent-gate-card h2,
+body.is-dark-eyecare-global .add-reward-subcard h3,
+body.is-dark-eyecare-global .pin-shield-header h3,
+body.is-dark-eyecare-global .ticket-name-row strong,
+body.is-dark-eyecare-global .cat-title-row strong,
+body.is-dark-eyecare-global .ticket-title-group strong {
+  color: #f8fafc;
+}
+
+body.is-dark-eyecare-global .pin-key-btn {
+  background: #1e293b;
+  border-color: #334155;
+  color: #f8fafc;
+}
+
+body.is-dark-eyecare-global .pin-key-btn:hover {
+  background: #172554;
+  border-color: #3b82f6;
+  color: #93c5fd;
+}
+
+body.is-dark-eyecare-global .pin-key-btn.action-key {
+  background: #0f172a;
+  color: #94a3b8;
+}
+
+body.is-dark-eyecare-global .pin-dot {
+  background: #1e293b;
+  border-color: #475569;
+}
+
+body.is-dark-eyecare-global .parent-tab-item,
+body.is-dark-eyecare-global .parent-sub-tab-btn,
+body.is-dark-eyecare-global .parent-ticket-row,
+body.is-dark-eyecare-global .parent-catalog-item-row,
+body.is-dark-eyecare-global .security-pin-panel,
+body.is-dark-eyecare-global .ticket-voucher-card {
+  background: #1e293b;
+  border-color: #334155;
+  color: #cbd5e1;
+}
+
+body.is-dark-eyecare-global .parent-tab-item.active {
+  background: #172554;
+  border-color: #3b82f6;
+  color: #93c5fd;
+}
+
+body.is-dark-eyecare-global .parent-sub-tab-btn.active {
+  background: #451a03;
+  border-color: #f59e0b;
+  color: #fde68a;
+}
+
+body.is-dark-eyecare-global .ticket-voucher-stub {
+  background: #172554;
+  border-right-color: #334155;
+}
+
+body.is-dark-eyecare-global .ticket-stub-code {
+  color: #93c5fd;
+}
+
+body.is-dark-eyecare-global .ticket-barcode-sim span {
+  background: #93c5fd;
+}
+
+body.is-dark-eyecare-global .pin-text-input,
+body.is-dark-eyecare-global .form-input {
+  background: #0f172a;
+  border-color: #475569;
+  color: #f8fafc;
+}
+
+body.is-dark-eyecare-global .passbook-guidance-banner {
+  background: #172554;
+  border-color: #1e40af;
+}
+
+body.is-dark-eyecare-global .passbook-guidance-banner p {
+  color: #bfdbfe;
+}
+
+body.is-dark-eyecare-global .reset-defaults-btn {
+  background: #1e293b;
+  border-color: #475569;
+  color: #cbd5e1;
+}
+
+body.is-dark-eyecare-global .item-edit-btn {
+  background: #172554;
+  border-color: #1e40af;
+  color: #93c5fd;
+}
+
+body.is-dark-eyecare-global .item-delete-btn {
+  background: #450a0a;
+  border-color: #991b1b;
+  color: #fca5a5;
+}
+
+body.is-dark-eyecare-global .select-input {
+  background: #0f172a;
+  color: #f8fafc;
+}
+
+body.is-dark-eyecare-global .checkbox-label {
+  color: #cbd5e1;
+}
+
+/* ========================================================
+   25-STAGE LEARNING ROADMAP & STAGE TABS
+   ======================================================== */
+
+/* Stage Node Badges & Completion Dates */
+
+/* Stage Quiz Hero Banner */
+
+.launch-quiz-cta-btn {
+  background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+  color: #ffffff;
+  font-size: 1.25rem;
+  font-weight: 900;
+  padding: 14px 36px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(109, 40, 217, 0.35);
+  transition: all 0.2s ease;
+}
+
+.launch-quiz-cta-btn:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 12px 30px rgba(109, 40, 217, 0.45);
+}

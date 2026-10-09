@@ -4,7 +4,7 @@ import { AppShell } from "./AppShell";
 import { LocaleProvider } from "./lib/i18n";
 import { initAnalytics } from "./lib/analytics";
 import { logVersionInfo } from "./version";
-import "./styles.css";
+import "./styles/index.css";
 
 // Log inconspicuous version badge to F12 Console & attach window.__TONGXUAN__
 logVersionInfo();

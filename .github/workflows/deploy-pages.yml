@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - ui/child-first-redesign
   workflow_dispatch:
 
 permissions:

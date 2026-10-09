@@ -1,0 +1,627 @@
+/* ========================================================
+   FULLSCREEN INTERACTIVE CLASSROOM (全螢幕沉浸教室)
+   ======================================================== */
+.ipad-classroom-full {
+  position: fixed;
+  inset: 0;
+  background: #fbf7f0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  padding: 16px clamp(16px, 4vw, 36px) 24px;
+  box-sizing: border-box;
+}
+
+.classroom-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #ffffff;
+  border-radius: 999px;
+  padding: 8px 20px;
+  border: 2px solid #ede4d6;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.04);
+}
+
+@media (max-width: 640px) {
+  .ipad-classroom-full {
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 12px 8px 16px;
+  }
+
+  .classroom-topbar {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px;
+    border-radius: 24px;
+  }
+
+  .classroom-pills-row {
+    order: 1;
+    flex: 1 0 100%;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  .classroom-topbar-actions-right {
+    margin-left: auto;
+  }
+
+  .classroom-split-layout,
+  .classroom-split-layout.layout-left-hand {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .classroom-split-layout > * {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
+.classroom-back-btn {
+  background: #f1f5f9;
+  border: 0;
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.classroom-progress-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.classroom-progress-info strong {
+  font-size: 1.05rem;
+  color: #1e293b;
+}
+
+.char-step-pill {
+  background: #dbeafe;
+  color: #1e40af;
+  font-size: 0.8rem;
+  font-weight: 900;
+  padding: 4px 12px;
+  border-radius: 999px;
+}
+
+.classroom-pills-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.pill-dot {
+  position: relative;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  border: 2px solid #cbd5e1;
+  color: #475569;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  font-size: 0.95rem;
+  font-weight: 900;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  user-select: none;
+}
+
+.pill-dot:hover {
+  background: #e2e8f0;
+  transform: translateY(-1px);
+}
+
+.pill-dot.active {
+  background: #f59e0b;
+  border-color: #d97706;
+  color: #ffffff;
+  transform: scale(1.1);
+  box-shadow: 0 4px 10px rgba(217, 119, 6, 0.25);
+  z-index: 2;
+}
+
+.pill-dot.is-char-completed {
+  border-color: #10b981;
+  background: #ecfdf5;
+  color: #065f46;
+}
+
+.pill-dot.is-char-completed.active {
+  background: #10b981;
+  border-color: #059669;
+  color: #ffffff;
+  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3);
+}
+
+.pill-check-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #10b981;
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 900;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  margin-left: 2px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.pill-dot.active .pill-check-icon {
+  background: #ffffff;
+  color: #10b981;
+}
+
+/* Classroom Stage */
+.classroom-stage {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 16px 0;
+}
+
+.stage-step-card {
+  background: #ffffff;
+  border: 3px solid #e7ded2;
+  border-radius: 36px;
+  padding: 32px 48px;
+  width: 100%;
+  max-width: 640px;
+  box-shadow: 0 16px 40px rgba(80,60,40,0.08);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 18px;
+}
+
+.stage-step-badge {
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 0.95rem;
+  font-weight: 900;
+  padding: 5px 18px;
+  border-radius: 999px;
+}
+
+.classroom-meaning-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: #f8fafc;
+  border-radius: 22px;
+  padding: 14px 22px;
+  text-align: left;
+  width: 100%;
+}
+
+.meaning-icon {
+  font-size: 2.5rem;
+}
+
+.classroom-meaning-card strong {
+  display: block;
+  font-size: 0.8rem;
+  color: #0284c7;
+  text-transform: uppercase;
+}
+
+.classroom-meaning-card p {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #334155;
+  margin: 2px 0 0;
+}
+
+.classroom-touch-sound-btn {
+  background: #e0e7ff;
+  border: 2px solid #818cf8;
+  color: #4338ca;
+  font-size: 1.15rem;
+  font-weight: 900;
+  padding: 14px 36px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.classroom-touch-sound-btn:hover {
+  transform: scale(1.05);
+}
+
+/* Step 2: Stroke Tianzi Box */
+
+.tianzi-grid-lines {
+  position: absolute;
+  inset: 0;
+}
+
+.grid-center-h {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  border-top: 1px dashed #fcd34d;
+}
+
+.grid-center-v {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  border-left: 1px dashed #fcd34d;
+}
+
+/* Step 3: Speak */
+
+/* Step 4: Story Sentence */
+.story-snippet-card {
+  background: #fdf2f8;
+  border: 2px solid #fbcfe8;
+  border-radius: 26px;
+  padding: 24px;
+  width: 100%;
+}
+
+.story-sentence-text {
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: #831843;
+  margin: 0 0 8px;
+}
+
+.example-word-tag {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #be185d;
+  margin: 0;
+}
+
+/* Classroom Footer Nav */
+.classroom-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #ffffff;
+  border-radius: 999px;
+  padding: 10px 24px;
+  border: 2px solid #ede4d6;
+}
+
+.nav-step-btn {
+  background: #f1f5f9;
+  border: 0;
+  padding: 12px 24px;
+  border-radius: 999px;
+  font-size: 1rem;
+  font-weight: 900;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.nav-step-btn.next-btn {
+  background: #2e746a;
+  color: #ffffff;
+  padding: 12px 32px;
+  box-shadow: 0 4px 0 #1b4e47;
+}
+
+.nav-step-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.step-dots-row {
+  display: flex;
+  gap: 10px;
+}
+
+.step-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #e2e8f0;
+}
+
+.step-dot.active {
+  background: #2e746a;
+  transform: scale(1.3);
+}
+
+.step-dot.done {
+  background: #86efac;
+}
+
+/* Finish Celebration Screen */
+.classroom-finish-screen {
+  position: fixed;
+  inset: 0;
+  background: rgba(15,23,42,0.75);
+  backdrop-filter: blur(10px);
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.finish-celebration-card {
+  background: #ffffff;
+  border-radius: 40px;
+  padding: 40px;
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.3);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.trophy-bounce {
+  font-size: 4.5rem;
+}
+
+.finish-celebration-card h2 {
+  font-size: 1.65rem;
+  font-weight: 900;
+  color: #064e3b;
+  margin: 0;
+}
+
+.finish-celebration-card p {
+  font-size: 1rem;
+  color: #475569;
+  margin: 0;
+}
+
+.earned-stars-row {
+  display: flex;
+  gap: 12px;
+  margin: 10px 0;
+}
+
+.star-gold {
+  color: #f59e0b;
+}
+
+.finish-return-btn {
+  background: #22c55e;
+  color: #ffffff;
+  border: 0;
+  border-radius: 999px;
+  padding: 16px 48px;
+  font-size: 1.2rem;
+  font-weight: 900;
+  box-shadow: 0 6px 0 #16a34a;
+  cursor: pointer;
+}
+
+/* Modals (Parent Gate) */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15,23,42,0.68);
+  backdrop-filter: blur(8px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.parent-gate-card {
+  background: #ffffff;
+  border-radius: 32px;
+  padding: 32px;
+  max-width: 440px;
+  width: 100%;
+  text-align: center;
+  position: relative;
+  box-shadow: 0 20px 48px rgba(0,0,0,0.22);
+}
+
+.modal-close-x {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  background: #f1f5f9;
+  border: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.gate-icon-shield {
+  width: 64px;
+  height: 64px;
+  background: #fee2e2;
+  color: #ef4444;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+}
+
+.parent-gate-card h2 {
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: #1e293b;
+  margin-bottom: 8px;
+}
+
+.gate-desc {
+  font-size: 0.88rem;
+  color: #64748b;
+  margin-bottom: 18px;
+}
+
+.math-question-box {
+  background: #f8fafc;
+  border: 2px dashed #cbd5e1;
+  border-radius: 18px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.math-text {
+  font-size: 2rem;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.gate-options-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.gate-option-btn {
+  background: #f1f5f9;
+  border: 2px solid #e2e8f0;
+  border-radius: 16px;
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: #1e293b;
+  padding: 12px 0;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.gate-option-btn:hover {
+  background: #3b82f6;
+  border-color: #2563eb;
+  color: #ffffff;
+}
+
+/* ========================================================
+   Parent PIN Pad Styles
+   ======================================================== */
+.parent-pin-pad-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin: 10px 0 16px;
+}
+
+.pin-dots-row {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  margin-bottom: 6px;
+}
+
+.pin-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2.5px solid #94a3b8;
+  background: #f8fafc;
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.pin-dot.filled {
+  background: #2563eb;
+  border-color: #1d4ed8;
+  transform: scale(1.18);
+  box-shadow: 0 0 10px rgba(37, 99, 235, 0.4);
+}
+
+.pin-error-alert {
+  background: #fee2e2;
+  color: #b91c1c;
+  font-size: 0.82rem;
+  font-weight: 800;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid #fca5a5;
+}
+
+.pin-keypad-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  width: 100%;
+  max-width: 260px;
+}
+
+.pin-key-btn {
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 18px;
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: #0f172a;
+  padding: 12px 0;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.pin-key-btn:hover {
+  background: #eff6ff;
+  border-color: #3b82f6;
+  color: #1d4ed8;
+  transform: translateY(-2px);
+}
+
+.pin-key-btn:active {
+  transform: translateY(1px);
+  background: #dbeafe;
+}
+
+.pin-key-btn.action-key {
+  font-size: 1.1rem;
+  color: #64748b;
+  background: #f1f5f9;
+}
+
+.pin-switch-mode-row {
+  margin-top: 8px;
+}
+
+.switch-to-math-btn {
+  background: transparent;
+  border: 0;
+  color: #3b82f6;
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 4px 8px;
+}
+
+.switch-to-math-btn:hover {
+  color: #1d4ed8;
+}

@@ -1,0 +1,419 @@
+/* ========================================================
+   CLASSROOM STEP 5: MINI QUIZ (課後通關測驗)
+   ======================================================== */
+.quiz-container-full {
+  width: 100%;
+  max-width: 540px;
+}
+
+.quiz-question-box {
+  background: #ffffff;
+  border-radius: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  text-align: left;
+}
+
+.quiz-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1.5px solid #f1f5f9;
+  padding-bottom: 8px;
+}
+
+.quiz-q-num {
+  font-size: 0.88rem;
+  font-weight: 900;
+  color: #2563eb;
+}
+
+.quiz-sound-btn {
+  background: #eff6ff;
+  border: 1.5px solid #bfdbfe;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 0.8rem;
+  font-weight: 850;
+  color: #1d4ed8;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.quiz-prompt-text {
+  font-size: 1.25rem;
+  font-weight: 900;
+  color: #0f172a;
+  margin: 0;
+  line-height: 1.35;
+}
+
+.quiz-options-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.quiz-option-btn {
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 18px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.quiz-option-btn:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.opt-main-text {
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: #1e293b;
+}
+
+.opt-sub-text {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #64748b;
+}
+
+.quiz-option-btn.is-correct {
+  background: #f0fdf4;
+  border-color: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.2);
+}
+
+.quiz-option-btn.is-correct .opt-main-text {
+  color: #15803d;
+}
+
+.quiz-option-btn.is-wrong {
+  background: #fef2f2;
+  border-color: #ef4444;
+  opacity: 0.7;
+}
+
+.quiz-option-btn.is-wrong .opt-main-text {
+  color: #b91c1c;
+}
+
+.quiz-feedback-box {
+  border-radius: 16px;
+  padding: 10px 16px;
+  font-size: 0.9rem;
+  font-weight: 850;
+}
+
+.quiz-feedback-box.correct {
+  background: #dcfce7;
+  color: #166534;
+  border: 1.5px solid #86efac;
+}
+
+.quiz-feedback-box.wrong {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1.5px solid #fca5a5;
+}
+
+.quiz-nav-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+.quiz-next-q-btn, .quiz-finish-btn {
+  background: #2563eb;
+  color: #ffffff;
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 24px;
+  font-size: 0.95rem;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  box-shadow: 0 3px 0 #1d4ed8;
+}
+
+.quiz-next-q-btn:disabled, .quiz-finish-btn:disabled {
+  background: #cbd5e1;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.quiz-finish-btn {
+  background: #22c55e;
+  box-shadow: 0 3px 0 #15803d;
+}
+
+/* ========================================================
+   VOCABULARY & IDIOM CLASSROOM HERO BOXES
+   ======================================================== */
+.vocab-mega-hero-box, .idiom-mega-hero-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 28px;
+  background: #f5f3ff;
+  border: 2px solid #ddd6fe;
+  border-radius: 28px;
+}
+
+.vocab-mega-icon, .idiom-mega-icon {
+  font-size: 3.5rem;
+  line-height: 1;
+}
+
+.vocab-mega-word, .idiom-mega-title {
+  font-size: 2.8rem;
+  font-weight: 900;
+  color: #4c1d95;
+  margin: 0;
+  line-height: 1.1;
+}
+
+.vocab-mega-phonetics, .idiom-mega-phonetics {
+  display: flex;
+  gap: 8px;
+}
+
+.zhuyin-badge {
+  background: #e0e7ff;
+  color: #4338ca;
+  font-size: 0.95rem;
+  font-weight: 900;
+  padding: 3px 12px;
+  border-radius: 999px;
+}
+
+.pinyin-badge {
+  background: #ede9fe;
+  color: #6d28d9;
+  font-size: 0.95rem;
+  font-weight: 900;
+  padding: 3px 12px;
+  border-radius: 999px;
+}
+
+/* Eye Care Mode for Dictation and Quiz */
+
+body.is-dark-eyecare-global .quiz-question-box {
+  background: #1e293b;
+}
+
+body.is-dark-eyecare-global .quiz-prompt-text {
+  color: #f8fafc;
+}
+
+body.is-dark-eyecare-global .quiz-option-btn {
+  background: #0f172a;
+  border-color: #334155;
+}
+
+body.is-dark-eyecare-global .quiz-option-btn .opt-main-text {
+  color: #f1f5f9;
+}
+
+body.is-dark-eyecare-global .vocab-mega-hero-box,
+body.is-dark-eyecare-global .idiom-mega-hero-box {
+  background: #1e1b4b;
+  border-color: #4338ca;
+}
+
+body.is-dark-eyecare-global .vocab-mega-word,
+body.is-dark-eyecare-global .idiom-mega-title {
+  color: #c7d2fe;
+}
+
+/* ========================================================
+   SPLIT-SCREEN CHARACTER CLASSROOM (① 練字區 vs ② 資訊區)
+   ======================================================== */
+.classroom-stage-split {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin: 12px 0;
+  box-sizing: border-box;
+}
+
+.classroom-split-layout {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 20px;
+  width: 100%;
+  max-width: 1100px;
+  align-items: stretch;
+}
+
+/* Left-handed Mode: Writing on Left (1fr), Info on Right (320px) */
+.classroom-split-layout.layout-left-hand {
+  grid-template-columns: 1fr 320px;
+}
+
+/* Handedness & Sound Toggle in Header */
+.classroom-topbar-actions-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.classroom-sound-toggle-btn {
+  background: #f8fafc;
+  border: 2px solid #cbd5e1;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 0.84rem;
+  font-weight: 850;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+
+.classroom-sound-toggle-btn.is-active {
+  background: #ecfdf5;
+  border-color: #6ee7b7;
+  color: #047857;
+}
+
+.classroom-sound-toggle-btn.is-muted {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  color: #94a3b8;
+}
+
+.classroom-sound-toggle-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(0.97);
+}
+
+.handedness-toggle-btn {
+  background: #eff6ff;
+  border: 2px solid #93c5fd;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 0.84rem;
+  font-weight: 850;
+  color: #1e40af;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+
+.handedness-toggle-btn:hover {
+  background: #dbeafe;
+  border-color: #3b82f6;
+  transform: translateY(-1px);
+}
+
+.char-progress-counter-tag {
+  font-size: 1rem;
+  font-weight: 850;
+  color: #475569;
+}
+
+.char-progress-counter-tag b {
+  color: #2563eb;
+}
+
+/* ========================================================
+   SECTION ①: WRITING PANEL (練字區)
+   ======================================================== */
+.writing-split-panel {
+  background: #ffffff;
+  border: 3px solid #e7ded2;
+  border-radius: 36px;
+  padding: 20px 24px 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 0 16px 40px rgba(80, 60, 40, 0.08);
+  position: relative;
+  touch-action: pan-y; /* Prevent page gesture collision */
+}
+
+/* 1. Top Control Row */
+/* ========================================================
+   SECTION ①: WRITING PANEL (練字區) - CLEAN SOFT ROUNDED DESIGN
+   ======================================================== */
+.kaiti-standard,
+.info-glyph-text,
+.dual-info-glyph-duo span {
+  font-family: "DFKai-SB", "BiauKai", "標楷體", "Kaiti SC", "Kaiti TC", "KaiTi", "STKaiti", "TW-Kai", "FZKai-Z03", "AR PL UKai TW", "Noto Serif TC", serif !important;
+}
+
+.writing-split-panel {
+  background: #ffffff;
+  border: 2.5px solid #ede4d6;
+  border-radius: 32px;
+  padding: 18px 24px 20px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 30px rgba(78, 52, 23, 0.05);
+  position: relative;
+}
+
+/* 1. Top Bar */
+.writing-topbar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 12px;
+  border-bottom: 1.5px solid #f1f5f9;
+}
+
+.writing-tools-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tool-circle-btn {
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 50%;
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
+  transition: all 0.18s ease;
+}
+
+.tool-circle-btn:hover {
+  background: #ffffff;
+  color: #0f172a;
+  border-color: #cbd5e1;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+}
+
+.tool-circle-btn:active {
+  transform: translateY(1px);
+  box-shadow: none;
+}

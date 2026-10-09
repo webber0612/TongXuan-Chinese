@@ -1,0 +1,616 @@
+/* ========================================================
+   TongXuan Chinese - iPad Weekly Roadmap & Star Bank Portal
+   ======================================================== */
+.ipad-weekly-portal {
+  font-family: "GenSen Rounded", "Noto Sans TC", "PingFang SC", "Microsoft JhengHei", system-ui, sans-serif;
+  background: #fbf7f0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px clamp(16px, 3.5vw, 32px) 32px;
+  max-width: 1240px;
+  margin: 0 auto;
+  color: #1e293b;
+  box-sizing: border-box;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* 1. TOP APP BAR: 加大頭像 · 乾淨單行導航 · 統一選單 (Menu) */
+.weekly-header-bar {
+  background: #ffffff;
+  border: 2px solid #ede4d6;
+  border-radius: 28px;
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 4px 16px rgba(45,55,72,0.04);
+  transition: all 0.3s ease;
+  position: relative;
+  z-index: 50;
+  gap: 12px;
+}
+
+.weekly-header-bar.clean-header-bar {
+  flex-wrap: nowrap;
+}
+
+/* Header Left Cluster: Logo & Learner */
+.header-left-cluster {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.header-brand-logo-pill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 12px 4px 6px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 16px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.header-brand-img {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  object-fit: cover;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.header-brand-title-box {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.brand-main-title {
+  font-size: 1.05rem;
+  font-weight: 900;
+  color: #1e293b;
+  letter-spacing: 0.02em;
+}
+
+.brand-en-subtitle {
+  font-size: 0.62rem;
+  font-weight: 800;
+  color: #0284c7;
+  letter-spacing: 0.08em;
+  margin-top: 2px;
+}
+
+.is-dark-eyecare .header-brand-logo-pill {
+  background: rgba(30, 41, 59, 0.95);
+  border-color: #334155;
+}
+
+.is-dark-eyecare .brand-main-title {
+  color: #f1f5f9;
+}
+
+.is-dark-eyecare .brand-en-subtitle {
+  color: #38bdf8;
+}
+
+/* LEFT: Learner Avatar Pill */
+.header-learner-pill.header-learner-large {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-learner-interactive-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+  transition: transform 0.15s ease;
+  flex-shrink: 0;
+}
+
+.header-learner-interactive-btn:hover {
+  transform: translateY(-1px);
+}
+
+.brand-badge-mini.brand-badge-large {
+  width: 44px;
+  height: 44px;
+  background: #2e746a;
+  color: #ffffff;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: 900;
+  font-family: "Noto Serif TC", serif;
+  box-shadow: 0 3px 0 #1b4e47;
+}
+
+.learner-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.learner-name.learner-name-large {
+  font-size: 1.08rem;
+  font-weight: 900;
+  color: #1e293b;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.learner-sub.learner-sub-large {
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: #b45309;
+  white-space: nowrap;
+}
+
+/* RIGHT: Action Buttons Group (Single Clean Row) */
+.header-right-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+}
+
+.header-pact-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 11px;
+  background: #fdf2f8;
+  border: 1.5px solid #fbcfe8;
+  border-radius: 999px;
+  font-size: 0.80rem;
+  font-weight: 800;
+  color: #db2777;
+  white-space: nowrap;
+}
+
+.header-menu-wrap {
+  position: relative;
+}
+
+.clean-header-bar .menu-trigger-btn {
+  padding: 6px 14px;
+  font-size: 0.88rem;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .weekly-header-bar.clean-header-bar {
+    padding: 8px 14px;
+    gap: 10px;
+  }
+  .header-right-actions-group {
+    gap: 6px;
+  }
+  .feature-action-capsule-btn {
+    padding: 6px 10px;
+    font-size: 0.8rem;
+    gap: 4px;
+  }
+  .header-points-combined-pill {
+    padding: 6px 10px;
+    font-size: 0.84rem;
+    gap: 5px;
+  }
+  .learner-name.learner-name-large {
+    font-size: 0.96rem;
+  }
+  .learner-sub.learner-sub-large {
+    font-size: 0.72rem;
+  }
+  .brand-badge-mini.brand-badge-large {
+    width: 38px;
+    height: 38px;
+    font-size: 1.3rem;
+  }
+}
+
+@media (max-width: 680px) {
+  .ipad-weekly-portal {
+    padding: 10px 8px 24px;
+    gap: 12px;
+    overflow-x: hidden;
+  }
+  .weekly-header-bar.clean-header-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 20px;
+  }
+  .header-left-cluster {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 8px;
+  }
+  .header-brand-logo-pill {
+    padding: 4px 8px 4px 6px;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .header-brand-img {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+  }
+  .brand-main-title {
+    font-size: 0.95rem;
+  }
+  .brand-en-subtitle {
+    font-size: 0.55rem;
+  }
+  .header-learner-pill.header-learner-large {
+    gap: 8px;
+    flex-shrink: 1;
+    min-width: 0;
+  }
+  .brand-badge-mini.brand-badge-large {
+    width: 34px;
+    height: 34px;
+    font-size: 1.15rem;
+    border-radius: 10px;
+    flex-shrink: 0;
+  }
+  .learner-name.learner-name-large {
+    font-size: 0.88rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 140px;
+  }
+  .learner-sub.learner-sub-large {
+    font-size: 0.68rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 140px;
+  }
+  .header-right-actions-group {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 6px;
+  }
+  .header-pact-chip {
+    display: none;
+  }
+  .header-points-combined-pill {
+    flex: 1;
+    justify-content: center;
+    padding: 6px 8px;
+    font-size: 0.82rem;
+    min-width: 0;
+  }
+  .feature-action-capsule-btn {
+    padding: 6px 10px;
+    font-size: 0.78rem;
+    white-space: nowrap;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+  .clean-header-bar .menu-trigger-btn {
+    padding: 6px 10px;
+    font-size: 0.82rem;
+    flex-shrink: 0;
+  }
+}
+
+@media (max-width: 440px) {
+  .brand-en-subtitle {
+    display: none;
+  }
+  .learner-name.learner-name-large {
+    max-width: 100px;
+  }
+  .learner-sub.learner-sub-large {
+    max-width: 100px;
+  }
+  .feature-action-capsule-btn span:not(.btn-icon) {
+    display: none;
+  }
+  .feature-action-capsule-btn {
+    padding: 6px;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .clean-header-bar .menu-btn-label {
+    display: none;
+  }
+  .clean-header-bar .menu-trigger-btn {
+    padding: 6px;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* CENTER: Score Center Star Bank (加大顯眼星星庫) */
+
+/* RIGHT: Unified Menu (Menu 整合護眼、注音拼音、家長專區) */
+
+.menu-trigger-btn {
+  background: #f8fafc;
+  border: 2px solid #cbd5e1;
+  color: #334155;
+  padding: 8px 18px;
+  border-radius: 999px;
+  font-size: 0.92rem;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  transition: all 0.18s ease;
+}
+
+.menu-trigger-btn:hover,
+.menu-trigger-btn.active {
+  background: #2e746a;
+  border-color: #1d574f;
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(46,116,106,0.3);
+  transform: translateY(-1px);
+}
+
+/* Menu Popover Dropdown */
+.menu-popover-panel {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  background: #ffffff;
+  border: 2px solid #e2e8f0;
+  border-radius: 24px;
+  padding: 16px;
+  width: 270px;
+  box-shadow: 0 16px 40px rgba(15,23,42,0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 100;
+}
+
+.menu-popover-arrow {
+  position: absolute;
+  top: -8px;
+  right: 24px;
+  width: 14px;
+  height: 14px;
+  background: #ffffff;
+  border-left: 2px solid #e2e8f0;
+  border-top: 2px solid #e2e8f0;
+  transform: rotate(45deg);
+}
+
+.menu-item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  background: #f8fafc;
+  border-radius: 16px;
+  border: 1px solid #f1f5f9;
+}
+.child-portal-source-note { align-items: center; background: #fff9e7; border-left: 3px solid #d49b17; color: #4b3b18; display: flex; font-size: .74rem; gap: 12px; justify-content: space-between; line-height: 1.4; margin: 8px auto 12px; max-width: 96%; padding: 7px 11px; }
+.child-portal-source-note button { background: transparent; border: 0; color: #274fc8; cursor: pointer; flex: none; font: inherit; font-weight: 800; text-decoration: underline; }
+.child-portal-source-note button.validated-session-entry { align-items: center; background: var(--teal); border: 0; border-radius: 14px; box-shadow: 0 3px 0 var(--teal-deep); color: #fffefa; display: inline-flex; justify-content: center; min-height: 44px; padding: 0 15px; text-decoration: none; }
+.child-portal-source-note button.validated-session-entry:hover { background: var(--teal-deep); }
+.child-portal-source-note button.validated-session-entry:active { box-shadow: 0 1px 0 var(--teal-deep); transform: translateY(2px); }
+.child-portal-source-note .session-profile-error { color: #8a3027; flex-basis: 100%; font-size: .82rem; font-weight: 800; }
+@media (max-width: 560px) {
+  .child-portal-source-note button.validated-session-entry { width: 100%; }
+}
+@media (max-width: 560px) { .child-portal-source-note { align-items: flex-start; flex-direction: column; gap: 5px; } }
+
+.menu-item-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.menu-item-icon {
+  font-size: 1.25rem;
+}
+
+.menu-item-info strong {
+  display: block;
+  font-size: 0.88rem;
+  color: #1e293b;
+  line-height: 1.1;
+}
+
+.menu-item-info small {
+  font-size: 0.72rem;
+  color: #64748b;
+}
+
+.menu-switch-pill {
+  border: 0;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 0.78rem;
+  font-weight: 900;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.menu-switch-pill.off {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.menu-switch-pill.on {
+  background: #334155;
+  color: #fef08a;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+.menu-parent-row {
+  background: transparent;
+  padding: 0;
+  border: 0;
+}
+
+.menu-parent-full-btn {
+  width: 100%;
+  background: #fef3c7;
+  border: 1.5px solid #fde68a;
+  color: #92400e;
+  padding: 10px 14px;
+  border-radius: 16px;
+  font-size: 0.85rem;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.menu-parent-full-btn:hover {
+  background: #fde68a;
+  transform: translateY(-1px);
+}
+
+/* 2. WEEKLY DAILY STEPPER ROAD (超大觸控節點 64px, 加大鑰匙 🗝️) */
+
+/* 7-Day Road Track */
+
+/* 加大鑰匙圖標 (Node Key Large) */
+
+/* Sunday Gift Box Bubble */
+
+/* 每天下方維持 3 顆大星 */
+
+/* 週日顯示 🗝️ x 6 與 (6天) x2 */
+
+/* ========================================================
+   3. CENTER MAIN HERO:
+   - 完整課文區域 (Full Lesson Story Textbook Panel)
+   - 3 大星級任務卡片 (無底部按鈕，直接點擊卡片進入)
+   ======================================================== */
+.weekly-main-hero {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* 完整課文區域 (Full Lesson Story Textbook Panel) */
+.daily-story-textbook-panel {
+  background: #ffffff;
+  border: 3px solid #ede4d6;
+  border-radius: 28px;
+  padding: 20px 26px;
+  box-shadow: 0 6px 20px rgba(45,55,72,0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  transition: all 0.3s ease;
+}
+
+.story-meta-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding-bottom: 12px;
+  border-bottom: 2px dashed #f1f5f9;
+  gap: 12px;
+}
+
+.story-badges-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.story-day-tag {
+  background: #dcfce7;
+  color: #166534;
+  font-size: 0.95rem;
+  font-weight: 900;
+  padding: 5px 16px;
+  border-radius: 999px;
+}
+
+.story-duration-pill {
+  background: #fef3c7;
+  border: 1.5px solid #fde68a;
+  color: #92400e;
+  font-size: 0.9rem;
+  font-weight: 900;
+  padding: 4px 14px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.story-listen-audio-btn {
+  background: #eef2ff;
+  border: 2px solid #c7d2fe;
+  color: #4338ca;
+  padding: 8px 20px;
+  border-radius: 999px;
+  font-size: 1rem;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.3s ease;
+}
+
+.story-listen-audio-btn:hover {
+  transform: scale(1.05);
+  background: #e0e7ff;
+}
+
+.story-title-section {
+  padding: 12px 0 8px;
+  text-align: center;
+  width: 100%;
+}
+
+.story-main-title {
+  font-size: 2.2rem;
+  font-weight: 900;
+  color: #0f172a;
+  margin: 0;
+  text-align: center;
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+  transition: color 0.3s ease;
+}
+
+.ipad-weekly-portal.is-dark-eyecare .story-meta-bar {
+  border-bottom-color: #334155;
+}
+
+.ipad-weekly-portal.is-dark-eyecare .story-main-title {
+  color: #f8fafc;
+}

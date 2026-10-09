@@ -1,0 +1,265 @@
+/* ========================================================
+   3. 5000 HANZI LEXICON MODAL
+   ======================================================== */
+.hanzi-lexicon-modal-card {
+  background: #ffffff;
+  border-radius: 28px;
+  padding: 28px;
+  max-width: 1020px;
+  width: 95vw;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.2);
+}
+
+.lexicon-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.lexicon-icon-badge {
+  font-size: 2.2rem;
+  background: #ecfdf5;
+  border: 2px solid #a7f3d0;
+  border-radius: 18px;
+  width: 54px;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.lexicon-modal-header h2 {
+  font-size: 1.35rem;
+  font-weight: 900;
+  color: #0f172a;
+  margin: 0 0 2px;
+}
+
+.lexicon-sub {
+  font-size: 0.84rem;
+  color: #64748b;
+  margin: 0;
+}
+
+.lexicon-search-bar-row {
+  position: relative;
+  margin-bottom: 12px;
+}
+
+.lexicon-search-input {
+  width: 100%;
+  padding: 12px 42px 12px 16px;
+  border: 2px solid #cbd5e1;
+  border-radius: 14px;
+  font-size: 0.95rem;
+  color: #1e293b;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.lexicon-search-input:focus {
+  border-color: #10b981;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.12);
+}
+
+.clear-search-btn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: 0;
+  color: #94a3b8;
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.lexicon-filter-pills-row,
+.lexicon-radical-chips-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  margin-bottom: 10px;
+}
+
+.filter-label {
+  font-size: 0.78rem;
+  font-weight: 900;
+  color: #475569;
+  white-space: nowrap;
+}
+
+.filter-pill,
+.radical-chip-btn {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1.5px solid #cbd5e1;
+  background: #f8fafc;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #475569;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.filter-pill:hover,
+.radical-chip-btn:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+.filter-pill.active,
+.radical-chip-btn.active {
+  background: #10b981;
+  border-color: #059669;
+  color: #ffffff;
+}
+
+.lexicon-results-info-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: #f8fafc;
+  border-radius: 10px;
+  margin-bottom: 14px;
+  font-size: 0.78rem;
+  color: #475569;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.lexicon-results-info-bar b {
+  color: #10b981;
+}
+
+.lexicon-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 12px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.hanzi-entry-card {
+  background: #ffffff;
+  border: 2px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.hanzi-entry-card:hover {
+  border-color: #6ee7b7;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.12);
+}
+
+.hanzi-entry-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.hanzi-main-glyph {
+  font-size: 2.2rem;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.hanzi-hans-pill {
+  font-size: 0.74rem;
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  color: #dc2626;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-weight: 800;
+}
+
+.hanzi-level-badge {
+  font-size: 0.74rem;
+  font-weight: 900;
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+  padding: 2px 6px;
+  border-radius: 999px;
+}
+
+.hanzi-entry-phonetics {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hanzi-zhuyin-text {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #3b82f6;
+}
+
+.hanzi-pinyin-text {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.hanzi-entry-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.74rem;
+  color: #64748b;
+}
+
+.hanzi-meaning-text {
+  font-size: 0.78rem;
+  color: #334155;
+  margin: 0;
+  line-height: 1.35;
+}
+
+.hanzi-common-words-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.common-word-tag {
+  font-size: 0.7rem;
+  background: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 6px;
+  color: #475569;
+}
+
+.practice-this-char-btn {
+  margin-top: auto;
+  width: 100%;
+  padding: 8px 0;
+  border-radius: 10px;
+  border: 0;
+  background: #10b981;
+  color: #ffffff;
+  font-size: 0.82rem;
+  font-weight: 900;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.practice-this-char-btn:hover {
+  background: #059669;
+}

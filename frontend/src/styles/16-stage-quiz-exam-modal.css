@@ -1,0 +1,764 @@
+/* ========================================================
+   STAGE QUIZ EXAM MODAL
+   ======================================================== */
+.stage-quiz-modal-card {
+  background: #ffffff;
+  border-radius: 28px;
+  max-width: 780px;
+  width: 94vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+  padding: 28px 32px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.stage-quiz-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  border-bottom: 2px solid #f1f5f9;
+  padding-bottom: 16px;
+}
+
+.quiz-header-badge {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.quiz-header-icon {
+  font-size: 2.2rem;
+}
+
+.quiz-header-title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 900;
+  color: #1e293b;
+}
+
+.quiz-header-scope {
+  margin: 4px 0 0;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.quiz-progress-pill {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #2e746a;
+  min-width: 140px;
+}
+
+.quiz-progress-bar-track {
+  width: 100%;
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.quiz-progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #2e746a 0%, #10b981 100%);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.quiz-question-box {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.question-type-tag-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.question-type-tag {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.quiz-audio-speaker-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #fef3c7;
+  color: #92400e;
+  border: 1.5px solid #fde68a;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.quiz-audio-speaker-btn:hover {
+  background: #fde68a;
+}
+
+.quiz-question-prompt {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 900;
+  color: #1e293b;
+  line-height: 1.5;
+}
+
+.quiz-options-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+  margin-top: 8px;
+}
+
+.quiz-option-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 18px;
+  padding: 14px 18px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.quiz-option-card:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  transform: translateY(-2px);
+}
+
+.quiz-option-card.is-selected {
+  background: #f0fdf4;
+  border-color: #22c55e;
+  box-shadow: 0 6px 16px rgba(34, 197, 94, 0.2);
+}
+
+.option-letter-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: 900;
+  flex-shrink: 0;
+}
+
+.quiz-option-card.is-selected .option-letter-badge {
+  background: #22c55e;
+  color: #ffffff;
+}
+
+.option-text-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.option-main-text {
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: #1e293b;
+}
+
+.option-sub-text {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.option-check-icon {
+  font-size: 1.25rem;
+  font-weight: 900;
+  color: #22c55e;
+}
+
+.quiz-footer-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1.5px dashed #e2e8f0;
+}
+
+.quiz-nav-btn {
+  padding: 10px 20px;
+  border-radius: 999px;
+  border: 1.5px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  font-size: 0.95rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.quiz-nav-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.quiz-submit-btn {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  color: #ffffff;
+  border: none;
+  padding: 12px 28px;
+  border-radius: 999px;
+  font-size: 1.05rem;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(34, 197, 94, 0.35);
+  transition: all 0.2s ease;
+}
+
+.quiz-submit-btn:hover {
+  transform: scale(1.03);
+}
+
+/* Exam Result Card */
+.stage-quiz-result-view {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.quiz-result-card {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+}
+
+.result-celebration-emoji {
+  font-size: 4rem;
+  line-height: 1;
+  animation: bounce-ready 2s infinite;
+}
+
+.result-title {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 900;
+  color: #1e293b;
+}
+
+.result-score-pill {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  background: #fefce8;
+  border: 2px solid #fef08a;
+  padding: 8px 24px;
+  border-radius: 999px;
+}
+
+.result-score-pill .score-val {
+  font-size: 2.8rem;
+  font-weight: 900;
+  color: #ca8a04;
+}
+
+.result-score-pill .score-unit {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #854d0e;
+}
+
+/* Milestone Diploma Certificate (Level 25) */
+.milestone-diploma-certificate {
+  width: 100%;
+  background: #fffdf5;
+  border: 6px double #d97706;
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 10px 30px rgba(217, 119, 6, 0.15);
+  margin: 12px 0;
+}
+
+.certificate-inner-border {
+  border: 1.5px dashed #f59e0b;
+  border-radius: 14px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.cert-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cert-badge {
+  font-size: 2rem;
+}
+
+.cert-title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 900;
+  color: #92400e;
+  letter-spacing: 1px;
+}
+
+.cert-recipient {
+  font-size: 1.15rem;
+  color: #1e293b;
+  margin: 4px 0;
+}
+
+.cert-recipient strong {
+  font-size: 1.35rem;
+  color: #b45309;
+  border-bottom: 2px solid #f59e0b;
+  padding-bottom: 2px;
+}
+
+.cert-body {
+  font-size: 0.98rem;
+  line-height: 1.7;
+  color: #475569;
+  max-width: 580px;
+  text-align: center;
+}
+
+.cert-footer {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #fed7aa;
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #78350f;
+}
+
+/* Quiz Review List */
+.quiz-review-list {
+  width: 100%;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.review-title {
+  margin: 0 0 6px;
+  font-size: 1.1rem;
+  font-weight: 900;
+  color: #1e293b;
+}
+
+.review-q-item {
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 12px 16px;
+  border: 1px solid #e2e8f0;
+}
+
+.review-q-item.is-correct {
+  border-color: #86efac;
+  background: #f0fdf4;
+}
+
+.review-q-item.is-wrong {
+  border-color: #fca5a5;
+  background: #fef2f2;
+}
+
+.review-q-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: #1e293b;
+}
+
+.review-q-status {
+  font-size: 0.85rem;
+  font-weight: 900;
+}
+
+.review-q-ans {
+  margin: 4px 0 0;
+  font-size: 0.86rem;
+  color: #475569;
+  line-height: 1.4;
+}
+
+.result-actions-row {
+  margin-top: 16px;
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.result-retry-btn {
+  background: #475569;
+  color: #ffffff;
+  border: none;
+  padding: 12px 28px;
+  border-radius: 999px;
+  font-size: 1rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+/* Eye Care Dark Mode Overrides */
+
+body.is-dark-eyecare-global .stage-quiz-modal-card {
+  background: #1e293b;
+  color: #f8fafc;
+}
+
+body.is-dark-eyecare-global .quiz-header-title,
+body.is-dark-eyecare-global .quiz-question-prompt {
+  color: #f8fafc;
+}
+
+body.is-dark-eyecare-global .quiz-option-card {
+  background: #0f172a;
+  border-color: #334155;
+}
+
+body.is-dark-eyecare-global .option-main-text {
+  color: #f8fafc;
+}
+
+body.is-dark-eyecare-global .option-letter-badge {
+  background: #334155;
+  color: #cbd5e1;
+}
+
+body.is-dark-eyecare-global .milestone-diploma-certificate {
+  background: #1e1e24;
+  border-color: #b45309;
+}
+
+body.is-dark-eyecare-global .cert-recipient,
+body.is-dark-eyecare-global .cert-body {
+  color: #cbd5e1;
+}
+
+/* ========================================================
+   SINGLE ADVENTURE ROAD & CLEAN LEVEL CAROUSEL
+   ======================================================== */
+
+/* Header Points Pill */
+.header-points-combined-pill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #fef3c7;
+  border: 2px solid #fde68a;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: #92400e;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.12);
+}
+
+/* ========================================================
+   LUCKY CHEST DRAW & ANIMATION
+   ======================================================== */
+.lucky-chest-card-section {
+  background: linear-gradient(135deg, #fef9c3 0%, #fef08a 100%);
+  border: 3px solid #fde047;
+  border-radius: 24px;
+  padding: 24px 20px;
+  text-align: center;
+  margin: 16px 0;
+  box-shadow: 0 10px 25px rgba(234, 179, 8, 0.2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.chest-pulsing-icon {
+  font-size: 3.8rem;
+  animation: chest-bounce 1.4s infinite ease-in-out;
+  display: inline-block;
+  filter: drop-shadow(0 6px 12px rgba(202, 138, 4, 0.35));
+}
+
+@keyframes chest-bounce {
+  0%, 100% { transform: scale(1) translateY(0); }
+  50% { transform: scale(1.12) translateY(-8px); }
+}
+
+.chest-opened-icon {
+  font-size: 4rem;
+  animation: chest-pop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes chest-pop {
+  0% { transform: scale(0.4) rotate(-15deg); opacity: 0; }
+  70% { transform: scale(1.15) rotate(5deg); }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+
+/* ========================================================
+   PINKY PROMISE PACT (學習打勾勾約定 🤙)
+   ======================================================== */
+.pinky-promise-callout-box {
+  background: linear-gradient(135deg, #fdf4ff 0%, #fae8ff 100%);
+  border: 3px dashed #e879f9;
+  border-radius: 24px;
+  padding: 20px;
+  margin: 16px 0;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.pact-desc {
+  font-size: 0.95rem;
+  color: #701a75;
+  margin: 0;
+  line-height: 1.5;
+  max-width: 480px;
+}
+
+.pact-actions-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+/* ========================================================
+   MY ACHIEVEMENTS MODAL (我的成就 🏆)
+   ======================================================== */
+.achievements-modal-card {
+  background: #ffffff;
+  border-radius: 32px;
+  max-width: 680px;
+  width: 95vw;
+  max-height: 88vh;
+  overflow-y: auto;
+  padding: 28px 24px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  position: relative;
+}
+
+.achieve-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin: 20px 0;
+}
+
+@media (max-width: 580px) {
+  .achieve-metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.metric-item-card {
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 20px;
+  padding: 14px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 4px;
+}
+
+.badges-wall-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+@media (max-width: 500px) {
+  .badges-wall-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.badge-card-item {
+  background: #f1f5f9;
+  border: 2px solid #e2e8f0;
+  border-radius: 18px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: all 0.2s ease;
+}
+
+/* ========================================================
+   VOUCHER STORE SUB-TABS & PIN KEYPAD
+   ======================================================== */
+.passbook-subtabs-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  border-bottom: 2px solid #f1f5f9;
+  padding-bottom: 8px;
+}
+
+.passbook-subtab-btn {
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: none;
+  font-weight: 800;
+  font-size: 0.92rem;
+  color: #64748b;
+  background: #f8fafc;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.passbook-subtab-btn.is-active {
+  background: #2e746a;
+  color: #ffffff;
+}
+
+.claim-ticket-pin-btn {
+  background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-weight: 800;
+  font-size: 0.88rem;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(234, 88, 12, 0.25);
+}
+
+.pin-keypad-grid-compact {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 14px;
+}
+
+/* ========================================================
+   PARENT MONITOR & GIFT COINS PANEL
+   ======================================================== */
+.parent-gift-points-panel,
+.parent-monitor-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  text-align: left;
+}
+
+.monitor-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.monitor-kpi-card {
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 10px 8px;
+  text-align: center;
+}
+
+.monitor-kpi-card strong {
+  display: block;
+  font-size: 1.2rem;
+  color: #0f172a;
+}
+
+.monitor-kpi-card span {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.monitor-pact-box {
+  background: #fdf4ff;
+  border: 1.5px solid #f5d0fe;
+  border-radius: 16px;
+  padding: 12px;
+  font-size: 0.88rem;
+  color: #701a75;
+}
+
+/* ========================================================
+   LEARNER SWITCHER & FORMS
+   ======================================================== */
+.learner-tile-del-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 8px;
+  opacity: 0.6;
+  transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.learner-tile-del-btn:hover {
+  opacity: 1;
+  background: #fee2e2;
+}
+
+.form-radio-pill-group {
+  display: flex;
+  gap: 8px;
+}
+
+.radio-pill-btn {
+  flex: 1;
+  background: #f8fafc;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-weight: 800;
+  font-size: 0.88rem;
+  color: #475569;
+  cursor: pointer;
+  text-align: center;
+}
+
+.radio-pill-btn.is-active {
+  background: #2e746a;
+  border-color: #2e746a;
+  color: #ffffff;
+}
