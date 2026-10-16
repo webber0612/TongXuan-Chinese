@@ -174,7 +174,7 @@
 
 /* ---------- secondary modes ---------- */
 .tx-scope .tx-modes .tx-section-title { margin-bottom: var(--tx-space-3); }
-.tx-scope .tx-modes-grid { display: grid; gap: var(--tx-space-4); grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.tx-scope .tx-modes-grid { display: grid; gap: var(--tx-space-4); grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .tx-scope .tx-mode {
   align-items: center; background: var(--tx-surface); border-radius: var(--tx-radius-m); box-shadow: var(--tx-shadow-card);
   display: grid; gap: var(--tx-space-3); grid-template-columns: 72px minmax(0, 1fr) auto; padding: var(--tx-space-3);

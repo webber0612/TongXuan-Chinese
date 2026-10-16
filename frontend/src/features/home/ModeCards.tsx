@@ -1,7 +1,7 @@
 import { ChevronRight } from "lucide-react";
 import type { HomeTranslate } from "./homeCopy";
 
-type ModeKey = "chars" | "dialogue" | "vocab";
+type ModeKey = "chars" | "vocab";
 
 interface ModeCardsProps {
   copy: HomeTranslate;
@@ -9,9 +9,8 @@ interface ModeCardsProps {
   onOpen: (mode: ModeKey) => void;
 }
 
-const MODES: Array<{ key: ModeKey; title: "modeCharsTitle" | "modeDialogueTitle" | "modeVocabTitle"; body: "modeCharsBody" | "modeDialogueBody" | "modeVocabBody" }> = [
+const MODES: Array<{ key: ModeKey; title: "modeCharsTitle" | "modeVocabTitle"; body: "modeCharsBody" | "modeVocabBody" }> = [
   { key: "chars", title: "modeCharsTitle", body: "modeCharsBody" },
-  { key: "dialogue", title: "modeDialogueTitle", body: "modeDialogueBody" },
   { key: "vocab", title: "modeVocabTitle", body: "modeVocabBody" },
 ];
 
@@ -26,7 +25,7 @@ export function ModeCards({ copy, charsDisabled, onOpen }: ModeCardsProps) {
             key={mode.key}
             type="button"
             className={`tx-mode tx-mode-${mode.key}`}
-            disabled={mode.key !== "dialogue" && charsDisabled}
+            disabled={charsDisabled}
             onClick={() => onOpen(mode.key)}
           >
             {/* Square crop of one tile from the shared illustration sheet; see .tx-mode-art in home.css. */}

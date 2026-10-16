@@ -92,7 +92,7 @@ function scanCssImports(filePath, seen = new Set()) {
 }
 visit(path.resolve(sourceRoot, "main.tsx"));
 
-for (const requiredModule of ["AppShell.tsx", "pages/ChildPortalPage.tsx", "pages/LessonPlayerPage.tsx"]) {
+for (const requiredModule of ["AppShell.tsx", "pages/ChildPortalPage.tsx", "features/home/HomeScreen.tsx", "features/childPortal/InteractiveClassroom.tsx"]) {
   const absolute = path.resolve(sourceRoot, requiredModule);
   if (!visited.has(absolute)) throw new Error(`Production entry graph does not include ${path.relative(root, absolute)}.`);
 }

@@ -1,23 +1,21 @@
 // @vitest-environment jsdom
 import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ChildPortalPage } from "../../pages/ChildPortalPage";
-import { loadDialogueDone, markDialogueDone } from "./dialogueLessons";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 let root: Root;
 
-async function renderStaticHome(onOpenDialogueLesson = vi.fn()) {
+async function renderStaticHome() {
   document.body.innerHTML = '<div id="root"></div>';
   root = createRoot(document.getElementById("root")!);
   await act(async () => {
     root.render(
-      <ChildPortalPage runtime="static" activeChildId={null} onOpenCurriculum={() => undefined} onOpenDialogueLesson={onOpenDialogueLesson} />,
+      <ChildPortalPage />,
     );
   });
-  return onOpenDialogueLesson;
 }
 
 function click(element: Element | null | undefined) {
@@ -73,22 +71,4 @@ describe("static home", () => {
     expect(document.querySelector('[role="dialog"]')).toBeNull();
   });
 
-  it("lists conversation lessons and hands the chosen lesson to the shell", async () => {
-    const onOpenDialogueLesson = await renderStaticHome();
-    await click(document.querySelector(".tx-mode-dialogue"));
-    const rows = document.querySelectorAll(".tx-lesson-row");
-    expect(rows.length).toBeGreaterThan(0);
-    await click(rows[0]);
-    expect(onOpenDialogueLesson).toHaveBeenCalledWith("starter-l01");
-  });
-});
-
-describe("conversation lesson progress", () => {
-  it("is stored per learner and ignores duplicates and corrupt data", () => {
-    expect(markDialogueDone("learner-1", "starter-l01")).toEqual(["starter-l01"]);
-    expect(markDialogueDone("learner-1", "starter-l01")).toEqual(["starter-l01"]);
-    expect(loadDialogueDone("learner-2")).toEqual([]);
-    localStorage.setItem("tongxuan_dialogue_done:learner-3", "{not json");
-    expect(loadDialogueDone("learner-3")).toEqual([]);
-  });
 });

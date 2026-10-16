@@ -2,7 +2,7 @@ import { useState,type ReactNode } from "react";
 import {
 ArrowRight,X
 } from "lucide-react";
-import { TONGXUAN_AUTHORED_DRAFT_VOLUMES,type AuthoredDraftVolume,type AuthoredDraftLesson } from "../../../data/ocacTextbooksData";
+import { TONGXUAN_AUTHORED_DRAFT_VOLUMES,type AuthoredDraftVolume,type AuthoredDraftLesson } from "../../../data/authoredDraftVolumes";
 
 /* ========================================================
    2. Legacy authored draft samples retained for internal history

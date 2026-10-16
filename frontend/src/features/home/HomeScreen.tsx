@@ -1,14 +1,12 @@
 import { useState } from "react";
-import { Flame, Star } from "lucide-react";
+import { Flame,Star } from "lucide-react";
 import appLogoIcon from "../../assets/app-logo-icon.png";
 import type { CourseLevel } from "../../data/learningPathData";
-import type { ChildLearner, DisplayLang, ScriptMode } from "../childPortal/types";
-import { DialogueSheet } from "./DialogueSheet";
-import type { DialogueLesson } from "./dialogueLessons";
+import type { ChildLearner,DisplayLang,ScriptMode } from "../childPortal/types";
 import { homeTranslator } from "./homeCopy";
-import { completedCount, currentLevelNumber, stageNumbers, statusOf, stopsForStage, visibleStreak } from "./homeModel";
+import { completedCount,currentLevelNumber,stageNumbers,statusOf,stopsForStage,visibleStreak } from "./homeModel";
 import { LevelContents } from "./LevelContents";
-import { ModeCards, type ModeKey } from "./ModeCards";
+import { ModeCards,type ModeKey } from "./ModeCards";
 import { StagePath } from "./StagePath";
 import { TodayHero } from "./TodayHero";
 
@@ -21,13 +19,10 @@ export interface HomeScreenProps {
   displayLang: DisplayLang;
   scriptMode: ScriptMode;
   selectedLevelNumber: number;
-  dialogueLessons: DialogueLesson[];
-  dialogueDone: string[];
   isDarkEyeCare: boolean;
   onSelectLevel: (levelNumber: number) => void;
   onStartLevel: (level: CourseLevel, mode: ClassroomMode) => void;
   onStartQuiz: (level: CourseLevel) => void;
-  onOpenDialogueLesson: (lessonId: string) => void;
   onOpenMenu: () => void;
   onOpenAbout: () => void;
   onFeedback: () => void;
@@ -51,7 +46,6 @@ export function HomeScreen(props: HomeScreenProps) {
 
   const stages = stageNumbers(levels);
   const [stageNumber, setStageNumber] = useState<number>(() => heroLevel?.stageNumber ?? stages[0] ?? 1);
-  const [dialogueOpen, setDialogueOpen] = useState(false);
   const stageIndex = stages.indexOf(stageNumber);
   const streak = visibleStreak(learner.streakDays ?? 0, learner.lastActiveDay, props.today);
 
@@ -62,7 +56,6 @@ export function HomeScreen(props: HomeScreenProps) {
   };
 
   const openMode = (mode: ModeKey) => {
-    if (mode === "dialogue") { setDialogueOpen(true); return; }
     if (heroLevel && heroLevel.type === "lesson") props.onStartLevel(heroLevel, mode === "chars" ? "char" : "vocab");
   };
 
@@ -131,15 +124,6 @@ export function HomeScreen(props: HomeScreenProps) {
         <button type="button" onClick={props.onOpenAbout}>{copy("disclaimer")}</button>
       </footer>
 
-      {dialogueOpen && (
-        <DialogueSheet
-          lessons={props.dialogueLessons}
-          doneLessonIds={props.dialogueDone}
-          copy={copy}
-          onOpenLesson={props.onOpenDialogueLesson}
-          onClose={() => setDialogueOpen(false)}
-        />
-      )}
     </div>
   );
 }

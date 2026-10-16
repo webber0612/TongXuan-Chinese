@@ -88,12 +88,8 @@ SCOPE_FILES = {
     "docs/learning-session-policy-v1.md",
     "frontend/src/pages/ChildPortalPage.tsx",
     "frontend/src/pages/LearningPage.tsx",
-    "frontend/src/pages/LessonPlayerPage.tsx",
     "frontend/src/components/PlacementStatus.tsx",
     "frontend/src/lib/childFirst.test.tsx",
-    "frontend/src/lib/lessonPlayer.test.tsx",
-    "frontend/src/lib/testFixtures/learningFlow.ts",
-    "frontend/src/lib/curriculum.test.ts",
     "frontend/src/lib/learning.test.ts",
     "frontend/src/lib/adaptiveWriting.test.ts",
 }

@@ -1,12 +1,9 @@
-import { useEffect, useState } from "react";
 import { TONGXUAN_AUTHORED_DRAFT_LEVELS } from "../data/learningPathData";
-import { trackDonationClick, trackFeedbackClick, trackLevelPass } from "../lib/analytics";
-import { detectRuntimeMode } from "../lib/runtimeMode";
+import { trackDonationClick,trackFeedbackClick,trackLevelPass } from "../lib/analytics";
 import type { PinkyPromisePact } from "../features/childPortal/types";
-import { listDialogueLessons, loadDialogueDone } from "../features/home/dialogueLessons";
 import { homeTranslator } from "../features/home/homeCopy";
-import { completeLevel, localDayKey, nextStreak } from "../features/home/homeModel";
-import { HomeMenu, type MenuDestination } from "../features/home/HomeMenu";
+import { completeLevel,localDayKey,nextStreak } from "../features/home/homeModel";
+import { HomeMenu,type MenuDestination } from "../features/home/HomeMenu";
 import { HomeScreen } from "../features/home/HomeScreen";
 import { InteractiveClassroom } from "../features/childPortal/InteractiveClassroom";
 import { SundayChestsModal } from "../features/childPortal/modals/SundayChestsModal";
@@ -19,25 +16,16 @@ import { StageQuizExamModal } from "../features/childPortal/modals/StageQuizExam
 import { LearnerAchievementsModal } from "../features/childPortal/modals/LearnerAchievementsModal";
 
 import { useChildPortalController,type ChildPortalProps } from "../features/childPortal/useChildPortalController";
-import { LegacyHomeView } from "../features/childPortal/LegacyHomeView";
-
-const DIALOGUE_LESSONS = listDialogueLessons();
 
 export function ChildPortalPage(props: ChildPortalProps) {
   const c = useChildPortalController(props);
   const {
-    activeChildId,
     activeChildName,
-    onOpenCurriculum,
-    onOpenCourseZero,
-    onStartLearningSession,
     learners,
     setLearners,
     activeLearnerId,
     setActiveLearnerId,
     activeLearner,
-    sessionProfileError,
-    setSessionProfileError,
     updateActiveLearner,
     selectedLevelNum,
     setSelectedLevelNum,
@@ -89,25 +77,8 @@ export function ChildPortalPage(props: ChildPortalProps) {
     isVoiceGuideEnabled,
     setIsVoiceGuideEnabled,
     toggleVoiceGuide,
-    dailyQueue,
-    setDailyQueue,
-    stageIdFromDailyQueue,
-    findLessonAndStage,
-    authoritativeLessonId,
-    authoritativeStage,
-    authoritativeLesson,
-    sessionTargetLessonId,
     startLessonAtStep,
-    startLearningSession,
     handleOnboardingComplete,
-    selectedStageId,
-    setSelectedStageId,
-    selectedOfficialLessonId,
-    setSelectedOfficialLessonId,
-    browsingStage,
-    browsingStageIndex,
-    upcomingLesson,
-    isBrowsingDifferentLesson,
     selectedLevel,
     selectedLevelProgress,
     selectedDay,
@@ -125,10 +96,7 @@ export function ChildPortalPage(props: ChildPortalProps) {
     playSound,
   } = c;
 
-  const runtime = props.runtime ?? detectRuntimeMode();
   const homeCopy = homeTranslator(displayLang);
-  const [dialogueDone, setDialogueDone] = useState<string[]>(() => loadDialogueDone(activeLearnerId));
-  useEffect(() => { setDialogueDone(loadDialogueDone(activeLearnerId)); }, [activeLearnerId]);
 
   /** Records one finished level for the active learner only, then moves the selection to the next level. */
   const recordLevelCompleted = (
@@ -205,32 +173,25 @@ export function ChildPortalPage(props: ChildPortalProps) {
   }
 
   return (
-    <div className={`${runtime === "static" ? "tx-portal" : "ipad-weekly-portal"} ${isDarkEyeCare ? "is-dark-eyecare" : ""}`}>
-      {runtime === "static" ? (
-        <HomeScreen
+    <div className={`tx-portal ${isDarkEyeCare ? "is-dark-eyecare" : ""}`}>
+      <HomeScreen
           learner={activeLearner}
           levels={TONGXUAN_AUTHORED_DRAFT_LEVELS}
           today={localDayKey(new Date())}
           displayLang={displayLang}
           scriptMode={scriptMode}
           selectedLevelNumber={selectedLevelNum}
-          dialogueLessons={DIALOGUE_LESSONS}
-          dialogueDone={dialogueDone}
           isDarkEyeCare={isDarkEyeCare}
           onSelectLevel={(levelNumber) => { setCustomPracticePlan(null); setSelectedLevelNum(levelNumber); }}
           onStartLevel={(level, mode) => { setSelectedLevelNum(level.levelNumber); startLessonAtStep(1, mode); }}
           onStartQuiz={launchStageQuiz}
-          onOpenDialogueLesson={(lessonId) => props.onOpenDialogueLesson?.(lessonId)}
           onOpenMenu={() => setMenuOpen(true)}
           onOpenAbout={() => { setAboutInitialTab("disclaimer"); setAboutModalOpen(true); }}
           onFeedback={trackFeedbackClick}
           onSupport={trackDonationClick}
         />
-      ) : (
-        <LegacyHomeView c={c} />
-      )}
 
-      {runtime === "static" && menuOpen && (
+      {menuOpen && (
         <HomeMenu
           learner={activeLearner}
           scriptMode={scriptMode}

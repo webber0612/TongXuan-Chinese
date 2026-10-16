@@ -1,36 +1,22 @@
 import { useState,useEffect,useRef,type ReactNode } from "react";
-import { apiFetch } from "../../lib/apiFetch";
 import { renderRuby } from "../../lib/chinesePhonetics";
 import {
 TONGXUAN_AUTHORED_DRAFT_LEVELS,
 type CourseLevel,getLearnerLevelsProgress
 } from "../../data/learningPathData";
-import { officialCoursePath,type OfficialLesson } from "../../data/officialCoursePath";
-import { isValidBackendChildId } from "../../lib/profiles";
 
-import { ValidatedDailyQueue,ScriptMode,DisplayLang,PhoneticAssist,HandMode,SpeechSpeed,DailyDayPlan,ChildLearner } from "./types";
+import { ScriptMode,DisplayLang,PhoneticAssist,HandMode,SpeechSpeed,DailyDayPlan,ChildLearner } from "./types";
 import { UI_TEXT } from "./uiText";
 import { courseLevelToDayPlan } from "./dayPlan";
 import { DEFAULT_LEARNERS } from "./defaultLearners";
 
-import type { RuntimeMode } from "../../lib/runtimeMode";
-
-const API = import.meta.env.VITE_API_BASE ?? "";
-
 export interface ChildPortalProps {
-  activeChildId: number | null;
+  /** Name of the profile selected in the shell; matched against local learners. */
   activeChildName?: string;
-  onOpenCurriculum: () => void;
-  onOpenCourseZero?: () => void;
-  onStartLearningSession?: (childId: number | null, targetLessonId: string | undefined, mode: "LEARN" | "REVIEW") => boolean;
-  /** Opens a conversation lesson in the local player; only used without a backend. */
-  onOpenDialogueLesson?: (lessonId: string) => void;
-  /** Overrides environment detection; tests use it to render the static home. */
-  runtime?: RuntimeMode;
 }
 
 /** State and handlers for the child portal; the page and its views only render from this. */
-export function useChildPortalController({ activeChildId, activeChildName, onOpenCurriculum, onOpenCourseZero, onStartLearningSession }: ChildPortalProps) {
+export function useChildPortalController({ activeChildName }: ChildPortalProps) {
   // Learner Profiles Storage
   const [learners, setLearners] = useState<ChildLearner[]>(() => {
     const saved = localStorage.getItem("tongxuan_learners_list");
@@ -49,7 +35,6 @@ export function useChildPortalController({ activeChildId, activeChildName, onOpe
   });
 
   const activeLearner = (activeChildName ? learners.find((l) => l.name.trim().toLowerCase() === activeChildName.trim().toLowerCase()) : null) || learners.find((l) => l.id === activeLearnerId) || learners[0] || DEFAULT_LEARNERS[0];
-  const [sessionProfileError, setSessionProfileError] = useState(false);
 
   // Helper to update active learner data and persist
   const updateActiveLearner = (updater: Partial<ChildLearner> | ((prev: ChildLearner) => ChildLearner)) => {
@@ -188,51 +173,12 @@ export function useChildPortalController({ activeChildId, activeChildName, onOpe
     });
   };
 
-  const [dailyQueue, setDailyQueue] = useState<ValidatedDailyQueue | null>(null);
-
-  const stageIdFromDailyQueue = (queue: ValidatedDailyQueue | null): string => {
-    if (!queue) return "starter";
-    const currentId = queue.newLesson?.lessonId || queue.completedLesson?.lessonId;
-    if (currentId?.startsWith("book1") || queue.placementStart === "BOOK_1") return "book-1";
-    if (currentId?.startsWith("basic") || queue.placementStart === "BASIC") return "basic";
-    return "starter";
-  };
-
-  const findLessonAndStage = (id: string): { stage: (typeof officialCoursePath.stages)[0]; lesson: OfficialLesson } => {
-    for (const st of officialCoursePath.stages) {
-      const ls = st.lessons.find((l) => l.id === id);
-      if (ls) return { stage: st, lesson: ls };
-    }
-    return { stage: officialCoursePath.stages[0], lesson: officialCoursePath.stages[0].lessons[0] };
-  };
-
-  const authoritativeLessonId =
-    dailyQueue?.newLesson?.lessonId ||
-    dailyQueue?.completedLesson?.lessonId ||
-    (dailyQueue?.placementStart === "BOOK_1"
-      ? "book1-l01"
-      : dailyQueue?.placementStart === "BASIC"
-      ? "basic-l01"
-      : "starter-l01");
-
-  const { stage: authoritativeStage, lesson: authoritativeLesson } = findLessonAndStage(authoritativeLessonId);
-  const sessionTargetLessonId = dailyQueue?.newLesson?.lessonId || dailyQueue?.completedLesson?.lessonId ||
-    (dailyQueue?.placementStart === "BOOK_1" ? "book1-l01" : dailyQueue?.placementStart === "BASIC" ? "basic-l01" : dailyQueue?.placementStart === "STARTER" ? "starter-l01" : undefined);
-
   function startLessonAtStep(step: 1 | 2 | 3 | 4 | 5, mode: "char" | "vocab" | "idiom" = "char") {
     setCustomPracticePlan(null);
     setClassroomInitialStep(step);
     setClassroomMode(mode);
     setInClassroom(true);
   }
-
-  const startLearningSession = (mode: "LEARN" | "REVIEW") => {
-    if (!onStartLearningSession || !isValidBackendChildId(activeChildId) || dailyQueue?.childId !== activeChildId || !sessionTargetLessonId) {
-      setSessionProfileError(true);
-      return;
-    }
-    setSessionProfileError(!onStartLearningSession(activeChildId, sessionTargetLessonId, mode));
-  };
 
   const handleOnboardingComplete = (config: {
     name: string;
@@ -254,48 +200,8 @@ export function useChildPortalController({ activeChildId, activeChildName, onOpe
       ...(config.handMode ? { handMode: config.handMode } : {})
     });
     setOnboardingOpen(false);
-    if (onStartLearningSession && isValidBackendChildId(activeChildId) && dailyQueue?.childId === activeChildId && sessionTargetLessonId) {
-      startLearningSession("LEARN");
-    } else {
-      startLessonAtStep(1, "char");
-    }
+    startLessonAtStep(1, "char");
   };
-
-  const [selectedStageId, setSelectedStageId] = useState<string>("starter");
-  const [selectedOfficialLessonId, setSelectedOfficialLessonId] = useState<string>("starter-l01");
-
-  useEffect(() => {
-    let cancelled = false;
-    const targetChildId = activeChildId;
-    setDailyQueue(null);
-    if (!isValidBackendChildId(targetChildId)) {
-      return () => { cancelled = true; };
-    }
-
-    apiFetch(`${API}/api/children/${targetChildId}/learning-daily-queue`)
-      .then((res) => (res.ok ? res.json() as Promise<unknown> : null))
-      .then((data: unknown) => {
-        if (!cancelled && typeof data === "object" && data !== null &&
-            "childId" in data && data.childId === targetChildId) {
-          const queueData = data as ValidatedDailyQueue;
-          setDailyQueue(queueData);
-          const authId = queueData.newLesson?.lessonId || queueData.completedLesson?.lessonId || (queueData.placementStart === "BOOK_1" ? "book1-l01" : queueData.placementStart === "BASIC" ? "basic-l01" : "starter-l01");
-          const found = findLessonAndStage(authId);
-          setSelectedStageId(found.stage.id);
-          setSelectedOfficialLessonId(found.lesson.id);
-        }
-      })
-      .catch(() => {});
-
-    return () => {
-      cancelled = true;
-    };
-  }, [activeChildId]);
-
-  const browsingStage = officialCoursePath.stages.find((s) => s.id === selectedStageId) || authoritativeStage;
-  const browsingStageIndex = officialCoursePath.stages.findIndex((s) => s.id === browsingStage.id);
-  const upcomingLesson = browsingStage.lessons.find((l) => l.id === selectedOfficialLessonId) || browsingStage.lessons[0];
-  const isBrowsingDifferentLesson = upcomingLesson.id !== authoritativeLesson.id;
 
   const selectedLevel = TONGXUAN_AUTHORED_DRAFT_LEVELS.find((l) => l.levelNumber === selectedLevelNum) || TONGXUAN_AUTHORED_DRAFT_LEVELS[0];
   const selectedLevelProgress = learnerLevelsProgress.find((p) => p.levelNumber === selectedLevelNum) || {
@@ -469,18 +375,12 @@ export function useChildPortalController({ activeChildId, activeChildName, onOpe
   };
 
   return {
-    activeChildId,
     activeChildName,
-    onOpenCurriculum,
-    onOpenCourseZero,
-    onStartLearningSession,
     learners,
     setLearners,
     activeLearnerId,
     setActiveLearnerId,
     activeLearner,
-    sessionProfileError,
-    setSessionProfileError,
     updateActiveLearner,
     selectedLevelNum,
     setSelectedLevelNum,
@@ -532,25 +432,8 @@ export function useChildPortalController({ activeChildId, activeChildName, onOpe
     isVoiceGuideEnabled,
     setIsVoiceGuideEnabled,
     toggleVoiceGuide,
-    dailyQueue,
-    setDailyQueue,
-    stageIdFromDailyQueue,
-    findLessonAndStage,
-    authoritativeLessonId,
-    authoritativeStage,
-    authoritativeLesson,
-    sessionTargetLessonId,
     startLessonAtStep,
-    startLearningSession,
     handleOnboardingComplete,
-    selectedStageId,
-    setSelectedStageId,
-    selectedOfficialLessonId,
-    setSelectedOfficialLessonId,
-    browsingStage,
-    browsingStageIndex,
-    upcomingLesson,
-    isBrowsingDifferentLesson,
     selectedLevel,
     selectedLevelProgress,
     selectedDay,

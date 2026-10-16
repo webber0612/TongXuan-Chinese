@@ -28,16 +28,13 @@
 frontend/src/main.tsx → frontend/src/AppShell.tsx
 ```
 
-前端有兩種執行模式，由 `frontend/src/lib/runtimeMode.ts` 判斷：
+首頁一律是 `features/home/` 的新版畫面。`frontend/src/lib/runtimeMode.ts` 只用來判斷「沒有後端時，哪些舊頁面要改顯示停用提示」。
 
-- **static**（正式產品）：沒有設定 `VITE_API_BASE`。首頁是 `features/home/` 的新版畫面。
-- **backend**：有設定 `VITE_API_BASE`，或在測試中。首頁是 `features/childPortal/LegacyHomeView.tsx`，由後端的每日佇列驅動。既有的 170 多個前端測試驗證的是這個模式。
-
-| 路由 | static 模式 | backend 模式 |
-|---|---|---|
-| `/` | 新版首頁：今日關卡、路線、三個練習入口、右上角選單 | 舊版首頁 |
-| `/learning-session` | 會話課播放器（本機模式，完成狀態存 localStorage） | 後端學習流程 |
-| `/parent-dashboard`、`/me`、`/practice`、`/curriculum`、`/tutor`、`/diagnostics`、`/admin/commercialization` | 顯示「此路徑已停用」並提供回首頁按鈕 | 原有頁面 |
+| 路由 | 內容 |
+|---|---|
+| `/` | 首頁：今日關卡、路線、練習入口、右上角選單 |
+| `/parent-dashboard`、`/me`、`/practice`、`/tutor`、`/diagnostics`、`/admin/commercialization` | 沒有後端時顯示「此路徑已停用」；有設定 `VITE_API_BASE` 時才是原頁面 |
+| `/learning-session`、`/curriculum` | 已隨僑委會教材一起移除，顯示停用提示 |
 
 static 模式的家長功能在首頁選單的「家長專區」（PIN 保護），設定也在同一個選單裡。
 
@@ -68,7 +65,8 @@ python scripts/open_curriculum_rights_gate.py --sync-inventory
 
 - **教材授權**：權利清單中絕大多數檔案標為 `RIGHTS_UNCLEAR`，repo 是公開的。擴充課程內容前必須處理。
 - **追蹤碼**：`frontend/src/lib/analytics.ts` 會載入 Google Analytics（GA4），但 `README.md` 與 `.better-web-ui.md` 都寫「零追蹤」。需要擁有者決定保留或移除。
-- **未合併的舊工作**：PR #113、PR #110 與 Issue #116 是依「後端為權威」的架構寫的，與 GitHub 模式方向相反，不合併，僅供參考。
+- **未合併的舊工作**：PR #113、PR #110 與 Issue #116 是依「後端為權威」與僑委會教材寫的，不合併，僅供參考。
+- **僑委會教材**：2026-10-16 已從前端移除（課程路線、會話課與播放器、舊版首頁）。後端與 `shared/validated-curriculum-slice.json`、`shared/lesson-packages/` 仍在，因為後端的學習流程、複習、聽力都依賴它們；如何處理待擁有者決定。
 - **`main` 沒有分支保護**，需在 GitHub 設定中開啟。
 - 實機 iPad Safari 與真實兒童試用都還沒做過。
 

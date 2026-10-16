@@ -6,15 +6,15 @@ AI agents and developers MUST treat only the Canonical Frontend Manifest as impl
 |---|---|---|
 | TongXuan Web App | `frontend/src/main.tsx` → `frontend/src/AppShell.tsx` | PRODUCTION |
 | Child Home / Today | `/` | PRODUCTION |
-| Lesson Player | `/learning-session` → `LessonPlayerPage` in the production learning flow | PRODUCTION |
+| Lesson Player | Removed 2026-10-16 with the OCAC-derived lesson packages; `/learning-session` now renders the retired-route notice | REMOVED |
 | Legacy `LearningSessionPage` implementation | Removed from active production source; it has no production route or use | HISTORICAL / REMOVED |
 | Practice | `/practice` | PRODUCTION |
-| Curriculum | `/curriculum` | PRODUCTION |
+| Curriculum | Removed 2026-10-16 with the OCAC course path | REMOVED |
 | Parent | `/parent-dashboard` | PRODUCTION |
 | Settings / Me | `/me` | PRODUCTION |
 | Historical previews | No production route or executable React source | ARCHIVED / FORBIDDEN_AS_TARGET |
 
-The canonical user route for Child Home / Today is `/`. `/kids` is a compatibility path that immediately replaces its URL with `/`. `/learning-session` is the only production Lesson Player route. `/lesson-player` and `/player` are non-product paths and render the retired-route notice; they never render `LessonPlayerPage`. Historical preview URLs and unknown paths also stay outside the Child Home route and render only the retired-route notice.
+The canonical user route for Child Home / Today is `/`. `/kids` is a compatibility path that immediately replaces its URL with `/`. `/learning-session`, `/lesson-player` and `/player` render the retired-route notice. Historical preview URLs and unknown paths also stay outside the Child Home route and render only the retired-route notice.
 
 ## Before modifying UI
 

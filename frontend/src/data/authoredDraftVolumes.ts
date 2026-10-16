@@ -401,7 +401,7 @@ function stampLegacyDraft(value: unknown, volume: number, lesson?: number): unkn
   const provenance: DraftStamped = {
     sourceKind: "TONGXUAN_AUTHORED",
     sourceName: "TongXuan legacy sample content",
-    sourceUrl: "https://github.com/webber0612/TongXuan-Chinese/blob/main/frontend/src/data/ocacTextbooksData.ts",
+    sourceUrl: "https://github.com/webber0612/TongXuan-Chinese/blob/main/frontend/src/data/authoredDraftVolumes.ts",
     sourceBook: `UNVERIFIED_LEGACY_VOLUME_${volume}`,
     sourceLesson: lessonNumber ? `TONGXUAN_LEGACY_LESSON_${lessonNumber}` : "UNVERIFIED",
     provenanceStatus: "INTERNAL_DRAFT",

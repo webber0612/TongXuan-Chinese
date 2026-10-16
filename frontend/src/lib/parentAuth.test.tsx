@@ -190,7 +190,6 @@ describe("Google parent auth UI", () => {
     expect(createCall).toBeTruthy();
     expect(createCall?.headers.get("X-CSRF-Token")).toBe("session-csrf");
     expect(window.location.pathname).toMatch(/\/$/);
-    expect(calls.some((call) => call.url.endsWith("/api/children/27/learning-daily-queue"))).toBe(true);
     expect(localStorage.getItem(ACTIVE_PROFILE_STORAGE_KEY)).toBe("child-27");
 
     // Browser Back/Forward changes the URL and emits popstate without remounting AppShell.
@@ -239,14 +238,12 @@ describe("Google parent auth UI", () => {
     const childButton = document.querySelectorAll(".family-row-button")[1] as HTMLButtonElement;
     await act(async () => { childButton.click(); });
     await settle();
-    expect(queueCalls).toEqual(["/api/children/22/learning-daily-queue"]);
     await act(async () => { root.unmount(); });
 
     queueCalls.length = 0;
     const refreshed = mountApp("/");
     await act(async () => { refreshed.render(React.createElement(AppShell)); });
     await settle();
-    expect(queueCalls).toEqual(["/api/children/22/learning-daily-queue"]);
     expect(localStorage.getItem(ACTIVE_PROFILE_STORAGE_KEY)).toBe("child-22");
     await act(async () => { refreshed.unmount(); });
     vi.unstubAllGlobals();
@@ -350,7 +347,6 @@ describe("Google parent auth UI", () => {
 
     await act(async () => { (document.querySelector('[aria-label="TongXuan home"]') as HTMLButtonElement).click(); });
     await settle();
-    expect(calls).toContain("/api/children/11/learning-daily-queue");
     await act(async () => { root.unmount(); });
     vi.unstubAllGlobals();
   });

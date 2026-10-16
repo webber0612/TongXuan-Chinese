@@ -37,12 +37,8 @@ NEW_CURRICULUM_CONTENT_PATHS = (
     "docs/learning-session-ui-review-v1.md",
     "frontend/src/pages/ChildPortalPage.tsx",
     "frontend/src/pages/LearningPage.tsx",
-    "frontend/src/pages/LessonPlayerPage.tsx",
     "frontend/src/components/PlacementStatus.tsx",
     "frontend/src/lib/childFirst.test.tsx",
-    "frontend/src/lib/lessonPlayer.test.tsx",
-    "frontend/src/lib/testFixtures/learningFlow.ts",
-    "frontend/src/lib/curriculum.test.ts",
     "frontend/src/lib/learning.test.ts",
     "frontend/src/lib/adaptiveWriting.test.ts",
     "frontend/src/lib/analytics.ts",
@@ -63,10 +59,7 @@ OCAC_SOURCE_LINKED_CONTENT_PATHS = frozenset({
     "docs/learning-session-policy-v1.md",
     "frontend/src/pages/ChildPortalPage.tsx",
     "frontend/src/lib/childFirst.test.tsx",
-    "frontend/src/lib/lessonPlayer.test.tsx",
-    "frontend/src/lib/testFixtures/learningFlow.ts",
     "frontend/src/components/PlacementStatus.tsx",
-    "frontend/src/pages/LessonPlayerPage.tsx",
 })
 
 
@@ -242,7 +235,6 @@ def test_embedded_curriculum_and_reference_paths_are_inventoried_and_blocked():
 def test_embedded_curriculum_inventory_omission_and_digest_drift_fail_closed():
     for path in (
         "backend/app/learning_flow.py",
-        "frontend/src/pages/LessonPlayerPage.tsx",
         "frontend/src/lib/analytics.ts",
         "docs/frontend-reference-library.md",
     ):
@@ -306,7 +298,6 @@ def test_unknown_and_reference_only_content_cannot_enter_publishable_artifact():
     blocked = [
         "shared/lesson-packages/book1-l01.json",
         "data/license-registry.json",
-        "frontend/src/data/ocacTextbooksData.ts",
     ]
     errors = validate_publishable_paths(blocked, audit)
     assert len([error for error in errors if error.startswith("PUBLIC_ARTIFACT_RESTRICTED_CONTENT:")]) == len(blocked)

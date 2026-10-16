@@ -318,7 +318,7 @@ export function StageQuizExamModal({
                       茲證明 <strong>{learnerName}</strong> 同學
                     </p>
                     <p className="cert-body">
-                      在 25 個關卡中勤勉自律、表現卓越，圓滿通過《學華語向前走》第一冊全部生字、生詞、部首與成語的總複習大驗收！
+                      勤勉自律、表現卓越，圓滿通過桐軒中文本冊全部生字、生詞與部首的總複習大驗收！
                     </p>
                     <div className="cert-footer">
                       <span className="cert-date">📅 頒發日期：{new Date().toLocaleDateString()}</span>

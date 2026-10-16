@@ -190,7 +190,7 @@ export function AboutTongXuanModal({
               <ul className="legal-points-list">
                 <li>
                   <strong>桐軒自編示範內容：</strong>
-                  這些舊關卡與生字資料是內部草稿，未逐課驗證為僑務委員會（OCAC）《學華語向前走》教材。官方課程路線與目標請查看學習地圖中的已驗證切片。
+                  桐軒的課文、例句與題目全部自行撰寫，認字範圍依「臺灣華語文能力基準」的漢字分級規劃。
                 </li>
                 <li>
                   <strong>國字字體與筆順規範：</strong>
