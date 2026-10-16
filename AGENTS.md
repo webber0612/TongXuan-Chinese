@@ -14,6 +14,10 @@ Do not use archived previews, legacy preview routes, screenshots, or experimenta
 - Verify the production import chain before changing UI.
 - Before changing UI, answer the seven checks in `docs/frontend-architecture.md` (branch, production entry, target route, final component, AppShell import, similarly named archived surface, and production build inclusion). If any answer is unknown, stop and report `CANONICAL_FRONTEND_NOT_VERIFIED`.
 
+## Curriculum standard
+
+The curriculum's character scope is fixed by the TBCL (臺灣華語文能力基準) character levels: the first book covers all 246 level-1 characters, the second book level 2, and so on. This is the Owner's standing requirement. Do not reinterpret it as "reference only" or remove the totals. Lessons, examples and questions are self-authored. Check coverage with `python scripts/tbcl_coverage.py`. Details: `docs/roadmap.md`.
+
 ## Design authority
 
 - Product audience: children learning Chinese as beginners, with a parent supervising progress and settings.

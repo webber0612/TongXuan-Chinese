@@ -13,3 +13,6 @@ data/*.sqlite3-*
 .env
 .env.local
 .DS_Store
+
+# Official TBCL list cache; read at run time, not redistributed.
+data/.tbcl-cache/

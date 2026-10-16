@@ -118,6 +118,18 @@
       "contentKind": "TRACKED_CJK_TEXT_FAIL_CLOSED"
     },
     {
+      "path": "AGENTS.md",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "digestMode": "TEXT_LF_NORMALIZED",
+      "sha256": "d5d40a5f3b315dd1e716f7ff4c4c035fddce73fde689ae3ab31199d1c620f806",
+      "sizeBytes": 5362
+    },
+    {
       "path": "CONTRIBUTING.md",
       "classification": "RIGHTS_UNCLEAR",
       "sourceIds": [],
@@ -624,6 +636,18 @@
       "sizeBytes": 47145
     },
     {
+      "path": "docs/archive/roadmap-phase-0-20.md",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "digestMode": "TEXT_LF_NORMALIZED",
+      "sha256": "12a5cd46392a2e57c212ba51b0d7e8ba0084f71a09c0da70123ebafe31c70fa4",
+      "sizeBytes": 2429
+    },
+    {
       "path": "docs/archive/ui/frontend-entry-architecture.md",
       "classification": "RIGHTS_UNCLEAR",
       "sourceIds": [],
@@ -762,8 +786,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "12263fa8e6bd3b04bb6e8101343069ba581ffe75ef85e8959afa9b58648593a8",
-      "sizeBytes": 5080
+      "sha256": "3cf9e7e993bd8c39dc2a5e7b9e834c3c3a736105a871cd4b4c8dc242981f1d7a",
+      "sizeBytes": 5257
     },
     {
       "path": "docs/learning-path-v2.md",
@@ -826,8 +850,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Owner-directed product architecture reference; this path-level signal is not a curriculum authority or a clearance decision. The document is blocked from publishable curriculum artifacts.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "c6258656e07fcae4ae6975f04a86b58d85f4eaf31aec2f5cc6506016cdb2d796",
-      "sizeBytes": 32536,
+      "sha256": "94da1c32b4773659fd65e2438394cae69eeade175c50465353abc6f8aebcd39a",
+      "sizeBytes": 32700,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "TRACKED_CJK_TEXT_FAIL_CLOSED"
     },
@@ -868,8 +892,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Tracked UTF-8 text contains literal or escaped CJK and is included conservatively for review. This path signal does not establish curriculum authorship, source, or reuse rights.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "c59ffae7c2b78d3dc505150d5da609a329e1048844666002120b7f7211a63b59",
-      "sizeBytes": 5160,
+      "sha256": "9a4f99a0ccff209c8ef0331e2d60d1c39958247a28086cd1e1ad5c58d5180dc9",
+      "sizeBytes": 5304,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "TRACKED_CJK_TEXT_FAIL_CLOSED"
     },
@@ -882,8 +906,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Tracked UTF-8 text contains literal or escaped CJK and is included conservatively for review. This path signal does not establish curriculum authorship, source, or reuse rights.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "60a209cc69e33dd9835d48efb224911f0c2a3163628c855cece7addc54a4b428",
-      "sizeBytes": 2311,
+      "sha256": "c27b12db99e8cb5110a445e775869a960f3f42b854d7b64432be77e07510acef",
+      "sizeBytes": 4209,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "TRACKED_CJK_TEXT_FAIL_CLOSED"
     },
@@ -2045,6 +2069,18 @@
       "sizeBytes": 26308,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "RIGHTS_GATE_POLICY_TOOLING"
+    },
+    {
+      "path": "scripts/tbcl_coverage.py",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "digestMode": "TEXT_LF_NORMALIZED",
+      "sha256": "9a03b56c364e7aa508effa5aa68fcf1574fb9487c41a4e9a8cc14445f75fb78a",
+      "sizeBytes": 6091
     },
     {
       "path": "shared/lesson-packages/basic-l01.json",

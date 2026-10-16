@@ -39,7 +39,7 @@ Conditional licenses are represented as `GREEN` plus explicit item-level checks 
 ### First registered sources
 
 - **OCAC / Let's Learn Mandarin (For Children): YELLOW / `REFERENCE_ONLY`.** Cite source metadata only. The source page is not treated as a public-repository, adaptation, or commercial license. No OCAC-derived text, vocabulary, exercise, image, audio, or close rewrite enters a publishable pack without a separately recorded grant and approval.
-- **TBCL: YELLOW / `REFERENCE_ONLY`.** Framework descriptions may support cited validation only. Bulk lists are not mirrored.
+- **TBCL: YELLOW / `REFERENCE_ONLY`.** The level character lists are TongXuan's coverage target and acceptance check (see `docs/roadmap.md`); `scripts/tbcl_coverage.py` reads them from the official site at run time. Bulk lists are not mirrored in this repository.
 - **TOCFL / CCCC: YELLOW / `REFERENCE_ONLY`.** Keep question banks and attached media out of publishable packs. This verification did not establish a current item-level reuse grant; it also did not re-verify an earlier note about non-commercial use, so no current legal conclusion is recorded.
 - **CC-CEDICT: GREEN / `ALLOW_WITH_ITEM_CHECKS`, CC BY-SA 4.0.** Official download-page and license-deed evidence is recorded. Keep attribution, change notices, compatible share-alike terms, item/version provenance, and license scope; never apply the root MIT license to derived content.
 - **Tatoeba: GREEN / `ALLOW_WITH_ITEM_CHECKS`.** Official terms distinguish sentence text from contributor audio. Verify the license, attribution, and conditions per sentence and separately per audio contributor. No corpus-wide item clearance is implied.

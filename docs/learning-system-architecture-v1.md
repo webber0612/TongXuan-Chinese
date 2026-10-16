@@ -228,14 +228,16 @@ Private school content keeps its privacy and provenance boundary.
 
 ## 11. First-book learning curve and parent progress
 
-The first book should eventually have measurable listening, speaking, reading, recall, and writing KPIs. This document does not choose fixed totals or per-lesson quotas. A lesson is not required to contain 20 new characters or any other arbitrary count.
+The first book should eventually have measurable listening, speaking, reading, recall, and writing KPIs.
+
+> **Superseded 2026-10-16 by the Owner's curriculum standard in [`docs/roadmap.md`](roadmap.md):** the first book must cover all 246 TBCL level-1 characters, and each later book the next TBCL level. Per-lesson load stays a design choice, but the book total is fixed by that standard.
 
 - Ordinary progression lessons introduce the approved core learning load.
 - Knowledge Station primarily tests transfer and curiosity.
 - SRS supports long-term retention and delayed recall.
 - Learners with prior proficiency can achieve more curriculum throughput through evidence-based Fast Track.
 - Reassessment should be triggered by evidence and policy, not completion of a lesson number alone.
-- CCCC/TBCL may serve as external benchmark or coverage references under source policy; they do not authorize copied data or silently dictate TongXuan's sequence.
+- TBCL character levels define each book's coverage target (see `docs/roadmap.md`); CCCC vocabulary sizes are a secondary reference. Neither authorises copying lessons, test items, or media.
 
 The parent view should grow toward target-level reporting for:
 

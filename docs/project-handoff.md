@@ -74,6 +74,8 @@ python scripts/open_curriculum_rights_gate.py --sync-inventory
 
 ## 路線
 
+商業化與課程規劃以 `docs/roadmap.md` 為準，其中「課程標準」一節是硬性目標。下表是這次重整的工程階段。
+
 | 階段 | 內容 | 狀態 |
 |---|---|---|
 | 0 | 備份未提交的工作、定名 | 完成 |

@@ -1,43 +1,68 @@
-# 家庭中文學習系統施工計畫
+# 桐軒中文 路線圖
 
-本文件保存產品的全階段施工計畫，版本 v1.0。
+> 最後更新：2026-10-16。舊的 Phase 0–20 工程計畫已移到 `docs/archive/roadmap-phase-0-20.md`，僅供參考。
 
-> **Historical engineering roadmap.** Phase ordering records implementation work, not a learner's day/week progression. The current product learning architecture, including date-independent Learning Cycles, is defined in [Learning System Architecture v1](learning-system-architecture-v1.md).
+## 課程標準（硬性目標）
 
-完整原始規劃已納入本專案，涵蓋 Phase 0（技術驗證）至 Phase 20（最終成品），並遵循以下施工順序：
+**桐軒的課程範圍以「臺灣華語文能力基準」（TBCL，國家教育研究院）的漢字分級為準。**
+這是擁有者多次指定的方向，任何 AI 或開發者不得改寫成「僅供參考」或「不設字數」。
 
-1. Phase 0：技術驗證
-2. Phase 0A：License Tracking & Commercialization Gate
-3. Phase 1：Recognition MVP
-4. Phase 2：School Queue
-5. Phase 3：Weekly Test + Scoring
-6. Phase 4：Points + Reward System
-7. 讓兩名兒童實際使用並收集資料
-8. 再逐步加入詞語、手寫、語法、閱讀、朗讀與其他功能
+| 課程階段 | 涵蓋目標 | 字數 |
+|---|---|---|
+| 第一冊（商業化第一版） | TBCL 第 1 級全部漢字 | 246 字（其中 83 字標為較難） |
+| 第二冊 | TBCL 第 2 級 | 累計 504 字 |
+| 第三冊 | TBCL 第 3 級 | 累計 801 字 |
 
-## Phase 0 驗收重點
+規則：
 
-需在 iPad Safari 完成以下流程：
+1. **每一關的新字都必須屬於該冊的目標級別。** 超出範圍的字只能出現在例句或詞語裡，並一律附注音或拼音。
+2. **一冊完成時，該級字表必須 100% 涵蓋。** 由 `scripts/tbcl_coverage.py` 檢查，未達標不得發布。
+3. **課文、例句、題目、插圖全部自編。** TBCL 只當作「要涵蓋哪些字」的清單，不複製任何教材或題庫。官方字表在執行時從國教院網站讀取並快取在本機，不放進公開 repo。
+4. **詞彙的第二參考**是兒童華語文能力測驗（CCCC）：萌芽級約 400 詞、成長級約 700 詞、茁壯級約 1,100 詞。它只公布詞彙量，不公布字數，所以不作為認字標準。
+5. 書寫（默寫）目標是認讀目標的子集，範圍由擁有者另外決定。
 
-```text
-iPad → NAS → 登入測試頁 → 看到「學」 → 播放筆順 → 手寫
-→ 聽發音 → 錄音 → 儲存紀錄
-```
+### 現況（2026-10-16 比對）
 
-## 長期產品範圍
+執行 `python scripts/tbcl_coverage.py --missing` 可重現。
 
-識字、繁簡轉換、注音、拼音、詞彙、句型、語法、成語、手寫、閱讀、朗讀、每週測驗、School Queue、OCR、SRS、Mastery、學習歷程、積分、獎勵、Adaptive Learning，以及最後階段的可選 AI Tutor。
+- 25 個識字關卡中有 20 關教生字，共 99 個不重複的字：69 字屬第 1 級、20 字第 2 級、6 字第 3 級、4 字第 4 級以上（川、湖、森、炎）。
+- 7 堂會話課另外教了 11 字，其中 3 字不在識字關卡裡。
+- **第 1 級涵蓋 72 / 246 字（29%）。** 尚未教的 174 字大多是最高頻的功能字，例如：的、是、個、有、不、也、們、都、要、很、來。
+- 現有關卡偏重「日月山水」這類象形主題字，但要讀懂一個句子所需的高頻字幾乎都還沒教。
 
-## 重要原則
+### 第一冊的規模
 
-- 正規課程不能因學校臨時考試而停止，學校進度也不能被忽略；Daily Queue 合併兩者，但資料來源保持分離。
-- Recognition、Writing、Reading、Pronunciation 必須分開追蹤。
-- 所有第三方 library 使用 adapter 包裝，避免更換元件時影響整體系統。
-- 內容、題庫、圖片與音訊必須有來源與授權紀錄。
-- Family Build 可以使用符合家庭私人使用條件的資源，但必須標記完整 provenance 與 `commercial_ready` 狀態。
-- Commercial Build 只能通過 `COMMERCIAL_OK` 或已完成商業授權登記的資源。
-- Phase 18 是 Commercialization Gate & Release Audit；只有 commercial blockers 為 0 才能產生商業版。
+- 246 字，每關 6 字，約 41 個學習關。
+- 每 4 個學習關後一次階段檢核，約 10 個階段。
+- 現有 69 個第 1 級字可以沿用；30 個超出範圍的字移到第二冊。
+- 沿用的關卡會照新規則改寫。只要一關裡有超出範圍的字（例如第 2 關「山川江海」、第 3 關「森林火草」），整關都要重新編排。
 
-## 授權與商業化
+## 商業化第一版
 
-Phase 0A 的狀態定義、資料欄位、School Queue 私人教材規則、Commercial Replacement Registry 與 CI 行為，請參閱 [docs/license-and-commercialization.md](license-and-commercialization.md)。
+### 範圍
+
+- **對象**：5 到 9 歲、在家學中文的孩子，家長陪同。支援繁體＋注音、簡體＋拼音。
+- **內容**：第一冊，TBCL 第 1 級 246 字，全部自編。
+- **功能**：繪本風格的任務地圖與今日任務、教室（認字、寫字、小測驗）、星星與獎勵舖、家長專區、Google Drive 雙向同步。
+- **平台**：網頁 App（PWA），不需要伺服器。
+- **顯示語言**：繁中、簡中、英文。
+- **暫不做**：後端學習引擎、Open Curriculum 提案與核准流程、會話課（改寫成自編內容前不上架）、預設以外的其他風格。
+
+### 里程碑
+
+| 階段 | 內容 | 完成的標準 |
+|---|---|---|
+| M1 產品骨架 | 繪本風格首頁、教室記錄進度、修好同步、上線 | 孩子能每天完成一關，換裝置進度還在 |
+| M2 第一冊內容 | 內容範本與檢查腳本；41 關自編內容，擁有者逐關審核 | 第 1 級 100% 涵蓋，每關通過審核 |
+| M3 商業必要項 | 兒童隱私（追蹤碼）、授權聲明頁、付費解鎖、正式網域、repo 公開與否 | 商業版授權檢查通過 |
+| M4 真實試用 | 5 到 10 個家庭試用 2 週 | 知道孩子會不會每天回來、卡在哪裡 |
+| M5 正式販售 | 定價、銷售頁、收款 | 第一筆付費 |
+
+M1 與 M2 可以同時進行。
+
+### 待擁有者決定
+
+1. 付費模式：一次買斷加免費試玩，或先全部免費試用。
+2. repo 是否改為私人。
+3. 是否移除 Google Analytics（兒童產品，且與隱私權政策不符）。
+4. 第一冊的書寫目標：246 字中哪些要求會默寫。
