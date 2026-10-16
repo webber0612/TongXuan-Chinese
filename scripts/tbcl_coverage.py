@@ -8,6 +8,7 @@ it is not redistributed in this repository.
 Usage:
     python scripts/tbcl_coverage.py            # summary and per-level table
     python scripts/tbcl_coverage.py --missing  # also print untaught level-1 characters
+    python scripts/tbcl_coverage.py --check-order  # validate the book 1 character order
 """
 
 from __future__ import annotations
@@ -30,6 +31,7 @@ CACHE = ROOT / "data" / ".tbcl-cache" / "levels.json"
 SOURCE_URL = "https://coct.naer.edu.tw/hanzi.jsp?page={page}"
 LEVEL_DATA = ROOT / "frontend" / "src" / "data" / "learningPathData.ts"
 LESSON_PACKAGES = ROOT / "shared" / "lesson-packages"
+BOOK1_ORDER = ROOT / "shared" / "curriculum" / "book1-character-order.json"
 PAGES_THROUGH_LEVEL_3 = 45  # 20 rows per page, levels sorted ascending; level 3 ends before row 801.
 EXPECTED_COUNTS = {1: 246, 2: 258, 3: 297}
 
@@ -108,13 +110,39 @@ def package_chars() -> set[str]:
     return chars
 
 
+def check_order(tbcl: list[TbclEntry]) -> list[str]:
+    """Book 1 must teach every TBCL level-1 character exactly once, and nothing else."""
+    level_1 = {entry.char.split("／")[0] for entry in tbcl if entry.level == 1}
+    order = json.loads(BOOK1_ORDER.read_text(encoding="utf-8"))
+    taught = [char for stage in order["stages"] for lesson in stage["lessons"] for char in lesson["characters"]]
+    errors = []
+    duplicates = sorted({char for char in taught if taught.count(char) > 1})
+    if duplicates:
+        errors.append(f"taught more than once: {''.join(duplicates)}")
+    outside = [char for char in taught if char not in level_1]
+    if outside:
+        errors.append(f"not TBCL level 1: {''.join(outside)}")
+    missing = sorted(level_1 - set(taught))
+    if missing:
+        errors.append(f"level-1 characters not taught: {''.join(missing)}")
+    return errors
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--missing", action="store_true", help="print the level-1 characters no lesson teaches yet")
+    parser.add_argument("--check-order", action="store_true", help="fail unless the book 1 order covers TBCL level 1 exactly")
     parser.add_argument("--refresh", action="store_true", help="re-download the official list instead of using the cache")
     args = parser.parse_args(argv)
 
     tbcl = load_tbcl(refresh=args.refresh)
+    if args.check_order:
+        errors = check_order(tbcl)
+        for error in errors:
+            print(f"BOOK1_ORDER_INVALID: {error}")
+        if not errors:
+            print("Book 1 order PASS: all 246 TBCL level-1 characters, each taught once")
+        return 1 if errors else 0
     level_of = {entry.char: entry.level for entry in tbcl}
     band = lambda char: f"L{level_of[char]}" if char in level_of else "L4+"
 
