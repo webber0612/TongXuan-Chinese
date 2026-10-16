@@ -2043,6 +2043,18 @@
       "sizeBytes": 1560
     },
     {
+      "path": "scripts/curriculum_check.py",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "digestMode": "TEXT_LF_NORMALIZED",
+      "sha256": "a2bf8f8a84b3de41539d98cbd8f20ce9756b8f03bcd8f464947bd2049a9f9969",
+      "sizeBytes": 4980
+    },
+    {
       "path": "scripts/final_smoke.py",
       "classification": "RIGHTS_UNCLEAR",
       "sourceIds": [],
@@ -2083,6 +2095,18 @@
       "sizeBytes": 7551
     },
     {
+      "path": "scripts/test_curriculum_check.py",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "digestMode": "TEXT_LF_NORMALIZED",
+      "sha256": "bac2c3fce96548132b5b59ebad2dcb83ff885a7f1ce52b1396ff106a127cae88",
+      "sizeBytes": 2137
+    },
+    {
       "path": "shared/curriculum/book1-character-order.json",
       "classification": "RIGHTS_UNCLEAR",
       "sourceIds": [],
@@ -2093,6 +2117,18 @@
       "digestMode": "TEXT_LF_NORMALIZED",
       "sha256": "495ccf9719fd96c9f5076571754120701dd85a73fe50c8bedd64bfe80d035ff6",
       "sizeBytes": 10349
+    },
+    {
+      "path": "shared/curriculum/book1/stage-01.json",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "digestMode": "TEXT_LF_NORMALIZED",
+      "sha256": "24d5f9d64fab5e5b78de8d20f238a8f38b9b36f8f8d982b7dde5c3aa4ed54b2f",
+      "sizeBytes": 15184
     },
     {
       "path": "shared/lesson-packages/basic-l01.json",

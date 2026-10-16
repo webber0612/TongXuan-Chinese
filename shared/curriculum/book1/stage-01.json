@@ -1,0 +1,185 @@
+{
+  "schemaVersion": "1.0",
+  "book": 1,
+  "stage": 1,
+  "title": "我和你",
+  "status": "DRAFT_AWAITING_OWNER_REVIEW",
+  "authorship": "TONGXUAN_ORIGINAL",
+  "notes": "Every word, sentence and dialogue line uses only characters taught in this or an earlier lesson. Pinyin and Zhuyin in words and sentences show spoken tone sandhi (不是 bú shì); character entries show the citation tone.",
+  "lessons": [
+    {
+      "lesson": 1,
+      "title": "你好",
+      "goal": "會用「你好」打招呼，會說「我是…」「我不是…」。",
+      "goalEn": "Greet someone and say who you are or are not.",
+      "characters": [
+        { "char": "你", "charHans": "你", "zhuyin": "ㄋㄧˇ", "pinyin": "nǐ", "meaning": "你", "meaningEn": "you", "radical": "人", "strokes": 7, "write": false },
+        { "char": "我", "charHans": "我", "zhuyin": "ㄨㄛˇ", "pinyin": "wǒ", "meaning": "我", "meaningEn": "I, me", "radical": "戈", "strokes": 7, "write": false },
+        { "char": "他", "charHans": "他", "zhuyin": "ㄊㄚ", "pinyin": "tā", "meaning": "他", "meaningEn": "he, him", "radical": "人", "strokes": 5, "write": true },
+        { "char": "好", "charHans": "好", "zhuyin": "ㄏㄠˇ", "pinyin": "hǎo", "meaning": "好", "meaningEn": "good, well", "radical": "女", "strokes": 6, "write": true },
+        { "char": "是", "charHans": "是", "zhuyin": "ㄕˋ", "pinyin": "shì", "meaning": "是", "meaningEn": "to be; yes", "radical": "日", "strokes": 9, "write": false },
+        { "char": "不", "charHans": "不", "zhuyin": "ㄅㄨˋ", "pinyin": "bù", "meaning": "不", "meaningEn": "not, no", "radical": "一", "strokes": 4, "write": true }
+      ],
+      "words": [
+        { "word": "你好", "wordHans": "你好", "zhuyin": "ㄋㄧˇ ㄏㄠˇ", "pinyin": "nǐ hǎo", "meaningEn": "hello" },
+        { "word": "不好", "wordHans": "不好", "zhuyin": "ㄅㄨˋ ㄏㄠˇ", "pinyin": "bù hǎo", "meaningEn": "not good" },
+        { "word": "不是", "wordHans": "不是", "zhuyin": "ㄅㄨˊ ㄕˋ", "pinyin": "bú shì", "meaningEn": "is not; no" },
+        { "word": "是不是", "wordHans": "是不是", "zhuyin": "ㄕˋ ˙ㄅㄨ ㄕˋ", "pinyin": "shì bu shì", "meaningEn": "is it or not?" }
+      ],
+      "sentences": [
+        { "text": "你好！", "textHans": "你好！", "en": "Hello!" },
+        { "text": "我好。", "textHans": "我好。", "en": "I am well." },
+        { "text": "他好不好？", "textHans": "他好不好？", "en": "Is he well?" },
+        { "text": "我不是他。", "textHans": "我不是他。", "en": "I am not him." },
+        { "text": "你是不是他？", "textHans": "你是不是他？", "en": "Are you him?" }
+      ],
+      "dialogue": [
+        { "speaker": "A", "text": "你好！", "textHans": "你好！" },
+        { "speaker": "B", "text": "你好！", "textHans": "你好！" },
+        { "speaker": "A", "text": "你好不好？", "textHans": "你好不好？" },
+        { "speaker": "B", "text": "我好。", "textHans": "我好。" }
+      ],
+      "quiz": [
+        { "type": "listen-char", "audio": "你", "answer": "你", "options": ["你", "他", "我", "好"] },
+        { "type": "listen-char", "audio": "不", "answer": "不", "options": ["不", "是", "好", "我"] },
+        { "type": "char-tone", "char": "好", "answer": "hǎo", "options": ["hǎo", "hào", "háo", "hāo"] },
+        { "type": "char-tone", "char": "是", "answer": "shì", "options": ["shì", "shí", "shǐ", "shī"] },
+        { "type": "cloze-sentence", "sentence": "你＿！", "answer": "好", "options": ["好", "不", "是", "他"] },
+        { "type": "cloze-sentence", "sentence": "我不＿他。", "answer": "是", "options": ["是", "好", "你", "不"] }
+      ]
+    },
+    {
+      "lesson": 2,
+      "title": "一二三",
+      "goal": "會從一數到六，會用數字說「我是一，你是二」。",
+      "goalEn": "Count from one to six.",
+      "characters": [
+        { "char": "一", "charHans": "一", "zhuyin": "ㄧ", "pinyin": "yī", "meaning": "一", "meaningEn": "one", "radical": "一", "strokes": 1, "write": true },
+        { "char": "二", "charHans": "二", "zhuyin": "ㄦˋ", "pinyin": "èr", "meaning": "二", "meaningEn": "two", "radical": "二", "strokes": 2, "write": true },
+        { "char": "三", "charHans": "三", "zhuyin": "ㄙㄢ", "pinyin": "sān", "meaning": "三", "meaningEn": "three", "radical": "一", "strokes": 3, "write": true },
+        { "char": "四", "charHans": "四", "zhuyin": "ㄙˋ", "pinyin": "sì", "meaning": "四", "meaningEn": "four", "radical": "囗", "strokes": 5, "write": false },
+        { "char": "五", "charHans": "五", "zhuyin": "ㄨˇ", "pinyin": "wǔ", "meaning": "五", "meaningEn": "five", "radical": "二", "strokes": 4, "write": false },
+        { "char": "六", "charHans": "六", "zhuyin": "ㄌㄧㄡˋ", "pinyin": "liù", "meaning": "六", "meaningEn": "six", "radical": "八", "strokes": 4, "write": false }
+      ],
+      "words": [
+        { "word": "一二三", "wordHans": "一二三", "zhuyin": "ㄧ ㄦˋ ㄙㄢ", "pinyin": "yī èr sān", "meaningEn": "one, two, three" },
+        { "word": "四五六", "wordHans": "四五六", "zhuyin": "ㄙˋ ㄨˇ ㄌㄧㄡˋ", "pinyin": "sì wǔ liù", "meaningEn": "four, five, six" }
+      ],
+      "sentences": [
+        { "text": "一、二、三、四、五、六！", "textHans": "一、二、三、四、五、六！", "en": "One, two, three, four, five, six!" },
+        { "text": "我是一，你是二，他是三。", "textHans": "我是一，你是二，他是三。", "en": "I am one, you are two, he is three." },
+        { "text": "他是不是四？", "textHans": "他是不是四？", "en": "Is he number four?" },
+        { "text": "他不是四，他是五。", "textHans": "他不是四，他是五。", "en": "He is not four, he is five." },
+        { "text": "六不是五。", "textHans": "六不是五。", "en": "Six is not five." }
+      ],
+      "dialogue": [
+        { "speaker": "A", "text": "我是一，你是二。", "textHans": "我是一，你是二。" },
+        { "speaker": "B", "text": "他是不是三？", "textHans": "他是不是三？" },
+        { "speaker": "A", "text": "是，他是三。", "textHans": "是，他是三。" }
+      ],
+      "quiz": [
+        { "type": "listen-char", "audio": "三", "answer": "三", "options": ["三", "二", "五", "一"] },
+        { "type": "listen-char", "audio": "六", "answer": "六", "options": ["六", "四", "五", "不"] },
+        { "type": "char-tone", "char": "四", "answer": "sì", "options": ["sì", "sí", "sǐ", "sī"] },
+        { "type": "char-tone", "char": "五", "answer": "wǔ", "options": ["wǔ", "wù", "wú", "wū"] },
+        { "type": "cloze-sentence", "sentence": "一、二、＿、四", "answer": "三", "options": ["三", "五", "六", "一"] },
+        { "type": "stroke-count", "char": "三", "answer": "3", "options": ["3", "1", "2", "4"] }
+      ]
+    },
+    {
+      "lesson": 3,
+      "title": "我七歲",
+      "goal": "會數到十，會問「你幾歲？」並回答「我七歲」。",
+      "goalEn": "Count to ten and ask and tell someone's age.",
+      "characters": [
+        { "char": "七", "charHans": "七", "zhuyin": "ㄑㄧ", "pinyin": "qī", "meaning": "七", "meaningEn": "seven", "radical": "一", "strokes": 2, "write": true },
+        { "char": "八", "charHans": "八", "zhuyin": "ㄅㄚ", "pinyin": "bā", "meaning": "八", "meaningEn": "eight", "radical": "八", "strokes": 2, "write": true },
+        { "char": "九", "charHans": "九", "zhuyin": "ㄐㄧㄡˇ", "pinyin": "jiǔ", "meaning": "九", "meaningEn": "nine", "radical": "乙", "strokes": 2, "write": false },
+        { "char": "十", "charHans": "十", "zhuyin": "ㄕˊ", "pinyin": "shí", "meaning": "十", "meaningEn": "ten", "radical": "十", "strokes": 2, "write": true },
+        { "char": "幾", "charHans": "几", "zhuyin": "ㄐㄧˇ", "pinyin": "jǐ", "meaning": "幾個、多少", "meaningEn": "how many", "radical": "幺", "strokes": 12, "strokesHans": 2, "write": false },
+        { "char": "歲", "charHans": "岁", "zhuyin": "ㄙㄨㄟˋ", "pinyin": "suì", "meaning": "年紀", "meaningEn": "years old", "radical": "止", "strokes": 13, "strokesHans": 6, "write": false }
+      ],
+      "words": [
+        { "word": "幾歲", "wordHans": "几岁", "zhuyin": "ㄐㄧˇ ㄙㄨㄟˋ", "pinyin": "jǐ suì", "meaningEn": "how old" },
+        { "word": "七歲", "wordHans": "七岁", "zhuyin": "ㄑㄧ ㄙㄨㄟˋ", "pinyin": "qī suì", "meaningEn": "seven years old" },
+        { "word": "十歲", "wordHans": "十岁", "zhuyin": "ㄕˊ ㄙㄨㄟˋ", "pinyin": "shí suì", "meaningEn": "ten years old" },
+        { "word": "十一", "wordHans": "十一", "zhuyin": "ㄕˊ ㄧ", "pinyin": "shí yī", "meaningEn": "eleven" }
+      ],
+      "sentences": [
+        { "text": "你幾歲？", "textHans": "你几岁？", "en": "How old are you?" },
+        { "text": "我七歲。", "textHans": "我七岁。", "en": "I am seven." },
+        { "text": "他是不是十歲？", "textHans": "他是不是十岁？", "en": "Is he ten?" },
+        { "text": "他不是十歲，他九歲。", "textHans": "他不是十岁，他九岁。", "en": "He is not ten, he is nine." },
+        { "text": "七、八、九、十！", "textHans": "七、八、九、十！", "en": "Seven, eight, nine, ten!" }
+      ],
+      "dialogue": [
+        { "speaker": "A", "text": "你好！你幾歲？", "textHans": "你好！你几岁？" },
+        { "speaker": "B", "text": "我八歲。你幾歲？", "textHans": "我八岁。你几岁？" },
+        { "speaker": "A", "text": "我七歲。", "textHans": "我七岁。" }
+      ],
+      "quiz": [
+        { "type": "listen-char", "audio": "八", "answer": "八", "options": ["八", "六", "七", "九"] },
+        { "type": "listen-char", "audio": "歲", "answer": "歲", "options": ["歲", "幾", "十", "是"] },
+        { "type": "char-tone", "char": "幾", "answer": "jǐ", "options": ["jǐ", "jī", "jí", "jì"] },
+        { "type": "char-tone", "char": "十", "answer": "shí", "options": ["shí", "shì", "shǐ", "shī"] },
+        { "type": "cloze-sentence", "sentence": "你＿歲？", "answer": "幾", "options": ["幾", "七", "不", "是"] },
+        { "type": "cloze-sentence", "sentence": "我七＿。", "answer": "歲", "options": ["歲", "好", "十", "幾"] }
+      ]
+    },
+    {
+      "lesson": 4,
+      "title": "我的家",
+      "goal": "會介紹「他是我的爸爸」，會說「我有爸爸，我有媽媽」。",
+      "goalEn": "Introduce family members and say what you have.",
+      "characters": [
+        { "char": "的", "charHans": "的", "zhuyin": "˙ㄉㄜ", "pinyin": "de", "meaning": "（表示屬於）", "meaningEn": "'s (possessive)", "radical": "白", "strokes": 8, "write": false },
+        { "char": "家", "charHans": "家", "zhuyin": "ㄐㄧㄚ", "pinyin": "jiā", "meaning": "家", "meaningEn": "home, family", "radical": "宀", "strokes": 10, "write": false },
+        { "char": "爸", "charHans": "爸", "zhuyin": "ㄅㄚˋ", "pinyin": "bà", "meaning": "爸爸", "meaningEn": "dad", "radical": "父", "strokes": 8, "write": false },
+        { "char": "媽", "charHans": "妈", "zhuyin": "ㄇㄚ", "pinyin": "mā", "meaning": "媽媽", "meaningEn": "mom", "radical": "女", "strokes": 13, "strokesHans": 6, "write": false },
+        { "char": "有", "charHans": "有", "zhuyin": "ㄧㄡˇ", "pinyin": "yǒu", "meaning": "有", "meaningEn": "to have", "radical": "月", "strokes": 6, "write": true },
+        { "char": "人", "charHans": "人", "zhuyin": "ㄖㄣˊ", "pinyin": "rén", "meaning": "人", "meaningEn": "person", "radical": "人", "strokes": 2, "write": true }
+      ],
+      "words": [
+        { "word": "爸爸", "wordHans": "爸爸", "zhuyin": "ㄅㄚˋ ˙ㄅㄚ", "pinyin": "bà ba", "meaningEn": "dad" },
+        { "word": "媽媽", "wordHans": "妈妈", "zhuyin": "ㄇㄚ ˙ㄇㄚ", "pinyin": "mā ma", "meaningEn": "mom" },
+        { "word": "家人", "wordHans": "家人", "zhuyin": "ㄐㄧㄚ ㄖㄣˊ", "pinyin": "jiā rén", "meaningEn": "family members" },
+        { "word": "我的", "wordHans": "我的", "zhuyin": "ㄨㄛˇ ˙ㄉㄜ", "pinyin": "wǒ de", "meaningEn": "my, mine" },
+        { "word": "我家", "wordHans": "我家", "zhuyin": "ㄨㄛˇ ㄐㄧㄚ", "pinyin": "wǒ jiā", "meaningEn": "my home" }
+      ],
+      "sentences": [
+        { "text": "他是我的爸爸。", "textHans": "他是我的爸爸。", "en": "He is my dad." },
+        { "text": "我有爸爸，我有媽媽。", "textHans": "我有爸爸，我有妈妈。", "en": "I have a dad and I have a mom." },
+        { "text": "爸爸好！媽媽好！", "textHans": "爸爸好！妈妈好！", "en": "Hi, Dad! Hi, Mom!" },
+        { "text": "他是不是你的家人？", "textHans": "他是不是你的家人？", "en": "Is he your family?" },
+        { "text": "我有家人，我有家。", "textHans": "我有家人，我有家。", "en": "I have a family and a home." }
+      ],
+      "dialogue": [
+        { "speaker": "A", "text": "他是不是你的爸爸？", "textHans": "他是不是你的爸爸？" },
+        { "speaker": "B", "text": "是，他是我的爸爸。", "textHans": "是，他是我的爸爸。" },
+        { "speaker": "A", "text": "爸爸好！", "textHans": "爸爸好！" }
+      ],
+      "quiz": [
+        { "type": "listen-char", "audio": "家", "answer": "家", "options": ["家", "有", "人", "的"] },
+        { "type": "listen-char", "audio": "媽", "answer": "媽", "options": ["媽", "爸", "八", "好"] },
+        { "type": "char-tone", "char": "爸", "answer": "bà", "options": ["bà", "bā", "bá", "bǎ"] },
+        { "type": "char-tone", "char": "有", "answer": "yǒu", "options": ["yǒu", "yóu", "yòu", "yōu"] },
+        { "type": "cloze-sentence", "sentence": "他是我＿爸爸。", "answer": "的", "options": ["的", "有", "不", "是"] },
+        { "type": "cloze-sentence", "sentence": "我＿媽媽。", "answer": "有", "options": ["有", "的", "人", "家"] }
+      ]
+    }
+  ],
+  "checkpoint": {
+    "title": "第 1 階段檢核",
+    "scope": [1, 2, 3, 4],
+    "quiz": [
+      { "type": "listen-char", "audio": "他", "answer": "他", "options": ["他", "你", "有", "家"] },
+      { "type": "listen-char", "audio": "九", "answer": "九", "options": ["九", "七", "幾", "六"] },
+      { "type": "char-tone", "char": "人", "answer": "rén", "options": ["rén", "rěn", "rèn", "rēn"] },
+      { "type": "char-tone", "char": "二", "answer": "èr", "options": ["èr", "ér", "ěr", "ēr"] },
+      { "type": "cloze-sentence", "sentence": "你好＿好？", "answer": "不", "options": ["不", "是", "的", "有"] },
+      { "type": "cloze-sentence", "sentence": "你幾＿？", "answer": "歲", "options": ["歲", "人", "家", "好"] },
+      { "type": "cloze-sentence", "sentence": "他是我的＿＿。", "answer": "爸爸", "options": ["爸爸", "你好", "幾歲", "不是"] },
+      { "type": "stroke-count", "char": "人", "answer": "2", "options": ["2", "1", "3", "4"] }
+    ]
+  }
+}
