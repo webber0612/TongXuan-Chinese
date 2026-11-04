@@ -17,6 +17,12 @@ export interface ChildPortalProps {
 }
 
 /** State and handlers for the child portal; the page and its views only render from this. */
+/**
+ * Speech rates for young beginners, halved from the first version after the owner's device test
+ * found 0.7 still too fast to follow. "slow" stays below "normal" for the turtle toggle.
+ */
+const SPEECH_RATES: Record<SpeechSpeed, number> = { normal: 0.46, listen: 0.35, slow: 0.3 };
+
 export function useChildPortalController({ activeChildName }: ChildPortalProps) {
   // Learner Profiles Storage
   const [learners, setLearners] = useState<ChildLearner[]>(() => {
@@ -369,7 +375,7 @@ export function useChildPortalController({ activeChildName }: ChildPortalProps) 
       window.speechSynthesis.cancel();
       const utter = new SpeechSynthesisUtterance(text);
       utter.lang = scriptMode === "zhuyin" ? "zh-TW" : scriptMode === "pinyin" ? "zh-CN" : "zh-TW";
-      utter.rate = speed === "slow" ? 0.58 : speed === "listen" ? 0.7 : 0.92;
+      utter.rate = SPEECH_RATES[speed];
       utter.pitch = 1.08;
       window.speechSynthesis.speak(utter);
     }
