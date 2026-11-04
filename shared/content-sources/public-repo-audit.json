@@ -613,8 +613,8 @@
       "rootMitApplies": false,
       "publishableArtifactAllowed": false,
       "reason": "This is a rights/license reference or inventory, not curriculum content. It does not grant rights to adjacent files.",
-      "sha256": "14253e56d8215fcc48a0c8496ea6f0f0ddac5c1d57edc727a801f6ba0f06777f",
-      "sizeBytes": 33839,
+      "sha256": "6d2d45f77a27b4c7c774e048fe48ebc6be81e3152ed2fee700756e197e7afb67",
+      "sizeBytes": 39887,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "RIGHTS_POLICY_OR_LICENSE_REFERENCE",
       "digestMode": "TEXT_LF_NORMALIZED"
@@ -930,6 +930,18 @@
       "sizeBytes": 11650,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "TRACKED_CJK_TEXT_FAIL_CLOSED"
+    },
+    {
+      "path": "frontend/e2e/book1-foundation.spec.ts",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "digestMode": "TEXT_LF_NORMALIZED",
+      "sha256": "1a8b50aab20de4751b5e62c60bb5064d100694c5ea0bc03a29af138d072de2e0",
+      "sizeBytes": 3258
     },
     {
       "path": "frontend/index.html",
@@ -6068,8 +6080,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "0f7c909814caabc2bb5b708f19676b9243b033a78f0f452af067ba73c0da2a16",
-      "sizeBytes": 52151
+      "sha256": "a02b2c51bd29017cec9a832c0785c880b53cbfc2599a4ba62389050107e70b32",
+      "sizeBytes": 52283
     },
     {
       "path": "frontend/src/features/childPortal/dayPlan.ts",

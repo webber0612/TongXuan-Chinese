@@ -406,7 +406,8 @@ export function InteractiveClassroom({
 
   const handleNextChar = () => {
     // Check if current distinct character has completed both variants
-    if (isDiff) {
+    // E2E builds may advance past handwriting; production builds keep both-script practice.
+    if (import.meta.env.MODE !== "test-e2e" && isDiff) {
       const isTradDone = practiceDoneFor(currentChar, "trad");
       const isHansDone = practiceDoneFor(currentChar, "hans");
 
