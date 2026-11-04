@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import HanziWriter from "hanzi-writer";
+import { loadLocalHanziData } from "../lib/hanziData";
 import { browserCapabilities, DiagnosticResult } from "../lib/diagnostics";
 import { apiFetch } from "../lib/apiFetch";
 
@@ -18,9 +19,17 @@ export function DiagnosticsPage() {
   const recordingUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
-    const writer = HanziWriter.create("hanzi-target", selectedCharacter, { width: 180, height: 180, showOutline: true, strokeAnimationSpeed: 1 });
+    const writer = HanziWriter.create("hanzi-target", selectedCharacter, {
+      width: 180, height: 180, showOutline: true, strokeAnimationSpeed: 1,
+      charDataLoader: (character, onLoad, onError) => loadLocalHanziData(character, (data) => {
+        onLoad(data);
+        setResults((current) => ({ ...current, "Hanzi Writer": { status: "PASS", detail: `${selectedCharacter} rendered` } }));
+      }, (cause) => {
+        onError(cause);
+        setResults((current) => ({ ...current, "Hanzi Writer": { status: "FAIL", detail: String(cause) } }));
+      }),
+    });
     writerRef.current = writer;
-    setResults((current) => ({ ...current, "Hanzi Writer": { status: "PASS", detail: `${selectedCharacter} rendered` } }));
     return () => { writer.cancelQuiz(); writer.hideCharacter(); };
   }, [selectedCharacter]);
 

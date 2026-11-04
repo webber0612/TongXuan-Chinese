@@ -1,6 +1,7 @@
 import { appStorage } from "../../lib/storage";
 import { useState,useEffect,useRef,type ReactNode } from "react";
 import HanziWriter from "hanzi-writer";
+import { loadLocalHanziData } from "../../lib/hanziData";
 import {
 EMPTY_WRITING_PROGRESS,
 getWritingPlan,
@@ -123,6 +124,7 @@ export function InteractiveClassroom({
 
   // Stroke Order Animation Play state
   const [isPlayingStrokes, setIsPlayingStrokes] = useState(false);
+  const [writerLoadError, setWriterLoadError] = useState(false);
   const [activeStrokeIndex, setActiveStrokeIndex] = useState<number>(-1);
 
   // Mini Quiz State
@@ -201,14 +203,14 @@ export function InteractiveClassroom({
 
   const startInteractiveQuiz = (writer: HanziWriter, outlineOpacity: number) => {
     if (!mustWriteRef.current) {
-      writer.showCharacter();
+      void writer.showCharacter().catch(() => setWriterLoadError(true));
       return;
     }
     attemptMistakeRef.current = false;
     try {
       applyOutlineOpacity(writer, outlineOpacity);
 
-      writer.quiz({
+      void writer.quiz({
         showHintAfterMisses: 3,
         leniency: 1, // hanzi-writer's default tolerance; stricter values reject normal finger writing on tablets
         acceptBackwardsStrokes: false, // 嚴格禁止反向筆畫
@@ -288,7 +290,7 @@ export function InteractiveClassroom({
             }
           }, 1600);
         },
-      });
+      }).catch(() => setWriterLoadError(true));
     } catch (err) {
       console.warn("Quiz start:", err);
     }
@@ -308,6 +310,8 @@ export function InteractiveClassroom({
   // Initialize authentic 標楷體 / 楷體 HanziWriter engine with real stroke order checking
   useEffect(() => {
     if (!hanziContainerRef.current) return;
+    setWriterLoadError(false);
+    let mounted = true;
     hanziContainerRef.current.innerHTML = "";
     clearChildInkCanvas();
 
@@ -329,6 +333,10 @@ export function InteractiveClassroom({
         drawingColor: "#1e3a8a",
         drawingWidth: 14,
         showCharacter: !mustWriteRef.current,
+        charDataLoader: (character, onLoad, onError) => loadLocalHanziData(character, onLoad, (cause) => {
+          if (mounted) setWriterLoadError(true);
+          onError(cause);
+        }),
       });
       writerRef.current = writer;
 
@@ -339,11 +347,12 @@ export function InteractiveClassroom({
     }
 
     return () => {
+      mounted = false;
       try {
         writerRef.current?.cancelQuiz();
       } catch (e) {}
     };
-  }, [currentCharIdx, charToRender, activeVariant, showDictationHint, currentPlan.phase]);
+  }, [currentMode, currentCharIdx, charToRender, activeVariant, showDictationHint, currentPlan.phase]);
 
   const clearCanvas = () => {
     attemptMistakeRef.current = false;
@@ -965,6 +974,7 @@ export function InteractiveClassroom({
             ref={hanziContainerRef}
             className="hanzi-writer-svg-layer"
           />
+          {writerLoadError && <p role="alert">Unable to load stroke data. Please try again when the app is online.</p>}
 
           {/* Child Authentic Handwriting Canvas Overlay */}
           <canvas
