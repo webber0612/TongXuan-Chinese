@@ -599,8 +599,8 @@
       "rootMitApplies": false,
       "publishableArtifactAllowed": false,
       "reason": "This is a rights/license reference or inventory, not curriculum content. It does not grant rights to adjacent files.",
-      "sha256": "e0acd76f48c94740eb6384bf276578d4057a68b7495d0ba2bcd35a54fc00c0c8",
-      "sizeBytes": 8369,
+      "sha256": "7e03d11bc2ac68541f9ba2f7bd7f0e27cd577f1ce5805ccc0ea0385543ea4a53",
+      "sizeBytes": 12737,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "RIGHTS_POLICY_OR_LICENSE_REFERENCE",
       "digestMode": "TEXT_LF_NORMALIZED"
@@ -613,8 +613,8 @@
       "rootMitApplies": false,
       "publishableArtifactAllowed": false,
       "reason": "This is a rights/license reference or inventory, not curriculum content. It does not grant rights to adjacent files.",
-      "sha256": "e04dac7ba8084473e318a0952cb0d1837adfe12d81c30fc16d860b8308706b9f",
-      "sizeBytes": 22338,
+      "sha256": "1da2801e77cc66f6da7794b0539b94a3ea0aa8892de269f6ba666a746c5face7",
+      "sizeBytes": 26082,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "RIGHTS_POLICY_OR_LICENSE_REFERENCE",
       "digestMode": "TEXT_LF_NORMALIZED"
@@ -1758,8 +1758,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "70212fd509890c3b346095c8f5c3b2de69ed77e16c1dcd48c6d3122da4d9c6f8",
-      "sizeBytes": 3005
+      "sha256": "cab0bc2bc98ecff84ef54105f0a19dfaac54f601d937af4a0010ec986b026999",
+      "sizeBytes": 7406
     },
     {
       "path": "frontend/public/audio/feedback/13b760586e99.mp3",
@@ -3004,8 +3004,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "a2bf8f8a84b3de41539d98cbd8f20ce9756b8f03bcd8f464947bd2049a9f9969",
-      "sizeBytes": 4980
+      "sha256": "b999e70576334fba8f1dde60d14931d916bbb019ac085862412cdad958694cc9",
+      "sizeBytes": 5490
     },
     {
       "path": "scripts/final_smoke.py",
@@ -3056,8 +3056,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "bac2c3fce96548132b5b59ebad2dcb83ff885a7f1ce52b1396ff106a127cae88",
-      "sizeBytes": 2137
+      "sha256": "654046a8a2ce0b017246fd49fe0e0794c76bf16fe33f9a384d69f9db5c785e06",
+      "sizeBytes": 2480
     },
     {
       "path": "shared/curriculum/book1-character-order.json",
@@ -3270,8 +3270,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "bfdf87af741c0cade675d81cf427095008eef66c1961ab2d129f23c26558dfac",
-      "sizeBytes": 11198
+      "sha256": "aeef5f5740e8343984dc6a7bfd36f25af1468e817a268c5176d937d468a17bdc",
+      "sizeBytes": 24778
     },
     {
       "path": "tools/audio/feedback-audio-report.json",
@@ -3294,8 +3294,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "496ff1d24a8c3ff084172c4d7fad1d8a8361bc6c3749335d232535f0ac9fabc2",
-      "sizeBytes": 7144
+      "sha256": "f543ee1dbfbc3b7d02d136d31f3f61f7d98c18fa9d19807b8d6a5906219ab7a4",
+      "sizeBytes": 9187
     },
     {
       "path": "資產/APP LOGO.png",

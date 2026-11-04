@@ -63,13 +63,21 @@ def check_quiz(where: str, quiz: list[dict], allowed: set[str]) -> list[str]:
     return errors
 
 
-def check_stage(path: Path, order: dict[int, list[str]]) -> list[str]:
+def simplified_forms(paths: list[Path]) -> dict[str, str]:
+    """Traditional -> simplified for every character taught in the given stage files."""
+    simplified: dict[str, str] = {}
+    for path in paths:
+        for lesson in json.loads(path.read_text(encoding="utf-8"))["lessons"]:
+            for entry in lesson["characters"]:
+                simplified[entry["char"]] = entry["charHans"]
+    return simplified
+
+
+def check_stage(path: Path, order: dict[int, list[str]], earlier: list[Path] | None = None) -> list[str]:
+    """Checks one stage file; `earlier` are the other stage files, whose simplified forms later lessons may reuse."""
     stage = json.loads(path.read_text(encoding="utf-8"))
     errors: list[str] = []
-    simplified: dict[str, str] = {}
-    for lesson in stage["lessons"]:
-        for entry in lesson["characters"]:
-            simplified[entry["char"]] = entry["charHans"]
+    simplified = simplified_forms([*(earlier or []), path])
     for lesson in stage["lessons"]:
         number = lesson["lesson"]
         where = f"{path.name} lesson {number}"
@@ -97,7 +105,7 @@ def check_stage(path: Path, order: dict[int, list[str]]) -> list[str]:
 def main() -> int:
     order = lesson_order()
     stage_files = sorted(STAGES.glob("stage-*.json"))
-    errors = [error for path in stage_files for error in check_stage(path, order)]
+    errors = [error for path in stage_files for error in check_stage(path, order, [other for other in stage_files if other != path])]
     for error in errors:
         print(f"CURRICULUM_INVALID: {error}")
     if not errors:

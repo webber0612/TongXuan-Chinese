@@ -1,0 +1,193 @@
+{
+  "schemaVersion": "1.0",
+  "book": 1,
+  "stage": 2,
+  "title": "家人和稱呼",
+  "status": "DRAFT_AWAITING_OWNER_REVIEW",
+  "authorship": "TONGXUAN_ORIGINAL",
+  "notes": "Every word, sentence and dialogue line uses only characters taught in this or an earlier lesson. Pinyin and Zhuyin in words show spoken tone sandhi for 不 and 一 and neutral tones (哥哥 gē ge); character entries show the citation tone. Surnames such as 王 are only taught in lesson 25, so lesson 7 uses number nicknames (小七, 小九) and asks 姓什麼 without a surname answer.",
+  "lessons": [
+    {
+      "lesson": 5,
+      "title": "哥哥姐姐",
+      "goal": "會介紹哥哥、姐姐、弟弟、妹妹，會說「我們」「他們」。",
+      "goalEn": "Introduce brothers and sisters and say 'we' and 'they'.",
+      "characters": [
+        { "char": "哥", "charHans": "哥", "zhuyin": "ㄍㄜ", "pinyin": "gē", "meaning": "哥哥", "meaningEn": "older brother", "radical": "口", "strokes": 10, "write": false },
+        { "char": "姐", "charHans": "姐", "zhuyin": "ㄐㄧㄝˇ", "pinyin": "jiě", "meaning": "姐姐", "meaningEn": "older sister", "radical": "女", "strokes": 8, "write": false },
+        { "char": "弟", "charHans": "弟", "zhuyin": "ㄉㄧˋ", "pinyin": "dì", "meaning": "弟弟", "meaningEn": "younger brother", "radical": "弓", "strokes": 7, "write": true },
+        { "char": "妹", "charHans": "妹", "zhuyin": "ㄇㄟˋ", "pinyin": "mèi", "meaning": "妹妹", "meaningEn": "younger sister", "radical": "女", "strokes": 8, "write": false },
+        { "char": "們", "charHans": "们", "zhuyin": "˙ㄇㄣ", "pinyin": "men", "meaning": "（表示很多人）", "meaningEn": "plural for people", "radical": "人", "strokes": 10, "strokesHans": 5, "write": false },
+        { "char": "她", "charHans": "她", "zhuyin": "ㄊㄚ", "pinyin": "tā", "meaning": "她", "meaningEn": "she, her", "radical": "女", "strokes": 6, "write": true }
+      ],
+      "words": [
+        { "word": "哥哥", "wordHans": "哥哥", "zhuyin": "ㄍㄜ ˙ㄍㄜ", "pinyin": "gē ge", "meaningEn": "older brother" },
+        { "word": "姐姐", "wordHans": "姐姐", "zhuyin": "ㄐㄧㄝˇ ˙ㄐㄧㄝ", "pinyin": "jiě jie", "meaningEn": "older sister" },
+        { "word": "弟弟", "wordHans": "弟弟", "zhuyin": "ㄉㄧˋ ˙ㄉㄧ", "pinyin": "dì di", "meaningEn": "younger brother" },
+        { "word": "妹妹", "wordHans": "妹妹", "zhuyin": "ㄇㄟˋ ˙ㄇㄟ", "pinyin": "mèi mei", "meaningEn": "younger sister" },
+        { "word": "我們", "wordHans": "我们", "zhuyin": "ㄨㄛˇ ˙ㄇㄣ", "pinyin": "wǒ men", "meaningEn": "we, us" },
+        { "word": "他們", "wordHans": "他们", "zhuyin": "ㄊㄚ ˙ㄇㄣ", "pinyin": "tā men", "meaningEn": "they, them" },
+        { "word": "一家人", "wordHans": "一家人", "zhuyin": "ㄧˋ ㄐㄧㄚ ㄖㄣˊ", "pinyin": "yì jiā rén", "meaningEn": "one family" }
+      ],
+      "sentences": [
+        { "text": "她是我的姐姐。", "textHans": "她是我的姐姐。", "en": "She is my older sister." },
+        { "text": "我有哥哥，我有妹妹。", "textHans": "我有哥哥，我有妹妹。", "en": "I have an older brother and a younger sister." },
+        { "text": "我妹妹五歲。", "textHans": "我妹妹五岁。", "en": "My younger sister is five." },
+        { "text": "他們是我的弟弟。", "textHans": "他们是我的弟弟。", "en": "They are my younger brothers." },
+        { "text": "我們是一家人。", "textHans": "我们是一家人。", "en": "We are one family." }
+      ],
+      "dialogue": [
+        { "speaker": "A", "text": "她是不是你的姐姐？", "textHans": "她是不是你的姐姐？" },
+        { "speaker": "B", "text": "不是，她是我的妹妹。", "textHans": "不是，她是我的妹妹。" },
+        { "speaker": "A", "text": "你妹妹幾歲？", "textHans": "你妹妹几岁？" },
+        { "speaker": "B", "text": "她六歲。", "textHans": "她六岁。" }
+      ],
+      "quiz": [
+        { "type": "listen-char", "audio": "姐", "answer": "姐", "options": ["姐", "妹", "她", "弟"] },
+        { "type": "listen-char", "audio": "們", "answer": "們", "options": ["們", "媽", "有", "人"] },
+        { "type": "char-tone", "char": "弟", "answer": "dì", "options": ["dì", "dí", "dǐ", "dī"] },
+        { "type": "char-tone", "char": "姐", "answer": "jiě", "options": ["jiě", "jiē", "jié", "jiè"] },
+        { "type": "cloze-sentence", "sentence": "我們是一＿人。", "answer": "家", "options": ["家", "的", "有", "是"] },
+        { "type": "stroke-count", "char": "她", "answer": "6", "options": ["6", "5", "7", "8"] }
+      ]
+    },
+    {
+      "lesson": 6,
+      "title": "大和小",
+      "goal": "會說「很大」「很小」「很多」「很少」，會用「也」說一樣的事。",
+      "goalEn": "Describe big, small, many and few, and say 'also'.",
+      "characters": [
+        { "char": "大", "charHans": "大", "zhuyin": "ㄉㄚˋ", "pinyin": "dà", "meaning": "大", "meaningEn": "big", "radical": "大", "strokes": 3, "write": true },
+        { "char": "小", "charHans": "小", "zhuyin": "ㄒㄧㄠˇ", "pinyin": "xiǎo", "meaning": "小", "meaningEn": "small", "radical": "小", "strokes": 3, "write": true },
+        { "char": "多", "charHans": "多", "zhuyin": "ㄉㄨㄛ", "pinyin": "duō", "meaning": "多", "meaningEn": "many, much", "radical": "夕", "strokes": 6, "write": false },
+        { "char": "少", "charHans": "少", "zhuyin": "ㄕㄠˇ", "pinyin": "shǎo", "meaning": "少", "meaningEn": "few, little", "radical": "小", "strokes": 4, "write": true },
+        { "char": "很", "charHans": "很", "zhuyin": "ㄏㄣˇ", "pinyin": "hěn", "meaning": "很", "meaningEn": "very", "radical": "彳", "strokes": 9, "write": false },
+        { "char": "也", "charHans": "也", "zhuyin": "ㄧㄝˇ", "pinyin": "yě", "meaning": "也", "meaningEn": "also, too", "radical": "乙", "strokes": 3, "write": false }
+      ],
+      "words": [
+        { "word": "大人", "wordHans": "大人", "zhuyin": "ㄉㄚˋ ㄖㄣˊ", "pinyin": "dà rén", "meaningEn": "grown-up" },
+        { "word": "很多", "wordHans": "很多", "zhuyin": "ㄏㄣˇ ㄉㄨㄛ", "pinyin": "hěn duō", "meaningEn": "a lot, many" },
+        { "word": "很少", "wordHans": "很少", "zhuyin": "ㄏㄣˇ ㄕㄠˇ", "pinyin": "hěn shǎo", "meaningEn": "very few" },
+        { "word": "多少", "wordHans": "多少", "zhuyin": "ㄉㄨㄛ ㄕㄠˇ", "pinyin": "duō shǎo", "meaningEn": "how many" },
+        { "word": "不大", "wordHans": "不大", "zhuyin": "ㄅㄨˊ ㄉㄚˋ", "pinyin": "bú dà", "meaningEn": "not big" }
+      ],
+      "sentences": [
+        { "text": "我家很大。", "textHans": "我家很大。", "en": "My home is big." },
+        { "text": "我很好，你也很好。", "textHans": "我很好，你也很好。", "en": "I am well, and you are well too." },
+        { "text": "哥哥很大，弟弟很小。", "textHans": "哥哥很大，弟弟很小。", "en": "Big brother is big, little brother is small." },
+        { "text": "我家的人很多。", "textHans": "我家的人很多。", "en": "There are many people in my family." },
+        { "text": "你家有多少人？", "textHans": "你家有多少人？", "en": "How many people are in your family?" }
+      ],
+      "dialogue": [
+        { "speaker": "A", "text": "你家有多少人？", "textHans": "你家有多少人？" },
+        { "speaker": "B", "text": "我家的人很多。我有爸爸、媽媽、哥哥，也有妹妹。", "textHans": "我家的人很多。我有爸爸、妈妈、哥哥，也有妹妹。" },
+        { "speaker": "A", "text": "我家的人很少。", "textHans": "我家的人很少。" }
+      ],
+      "quiz": [
+        { "type": "listen-char", "audio": "多", "answer": "多", "options": ["多", "大", "少", "也"] },
+        { "type": "listen-char", "audio": "很", "answer": "很", "options": ["很", "好", "小", "有"] },
+        { "type": "char-tone", "char": "小", "answer": "xiǎo", "options": ["xiǎo", "xiāo", "xiáo", "xiào"] },
+        { "type": "char-tone", "char": "也", "answer": "yě", "options": ["yě", "yē", "yé", "yè"] },
+        { "type": "cloze-sentence", "sentence": "我很好，你＿很好。", "answer": "也", "options": ["也", "的", "很", "們"] },
+        { "type": "cloze-sentence", "sentence": "你家有＿＿人？", "answer": "多少", "options": ["多少", "大小", "不是", "幾歲"] }
+      ]
+    },
+    {
+      "lesson": 7,
+      "title": "叫什麼名字",
+      "goal": "會問「你叫什麼名字？」「你姓什麼？」，會說「我叫…」。",
+      "goalEn": "Ask someone's name and surname, and tell your own name.",
+      "characters": [
+        { "char": "叫", "charHans": "叫", "zhuyin": "ㄐㄧㄠˋ", "pinyin": "jiào", "meaning": "名字是", "meaningEn": "to be called", "radical": "口", "strokes": 5, "write": true },
+        { "char": "什", "charHans": "什", "zhuyin": "ㄕㄣˊ", "pinyin": "shén", "meaning": "什麼", "meaningEn": "what (in 什麼)", "radical": "人", "strokes": 4, "write": false },
+        { "char": "麼", "charHans": "么", "zhuyin": "˙ㄇㄜ", "pinyin": "me", "meaning": "什麼", "meaningEn": "what (in 什麼)", "radical": "麻", "strokes": 14, "strokesHans": 3, "write": false },
+        { "char": "名", "charHans": "名", "zhuyin": "ㄇㄧㄥˊ", "pinyin": "míng", "meaning": "名字", "meaningEn": "name", "radical": "口", "strokes": 6, "write": true },
+        { "char": "字", "charHans": "字", "zhuyin": "ㄗˋ", "pinyin": "zì", "meaning": "字", "meaningEn": "character, word", "radical": "子", "strokes": 6, "write": true },
+        { "char": "姓", "charHans": "姓", "zhuyin": "ㄒㄧㄥˋ", "pinyin": "xìng", "meaning": "姓", "meaningEn": "surname", "radical": "女", "strokes": 8, "write": false }
+      ],
+      "words": [
+        { "word": "什麼", "wordHans": "什么", "zhuyin": "ㄕㄣˊ ˙ㄇㄜ", "pinyin": "shén me", "meaningEn": "what" },
+        { "word": "名字", "wordHans": "名字", "zhuyin": "ㄇㄧㄥˊ ˙ㄗ", "pinyin": "míng zi", "meaningEn": "name" },
+        { "word": "叫什麼", "wordHans": "叫什么", "zhuyin": "ㄐㄧㄠˋ ㄕㄣˊ ˙ㄇㄜ", "pinyin": "jiào shén me", "meaningEn": "what is (someone) called" },
+        { "word": "姓什麼", "wordHans": "姓什么", "zhuyin": "ㄒㄧㄥˋ ㄕㄣˊ ˙ㄇㄜ", "pinyin": "xìng shén me", "meaningEn": "what is (someone's) surname" }
+      ],
+      "sentences": [
+        { "text": "你叫什麼名字？", "textHans": "你叫什么名字？", "en": "What is your name?" },
+        { "text": "我叫小七。", "textHans": "我叫小七。", "en": "My name is Xiao Qi." },
+        { "text": "她叫什麼名字？", "textHans": "她叫什么名字？", "en": "What is her name?" },
+        { "text": "你姓什麼？", "textHans": "你姓什么？", "en": "What is your surname?" },
+        { "text": "爸爸姓什麼，我也姓什麼。", "textHans": "爸爸姓什么，我也姓什么。", "en": "Whatever Dad's surname is, mine is the same." }
+      ],
+      "dialogue": [
+        { "speaker": "A", "text": "你好！你叫什麼名字？", "textHans": "你好！你叫什么名字？" },
+        { "speaker": "B", "text": "我叫小七。你叫什麼名字？", "textHans": "我叫小七。你叫什么名字？" },
+        { "speaker": "A", "text": "我叫小九。小七，你姓什麼？", "textHans": "我叫小九。小七，你姓什么？" },
+        { "speaker": "B", "text": "我爸爸姓什麼，我也姓什麼！", "textHans": "我爸爸姓什么，我也姓什么！" }
+      ],
+      "quiz": [
+        { "type": "listen-char", "audio": "叫", "answer": "叫", "options": ["叫", "姓", "名", "字"] },
+        { "type": "listen-char", "audio": "名", "answer": "名", "options": ["名", "們", "媽", "你"] },
+        { "type": "char-tone", "char": "名", "answer": "míng", "options": ["míng", "mǐng", "mìng", "mīng"] },
+        { "type": "char-tone", "char": "姓", "answer": "xìng", "options": ["xìng", "xīng", "xíng", "xǐng"] },
+        { "type": "cloze-sentence", "sentence": "你叫什麼＿＿？", "answer": "名字", "options": ["名字", "好不", "幾歲", "家人"] },
+        { "type": "stroke-count", "char": "叫", "answer": "5", "options": ["5", "4", "6", "3"] }
+      ]
+    },
+    {
+      "lesson": 8,
+      "title": "謝謝你",
+      "goal": "會有禮貌地說「請問」「謝謝」「再見」，會用「您」稱呼大人。",
+      "goalEn": "Use polite words: excuse me, thank you, goodbye, and the polite 'you'.",
+      "characters": [
+        { "char": "謝", "charHans": "谢", "zhuyin": "ㄒㄧㄝˋ", "pinyin": "xiè", "meaning": "謝謝", "meaningEn": "to thank", "radical": "言", "strokes": 17, "strokesHans": 12, "write": false },
+        { "char": "請", "charHans": "请", "zhuyin": "ㄑㄧㄥˇ", "pinyin": "qǐng", "meaning": "請", "meaningEn": "please", "radical": "言", "strokes": 15, "strokesHans": 10, "write": false },
+        { "char": "問", "charHans": "问", "zhuyin": "ㄨㄣˋ", "pinyin": "wèn", "meaning": "問", "meaningEn": "to ask", "radical": "口", "strokes": 11, "strokesHans": 6, "write": false },
+        { "char": "您", "charHans": "您", "zhuyin": "ㄋㄧㄣˊ", "pinyin": "nín", "meaning": "你（有禮貌）", "meaningEn": "you (polite)", "radical": "心", "strokes": 11, "write": false },
+        { "char": "再", "charHans": "再", "zhuyin": "ㄗㄞˋ", "pinyin": "zài", "meaning": "再一次", "meaningEn": "again", "radical": "冂", "strokes": 6, "write": true },
+        { "char": "見", "charHans": "见", "zhuyin": "ㄐㄧㄢˋ", "pinyin": "jiàn", "meaning": "看見、見面", "meaningEn": "to see, to meet", "radical": "見", "strokes": 7, "strokesHans": 4, "write": true }
+      ],
+      "words": [
+        { "word": "謝謝", "wordHans": "谢谢", "zhuyin": "ㄒㄧㄝˋ ˙ㄒㄧㄝ", "pinyin": "xiè xie", "meaningEn": "thank you" },
+        { "word": "請問", "wordHans": "请问", "zhuyin": "ㄑㄧㄥˇ ㄨㄣˋ", "pinyin": "qǐng wèn", "meaningEn": "excuse me, may I ask" },
+        { "word": "再見", "wordHans": "再见", "zhuyin": "ㄗㄞˋ ㄐㄧㄢˋ", "pinyin": "zài jiàn", "meaningEn": "goodbye" },
+        { "word": "您好", "wordHans": "您好", "zhuyin": "ㄋㄧㄣˊ ㄏㄠˇ", "pinyin": "nín hǎo", "meaningEn": "hello (polite)" },
+        { "word": "不謝", "wordHans": "不谢", "zhuyin": "ㄅㄨˊ ㄒㄧㄝˋ", "pinyin": "bú xiè", "meaningEn": "you're welcome" }
+      ],
+      "sentences": [
+        { "text": "謝謝你！", "textHans": "谢谢你！", "en": "Thank you!" },
+        { "text": "請問，您叫什麼名字？", "textHans": "请问，您叫什么名字？", "en": "Excuse me, what is your name?" },
+        { "text": "請問您姓什麼？", "textHans": "请问您姓什么？", "en": "May I ask your surname?" },
+        { "text": "爸爸、媽媽，再見！", "textHans": "爸爸、妈妈，再见！", "en": "Bye, Dad! Bye, Mom!" },
+        { "text": "謝謝您，再見！", "textHans": "谢谢您，再见！", "en": "Thank you, goodbye!" }
+      ],
+      "dialogue": [
+        { "speaker": "A", "text": "您好！請問，她是不是您的妹妹？", "textHans": "您好！请问，她是不是您的妹妹？" },
+        { "speaker": "B", "text": "是，她是我的妹妹。", "textHans": "是，她是我的妹妹。" },
+        { "speaker": "A", "text": "謝謝您！再見！", "textHans": "谢谢您！再见！" },
+        { "speaker": "B", "text": "不謝，再見！", "textHans": "不谢，再见！" }
+      ],
+      "quiz": [
+        { "type": "listen-char", "audio": "見", "answer": "見", "options": ["見", "姐", "問", "謝"] },
+        { "type": "listen-char", "audio": "請", "answer": "請", "options": ["請", "您", "姓", "名"] },
+        { "type": "char-tone", "char": "您", "answer": "nín", "options": ["nín", "nǐn", "nìn", "nīn"] },
+        { "type": "char-tone", "char": "問", "answer": "wèn", "options": ["wèn", "wēn", "wén", "wěn"] },
+        { "type": "cloze-sentence", "sentence": "＿問，你叫什麼名字？", "answer": "請", "options": ["請", "謝", "再", "也"] },
+        { "type": "cloze-sentence", "sentence": "爸爸、媽媽，＿＿！", "answer": "再見", "options": ["再見", "什麼", "名字", "多少"] }
+      ]
+    }
+  ],
+  "checkpoint": {
+    "title": "第 2 階段檢核",
+    "scope": [5, 6, 7, 8],
+    "quiz": [
+      { "type": "listen-char", "audio": "妹", "answer": "妹", "options": ["妹", "弟", "媽", "姐"] },
+      { "type": "listen-char", "audio": "少", "answer": "少", "options": ["少", "小", "多", "是"] },
+      { "type": "char-tone", "char": "再", "answer": "zài", "options": ["zài", "zāi", "zái", "zǎi"] },
+      { "type": "char-tone", "char": "多", "answer": "duō", "options": ["duō", "duó", "duǒ", "duò"] },
+      { "type": "cloze-sentence", "sentence": "她是我的姐姐，我是她的＿＿。", "answer": "妹妹", "options": ["妹妹", "爸爸", "媽媽", "家人"] },
+      { "type": "cloze-sentence", "sentence": "＿＿你！再見！", "answer": "謝謝", "options": ["謝謝", "請問", "名字", "什麼"] },
+      { "type": "cloze-sentence", "sentence": "請問，您＿什麼？", "answer": "姓", "options": ["姓", "多", "少", "也"] },
+      { "type": "stroke-count", "char": "小", "answer": "3", "options": ["3", "2", "4", "5"] }
+    ]
+  }
+}

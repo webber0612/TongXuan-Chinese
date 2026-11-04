@@ -57,3 +57,10 @@ def test_quiz_answer_must_be_an_option(tmp_path):
         stage["lessons"][1]["quiz"][0]["options"] = ["三", "二", "五", "一"]
     errors = run_on(tmp_path, break_quiz)
     assert any("answer is not among the options" in error for error in errors)
+
+
+def test_later_stage_may_reuse_simplified_forms_from_earlier_stages(tmp_path):
+    stage_2 = curriculum_check.STAGES / "stage-02.json"
+    order = curriculum_check.lesson_order()
+    assert curriculum_check.check_stage(stage_2, order, [STAGE_1]) == []
+    assert any("岁" in error for error in curriculum_check.check_stage(stage_2, order))
