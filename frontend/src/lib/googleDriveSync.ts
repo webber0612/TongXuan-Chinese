@@ -1,4 +1,6 @@
-import { appStorage } from "./storage";
+import { appStorage, getDeletedLearnerIds, getLearners, getWritingProgress, SCHEMA_VERSION } from "./storage";
+import { mergeSyncPayloads, normalizeSyncPayload, type SyncPayload, type LegacySyncPayload } from "./sync/merge";
+export type { SyncPayload } from "./sync/merge";
 /**
  * TongXuan Chinese - Google Drive User-Owned Sync Service
  * 
@@ -23,17 +25,17 @@ export type GoogleDriveAuth = {
   lastSyncTime?: string;
 };
 
-export type SyncPayload = {
-  version: number;
-  updatedAt: string;
-  sourceDevice?: string;
-  learners: unknown[];
-  activeLearnerId: string;
-  writingProgress: Record<string, unknown>;
-  rewardsCatalog?: unknown;
-  displayLang?: string;
-  voiceGuide?: boolean;
-};
+export type DriveSyncStatus = { state: "idle" | "syncing" | "synced" | "relink" | "error"; at: string };
+
+export function getDriveSyncStatus(): DriveSyncStatus {
+  try { return JSON.parse(appStorage.getItem("tongxuan_drive_sync_status") || '{"state":"idle","at":""}') as DriveSyncStatus; }
+  catch { return { state: "idle", at: "" }; }
+}
+
+function saveSyncStatus(state: DriveSyncStatus["state"]): void {
+  appStorage.setItem("tongxuan_drive_sync_status", JSON.stringify({ state, at: new Date().toISOString() }));
+  if (typeof window !== "undefined") window.dispatchEvent(new Event("tongxuan-drive-sync-status"));
+}
 
 /** Ensure Google Identity Services SDK is loaded */
 export async function ensureGoogleScript(): Promise<void> {
@@ -63,18 +65,23 @@ export async function ensureGoogleScript(): Promise<void> {
 }
 
 /** Get stored auth info if valid */
-export function getSavedDriveAuth(): GoogleDriveAuth | null {
+export function getLinkedDriveAuth(): GoogleDriveAuth | null {
   try {
     const raw = appStorage.getItem(AUTH_STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as GoogleDriveAuth;
-    if (parsed && parsed.accessToken && parsed.expiresAt > Date.now()) {
+    if (parsed && parsed.accessToken) {
       return parsed;
     }
     return null;
   } catch {
     return null;
   }
+}
+
+export function getSavedDriveAuth(): GoogleDriveAuth | null {
+  const auth = getLinkedDriveAuth();
+  return auth && auth.expiresAt > Date.now() ? auth : null;
 }
 
 /** Save auth info to local storage */
@@ -138,8 +145,7 @@ export async function requestDriveAccessToken(): Promise<GoogleDriveAuth> {
               accessToken: tokenResp.access_token,
               email: userInfo.email,
               name: userInfo.name,
-              expiresAt: Date.now() + (expiresInSec - 60) * 1000,
-              lastSyncTime: new Date().toISOString()
+              expiresAt: Date.now() + (expiresInSec - 60) * 1000
             };
             saveDriveAuth(auth);
             resolve(auth);
@@ -161,57 +167,45 @@ export async function requestDriveAccessToken(): Promise<GoogleDriveAuth> {
 
 /** Collect current local progress payload */
 export function getLocalProgressPayload(): SyncPayload {
-  let learners: unknown[] = [];
-  try {
-    const raw = appStorage.getItem("tongxuan_learners_list");
-    if (raw) learners = JSON.parse(raw);
-  } catch {}
-
-  let writingProgress = {};
-  try {
-    const raw = appStorage.getItem("tongxuan_writing_progress_v2");
-    if (raw) writingProgress = JSON.parse(raw);
-  } catch {}
-
-  let rewardsCatalog = null;
-  try {
-    const raw = appStorage.getItem("tongxuan_expert_rewards_catalog");
-    if (raw) rewardsCatalog = JSON.parse(raw);
-  } catch {}
-
-  return {
-    version: 1,
-    updatedAt: new Date().toISOString(),
-    sourceDevice: navigator.userAgent.slice(0, 40),
-    learners,
+  const learners = getLearners();
+  const writingProgress = getWritingProgress();
+  const deletedLearnerIds = getDeletedLearnerIds();
+  const readJson = (key: string): unknown => {
+    try { return JSON.parse(appStorage.getItem(key) || "null"); } catch { return null; }
+  };
+  const preferencesUpdatedAt = appStorage.getItem("tongxuan_preferences_updated_at") || "1970-01-01T00:00:00.000Z";
+  const rewardsUpdatedAt = appStorage.getItem("tongxuan_rewards_updated_at") || "1970-01-01T00:00:00.000Z";
+  const customRewardsUpdatedAt = appStorage.getItem("tongxuan_custom_rewards_updated_at") || "1970-01-01T00:00:00.000Z";
+  const stamps = [preferencesUpdatedAt, rewardsUpdatedAt, customRewardsUpdatedAt, ...Object.values(deletedLearnerIds), ...learners.map((learner) => learner.updatedAt), ...Object.values(writingProgress).map((entry) => entry.updatedAt)];
+  const updatedAt = stamps.filter(Boolean).sort((a, b) => Date.parse(b) - Date.parse(a))[0] || "1970-01-01T00:00:00.000Z";
+  return normalizeSyncPayload({
+    version: 2, schemaVersion: SCHEMA_VERSION, updatedAt, learners,
+    deletedLearnerIds,
     activeLearnerId: appStorage.getItem("tongxuan_active_learner_id") || "learner-1",
     writingProgress,
-    rewardsCatalog,
+    rewardsCatalog: readJson("tongxuan_expert_rewards_catalog"),
+    customRewardsCatalog: readJson("tongxuan_custom_rewards_catalog"),
+    rewardsUpdatedAt, customRewardsUpdatedAt,
     displayLang: appStorage.getItem("tongxuan_display_lang") || "zh-Hant",
-    voiceGuide: appStorage.getItem("tongxuan_voice_guide") === "true"
-  };
+    voiceGuide: appStorage.getItem("tongxuan_voice_guide") === "true",
+    preferencesUpdatedAt,
+  } as unknown as SyncPayload);
 }
 
 /** Apply remote progress payload to local storage */
 export function applyRemotePayloadToLocal(payload: SyncPayload): void {
-  if (Array.isArray(payload.learners) && payload.learners.length > 0) {
-    appStorage.setItem("tongxuan_learners_list", JSON.stringify(payload.learners));
-  }
-  if (payload.activeLearnerId) {
-    appStorage.setItem("tongxuan_active_learner_id", payload.activeLearnerId);
-  }
-  if (payload.writingProgress && typeof payload.writingProgress === "object") {
-    appStorage.setItem("tongxuan_writing_progress_v2", JSON.stringify(payload.writingProgress));
-  }
-  if (payload.rewardsCatalog) {
-    appStorage.setItem("tongxuan_expert_rewards_catalog", JSON.stringify(payload.rewardsCatalog));
-  }
-  if (payload.displayLang) {
-    appStorage.setItem("tongxuan_display_lang", payload.displayLang);
-  }
-  if (typeof payload.voiceGuide === "boolean") {
-    appStorage.setItem("tongxuan_voice_guide", payload.voiceGuide ? "true" : "false");
-  }
+  appStorage.setSyncedItem("tongxuan_learners_list", JSON.stringify(payload.learners));
+  appStorage.setSyncedItem("tongxuan_deleted_learner_ids", JSON.stringify(payload.deletedLearnerIds));
+  if (payload.activeLearnerId) appStorage.setSyncedItem("tongxuan_active_learner_id", payload.activeLearnerId);
+  appStorage.setSyncedItem("tongxuan_writing_progress_v2", JSON.stringify(payload.writingProgress));
+  if (payload.rewardsCatalog !== null) appStorage.setSyncedItem("tongxuan_expert_rewards_catalog", JSON.stringify(payload.rewardsCatalog));
+  if (payload.customRewardsCatalog !== null) appStorage.setSyncedItem("tongxuan_custom_rewards_catalog", JSON.stringify(payload.customRewardsCatalog));
+  appStorage.setSyncedItem("tongxuan_rewards_updated_at", payload.rewardsUpdatedAt);
+  appStorage.setSyncedItem("tongxuan_custom_rewards_updated_at", payload.customRewardsUpdatedAt);
+  appStorage.setSyncedItem("tongxuan_display_lang", payload.displayLang);
+  appStorage.setSyncedItem("tongxuan_voice_guide", String(payload.voiceGuide));
+  appStorage.setSyncedItem("tongxuan_preferences_updated_at", payload.preferencesUpdatedAt);
+  if (typeof window !== "undefined") window.dispatchEvent(new Event("tongxuan-sync-applied"));
 }
 
 /** Find existing tongxuan_progress.json in Google Drive appDataFolder */
@@ -231,7 +225,7 @@ async function findProgressFileId(accessToken: string): Promise<string | null> {
 }
 
 /** Read progress data from Google Drive appDataFolder */
-export async function downloadProgressFromDrive(accessToken: string): Promise<{ data: SyncPayload | null; fileId: string | null; modifiedTime?: string }> {
+export async function downloadProgressFromDrive(accessToken: string): Promise<{ data: SyncPayload | LegacySyncPayload | null; fileId: string | null; modifiedTime?: string }> {
   const fileId = await findProgressFileId(accessToken);
   if (!fileId) return { data: null, fileId: null };
 
@@ -240,13 +234,13 @@ export async function downloadProgressFromDrive(accessToken: string): Promise<{ 
     headers: { Authorization: `Bearer ${accessToken}` }
   });
   if (!resp.ok) throw new Error(`download_drive_failed_${resp.status}`);
-  const data = (await resp.json()) as SyncPayload;
+  const data = (await resp.json()) as SyncPayload | LegacySyncPayload;
   return { data, fileId };
 }
 
 /** Upload local progress payload to Google Drive appDataFolder */
 export async function uploadProgressToDrive(accessToken: string, payload: SyncPayload, existingFileId?: string | null): Promise<string> {
-  const fileId = existingFileId ?? (await findProgressFileId(accessToken));
+  const fileId = existingFileId === undefined ? await findProgressFileId(accessToken) : existingFileId;
   const content = JSON.stringify(payload, null, 2);
 
   if (fileId) {
@@ -297,47 +291,55 @@ export async function uploadProgressToDrive(accessToken: string, payload: SyncPa
   }
 }
 
-/** Execute a full 2-way sync: Download remote or upload local */
-export async function performFullDriveSync(existingAuth?: GoogleDriveAuth | null): Promise<{ auth: GoogleDriveAuth; action: "uploaded" | "downloaded" | "synced" }> {
-  let auth = existingAuth || getSavedDriveAuth();
-  if (!auth) {
-    auth = await requestDriveAccessToken();
-  }
+let syncInFlight: Promise<{ auth: GoogleDriveAuth; action: "uploaded" | "downloaded" | "synced" }> | null = null;
+let syncQueued = false;
 
-  // 1. Download remote file
-  const { data: remoteData, fileId } = await downloadProgressFromDrive(auth.accessToken);
-  const localData = getLocalProgressPayload();
-
-  let action: "uploaded" | "downloaded" | "synced" = "synced";
-
-  if (!remoteData) {
-    // No remote file yet -> upload local to remote
-    await uploadProgressToDrive(auth.accessToken, localData, fileId);
-    action = "uploaded";
-  } else {
-    const remoteTime = new Date(remoteData.updatedAt || 0).getTime();
-    const localTime = new Date(localData.updatedAt || 0).getTime();
-
-    if (remoteTime > localTime && Array.isArray(remoteData.learners) && remoteData.learners.length > 0) {
-      // Remote is newer -> apply to local
-      applyRemotePayloadToLocal(remoteData);
-      action = "downloaded";
-    } else {
-      // Local has data -> push to remote
-      await uploadProgressToDrive(auth.accessToken, localData, fileId);
-      action = "uploaded";
+/** Download, merge, persist, then upload. A failed upload never rolls back local progress. */
+export function performFullDriveSync(existingAuth?: GoogleDriveAuth | null, interactive = true): Promise<{ auth: GoogleDriveAuth; action: "uploaded" | "downloaded" | "synced" }> {
+  if (syncInFlight) return syncInFlight;
+  const running = (async () => {
+    saveSyncStatus("syncing");
+    try {
+      let auth = existingAuth || getLinkedDriveAuth();
+      if (!auth || auth.expiresAt <= Date.now()) {
+        if (!interactive) throw new Error("relink_required");
+        auth = await requestDriveAccessToken();
+      }
+      const { data: remoteData, fileId } = await downloadProgressFromDrive(auth.accessToken);
+      const localData = getLocalProgressPayload();
+      const merged = remoteData ? mergeSyncPayloads(localData, remoteData) : normalizeSyncPayload(localData);
+      applyRemotePayloadToLocal(merged);
+      await uploadProgressToDrive(auth.accessToken, merged, fileId);
+      const updatedAuth = { ...auth, lastSyncTime: new Date().toISOString() };
+      saveDriveAuth(updatedAuth);
+      saveSyncStatus("synced");
+      const action: "uploaded" | "synced" | "downloaded" = !remoteData ? "uploaded" : JSON.stringify(merged) === JSON.stringify(localData) ? "synced" : "downloaded";
+      return { auth: updatedAuth, action };
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : String(cause);
+      saveSyncStatus(/relink_required|_401|_403/.test(message) ? "relink" : "error");
+      throw cause;
     }
-  }
+  })();
+  syncInFlight = running;
+  void running.then(() => {
+    syncInFlight = null;
+    if (syncQueued) { syncQueued = false; void autoSyncDrive(); }
+  }, () => { syncInFlight = null; syncQueued = false; });
+  return running;
+}
 
-  const updatedAuth: GoogleDriveAuth = {
-    ...auth,
-    lastSyncTime: new Date().toISOString()
-  };
-  saveDriveAuth(updatedAuth);
-  return { auth: updatedAuth, action };
+/** Silent sync for the child flow; an expired token is surfaced only in the parent card. */
+export async function autoSyncDrive(): Promise<void> {
+  const auth = getLinkedDriveAuth();
+  if (!auth) return;
+  if (auth.expiresAt <= Date.now()) { saveSyncStatus("relink"); return; }
+  if (syncInFlight) { syncQueued = true; await syncInFlight.catch(() => undefined); return; }
+  await performFullDriveSync(auth, false).catch(() => undefined);
 }
 
 /** Disconnect and revoke token */
 export function disconnectGoogleDrive(): void {
   saveDriveAuth(null);
+  saveSyncStatus("idle");
 }

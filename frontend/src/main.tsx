@@ -6,6 +6,7 @@ import { initAnalytics } from "./lib/analytics";
 import { logVersionInfo } from "./version";
 import { loadVoiceClips } from "./lib/voiceClips";
 import { migrate } from "./lib/storage";
+import { autoSyncDrive } from "./lib/googleDriveSync";
 import "./styles/index.css";
 
 // Log inconspicuous version badge to F12 Console & attach window.__TONGXUAN__
@@ -19,4 +20,5 @@ void loadVoiceClips();
 initAnalytics();
 
 createRoot(document.getElementById("root")!).render(<React.StrictMode><LocaleProvider><AppShell /></LocaleProvider></React.StrictMode>);
+void autoSyncDrive();
 

@@ -5930,8 +5930,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "ed6e64e9c2566e402ee41604f8bde3797a697b0503982d25b802d1baff9e7314",
-      "sizeBytes": 5953
+      "sha256": "cf7dde353304f872bf831578f64c277a39b4a3eb62318498dacae7e873c518d6",
+      "sizeBytes": 8319
     },
     {
       "path": "frontend/src/components/PlacementStatus.tsx",
@@ -6236,8 +6236,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "9dba22f565f78153f7a7cdc70d9a842aa892777d4575ea01a30d8a2378574e3b",
-      "sizeBytes": 16944
+      "sha256": "50a2291ddbd434921ded548bc115a1e728dc3ae2f2e68e6446a2d20e9927adec",
+      "sizeBytes": 17942
     },
     {
       "path": "frontend/src/features/childPortal/variantLabels.ts",
@@ -6395,8 +6395,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "0bd4ee08f8e4db50ddd58498472d965d53f5a0ef63a944838b6421aef8de98f5",
-      "sizeBytes": 11808
+      "sha256": "7a5759f3cdbc1b450dcfc62bd04d3d1c967b10ee868acba5b63306ea993abd0a",
+      "sizeBytes": 14540
     },
     {
       "path": "frontend/src/lib/i18n.tsx",

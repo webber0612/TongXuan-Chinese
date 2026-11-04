@@ -22,7 +22,7 @@ const reward = (value: unknown) => record(value) && text(value.id) && text(value
 const profile = (value: unknown) => record(value) && text(value.key) && text(value.name) && ["child", "parent"].includes(String(value.role));
 
 const validators: Record<string, Validator> = {
-  tongxuan_learners_list: (value) => array(value) && value.length > 0 && value.every(learner),
+  tongxuan_learners_list: (value) => array(value) && value.every(learner),
   tongxuan_writing_progress_v2: writing,
   tongxuan_expert_rewards_catalog: (value) => value === null || (array(value) && value.every(reward)),
   tongxuan_custom_rewards_catalog: (value) => array(value) && value.every(reward),
@@ -31,6 +31,8 @@ const validators: Record<string, Validator> = {
   tongxuan_redemptions_history: (value) => array(value) && value.every((item) => record(item) && text(item.id) && text(item.itemId)),
   "tongxuan.child-first.profiles": (value) => array(value) && value.every(profile),
   tongxuan_gdrive_auth: (value) => record(value) && text(value.accessToken) && text(value.email) && text(value.name) && number(value.expiresAt),
+  tongxuan_deleted_learner_ids: (value) => record(value) && Object.values(value).every(iso),
+  tongxuan_drive_sync_status: (value) => record(value) && ["idle", "syncing", "synced", "relink", "error"].includes(String(value.state)),
 };
 const stringValidators: Record<string, Validator> = {
   tongxuan_active_learner_id: text,
@@ -43,6 +45,9 @@ const stringValidators: Record<string, Validator> = {
   "tongxuan.display-language": (v) => ["zh-Hant", "zh-Hans", "en", "ja", "ko", "es"].includes(String(v)),
   "tongxuan.learning-locale": (v) => v === "zh-TW" || v === "zh-CN",
   "tongxuan.annotation-mode": (v) => ["AUTO", "BOPOMOFO", "PINYIN", "HIDDEN"].includes(String(v)),
+  tongxuan_preferences_updated_at: iso,
+  tongxuan_rewards_updated_at: iso,
+  tongxuan_custom_rewards_updated_at: iso,
 };
 
 function backend(): Storage | null {
@@ -119,6 +124,24 @@ export const appStorage = {
         if (key === "tongxuan_learners_list") raw = JSON.stringify(stampLearners(next as unknown[], (previous as unknown[]) || [], at));
         if (key === "tongxuan_writing_progress_v2") raw = JSON.stringify(stampWriting(next as Record<string, unknown>, (previous as Record<string, unknown>) || {}, at));
       } else if (stringValidators[key] && !stringValidators[key](raw)) { error(key, "invalid_shape"); return; }
+      const changed = target.getItem(key) !== raw;
+      target.setItem(key, raw);
+      if (changed) {
+        const timestampKey = key === "tongxuan_display_lang" || key === "tongxuan_voice_guide" ? "tongxuan_preferences_updated_at"
+          : key === "tongxuan_expert_rewards_catalog" ? "tongxuan_rewards_updated_at"
+          : key === "tongxuan_custom_rewards_catalog" ? "tongxuan_custom_rewards_updated_at" : null;
+        if (timestampKey) target.setItem(timestampKey, new Date().toISOString());
+      }
+    } catch { error(key, "write_failed"); }
+  },
+  /** Persist a validated merged snapshot without replacing its per-record timestamps. */
+  setSyncedItem(key: string, raw: string): void {
+    const target = backend();
+    if (!target) return;
+    try {
+      if (validators[key] || key.startsWith("tongxuan_levels_progress:")) {
+        if (parse(key, raw) === null) return;
+      } else if (stringValidators[key] && !stringValidators[key](raw)) { error(key, "invalid_shape"); return; }
       target.setItem(key, raw);
     } catch { error(key, "write_failed"); }
   },
@@ -158,6 +181,8 @@ export const getLearningLocale = (): "zh-TW" | "zh-CN" => appStorage.getItem("to
 export const setLearningLocale = (value: "zh-TW" | "zh-CN"): void => appStorage.setItem("tongxuan.learning-locale", value);
 export const getAnnotationMode = (): "AUTO" | "BOPOMOFO" | "PINYIN" | "HIDDEN" => (appStorage.getItem("tongxuan.annotation-mode") || "AUTO") as "AUTO" | "BOPOMOFO" | "PINYIN" | "HIDDEN";
 export const setAnnotationMode = (value: "AUTO" | "BOPOMOFO" | "PINYIN" | "HIDDEN"): void => appStorage.setItem("tongxuan.annotation-mode", value);
+export const getDeletedLearnerIds = (): Record<string, string> => JSON.parse(appStorage.getItem("tongxuan_deleted_learner_ids") || "{}") as Record<string, string>;
+export const setDeletedLearnerIds = (value: Record<string, string>): void => appStorage.setItem("tongxuan_deleted_learner_ids", JSON.stringify(value));
 
 export function migrate(): void {
   const target = backend();

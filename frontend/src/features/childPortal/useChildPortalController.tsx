@@ -1,4 +1,5 @@
-import { appStorage } from "../../lib/storage";
+import { appStorage, getDeletedLearnerIds, setDeletedLearnerIds } from "../../lib/storage";
+import { autoSyncDrive } from "../../lib/googleDriveSync";
 import { playVoiceClips } from "../../lib/voiceClips";
 import { alignBook1Progress, BOOK1_LEVELS } from "../../data/book1";
 import { useState,useEffect,useRef,type ReactNode } from "react";
@@ -44,6 +45,16 @@ export function useChildPortalController({ activeChildName }: ChildPortalProps) 
     return saved || "learner-1";
   });
 
+  useEffect(() => {
+    const refreshFromSync = () => {
+      const saved = appStorage.getItem("tongxuan_learners_list");
+      if (saved) setLearners(JSON.parse(saved) as ChildLearner[]);
+      setActiveLearnerId(appStorage.getItem("tongxuan_active_learner_id") || "learner-1");
+    };
+    window.addEventListener("tongxuan-sync-applied", refreshFromSync);
+    return () => window.removeEventListener("tongxuan-sync-applied", refreshFromSync);
+  }, []);
+
   const activeLearner = (activeChildName ? learners.find((l) => l.name.trim().toLowerCase() === activeChildName.trim().toLowerCase()) : null) || learners.find((l) => l.id === activeLearnerId) || learners[0] || DEFAULT_LEARNERS[0];
 
   // Helper to update active learner data and persist
@@ -76,6 +87,12 @@ export function useChildPortalController({ activeChildName }: ChildPortalProps) 
   const handMode: HandMode = activeLearner.handMode || "right";
   const learnerPoints = activeLearner.points || { coins: 0, stars: 0 };
   const learnerLevelsProgress = alignBook1Progress(activeLearner.book1Progress);
+  const completedCount = activeLearner.book1Progress?.filter((entry) => entry.status === "completed").length || 0;
+  const previousCompletedCount = useRef(completedCount);
+  useEffect(() => {
+    if (completedCount > previousCompletedCount.current) void autoSyncDrive();
+    previousCompletedCount.current = completedCount;
+  }, [completedCount]);
 
   const [displayLang, setDisplayLang] = useState<DisplayLang>(() => {
     const saved = appStorage.getItem("tongxuan_display_lang");
@@ -251,6 +268,7 @@ export function useChildPortalController({ activeChildName }: ChildPortalProps) 
     const target = learners.find((l) => l.id === id);
     if (!target) return;
     if (confirm(`確定要刪除學習者「${target.name}」的紀錄嗎？刪除後無法恢復。`)) {
+      setDeletedLearnerIds({ ...getDeletedLearnerIds(), [id]: new Date().toISOString() });
       const nextList = learners.filter((l) => l.id !== id);
       setLearners(nextList);
       appStorage.setItem("tongxuan_learners_list", JSON.stringify(nextList));

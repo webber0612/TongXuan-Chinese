@@ -1,10 +1,22 @@
 import React, { useState, useEffect } from "react";
+import { useLocale, type DisplayLanguage } from "../lib/i18n";
 import {
-  getSavedDriveAuth,
+  getLinkedDriveAuth,
+  getDriveSyncStatus,
   performFullDriveSync,
   disconnectGoogleDrive,
-  type GoogleDriveAuth
+  type GoogleDriveAuth,
+  type DriveSyncStatus
 } from "../lib/googleDriveSync";
+
+const statusCopy: Record<DisplayLanguage, Record<"syncing" | "synced" | "relink" | "error", string>> = {
+  "zh-Hant": { syncing: "正在自動同步…", synced: "已自動同步", relink: "需要重新連結 Google Drive。", error: "自動同步暫時未完成，請稍後重試。" },
+  "zh-Hans": { syncing: "正在自动同步…", synced: "已自动同步", relink: "需要重新连接 Google Drive。", error: "自动同步暂时未完成，请稍后重试。" },
+  en: { syncing: "Syncing automatically…", synced: "Automatically synced", relink: "Reconnect Google Drive to resume syncing.", error: "Automatic sync could not finish. Please try again later." },
+  ja: { syncing: "自動同期中…", synced: "自動同期済み", relink: "Google Drive を再接続してください。", error: "自動同期が完了しませんでした。後でもう一度お試しください。" },
+  ko: { syncing: "자동 동기화 중…", synced: "자동 동기화 완료", relink: "Google Drive를 다시 연결해 주세요.", error: "자동 동기화를 완료하지 못했습니다. 나중에 다시 시도해 주세요." },
+  es: { syncing: "Sincronizando automáticamente…", synced: "Sincronizado automáticamente", relink: "Vuelve a conectar Google Drive para sincronizar.", error: "No se pudo completar la sincronización automática. Inténtalo más tarde." },
+};
 
 export function GoogleDriveSyncCard({
   onSyncComplete,
@@ -13,14 +25,22 @@ export function GoogleDriveSyncCard({
   onSyncComplete?: () => void;
   compact?: boolean;
 }) {
-  const [auth, setAuth] = useState<GoogleDriveAuth | null>(() => getSavedDriveAuth());
+  const { language } = useLocale();
+  const [auth, setAuth] = useState<GoogleDriveAuth | null>(() => getLinkedDriveAuth());
+  const [syncStatus, setSyncStatus] = useState<DriveSyncStatus>(() => getDriveSyncStatus());
   const [syncing, setSyncing] = useState(false);
   const [statusMsg, setStatusMsg] = useState<string>("");
   const [isError, setIsError] = useState(false);
 
   useEffect(() => {
-    setAuth(getSavedDriveAuth());
+    const refresh = () => { setAuth(getLinkedDriveAuth()); setSyncStatus(getDriveSyncStatus()); };
+    refresh();
+    window.addEventListener("tongxuan-drive-sync-status", refresh);
+    return () => window.removeEventListener("tongxuan-drive-sync-status", refresh);
   }, []);
+
+  const needsReconnect = !!auth && (auth.expiresAt <= Date.now() || syncStatus.state === "relink");
+  const automaticStatus = needsReconnect ? "relink" : syncStatus.state;
 
   const handleConnectAndSync = async () => {
     setSyncing(true);
@@ -91,7 +111,7 @@ export function GoogleDriveSyncCard({
         <div className="gdrive-header-left">
           <h4 className="gdrive-title">
             雲端進度同步
-            {auth && <span className="gdrive-status-tag">🟢 已連線</span>}
+            {auth && <span className="gdrive-status-tag">{needsReconnect ? statusCopy[language].relink : "🟢 已連線"}</span>}
           </h4>
         </div>
       </div>
@@ -111,6 +131,11 @@ export function GoogleDriveSyncCard({
           {statusMsg && (
             <div className={`gdrive-status-notice ${isError ? "error" : "success"}`}>
               {statusMsg}
+            </div>
+          )}
+          {!statusMsg && automaticStatus !== "idle" && (
+            <div className={`gdrive-status-notice ${automaticStatus === "error" || automaticStatus === "relink" ? "error" : "info"}`} role="status">
+              {statusCopy[language][automaticStatus]}
             </div>
           )}
 
