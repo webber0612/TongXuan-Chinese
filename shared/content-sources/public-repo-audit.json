@@ -722,6 +722,18 @@
       "sizeBytes": 2834
     },
     {
+      "path": "docs/codex-tasks/2026-11-m1-foundation-report.md",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "digestMode": "TEXT_LF_NORMALIZED",
+      "sha256": "cae32a2830cc3d7c0a6391551bec20b531c784d55a98c4cbeeaeec2f593ac805",
+      "sizeBytes": 2252
+    },
+    {
       "path": "docs/codex-tasks/2026-11-m1-foundation.md",
       "classification": "RIGHTS_UNCLEAR",
       "sourceIds": [],
@@ -6080,8 +6092,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "a02b2c51bd29017cec9a832c0785c880b53cbfc2599a4ba62389050107e70b32",
-      "sizeBytes": 52283
+      "sha256": "b195311e3ff262fa1bda1afdf08ec81aab5276a5daa0690cd97aa42842f85e3e",
+      "sizeBytes": 52241
     },
     {
       "path": "frontend/src/features/childPortal/dayPlan.ts",
@@ -6236,8 +6248,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "8a026e3d82e637bf03d5cd56789d3f1dac447e93c3376ff043cdd8172ed5d306",
-      "sizeBytes": 58116
+      "sha256": "fe6a61b85c79259a456baf07349063457764ef1782dc8cae9c9c8429c5652e32",
+      "sizeBytes": 58733
     },
     {
       "path": "frontend/src/features/childPortal/useChildPortalController.tsx",
@@ -6521,6 +6533,18 @@
       "contentKind": "TRACKED_CJK_TEXT_FAIL_CLOSED"
     },
     {
+      "path": "frontend/src/lib/storage/index.ts",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "digestMode": "TEXT_LF_NORMALIZED",
+      "sha256": "260e7e887f53d97ae7da3176673d9148a3fe722a6fe81286fbcc3f51c7aa6f3b",
+      "sizeBytes": 18249
+    },
+    {
       "path": "frontend/src/lib/storage/storage.test.ts",
       "classification": "RIGHTS_UNCLEAR",
       "sourceIds": [],
@@ -6529,8 +6553,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "c84bc74f6750c2f6a75cd0b2ee6292f55a1700a38d1c8dba9cad94c118dce62d",
-      "sizeBytes": 3019
+      "sha256": "670ee826d92a6724d85d1d6a8c78c948e3697400e4d5c1083fd7dc3879475a65",
+      "sizeBytes": 4472
     },
     {
       "path": "frontend/src/lib/tones.test.ts",

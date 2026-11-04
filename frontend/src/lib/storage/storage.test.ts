@@ -28,9 +28,36 @@ describe("versioned local storage", () => {
   it("records malformed JSON and missing required fields without throwing", () => {
     localStorage.setItem("tongxuan_learners_list", "{broken");
     expect(getLearners()).toEqual([]);
-    localStorage.setItem("tongxuan_learners_list", JSON.stringify([{ id: "child-1" }]));
+    localStorage.setItem("tongxuan_learners_list", JSON.stringify([{ name: "missing id" }]));
     expect(getLearners()).toEqual([]);
     expect(JSON.parse(localStorage.getItem(STORAGE_ERROR_KEY)!)).toHaveLength(2);
+  });
+
+  it("repairs one incomplete level and preserves learner balances", () => {
+    const incomplete = structuredClone(learner) as typeof learner;
+    delete (incomplete.book1Progress[0] as { score?: number }).score;
+    localStorage.setItem("tongxuan_learners_list", JSON.stringify([incomplete]));
+    expect(getLearners()[0].points.coins).toBe(7);
+    expect(getLearners()[0].book1Progress?.[0].score).toBeNull();
+    expect(JSON.parse(localStorage.getItem(STORAGE_ERROR_KEY)!).length).toBeGreaterThan(0);
+  });
+
+  it("drops only a learner without an id and keeps the other learner", () => {
+    localStorage.setItem("tongxuan_learners_list", JSON.stringify([learner, { name: "壞資料" }]));
+    expect(getLearners().map((entry) => entry.id)).toEqual(["child-1"]);
+  });
+
+  it("repairs one writing record without dropping valid records", () => {
+    localStorage.setItem("tongxuan_writing_progress_v2", JSON.stringify({ good: EMPTY_WRITING_PROGRESS, broken: { mastered: true } }));
+    expect(Object.keys(getWritingProgress())).toEqual(["good", "broken"]);
+    expect(getWritingProgress().broken.guidedSuccesses).toBe(0);
+  });
+
+  it("backs up an unreadable old value before replacing it", () => {
+    localStorage.setItem("tongxuan_learners_list", "{broken");
+    setLearners([learner]);
+    expect(localStorage.getItem("tongxuan_backup_unreadable_tongxuan_learners_list")).toBe("{broken");
+    expect(getLearners()[0].id).toBe("child-1");
   });
 
   it("is idempotent and only stamps changed learner and writing records", () => {

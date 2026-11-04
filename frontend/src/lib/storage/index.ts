@@ -66,7 +66,25 @@ function error(key: string, reason: string): void {
 
 function parse(key: string, raw: string): unknown | null {
   try {
-    const value = JSON.parse(raw);
+    let value = JSON.parse(raw);
+    if (key === "tongxuan_learners_list" && Array.isArray(value)) value = value.flatMap((item) => {
+      if (!record(item) || !text(item.id)) { error(key, "discarded_record_missing_id"); return []; }
+      const fillLevel = (entry: unknown) => {
+        if (!record(entry)) { error(key, "repaired_invalid_level"); return null; }
+        const repaired = { ...entry, status: ["completed", "current", "locked"].includes(String(entry.status)) ? entry.status : "locked", starsEarned: number(entry.starsEarned) ? entry.starsEarned : 0, score: entry.score === null || number(entry.score) ? entry.score : null, completedAt: entry.completedAt === null || text(entry.completedAt) ? entry.completedAt : null, updatedAt: iso(entry.updatedAt) ? entry.updatedAt : LEGACY_TIME };
+        if (!level(entry)) error(key, "repaired_level_fields");
+        return repaired;
+      };
+      const points = record(item.points) ? { coins: number(item.points.coins) ? item.points.coins : 0, stars: number(item.points.stars) ? item.points.stars : 0 } : { coins: 0, stars: 0 };
+      if (!learner(item)) error(key, "repaired_learner_fields");
+      return [{ ...item, name: text(item.name) ? item.name : "小朋友", points, levelsProgress: (Array.isArray(item.levelsProgress) ? item.levelsProgress : []).map(fillLevel).filter(Boolean), book1Progress: (Array.isArray(item.book1Progress) ? item.book1Progress : []).map(fillLevel).filter(Boolean) }];
+    });
+    if (key === "tongxuan_writing_progress_v2" && record(value)) value = Object.fromEntries(Object.entries(value).flatMap(([id, entry]) => {
+      if (!record(entry)) { error(key, "discarded_invalid_writing_record"); return []; }
+      const repaired = { guidedSuccesses: 0, reducedHintSuccesses: 0, independentSuccesses: 0, independentFailures: 0, mastered: false, ...entry };
+      if (!writing({ [id]: entry })) error(key, "repaired_writing_fields");
+      return [[id, repaired]];
+    }));
     if (!validators[key]?.(value) && !(key.startsWith("tongxuan_levels_progress:") && validators.tongxuan_levels_progress(value))) throw new Error("invalid_shape");
     return value;
   } catch (cause) { error(key, cause instanceof SyntaxError ? "invalid_json" : "invalid_shape"); return null; }
@@ -105,9 +123,16 @@ function stampWriting(next: Record<string, unknown>, previous: Record<string, un
 /** Compatibility facade: all browser storage reads and writes pass through validation here. */
 export const appStorage = {
   getItem(key: string): string | null {
-    const raw = backend()?.getItem(key) ?? null;
+    const target = backend();
+    const raw = target?.getItem(key) ?? null;
     if (raw === null) return null;
-    if (validators[key] || key.startsWith("tongxuan_levels_progress:")) return parse(key, raw) === null ? null : raw;
+    if (validators[key] || key.startsWith("tongxuan_levels_progress:")) {
+      const value = parse(key, raw);
+      if (value === null) return null;
+      const repaired = JSON.stringify(value);
+      if (repaired !== raw) { try { target?.setItem(key, repaired); } catch { error(key, "repair_write_failed"); } }
+      return repaired;
+    }
     if (stringValidators[key] && !stringValidators[key](raw)) { error(key, "invalid_shape"); return null; }
     return raw;
   },
@@ -120,6 +145,7 @@ export const appStorage = {
         if (next === null) return;
         const previousRaw = target.getItem(key);
         const previous = previousRaw ? parse(key, previousRaw) : null;
+        if (previousRaw !== null && previous === null) target.setItem(`tongxuan_backup_unreadable_${key}`, previousRaw);
         const at = new Date().toISOString();
         if (key === "tongxuan_learners_list") raw = JSON.stringify(stampLearners(next as unknown[], (previous as unknown[]) || [], at));
         if (key === "tongxuan_writing_progress_v2") raw = JSON.stringify(stampWriting(next as Record<string, unknown>, (previous as Record<string, unknown>) || {}, at));

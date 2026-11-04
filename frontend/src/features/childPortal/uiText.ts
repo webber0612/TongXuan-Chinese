@@ -1,6 +1,7 @@
 import { DisplayLang } from "./types";
 export const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
   "zh-Hant": {
+    strokeDataLoadError: "無法載入筆畫資料。請在恢復連線後再試。",
     morning: "早安",
     weekN: "第 {n} 週",
     menu: "選單",
@@ -166,6 +167,7 @@ export const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     draftTasksTitle: "關卡 {n} 自編練習卡片"
   },
   "zh-Hans": {
+    strokeDataLoadError: "无法加载笔画数据。请在恢复联网后重试。",
     morning: "早安",
     weekN: "第 {n} 周",
     menu: "菜单",
@@ -331,6 +333,7 @@ export const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     draftTasksTitle: "关卡 {n} 自编练习卡片"
   },
   "en": {
+    strokeDataLoadError: "Unable to load stroke data. Please try again when online.",
     morning: "Good Morning",
     weekN: "Week {n}",
     menu: "Menu",
@@ -496,6 +499,7 @@ export const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     draftTasksTitle: "Level {n} Practice Cards"
   },
   "ja": {
+    strokeDataLoadError: "筆画データを読み込めません。オンライン時にもう一度お試しください。",
     morning: "おはよう",
     weekN: "第 {n} 週",
     menu: "メニュー",
@@ -661,6 +665,7 @@ export const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     draftTasksTitle: "レベル {n} 練習カード"
   },
   "ko": {
+    strokeDataLoadError: "획 데이터를 불러올 수 없습니다. 온라인 상태에서 다시 시도해 주세요.",
     morning: "좋은 아침",
     weekN: "{n} 주차",
     menu: "메뉴",
@@ -826,6 +831,7 @@ export const UI_TEXT: Record<DisplayLang, Record<string, string>> = {
     draftTasksTitle: "레벨 {n} 연습 카드"
   },
   "es": {
+    strokeDataLoadError: "No se pudieron cargar los trazos. Vuelve a intentarlo cuando tengas conexión.",
     morning: "Buenos días",
     weekN: "Semana {n}",
     menu: "Menú",

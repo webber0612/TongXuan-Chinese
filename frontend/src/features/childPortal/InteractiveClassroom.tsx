@@ -975,7 +975,7 @@ export function InteractiveClassroom({
             ref={hanziContainerRef}
             className="hanzi-writer-svg-layer"
           />
-          {writerLoadError && <p role="alert">Unable to load stroke data. Please try again when the app is online.</p>}
+          {writerLoadError && <p role="alert">{t("strokeDataLoadError")}</p>}
 
           {/* Child Authentic Handwriting Canvas Overlay */}
           <canvas
