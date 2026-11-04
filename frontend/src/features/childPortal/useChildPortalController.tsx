@@ -1,3 +1,4 @@
+import { playVoiceClips } from "../../lib/voiceClips";
 import { alignBook1Progress, BOOK1_LEVELS } from "../../data/book1";
 import { useState,useEffect,useRef,type ReactNode } from "react";
 import { renderRuby } from "../../lib/chinesePhonetics";
@@ -18,10 +19,10 @@ export interface ChildPortalProps {
 
 /** State and handlers for the child portal; the page and its views only render from this. */
 /**
- * Speech rates for young beginners, halved from the first version after the owner's device test
- * found 0.7 still too fast to follow. "slow" stays below "normal" for the turtle toggle.
+ * Browser speech is only the fallback for text without a recorded clip. Halving its rate
+ * (tried on 2026-11-04) made built-in voices sound broken, so it stays near conversational pace.
  */
-const SPEECH_RATES: Record<SpeechSpeed, number> = { normal: 0.46, listen: 0.35, slow: 0.3 };
+const FALLBACK_SPEECH_RATES: Record<SpeechSpeed, number> = { normal: 0.8, listen: 0.7, slow: 0.55 };
 
 export function useChildPortalController({ activeChildName }: ChildPortalProps) {
   // Learner Profiles Storage
@@ -371,11 +372,12 @@ export function useChildPortalController({ activeChildName }: ChildPortalProps) 
     if (!isVoiceGuideEnabled && !force) {
       return;
     }
+    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+    if (playVoiceClips(text, speed)) return;
     if ("speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
       const utter = new SpeechSynthesisUtterance(text);
       utter.lang = scriptMode === "zhuyin" ? "zh-TW" : scriptMode === "pinyin" ? "zh-CN" : "zh-TW";
-      utter.rate = SPEECH_RATES[speed];
+      utter.rate = FALLBACK_SPEECH_RATES[speed];
       utter.pitch = 1.08;
       window.speechSynthesis.speak(utter);
     }

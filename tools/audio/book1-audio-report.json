@@ -1,0 +1,803 @@
+[
+ {
+  "text": "你",
+  "file": "5630b886f9cd.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "你"
+   }
+  ]
+ },
+ {
+  "text": "我",
+  "file": "34f201bc507e.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "我"
+   }
+  ]
+ },
+ {
+  "text": "他",
+  "file": "e31b569a0f1d.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "他"
+   }
+  ]
+ },
+ {
+  "text": "好",
+  "file": "27e4fe4c3fe2.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "好"
+   }
+  ]
+ },
+ {
+  "text": "是",
+  "file": "30160a21b92a.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "是"
+   }
+  ]
+ },
+ {
+  "text": "不",
+  "file": "8fa7401e9077.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "不"
+   }
+  ]
+ },
+ {
+  "text": "你好",
+  "file": "440ee0853ad1.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "你好"
+   }
+  ]
+ },
+ {
+  "text": "不好",
+  "file": "46e6fb7ad66f.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "不好"
+   }
+  ]
+ },
+ {
+  "text": "不是",
+  "file": "e5d9c6c8a8ec.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "不是"
+   }
+  ]
+ },
+ {
+  "text": "是不是",
+  "file": "2a34c9770c40.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "是不是"
+   }
+  ]
+ },
+ {
+  "text": "你好不好？",
+  "file": "a184a9e6080a.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "你好不好"
+   }
+  ]
+ },
+ {
+  "text": "我好。",
+  "file": "5fdc514f60e3.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "我好"
+   }
+  ]
+ },
+ {
+  "text": "他好不好？",
+  "file": "8f6c2b2d2719.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "他好不好"
+   }
+  ]
+ },
+ {
+  "text": "我不是他。",
+  "file": "c5ac64773762.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "我不是他"
+   }
+  ]
+ },
+ {
+  "text": "你是不是他？",
+  "file": "9304cac7585d.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "你是不是他"
+   }
+  ]
+ },
+ {
+  "text": "一",
+  "file": "d274eee8a175.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "一"
+   }
+  ]
+ },
+ {
+  "text": "二",
+  "file": "1d5639f716b6.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "啊"
+   },
+   {
+    "seed": 2024,
+    "heard": "二"
+   }
+  ]
+ },
+ {
+  "text": "三",
+  "file": "49ddb069d5b8.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "三"
+   }
+  ]
+ },
+ {
+  "text": "四",
+  "file": "4f88740b3480.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "四"
+   }
+  ]
+ },
+ {
+  "text": "五",
+  "file": "8f07f53d63e1.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "五"
+   }
+  ]
+ },
+ {
+  "text": "六",
+  "file": "3d72c724e03b.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "六"
+   }
+  ]
+ },
+ {
+  "text": "一二三",
+  "file": "01c1743ce7a7.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "一二三"
+   }
+  ]
+ },
+ {
+  "text": "四五六",
+  "file": "e16b619ee7fa.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "四五六"
+   }
+  ]
+ },
+ {
+  "text": "我是一，你是二。",
+  "file": "b26a8502f477.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "我是一你是二"
+   }
+  ]
+ },
+ {
+  "text": "他是不是三？",
+  "file": "170fd414ed88.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "他是不是三"
+   }
+  ]
+ },
+ {
+  "text": "是，他是三。",
+  "file": "9094122ae7f3.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "是他是三"
+   }
+  ]
+ },
+ {
+  "text": "一、二、三、四、五、六！",
+  "file": "27a68f0b3696.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "一二三四五六"
+   }
+  ]
+ },
+ {
+  "text": "我是一，你是二，他是三。",
+  "file": "940b493b6134.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "我是一你是二他是三"
+   }
+  ]
+ },
+ {
+  "text": "他是不是四？",
+  "file": "1bb067a79e89.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "他是不是四"
+   }
+  ]
+ },
+ {
+  "text": "他不是四，他是五。",
+  "file": "fb5c2c9bb199.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "他不是四他是五"
+   }
+  ]
+ },
+ {
+  "text": "六不是五。",
+  "file": "4f48fce5813b.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "六不是五"
+   }
+  ]
+ },
+ {
+  "text": "七",
+  "file": "7db1eeb5c374.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "七"
+   }
+  ]
+ },
+ {
+  "text": "八",
+  "file": "2142fb62fd47.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "八"
+   }
+  ]
+ },
+ {
+  "text": "九",
+  "file": "27a2b9f17bea.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "九"
+   }
+  ]
+ },
+ {
+  "text": "十",
+  "file": "aa107f05b677.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "是"
+   },
+   {
+    "seed": 2024,
+    "heard": "是"
+   },
+   {
+    "seed": 7,
+    "heard": "十"
+   }
+  ]
+ },
+ {
+  "text": "幾",
+  "file": "6030f0b0e4bc.mp3",
+  "verified": false,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "即"
+   },
+   {
+    "seed": 2024,
+    "heard": "记"
+   },
+   {
+    "seed": 7,
+    "heard": "记"
+   },
+   {
+    "seed": 99,
+    "heard": "记"
+   },
+   {
+    "seed": 31415,
+    "heard": "鸡"
+   }
+  ]
+ },
+ {
+  "text": "歲",
+  "file": "b0f882efc7a9.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": ""
+   },
+   {
+    "seed": 2024,
+    "heard": "岁"
+   }
+  ]
+ },
+ {
+  "text": "幾歲",
+  "file": "1e20c254cde2.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "几岁"
+   }
+  ]
+ },
+ {
+  "text": "七歲",
+  "file": "12c0de000125.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "七岁"
+   }
+  ]
+ },
+ {
+  "text": "十歲",
+  "file": "0387308a3eda.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "十岁"
+   }
+  ]
+ },
+ {
+  "text": "十一",
+  "file": "747c8a337a8b.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "十一"
+   }
+  ]
+ },
+ {
+  "text": "你好！你幾歲？",
+  "file": "e0afaf52a05b.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "你好你几岁"
+   }
+  ]
+ },
+ {
+  "text": "我八歲。你幾歲？",
+  "file": "03022fb8afe5.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "我八岁你几岁"
+   }
+  ]
+ },
+ {
+  "text": "我七歲。",
+  "file": "4114dc717eaa.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "我七岁"
+   }
+  ]
+ },
+ {
+  "text": "你幾歲？",
+  "file": "f2763392adef.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "你几岁"
+   }
+  ]
+ },
+ {
+  "text": "他是不是十歲？",
+  "file": "fcbcb7c357c1.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "他是不是十岁"
+   }
+  ]
+ },
+ {
+  "text": "他不是十歲，他九歲。",
+  "file": "fa46b94d8073.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "他不是十岁他九岁"
+   }
+  ]
+ },
+ {
+  "text": "七、八、九、十！",
+  "file": "c643366befc9.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "七八九十"
+   }
+  ]
+ },
+ {
+  "text": "的",
+  "file": "0746bd624955.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": ""
+   },
+   {
+    "seed": 2024,
+    "heard": ""
+   },
+   {
+    "seed": 7,
+    "heard": ""
+   },
+   {
+    "seed": 99,
+    "heard": "呃对"
+   },
+   {
+    "seed": 31415,
+    "heard": "的"
+   }
+  ]
+ },
+ {
+  "text": "家",
+  "file": "7de8177ce74b.mp3",
+  "verified": false,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "加"
+   },
+   {
+    "seed": 2024,
+    "heard": "加"
+   },
+   {
+    "seed": 7,
+    "heard": "甲"
+   },
+   {
+    "seed": 99,
+    "heard": "加"
+   },
+   {
+    "seed": 31415,
+    "heard": "加"
+   }
+  ]
+ },
+ {
+  "text": "爸",
+  "file": "a732e56e22fb.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "爸"
+   }
+  ]
+ },
+ {
+  "text": "媽",
+  "file": "378b3f3d82e4.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "妈"
+   }
+  ]
+ },
+ {
+  "text": "有",
+  "file": "fbd5b75066a6.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "有"
+   }
+  ]
+ },
+ {
+  "text": "人",
+  "file": "4912771a4216.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "人"
+   }
+  ]
+ },
+ {
+  "text": "爸爸",
+  "file": "c86d1645007f.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "爸爸"
+   }
+  ]
+ },
+ {
+  "text": "媽媽",
+  "file": "63248c6d5be3.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "妈妈"
+   }
+  ]
+ },
+ {
+  "text": "家人",
+  "file": "a12728f620d8.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "家人"
+   }
+  ]
+ },
+ {
+  "text": "我的",
+  "file": "a82c993d7388.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "我的"
+   }
+  ]
+ },
+ {
+  "text": "我家",
+  "file": "f2a8a3ceea18.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "我家"
+   }
+  ]
+ },
+ {
+  "text": "他是不是你的爸爸？",
+  "file": "dd1eab0ed33c.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "他是不是你的爸爸"
+   }
+  ]
+ },
+ {
+  "text": "是，他是我的爸爸。",
+  "file": "ccef8a736781.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "是他是我的爸爸"
+   }
+  ]
+ },
+ {
+  "text": "爸爸好！",
+  "file": "6a30f2b120ab.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "爸爸好"
+   }
+  ]
+ },
+ {
+  "text": "他是我的爸爸。",
+  "file": "a9252f241bea.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "他是我的爸爸"
+   }
+  ]
+ },
+ {
+  "text": "我有爸爸，我有媽媽。",
+  "file": "86b781b41b3d.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "我有爸爸我有妈妈"
+   }
+  ]
+ },
+ {
+  "text": "爸爸好！媽媽好！",
+  "file": "fb0e8152f6e4.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "爸爸好妈妈好"
+   }
+  ]
+ },
+ {
+  "text": "他是不是你的家人？",
+  "file": "b9d90cca5a6f.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "他是不是你的家人"
+   }
+  ]
+ },
+ {
+  "text": "我有家人，我有家。",
+  "file": "0339861ee739.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "我有家人我有家"
+   }
+  ]
+ }
+]
