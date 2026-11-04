@@ -599,8 +599,8 @@
       "rootMitApplies": false,
       "publishableArtifactAllowed": false,
       "reason": "This is a rights/license reference or inventory, not curriculum content. It does not grant rights to adjacent files.",
-      "sha256": "ab6a183fc9ba74fe4e2bbf9c8a1a9bafca7823b6f8cc179c988a8d4ce8600a69",
-      "sizeBytes": 7675,
+      "sha256": "e0acd76f48c94740eb6384bf276578d4057a68b7495d0ba2bcd35a54fc00c0c8",
+      "sizeBytes": 8369,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "RIGHTS_POLICY_OR_LICENSE_REFERENCE",
       "digestMode": "TEXT_LF_NORMALIZED"
@@ -613,8 +613,8 @@
       "rootMitApplies": false,
       "publishableArtifactAllowed": false,
       "reason": "This is a rights/license reference or inventory, not curriculum content. It does not grant rights to adjacent files.",
-      "sha256": "65b484b32d07e2d3843596a2aead0b16affe4edd4019b57c9d5be7da35b4e1c6",
-      "sizeBytes": 21650,
+      "sha256": "e04dac7ba8084473e318a0952cb0d1837adfe12d81c30fc16d860b8308706b9f",
+      "sizeBytes": 22338,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "RIGHTS_POLICY_OR_LICENSE_REFERENCE",
       "digestMode": "TEXT_LF_NORMALIZED"
@@ -718,8 +718,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "c86ca14402bc576d0535bc3676ddddb89a8ef5d9ff86697ca9309e9a136a35f3",
-      "sizeBytes": 2328
+      "sha256": "0d929cf83aa14d29a09e68d6d88700827a37b3ee596d92af457639144a7cdfa6",
+      "sizeBytes": 2834
     },
     {
       "path": "docs/curriculum-audit-v1.md",
@@ -1750,6 +1750,150 @@
       "sizeBytes": 3005
     },
     {
+      "path": "frontend/public/audio/feedback/13b760586e99.mp3",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "digestMode": "BINARY_RAW",
+      "sha256": "4ae214134c4b04aa030817105633b2d622ea56f3bcccbe27e9134b171706c2ec",
+      "sizeBytes": 30189
+    },
+    {
+      "path": "frontend/public/audio/feedback/45a084307019.mp3",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "digestMode": "BINARY_RAW",
+      "sha256": "19c0a58a88f260e830b3a01fda80584ec19e0b3941fe133af92fb92e27a62bc7",
+      "sizeBytes": 18381
+    },
+    {
+      "path": "frontend/public/audio/feedback/4dc2cefe131c.mp3",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "digestMode": "BINARY_RAW",
+      "sha256": "499cd24bc539803d6592c1cb888559739d209283ddc38b6f79f2e5d2b337d247",
+      "sizeBytes": 21693
+    },
+    {
+      "path": "frontend/public/audio/feedback/600a30623fca.mp3",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "digestMode": "BINARY_RAW",
+      "sha256": "5d0083e610ca051c828ec5fe9ef32a0de8dd4887b65e05760a5e12d354aada37",
+      "sizeBytes": 13197
+    },
+    {
+      "path": "frontend/public/audio/feedback/77a6734b637b.mp3",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "digestMode": "BINARY_RAW",
+      "sha256": "b839481fcdd067f97f84efdd164ed9b1ae4cc5eabaada7fd421b6b29a57213ab",
+      "sizeBytes": 13773
+    },
+    {
+      "path": "frontend/public/audio/feedback/8213138e1bc9.mp3",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "digestMode": "BINARY_RAW",
+      "sha256": "4db975d415ad0eff7e3a3ffe16e903afffa79464d88bbf811821d90fd05d1a9f",
+      "sizeBytes": 11037
+    },
+    {
+      "path": "frontend/public/audio/feedback/be138570d538.mp3",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "digestMode": "BINARY_RAW",
+      "sha256": "4674ad52cb475ab04f8cf85ede1784b443f25e2680f37d317e6d8d7549489fcf",
+      "sizeBytes": 42573
+    },
+    {
+      "path": "frontend/public/audio/feedback/df6f2627227e.mp3",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "digestMode": "BINARY_RAW",
+      "sha256": "438a8aed4a8663f59aca3564187dc9888a5b88c9fe4b3c5ca7cb306ef51d8e55",
+      "sizeBytes": 73965
+    },
+    {
+      "path": "frontend/public/audio/feedback/e889a36bbe2c.mp3",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "digestMode": "BINARY_RAW",
+      "sha256": "2fc95b26e4a6d83960ab60d027f55a46155cf7ffad50eee7d3af9f50f82ca0df",
+      "sizeBytes": 23133
+    },
+    {
+      "path": "frontend/public/audio/feedback/f0c93932d14b.mp3",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "digestMode": "BINARY_RAW",
+      "sha256": "958ac9b320e1bd9f65b6aab9f1304656e29ea8da1775ea112c4897ac27f1deac",
+      "sizeBytes": 19965
+    },
+    {
+      "path": "frontend/public/audio/feedback/f9468399b5c9.mp3",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "digestMode": "BINARY_RAW",
+      "sha256": "877baefd9bf4f174bea37e4f124509db6d3a2e4777b674520dcb015cf52ca1fe",
+      "sizeBytes": 33213
+    },
+    {
+      "path": "frontend/public/audio/feedback/manifest.json",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "digestMode": "TEXT_LF_NORMALIZED",
+      "sha256": "51b31d30f1d9fd40aae73351c18e29c5dc892f5044713e375e452a9b8b31976d",
+      "sizeBytes": 1421
+    },
+    {
       "path": "frontend/public/favicon.png",
       "classification": "RIGHTS_UNCLEAR",
       "sourceIds": [],
@@ -2112,6 +2256,30 @@
       "digestMode": "TEXT_LF_NORMALIZED"
     },
     {
+      "path": "frontend/src/data/voicePhrases.test.ts",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "digestMode": "TEXT_LF_NORMALIZED",
+      "sha256": "4af91864b7f2e9ee0600dec753cacc71b97bb45090c34948864a50f3e1eff3b2",
+      "sizeBytes": 692
+    },
+    {
+      "path": "frontend/src/data/voicePhrases.ts",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "digestMode": "TEXT_LF_NORMALIZED",
+      "sha256": "641838053e7f16ea780ad690167d33977535c35a184baf9c83cc17382a55a2be",
+      "sizeBytes": 592
+    },
+    {
       "path": "frontend/src/features/childPortal/InteractiveClassroom.tsx",
       "classification": "RIGHTS_UNCLEAR",
       "sourceIds": [],
@@ -2120,8 +2288,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "1847d32bdefa4aa9de0e69ec7d55fc32d610f63349ab2746a7e3c482d13cbcc4",
-      "sizeBytes": 51432
+      "sha256": "8be23bac3e539bb61df20a2c2fc5aecf0e96e428b322424b423db84540e24baa",
+      "sizeBytes": 51495
     },
     {
       "path": "frontend/src/features/childPortal/dayPlan.ts",
@@ -2240,8 +2408,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "a00f94edd0b363c16655f8cb1e75cab719303e51890f646a8ca743ccbd49be11",
-      "sizeBytes": 15665
+      "sha256": "6c88bc87a09e42c1671e8b83f6923ea2ea02a5b495919d72ac5da514dc990480",
+      "sizeBytes": 15478
     },
     {
       "path": "frontend/src/features/childPortal/modals/SundayChestsModal.tsx",
@@ -2288,8 +2456,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "61f2eb78f096017cdd5ecd4f61c6b01b45e98da314995fb25ab6e5e4d2a3adda",
-      "sizeBytes": 16988
+      "sha256": "005653778bfdb7143e0b178f5599fccd8b7aa42aa5ace209daced7aff97c9716",
+      "sizeBytes": 16926
     },
     {
       "path": "frontend/src/features/childPortal/variantLabels.ts",
@@ -2607,8 +2775,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "5ef27d782a3058583c2329cd6f1e6301563150a90f132aa573e7e9b6c484138c",
-      "sizeBytes": 3396
+      "sha256": "cb894e8d0714cad8b76816aff3f9c3eeef801d7cddfe85f5628016d94c37e5b8",
+      "sizeBytes": 3428
     },
     {
       "path": "frontend/src/pages/ChildPortalPage.tsx",
@@ -2622,8 +2790,8 @@
       "rootMitApplies": false,
       "publishableArtifactAllowed": false,
       "reason": "Existing public UI/test source contains curriculum-mapped text, assessment data, course metadata, or instructional examples without complete item-level authorship/source/rights evidence. This fail-closed path classification is not a finding of copying or infringement.",
-      "sha256": "1f508ea4cfe48d9c562950ce57d3f26013c2f121a90baf18df16566bb26c2062",
-      "sizeBytes": 12732,
+      "sha256": "91c52097b4456dfbbb3968de3a9ec7e4455a2174ff410696d7de925e48fdd243",
+      "sizeBytes": 12615,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "EMBEDDED_CURRICULUM_AND_ASSESSMENT_DATA",
       "sourceRelationship": "The component/fixture references the OCAC sequence, lesson titles, or package-backed tasks. The linked source-description evidence establishes source identity only; it does not establish the origin or reuse rights of embedded text.",
@@ -3070,6 +3238,18 @@
       "digestMode": "TEXT_LF_NORMALIZED"
     },
     {
+      "path": "shared/voice/feedback-phrases.json",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "digestMode": "TEXT_LF_NORMALIZED",
+      "sha256": "00046384e0888c1533817d8a70162c05cb131c34628eca8fd6eca5e4a7168910",
+      "sizeBytes": 1669
+    },
+    {
       "path": "tools/audio/book1-audio-report.json",
       "classification": "RIGHTS_UNCLEAR",
       "sourceIds": [],
@@ -3082,6 +3262,18 @@
       "sizeBytes": 11198
     },
     {
+      "path": "tools/audio/feedback-audio-report.json",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "digestMode": "TEXT_LF_NORMALIZED",
+      "sha256": "e929daad93999a8715acc04c6a6e5de68a26d50a6554839e0cc1fd1c752ecc0f",
+      "sizeBytes": 2406
+    },
+    {
       "path": "tools/audio/generate_book1_audio.py",
       "classification": "RIGHTS_UNCLEAR",
       "sourceIds": [],
@@ -3090,8 +3282,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "aac588519f4c72fd9f44a32d9375403556a554079c28d41d12232ab82ba6ca3f",
-      "sizeBytes": 5948
+      "sha256": "496ff1d24a8c3ff084172c4d7fad1d8a8361bc6c3749335d232535f0ac9fabc2",
+      "sizeBytes": 7144
     },
     {
       "path": "資產/APP LOGO.png",

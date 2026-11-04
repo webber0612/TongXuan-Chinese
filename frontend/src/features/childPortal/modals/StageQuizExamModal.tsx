@@ -9,6 +9,7 @@ type CourseLevel,type QuizQuestionItem,generateQuizPaper
 } from "../../../data/learningPathData";
 
 import { ScriptMode,DisplayLang,PhoneticAssist,SpeechSpeed,PinkyPromisePact } from "../types";
+import { VOICE_PHRASES } from "../../../data/voicePhrases";
 /* ========================================================
    6. 階段檢核測驗券 & 全冊大驗收互動考場 (Stage Quiz & Milestone Exam Modal)
    - 幸運開箱抽 100~200 金幣
@@ -81,15 +82,15 @@ export function StageQuizExamModal({
       // 隨機抽取 100 ~ 200 金幣
       const randomCoins = Math.floor(100 + Math.random() * 101);
       setDrawnChestCoins(randomCoins);
-      playSound(`太棒了！測驗成績 ${finalScore} 分！成功通關！快來開啟幸運大寶箱！`, "normal", true);
+      playSound(VOICE_PHRASES.quizPassed, "normal", true);
     } else {
-      playSound(`這次考了 ${finalScore} 分，差一點點就過關了，再複習一下試試看吧！`, "normal", true);
+      playSound(VOICE_PHRASES.quizAlmost, "normal", true);
     }
   };
 
   const handleOpenLuckyChest = () => {
     setIsChestOpened(true);
-    playSound(`恭喜開箱獲得 ${drawnChestCoins} 金幣！`, "normal", true);
+    playSound(VOICE_PHRASES.chestOpened, "normal", true);
     setShowPactDialog(true);
   };
 
@@ -104,7 +105,7 @@ export function StageQuizExamModal({
       isCompleted: false,
       rewardClaimed: false
     };
-    playSound("太棒了！我們打勾勾！連續 3 天每天認真完成 1 關，第 3 天完成時獎勵翻倍送給你！", "normal", true);
+    playSound(VOICE_PHRASES.pinkyPromise, "normal", true);
     onPassExam(stars, examScore, totalCoins, pact);
   };
 

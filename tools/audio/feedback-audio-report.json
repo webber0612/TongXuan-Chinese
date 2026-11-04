@@ -1,0 +1,127 @@
+[
+ {
+  "text": "答對了！太聰明了！",
+  "file": "600a30623fca.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "答对了太聪明了"
+   }
+  ]
+ },
+ {
+  "text": "再想想看喔！",
+  "file": "8213138e1bc9.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "再想想看哦"
+   }
+  ]
+ },
+ {
+  "text": "歡迎回來！我們一起學中文吧！",
+  "file": "4dc2cefe131c.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "欢迎回来我们一起学中文吧"
+   }
+  ]
+ },
+ {
+  "text": "歡迎你！我們開始學中文吧！",
+  "file": "df6f2627227e.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "欢迎你我们开始学中文吧"
+   }
+  ]
+ },
+ {
+  "text": "念得真棒！發音很標準！",
+  "file": "f0c93932d14b.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "念的真棒翻音很标准"
+   },
+   {
+    "seed": 2024,
+    "heard": "念的真棒发音很标准"
+   }
+  ]
+ },
+ {
+  "text": "讀得太棒了！非常有精神！",
+  "file": "45a084307019.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "读得太棒了非常有精神"
+   }
+  ]
+ },
+ {
+  "text": "太棒了！成功過關！快來打開寶箱吧！",
+  "file": "f9468399b5c9.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "太棒了成功过关快来打开宝箱吧"
+   }
+  ]
+ },
+ {
+  "text": "差一點點就過關了，再複習一下試試看吧！",
+  "file": "13b760586e99.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "差一点点就过关了再复习一下试试看吧"
+   }
+  ]
+ },
+ {
+  "text": "恭喜你！寶箱打開了！",
+  "file": "77a6734b637b.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "恭喜你宝箱打开了"
+   }
+  ]
+ },
+ {
+  "text": "大寶箱打開了！你得到一頂皇冠！",
+  "file": "e889a36bbe2c.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "大宝箱打开了你得到一顶皇冠"
+   }
+  ]
+ },
+ {
+  "text": "我們打勾勾！連續三天，每天完成一關，第三天的獎勵加倍！",
+  "file": "be138570d538.mp3",
+  "verified": true,
+  "attempts": [
+   {
+    "seed": 1234,
+    "heard": "我们打勾勾连续三天每天完成一关第三天的奖励加倍"
+   }
+  ]
+ }
+]

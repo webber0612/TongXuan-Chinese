@@ -6,8 +6,9 @@
 
 | 項目 | 內容 |
 |---|---|
-| 檔案位置 | `frontend/public/audio/book1/*.mp3`，對照表在同資料夾的 `manifest.json` |
-| 產生工具 | `tools/audio/generate_book1_audio.py` |
+| 檔案位置 | 課文：`frontend/public/audio/book1/*.mp3`；鼓勵語：`frontend/public/audio/feedback/*.mp3`。對照表在各資料夾的 `manifest.json` |
+| 產生工具 | `tools/audio/generate_book1_audio.py`（可指定 `book1`、`feedback`，不指定就全部重產） |
+| 鼓勵語文字 | `shared/voice/feedback-phrases.json`。程式只能透過 `VOICE_PHRASES` 唸這些固定句；分數、金幣、名字只顯示在畫面上，不唸出來，所以每一句都能預先錄好 |
 | 語音模型 | Fun-CosyVoice3-0.5B（FunAudioLLM），Apache-2.0；內含 Qwen2.5-0.5B，Apache-2.0 |
 | 參考人聲 | AISHELL-3 語料庫（北京希爾貝殼科技），Apache-2.0；說話者 `SSB0009`（女、14–25 歲、南方口音），錄音 `train/wav/SSB0009/SSB00090025.wav` |
 | 選定 | 擁有者於 2026-11-04 從 4 種試聽聲音中選定，理由：最接近台灣普通話，且唯一沒有斷續或漏唸 |
@@ -15,7 +16,7 @@
 
 ## 品質檢查
 
-每一段產生後都用 SenseVoiceSmall 轉回文字，與預期的簡體文字比對；不符就換亂數種子重新產生，最多 5 次。檢查結果在 `tools/audio/book1-audio-report.json`。
+每一段產生後都用 SenseVoiceSmall 轉回文字，與預期的簡體文字比對；不符就換亂數種子重新產生，最多 5 次。檢查結果在 `tools/audio/book1-audio-report.json` 與 `tools/audio/feedback-audio-report.json`。同長度時，同音字（的／得／地等）視為相符。
 
 - SenseVoiceSmall 只用於內部檢查，不隨產品發布。它的授權（FunASR 模型協議）寫明「僅供參考與學習」，所以不放進產品。
 - 這個檢查只能抓出「唸錯字」，抓不到聲調不準或語氣不自然。
@@ -26,6 +27,8 @@
 |---|---|---|
 | 家 | 加 | 同音（ㄐㄧㄚ），應無問題 |
 | 幾 | 鸡 | 可能唸成一聲（應為三聲 ㄐㄧˇ），待擁有者試聽 |
+
+2026-11-04 產生 11 句鼓勵語，11 句全部通過。
 
 ## 授權注意事項
 

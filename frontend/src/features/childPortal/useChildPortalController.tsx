@@ -11,6 +11,7 @@ import { ScriptMode,DisplayLang,PhoneticAssist,HandMode,SpeechSpeed,DailyDayPlan
 import { UI_TEXT } from "./uiText";
 import { courseLevelToDayPlan } from "./dayPlan";
 import { DEFAULT_LEARNERS } from "./defaultLearners";
+import { VOICE_PHRASES } from "../../data/voicePhrases";
 
 export interface ChildPortalProps {
   /** Name of the profile selected in the shell; matched against local learners. */
@@ -237,7 +238,7 @@ export function useChildPortalController({ activeChildName }: ChildPortalProps) 
     if (chosen) {
       const curLvl = alignBook1Progress(chosen.book1Progress).find((p) => p.status === "current");
       if (curLvl) setSelectedLevelNum(curLvl.levelNumber);
-      playSound(`${t("morning")}，${chosen.name}！歡迎回來學習！`);
+      playSound(VOICE_PHRASES.welcomeBack);
     }
   };
 
@@ -268,7 +269,7 @@ export function useChildPortalController({ activeChildName }: ChildPortalProps) 
     localStorage.setItem("tongxuan_active_learner_id", newLearner.id);
     setSelectedLevelNum(1);
     setLoginModalOpen(false);
-    playSound(`歡迎來到桐軒中文，${newLearner.name}！開始我們的華語探索之旅吧！`);
+    playSound(VOICE_PHRASES.welcomeNew);
   };
 
   // 家長在後台贈送點數給孩子
@@ -303,7 +304,7 @@ export function useChildPortalController({ activeChildName }: ChildPortalProps) 
           ...prev,
           points: { ...prev.points, coins: prev.points.coins + 2 }
         }));
-        playSound("念得真棒！發音很標準！", "normal", true);
+        playSound(VOICE_PHRASES.readAloudGreat, "normal", true);
       } else {
         setActiveRecordingLineIdx(lineIdx);
         setLinePraiseMessages((prev) => ({
@@ -330,7 +331,7 @@ export function useChildPortalController({ activeChildName }: ChildPortalProps) 
                   ...prev,
                   points: { ...prev.points, coins: prev.points.coins + 2 }
                 }));
-                playSound("讀得太棒了！非常有精神！", "normal", true);
+                playSound(VOICE_PHRASES.readAloudSpirited, "normal", true);
               } catch (e) {}
             };
             rec.onerror = () => {
@@ -355,7 +356,7 @@ export function useChildPortalController({ activeChildName }: ChildPortalProps) 
                 ...prev,
                 points: { ...prev.points, coins: prev.points.coins + 2 }
               }));
-              playSound("讀得太棒了！非常有精神！", "normal", true);
+              playSound(VOICE_PHRASES.readAloudSpirited, "normal", true);
               return null;
             }
             return curr;

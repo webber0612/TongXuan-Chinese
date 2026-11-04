@@ -22,6 +22,7 @@ import { ScriptMode,DisplayLang,PhoneticAssist,HandMode,SpeechSpeed,DailyDayPlan
 import { ListenButton } from "../learning/ListenButton";
 import { LessonRuby } from "../learning/LessonRuby";
 import { BOOK1_READINGS } from "../../data/book1";
+import { VOICE_PHRASES } from "../../data/voicePhrases";
 import { getVariantLabels } from "./variantLabels";
 export function InteractiveClassroom({
   dayPlan,
@@ -832,9 +833,9 @@ export function InteractiveClassroom({
                           if (!hasAnswered) {
                             setSelectedAnswers((prev) => ({ ...prev, [quizIdx]: optIdx }));
                             if (opt.isCorrect) {
-                              onPlaySound("答對了！太聰明了！");
+                              onPlaySound(VOICE_PHRASES.answerCorrect);
                             } else {
-                              onPlaySound("再想想看喔！");
+                              onPlaySound(VOICE_PHRASES.answerTryAgain);
                             }
                           }
                         }}

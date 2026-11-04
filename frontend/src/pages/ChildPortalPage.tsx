@@ -16,6 +16,7 @@ import { StageQuizExamModal } from "../features/childPortal/modals/StageQuizExam
 import { LearnerAchievementsModal } from "../features/childPortal/modals/LearnerAchievementsModal";
 
 import { useChildPortalController,type ChildPortalProps } from "../features/childPortal/useChildPortalController";
+import { VOICE_PHRASES } from "../data/voicePhrases";
 
 export function ChildPortalPage(props: ChildPortalProps) {
   const c = useChildPortalController(props);
@@ -255,11 +256,7 @@ export function ChildPortalPage(props: ChildPortalProps) {
           onClose={() => setChestModalOpen(false)}
           onTestOpenChest={(type) => {
             const rewardCoins = type === "normal" ? 100 : 250;
-            playSound(
-              type === "normal"
-                ? `太棒了！打開寶箱，獲得 10 顆星星與 ${rewardCoins} 金幣！`
-                : `王者大寶箱打開了！獲得皇冠、10 顆星星與 ${rewardCoins} 金幣！`
-            );
+            playSound(type === "normal" ? VOICE_PHRASES.chestOpened : VOICE_PHRASES.chestCrown);
             updateActiveLearner((prev) => ({
               ...prev,
               points: {

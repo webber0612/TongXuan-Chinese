@@ -1,0 +1,16 @@
+{
+ "about": "Fixed spoken feedback, recorded with the book 1 voice by tools/audio/generate_book1_audio.py. Numbers and names stay on screen only, so every line can be pre-recorded.",
+ "phrases": {
+  "answerCorrect": { "text": "答對了！太聰明了！", "textHans": "答对了！太聪明了！" },
+  "answerTryAgain": { "text": "再想想看喔！", "textHans": "再想想看哦！" },
+  "welcomeBack": { "text": "歡迎回來！我們一起學中文吧！", "textHans": "欢迎回来！我们一起学中文吧！" },
+  "welcomeNew": { "text": "歡迎你！我們開始學中文吧！", "textHans": "欢迎你！我们开始学中文吧！" },
+  "readAloudGreat": { "text": "念得真棒！發音很標準！", "textHans": "念得真棒！发音很标准！" },
+  "readAloudSpirited": { "text": "讀得太棒了！非常有精神！", "textHans": "读得太棒了！非常有精神！" },
+  "quizPassed": { "text": "太棒了！成功過關！快來打開寶箱吧！", "textHans": "太棒了！成功过关！快来打开宝箱吧！" },
+  "quizAlmost": { "text": "差一點點就過關了，再複習一下試試看吧！", "textHans": "差一点点就过关了，再复习一下试试看吧！" },
+  "chestOpened": { "text": "恭喜你！寶箱打開了！", "textHans": "恭喜你！宝箱打开了！" },
+  "chestCrown": { "text": "大寶箱打開了！你得到一頂皇冠！", "textHans": "大宝箱打开了！你得到一顶皇冠！" },
+  "pinkyPromise": { "text": "我們打勾勾！連續三天，每天完成一關，第三天的獎勵加倍！", "textHans": "我们打勾勾！连续三天，每天完成一关，第三天的奖励加倍！" }
+ }
+}

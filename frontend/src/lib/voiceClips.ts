@@ -11,7 +11,7 @@ const PLAYBACK_RATE: Record<ClipSpeed, number> = { normal: 1, listen: 0.9, slow:
 // Must match PUNCTUATION in tools/audio/generate_book1_audio.py.
 const PUNCTUATION = /[\s。！？，、：；「」…!?,.:;]/g;
 const HAN = /[㐀-鿿]/;
-const MANIFESTS = ["audio/book1/manifest.json"];
+const MANIFESTS = ["audio/book1/manifest.json", "audio/feedback/manifest.json"];
 
 export function clipKey(text: string): string {
   return text.replace(PUNCTUATION, "");
