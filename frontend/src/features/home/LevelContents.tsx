@@ -7,7 +7,7 @@ interface LevelContentsProps {
   level: CourseLevel;
   scriptMode: ScriptMode;
   copy: HomeTranslate;
-  onOpen: (mode: "char" | "vocab" | "idiom") => void;
+  onOpen: (mode: "text" | "char" | "vocab" | "idiom") => void;
 }
 
 /** Dual mode shows both notations, one per line, so neither wraps mid-syllable. */

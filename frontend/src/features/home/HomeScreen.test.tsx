@@ -54,10 +54,13 @@ describe("static home", () => {
     expect(stops.slice(1).every((stop) => stop.disabled)).toBe(true);
   });
 
-  it("opens the classroom from the primary action", async () => {
+  it("starts book 1 lesson 1 with its lesson text, then moves on to the characters", async () => {
     await renderStaticHome();
+    expect(document.querySelector(".tx-hero-level-title")?.textContent).toBe("你好");
     await click(document.querySelector(".tx-button-primary"));
     expect(document.querySelector(".tx-home")).toBeNull();
+    expect(document.querySelectorAll(".tx-lesson-line").length).toBeGreaterThan(3);
+    await click(Array.from(document.querySelectorAll("button")).find((button) => button.textContent?.includes("開始學生字")));
     expect(document.body.textContent).toContain("下一個生字");
   });
 

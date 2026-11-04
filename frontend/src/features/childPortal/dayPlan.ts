@@ -20,6 +20,7 @@ export function courseLevelToDayPlan(level: CourseLevel, progress?: LearnerLevel
     estimatedMinutes: level.estimatedMinutes,
     characters: level.characters,
     vocabulary: level.vocabulary,
+    lessonText: level.lessonText,
     lessonStory: level.lessonStory || [
       `歡迎來到${level.title}！本關卡聚焦於「${level.characters.map((c) => c.char).join("、")}」等生字學習與情境應用。`
     ],

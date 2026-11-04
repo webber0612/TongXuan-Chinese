@@ -599,8 +599,8 @@
       "rootMitApplies": false,
       "publishableArtifactAllowed": false,
       "reason": "This is a rights/license reference or inventory, not curriculum content. It does not grant rights to adjacent files.",
-      "sha256": "ac8437fd71ed067fd3fff4b88fb9ab0e4d0314b0506dcbbad454bda311c268cf",
-      "sizeBytes": 3061,
+      "sha256": "e3913445480e3906edb3e9727e107c3384d857c0dfcad9123f2f05782f51289e",
+      "sizeBytes": 3091,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "RIGHTS_POLICY_OR_LICENSE_REFERENCE",
       "digestMode": "TEXT_LF_NORMALIZED"
@@ -613,8 +613,8 @@
       "rootMitApplies": false,
       "publishableArtifactAllowed": false,
       "reason": "This is a rights/license reference or inventory, not curriculum content. It does not grant rights to adjacent files.",
-      "sha256": "c2f856046693d63421efd4ade556a384520135c71dddb5f86a4e42004427fd12",
-      "sizeBytes": 18231,
+      "sha256": "d48494aae7576a7a3dd6b2f707b284254afef7ebf9e94a995622ac05e17d6712",
+      "sizeBytes": 18291,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "RIGHTS_POLICY_OR_LICENSE_REFERENCE",
       "digestMode": "TEXT_LF_NORMALIZED"
@@ -1213,6 +1213,30 @@
       "sizeBytes": 21915
     },
     {
+      "path": "frontend/src/data/book1.test.ts",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "digestMode": "TEXT_LF_NORMALIZED",
+      "sha256": "f77d95f4fff4cd3584b8c6e1568b9450f236610e7e718bdb17460f8f9d90175f",
+      "sizeBytes": 2583
+    },
+    {
+      "path": "frontend/src/data/book1.ts",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "digestMode": "TEXT_LF_NORMALIZED",
+      "sha256": "4fee0a252094af9cb6a47fef773aa8e9cad3b41be782dabcb2f8a1042276abe2",
+      "sizeBytes": 8927
+    },
+    {
       "path": "frontend/src/data/hanzi5000Database.ts",
       "classification": "RIGHTS_UNCLEAR",
       "sourceIds": [],
@@ -1238,8 +1262,8 @@
       "rootMitApplies": false,
       "publishableArtifactAllowed": false,
       "reason": "Legacy data is source-bound or curriculum-like; per-item provenance and public-repository rights are not established.",
-      "sha256": "8981c6519990f459d1e809ae26e0eaabf9507cb5d7ae0977d4a643d93b125a92",
-      "sizeBytes": 64963,
+      "sha256": "c85f4b38c868cea4764244abf8450fb66a9386447d049c6b17d6c6855770ae41",
+      "sizeBytes": 65215,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "LEGACY_CURRICULUM_OR_LEARNING_DATA",
       "sourceRelationship": "This legacy path is explicitly tied to OCAC course metadata; item-level rights and content scope are unresolved.",
@@ -1268,8 +1292,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "09f2f6a7e06f1609fe201b2520f7ba59d2a439539ef53b137fc4258e120462b7",
-      "sizeBytes": 47591
+      "sha256": "1847d32bdefa4aa9de0e69ec7d55fc32d610f63349ab2746a7e3c482d13cbcc4",
+      "sizeBytes": 51432
     },
     {
       "path": "frontend/src/features/childPortal/dayPlan.ts",
@@ -1280,8 +1304,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "eba0cd1a405b8dd02a1420aa9f572adfd75c2de1aa72078b4333e44de519105f",
-      "sizeBytes": 2199
+      "sha256": "d561b3f419c08ce7d3b03cd7b640ba6f4af333a77d7b5c21feba00c36275d317",
+      "sizeBytes": 2233
     },
     {
       "path": "frontend/src/features/childPortal/defaultLearners.ts",
@@ -1388,8 +1412,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "97e50208892aae267c100241a1786d09f37f8ed3d28dcbf0ce6be89f89daa81b",
-      "sizeBytes": 15595
+      "sha256": "a00f94edd0b363c16655f8cb1e75cab719303e51890f646a8ca743ccbd49be11",
+      "sizeBytes": 15665
     },
     {
       "path": "frontend/src/features/childPortal/modals/SundayChestsModal.tsx",
@@ -1436,8 +1460,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "c4effddf14b0e3754d1e3703e561469e9e9271bf2887c641f5f829a226a5f8c9",
-      "sizeBytes": 16499
+      "sha256": "a9a0a6f2c0ef01a1c89a100a54ea5d3c441e441f25d54f64d81e284ebe42111e",
+      "sizeBytes": 16588
     },
     {
       "path": "frontend/src/features/childPortal/variantLabels.ts",
@@ -1472,8 +1496,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "5a506beb587c36df455ff538a68714e00fb8bbd7e8a3f4be67866429b9121ada",
-      "sizeBytes": 2826
+      "sha256": "bfcfd24eb8635c42416e62261d898639d1f59bdf94de2851fc3b83aa13885482",
+      "sizeBytes": 3163
     },
     {
       "path": "frontend/src/features/home/HomeScreen.tsx",
@@ -1484,8 +1508,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "7237e6e3a5cb87ab4e9ba5b485b61c211787c7a566d2d198934385d8cc6e723c",
-      "sizeBytes": 6035
+      "sha256": "a0c3ffb2b26badec6ff6183e482797e957be8bdacd01798846ad03bcb3ecfb7e",
+      "sizeBytes": 6137
     },
     {
       "path": "frontend/src/features/home/homeCopy.ts",
@@ -1500,6 +1524,18 @@
       "sizeBytes": 12147
     },
     {
+      "path": "frontend/src/features/learning/ListenButton.tsx",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "digestMode": "TEXT_LF_NORMALIZED",
+      "sha256": "c8ec410f9902895b13e485a65f6b0f44fdda2422fec43561cd8be657f4798a68",
+      "sizeBytes": 1207
+    },
+    {
       "path": "frontend/src/lib/adaptiveWriting.test.ts",
       "classification": "RIGHTS_UNCLEAR",
       "sourceIds": [],
@@ -1507,8 +1543,8 @@
       "rootMitApplies": false,
       "publishableArtifactAllowed": false,
       "reason": "Existing public frontend code or regression fixture contains fixed Chinese task targets, examples, lesson-mapped data, or curriculum level labels without complete item-level authorship/source/rights evidence. This fail-closed path classification is not a finding of copying or infringement.",
-      "sha256": "8d7982c47e881e8761b930d8a9d72f71a7ebbb1e0f5958fac8e914712728c6aa",
-      "sizeBytes": 2057,
+      "sha256": "ed0e00ae58fbbd4e632d1bd6a7a768daf6566e587f196ac26b27baaa5cd6613d",
+      "sizeBytes": 2988,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "WRITING_SCRIPT_VARIANT_TEST_FIXTURE",
       "digestMode": "TEXT_LF_NORMALIZED"
@@ -1697,6 +1733,18 @@
       "contentKind": "TRACKED_CJK_TEXT_FAIL_CLOSED"
     },
     {
+      "path": "frontend/src/lib/tones.test.ts",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "digestMode": "TEXT_LF_NORMALIZED",
+      "sha256": "c6480770164d2855dbe5cae20977d1445fddd85e80e95ddbaf20062bd59be323",
+      "sizeBytes": 1746
+    },
+    {
       "path": "frontend/src/lib/tts.test.ts",
       "classification": "RIGHTS_UNCLEAR",
       "sourceIds": [],
@@ -1722,8 +1770,8 @@
       "rootMitApplies": false,
       "publishableArtifactAllowed": false,
       "reason": "Existing public UI/test source contains curriculum-mapped text, assessment data, course metadata, or instructional examples without complete item-level authorship/source/rights evidence. This fail-closed path classification is not a finding of copying or infringement.",
-      "sha256": "108ea37d701310aed00dc7e9dbd940ca265fb7a20f1610dfa48405195ca5b977",
-      "sizeBytes": 12737,
+      "sha256": "1f508ea4cfe48d9c562950ce57d3f26013c2f121a90baf18df16566bb26c2062",
+      "sizeBytes": 12732,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "EMBEDDED_CURRICULUM_AND_ASSESSMENT_DATA",
       "sourceRelationship": "The component/fixture references the OCAC sequence, lesson titles, or package-backed tasks. The linked source-description evidence establishes source identity only; it does not establish the origin or reuse rights of embedded text.",
@@ -1890,6 +1938,18 @@
       "digestMode": "TEXT_LF_NORMALIZED",
       "sha256": "808b02211bc2fbf455aa2abaadf67169dc6c4e7a6c2c0d70d363e02b2e3e94f5",
       "sizeBytes": 14400
+    },
+    {
+      "path": "frontend/src/styles/31-learning-shared.css",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "digestMode": "TEXT_LF_NORMALIZED",
+      "sha256": "a21d0d966fbd88d2af38bf37aafe16dfdeee8ff029d269fd711735ca198303db",
+      "sizeBytes": 3508
     },
     {
       "path": "frontend/src/version.ts",

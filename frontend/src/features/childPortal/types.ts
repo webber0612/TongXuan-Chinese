@@ -1,3 +1,4 @@
+import type { LessonLine } from "../../data/learningPathData";
 import {
 type RedemptionRecord
 } from "../../data/rewardsShopData";
@@ -41,7 +42,8 @@ export type ScriptMode = "zhuyin" | "pinyin" | "dual";
 export type DisplayLang = "zh-Hant" | "zh-Hans" | "en" | "ja" | "ko" | "es";
 export type PhoneticAssist = "zhuyin" | "pinyin" | "off";
 export type HandMode = "right" | "left";
-export type SpeechSpeed = "normal" | "slow";
+/** "listen" is the unhurried rate used for listening questions. */
+export type SpeechSpeed = "normal" | "slow" | "listen";
 
 // Multi-language UI Dictionaries for the Child Portal and Parent Settings
 
@@ -92,6 +94,8 @@ export interface DailyDayPlan {
   characters: HanziItem[];
   vocabulary: VocabularyItem[];
   lessonStory: string[];
+  /** Lesson text shown before the characters; absent for the old prototype levels. */
+  lessonText?: LessonLine[];
   idiom: DailyIdiomInfo;
   quizQuestions: QuizQuestion[];
 }
@@ -112,6 +116,8 @@ export interface HanziItem {
   exampleSentence: string;
   exampleSentenceHans?: string;
   strokeOrderSteps?: string[];
+  /** False when the lesson only asks the child to recognise this character, not write it. */
+  write?: boolean;
 }
 
 
@@ -140,5 +146,7 @@ export interface ChildLearner {
   activePinkyPromise?: PinkyPromisePact | null;
   /** Local day (YYYY-MM-DD) of the last finished level; drives the day-based streak. */
   lastActiveDay?: string | null;
+  /** Book 1 (TBCL level 1) progress, kept apart from the old prototype levels in levelsProgress. */
+  book1Progress?: LearnerLevelProgress[];
 }
 

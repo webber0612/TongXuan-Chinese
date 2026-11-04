@@ -1,3 +1,4 @@
+import { alignBook1Progress, BOOK1_LEVELS } from "../../data/book1";
 import { useState,useEffect,useRef,type ReactNode } from "react";
 import { renderRuby } from "../../lib/chinesePhonetics";
 import {
@@ -52,7 +53,7 @@ export function useChildPortalController({ activeChildName }: ChildPortalProps) 
 
   // 關卡編號 (預設為當前未鎖定的關卡)
   const [selectedLevelNum, setSelectedLevelNum] = useState<number>(() => {
-    const cur = (activeLearner.levelsProgress || []).find((p) => p.status === "current");
+    const cur = alignBook1Progress(activeLearner.book1Progress).find((p) => p.status === "current");
     return cur ? cur.levelNumber : 1;
   });
 
@@ -65,7 +66,7 @@ export function useChildPortalController({ activeChildName }: ChildPortalProps) 
   const phoneticAssist: PhoneticAssist = activeLearner.phoneticAssist || "zhuyin";
   const handMode: HandMode = activeLearner.handMode || "right";
   const learnerPoints = activeLearner.points || { coins: 0, stars: 0 };
-  const learnerLevelsProgress = activeLearner.levelsProgress || getLearnerLevelsProgress();
+  const learnerLevelsProgress = alignBook1Progress(activeLearner.book1Progress);
 
   const [displayLang, setDisplayLang] = useState<DisplayLang>(() => {
     const saved = localStorage.getItem("tongxuan_display_lang");
@@ -81,7 +82,7 @@ export function useChildPortalController({ activeChildName }: ChildPortalProps) 
   const [parentLockOpen, setParentLockOpen] = useState(false);
   const [chestModalOpen, setChestModalOpen] = useState(false);
   const [inClassroom, setInClassroom] = useState(false);
-  const [classroomMode, setClassroomMode] = useState<"char" | "vocab" | "idiom">("char");
+  const [classroomMode, setClassroomMode] = useState<"text" | "char" | "vocab" | "idiom">("char");
   const [classroomInitialStep, setClassroomInitialStep] = useState<1 | 2 | 3 | 4 | 5>(1);
 
   const [rewardsShopModalOpen, setRewardsShopModalOpen] = useState(false);
@@ -173,7 +174,7 @@ export function useChildPortalController({ activeChildName }: ChildPortalProps) 
     });
   };
 
-  function startLessonAtStep(step: 1 | 2 | 3 | 4 | 5, mode: "char" | "vocab" | "idiom" = "char") {
+  function startLessonAtStep(step: 1 | 2 | 3 | 4 | 5, mode: "text" | "char" | "vocab" | "idiom" = "char") {
     setCustomPracticePlan(null);
     setClassroomInitialStep(step);
     setClassroomMode(mode);
@@ -203,7 +204,7 @@ export function useChildPortalController({ activeChildName }: ChildPortalProps) 
     startLessonAtStep(1, "char");
   };
 
-  const selectedLevel = TONGXUAN_AUTHORED_DRAFT_LEVELS.find((l) => l.levelNumber === selectedLevelNum) || TONGXUAN_AUTHORED_DRAFT_LEVELS[0];
+  const selectedLevel = BOOK1_LEVELS.find((l) => l.levelNumber === selectedLevelNum) || BOOK1_LEVELS[0];
   const selectedLevelProgress = learnerLevelsProgress.find((p) => p.levelNumber === selectedLevelNum) || {
     levelNumber: selectedLevelNum,
     status: selectedLevelNum === 1 ? ("current" as const) : ("locked" as const),
@@ -227,7 +228,7 @@ export function useChildPortalController({ activeChildName }: ChildPortalProps) 
     setLoginModalOpen(false);
     const chosen = learners.find((l) => l.id === id);
     if (chosen) {
-      const curLvl = (chosen.levelsProgress || []).find((p) => p.status === "current");
+      const curLvl = alignBook1Progress(chosen.book1Progress).find((p) => p.status === "current");
       if (curLvl) setSelectedLevelNum(curLvl.levelNumber);
       playSound(`${t("morning")}，${chosen.name}！歡迎回來學習！`);
     }
@@ -368,7 +369,7 @@ export function useChildPortalController({ activeChildName }: ChildPortalProps) 
       window.speechSynthesis.cancel();
       const utter = new SpeechSynthesisUtterance(text);
       utter.lang = scriptMode === "zhuyin" ? "zh-TW" : scriptMode === "pinyin" ? "zh-CN" : "zh-TW";
-      utter.rate = speed === "slow" ? 0.58 : 0.92;
+      utter.rate = speed === "slow" ? 0.58 : speed === "listen" ? 0.7 : 0.92;
       utter.pitch = 1.08;
       window.speechSynthesis.speak(utter);
     }

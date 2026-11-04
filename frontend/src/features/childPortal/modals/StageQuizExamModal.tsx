@@ -1,4 +1,5 @@
 import { useState,type ReactNode } from "react";
+import { ListenButton } from "../../learning/ListenButton";
 import {
 Volume2,X
 } from "lucide-react";
@@ -35,7 +36,9 @@ export function StageQuizExamModal({
   onPassExam: (earnedStars: number, score: number, coins: number, pact: PinkyPromisePact | null) => void;
 }) {
   const [questions, setQuestions] = useState<QuizQuestionItem[]>(() =>
-    generateQuizPaper(targetLevel, TONGXUAN_AUTHORED_DRAFT_LEVELS)
+    targetLevel.quizQuestions && targetLevel.quizQuestions.length > 0
+      ? targetLevel.quizQuestions
+      : generateQuizPaper(targetLevel, TONGXUAN_AUTHORED_DRAFT_LEVELS)
   );
   const [currentIdx, setCurrentIdx] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number>>({});
@@ -153,20 +156,12 @@ export function StageQuizExamModal({
                   <span className="question-type-tag">
                     第 {currentIdx + 1} 題 · {currentQ.title}
                   </span>
-                  {currentQ.audioText && (
-                    <button
-                      type="button"
-                      className="quiz-audio-speaker-btn"
-                      onClick={() => playSound(currentQ.audioText!, "normal", true)}
-                      title="點擊播放發音"
-                    >
-                      <Volume2 size={20} />
-                      <span>播放語音</span>
-                    </button>
-                  )}
                 </div>
 
                 <h3 className="quiz-question-prompt">{R(currentQ.prompt)}</h3>
+                {currentQ.audioText && (
+                  <ListenButton key={currentQ.id} text={currentQ.audioText} onPlay={(text) => playSound(text, "listen", true)} />
+                )}
 
                 <div className="quiz-options-grid-4">
                   {currentQ.options.map((opt, optIdx) => {
@@ -182,8 +177,9 @@ export function StageQuizExamModal({
                           {["A", "B", "C", "D"][optIdx]}
                         </span>
                         <div className="option-text-group">
-                          <span className="option-main-text">{R(opt.text)}</span>
-                          {opt.subText && (
+                          {/* Listening options show the bare character: phonetic hints would give the answer away. */}
+                          <span className="option-main-text">{currentQ.audioText ? opt.text : R(opt.text)}</span>
+                          {opt.subText && !currentQ.audioText && (
                             <span className="option-sub-text">{opt.subText}</span>
                           )}
                         </div>

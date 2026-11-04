@@ -1,4 +1,4 @@
-import { TONGXUAN_AUTHORED_DRAFT_LEVELS } from "../data/learningPathData";
+import { BOOK1_LEVELS } from "../data/book1";
 import { trackDonationClick,trackFeedbackClick,trackLevelPass } from "../lib/analytics";
 import type { PinkyPromisePact } from "../features/childPortal/types";
 import { homeTranslator } from "../features/home/homeCopy";
@@ -127,7 +127,7 @@ export function ChildPortalPage(props: ChildPortalProps) {
         totalMinutesLearned: (prev.totalMinutesLearned || 0) + minutes,
         streakDays: nextStreak(prev.streakDays || 0, prev.lastActiveDay, today),
         lastActiveDay: today,
-        levelsProgress: result.progress,
+        book1Progress: result.progress,
         points: { coins: prev.points.coins + coins + bonusCoins, stars: prev.points.stars + earnedStars },
         activePinkyPromise: acceptedPact !== undefined ? acceptedPact : pact,
       };
@@ -176,7 +176,8 @@ export function ChildPortalPage(props: ChildPortalProps) {
     <div className={`tx-portal ${isDarkEyeCare ? "is-dark-eyecare" : ""}`}>
       <HomeScreen
           learner={activeLearner}
-          levels={TONGXUAN_AUTHORED_DRAFT_LEVELS}
+          levels={BOOK1_LEVELS}
+          progress={learnerLevelsProgress}
           today={localDayKey(new Date())}
           displayLang={displayLang}
           scriptMode={scriptMode}

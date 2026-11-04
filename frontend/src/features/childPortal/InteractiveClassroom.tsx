@@ -19,6 +19,9 @@ VolumeX,Pause
 } from "lucide-react";
 
 import { ScriptMode,DisplayLang,PhoneticAssist,HandMode,SpeechSpeed,DailyDayPlan,HanziItem } from "./types";
+import { ListenButton } from "../learning/ListenButton";
+import { LessonRuby } from "../learning/LessonRuby";
+import { BOOK1_READINGS } from "../../data/book1";
 import { getVariantLabels } from "./variantLabels";
 export function InteractiveClassroom({
   dayPlan,
@@ -45,7 +48,7 @@ export function InteractiveClassroom({
   displayLang: DisplayLang;
   showPhonetics: boolean;
   phoneticAssist: PhoneticAssist;
-  mode?: "char" | "vocab" | "idiom";
+  mode?: "text" | "char" | "vocab" | "idiom";
   handMode?: HandMode;
   onUpdateHandMode?: (mode: HandMode) => void;
   isVoiceGuideEnabled?: boolean;
@@ -57,7 +60,7 @@ export function InteractiveClassroom({
   onFinishLesson: (stars: number) => void;
   onExitClass: () => void;
 }) {
-  const [currentMode, setCurrentMode] = useState<"char" | "vocab" | "idiom">(mode);
+  const [currentMode, setCurrentMode] = useState<"text" | "char" | "vocab" | "idiom">(mode);
   const [currentHandMode, setCurrentHandMode] = useState<HandMode>(handMode);
   
   // Character navigation index
@@ -101,6 +104,13 @@ export function InteractiveClassroom({
   const currentProgress = currentChar ? progressFor(currentChar, activeVariant) : EMPTY_WRITING_PROGRESS;
   const currentPlan = getWritingPlan(currentProgress, Boolean(masteryChecksThisVisit[currentPracticeKey]));
   const [remainingPractice, setRemainingPractice] = useState<number>(currentPlan.remaining);
+  // Writer callbacks outlive the render that created them; read the live plan through refs.
+  const currentPlanRef = useRef(currentPlan);
+  currentPlanRef.current = currentPlan;
+  /** Only the 2–3 characters a lesson marks for writing are practised; the rest are for recognition. */
+  const mustWrite = currentChar ? currentChar.write !== false : true;
+  const mustWriteRef = useRef(mustWrite);
+  mustWriteRef.current = mustWrite;
   
   // Speech speed: "normal" (🐇 兔子) / "slow" (🐢 烏龜)
   const [speechSpeed, setSpeechSpeed] = useState<SpeechSpeed>("normal");
@@ -178,32 +188,31 @@ export function InteractiveClassroom({
   };
 
   const recordPracticeSuccess = () => {
-    const next = updateWritingProgress(currentPracticeKey, (state) => recordWritingSuccess(state, currentPlan.phase));
+    const next = updateWritingProgress(currentPracticeKey, (state) => recordWritingSuccess(state, currentPlanRef.current.phase));
     if (next.mastered) {
       setMasteryChecksThisVisit((previous) => ({ ...previous, [currentPracticeKey]: true }));
     }
     return next;
   };
 
-  const recordIndependentFailure = () => {
-    const next = updateWritingProgress(currentPracticeKey, recordIndependentWritingFailure);
-    setRemainingPractice(getWritingPlan(next, Boolean(masteryChecksThisVisit[currentPracticeKey])).remaining);
-  };
+  const recordIndependentFailure = () => updateWritingProgress(currentPracticeKey, recordIndependentWritingFailure);
 
   const startInteractiveQuiz = (writer: HanziWriter, outlineOpacity: number) => {
+    if (!mustWriteRef.current) {
+      writer.showCharacter();
+      return;
+    }
+    attemptMistakeRef.current = false;
     try {
       applyOutlineOpacity(writer, outlineOpacity);
 
       writer.quiz({
         showHintAfterMisses: 3,
-        leniency: 0.65, // 嚴格比對筆跡起筆、軌跡與落點
+        leniency: 1, // hanzi-writer's default tolerance; stricter values reject normal finger writing on tablets
         acceptBackwardsStrokes: false, // 嚴格禁止反向筆畫
         highlightOnComplete: false, // 不使用電腦字型高亮覆蓋孩子筆跡
         onMistake: (strokeData) => {
-          if (!attemptMistakeRef.current) {
-            attemptMistakeRef.current = true;
-            if (currentPlan.phase === "independent") recordIndependentFailure();
-          }
+          attemptMistakeRef.current = true;
           // 落筆或筆順錯誤時立即閃爍提示下一筆
           try {
             writer.highlightStroke(strokeData.strokeNum);
@@ -242,11 +251,15 @@ export function InteractiveClassroom({
         onComplete: (_summary) => {
           // 保持孩子真實筆跡在畫布上
           writer.hideCharacter();
-          const nextProgress = recordPracticeSuccess();
+          // Independent writing only counts when no stroke was wrong; a slip asks for one more clean try.
+          const slipped = currentPlanRef.current.phase === "independent" && attemptMistakeRef.current;
+          const nextProgress = slipped ? recordIndependentFailure() : recordPracticeSuccess();
           attemptMistakeRef.current = false;
           const nextPlan = getWritingPlan(nextProgress, nextProgress.mastered || Boolean(masteryChecksThisVisit[currentPracticeKey]));
           setRemainingPractice(nextPlan.remaining);
-          if (nextProgress.mastered && isDiff) {
+          if (slipped) {
+            setDictationPraiseToast("有一筆寫錯了，沒關係！再自己寫一次就好 ✍️");
+          } else if (nextProgress.mastered && isDiff) {
             const otherVariant: WritingVariant = activeVariant === "trad" ? "hans" : "trad";
             if (!practiceDoneFor(currentChar, otherVariant)) {
               const currLabel = activeVariant === "trad" ? variantLabels.trad : variantLabels.simp;
@@ -313,7 +326,7 @@ export function InteractiveClassroom({
         highlightColor: "#f59e0b",
         drawingColor: "#1e3a8a",
         drawingWidth: 14,
-        showCharacter: false,
+        showCharacter: !mustWriteRef.current,
       });
       writerRef.current = writer;
 
@@ -490,6 +503,56 @@ export function InteractiveClassroom({
   }
 
   // VOCABULARY MODE
+  // LESSON TEXT (課文): read the dialogue and sentences first, then learn the characters in them.
+  if (currentMode === "text") {
+    const lines = dayPlan.lessonText ?? [];
+    const useSimplified = scriptMode === "pinyin";
+    const lineText = (line: { text: string; textHans: string }) => (useSimplified ? line.textHans : line.text);
+    return (
+      <div className="ipad-classroom-full">
+        <header className="classroom-topbar">
+          <button className="classroom-back-btn" onClick={onExitClass}>
+            <X size={24} />
+            <span>{R(t("exitClass"))}</span>
+          </button>
+          <div className="classroom-progress-info">
+            <strong>📖 讀課文</strong>
+            <span className="char-step-pill">{dayPlan.themeTitle}</span>
+          </div>
+          <div className="classroom-topbar-actions-right" />
+        </header>
+
+        <main className="classroom-stage">
+          <section className="tx-lesson-text" aria-label="課文">
+            <p className="tx-lesson-text-hint">點一句就能聽。先聽一聽、讀一讀，再去學生字。</p>
+            <button type="button" className="tx-lesson-text-all" onClick={() => onPlaySound(lines.map(lineText).join("。"), "listen", true)}>
+              <Volume2 size={22} aria-hidden="true" /> 全部聽一次
+            </button>
+            <ol className="tx-lesson-lines">
+              {lines.map((line, index) => (
+                <li key={`${index}-${line.text}`} className={`tx-lesson-line ${line.speaker ? `is-speaker-${line.speaker.toLowerCase()}` : "is-sentence"}`}>
+                  {line.speaker && <span className="tx-lesson-speaker" aria-hidden="true">{line.speaker}</span>}
+                  <button type="button" className="tx-lesson-line-button" onClick={() => onPlaySound(lineText(line), "listen", true)}>
+                    <span className="tx-lesson-line-text" lang={useSimplified ? "zh-Hans" : "zh-Hant"}><LessonRuby text={lineText(line)} readings={BOOK1_READINGS} assist={phoneticAssist} /></span>
+                    {line.en && displayLang !== "zh-Hant" && displayLang !== "zh-Hans" && <small className="tx-lesson-line-en">{line.en}</small>}
+                  </button>
+                </li>
+              ))}
+            </ol>
+          </section>
+        </main>
+
+        <footer className="classroom-footer">
+          <span />
+          <button className="nav-step-btn next-btn is-calling-soft" onClick={() => setCurrentMode("char")}>
+            <span>開始學生字</span>
+            <ChevronRight size={24} />
+          </button>
+        </footer>
+      </div>
+    );
+  }
+
   if (currentMode === "vocab") {
     const vocabList = dayPlan.vocabulary || [];
     const currV = vocabList[vocabIdx] || vocabList[0];
@@ -745,19 +808,12 @@ export function InteractiveClassroom({
               <div className="quiz-question-box">
                 <div className="quiz-meta-row">
                   <span className="quiz-q-num">第 {quizIdx + 1} 題 · {currQ.title}</span>
-                  {currQ.audioText && (
-                    <button
-                      className="quiz-sound-btn"
-                      onClick={() => onPlaySound(currQ.audioText || "", undefined, true)}
-                      title="聽題目發音"
-                    >
-                      <Volume2 size={20} />
-                      <span>播放語音</span>
-                    </button>
-                  )}
                 </div>
 
                 <h3 className="quiz-prompt-text">{currQ.prompt}</h3>
+                {currQ.audioText && (
+                  <ListenButton key={quizIdx} text={currQ.audioText} onPlay={(text) => onPlaySound(text, "listen", true)} />
+                )}
 
                 <div className="quiz-options-grid">
                   {currQ.options.map((opt, optIdx) => {
@@ -784,7 +840,8 @@ export function InteractiveClassroom({
                         }}
                       >
                         <span className="opt-main-text">{opt.text}</span>
-                        {opt.subText && <small className="opt-sub-text">{opt.subText}</small>}
+                        {/* In listening questions the pronunciation would give the answer away, so it shows only after answering. */}
+                        {opt.subText && (hasAnswered || !currQ.audioText) && <small className="opt-sub-text">{opt.subText}</small>}
                       </button>
                     );
                   })}
@@ -803,7 +860,7 @@ export function InteractiveClassroom({
                 <div className="quiz-nav-row">
                   {quizIdx < dayPlan.quizQuestions.length - 1 ? (
                     <button
-                      className="quiz-next-q-btn"
+                      className={`quiz-next-q-btn ${hasAnswered ? "is-calling" : ""}`}
                       disabled={!hasAnswered}
                       onClick={() => setQuizIdx((prev) => prev + 1)}
                     >
@@ -811,7 +868,7 @@ export function InteractiveClassroom({
                     </button>
                   ) : (
                     <button
-                      className="quiz-finish-btn"
+                      className={`quiz-finish-btn ${hasAnswered ? "is-calling" : ""}`}
                       disabled={!hasAnswered}
                       onClick={() => setQuizFinished(true)}
                     >
@@ -865,6 +922,12 @@ export function InteractiveClassroom({
 
         {/* Right: Practice Progress Indicator Pill */}
         <div className="writing-topbar-right">
+          {!mustWrite ? (
+            <div className="practice-status-pill is-finished">
+              <span className="practice-pill-icon">👀</span>
+              <span className="practice-pill-text">這個字先認得就好，不用默寫</span>
+            </div>
+          ) : (
           <div className={`practice-status-pill ${remainingPractice === 0 ? "is-finished" : ""}`}>
             <span className="practice-pill-icon">🎯</span>
             <span className="practice-pill-text">
@@ -880,6 +943,7 @@ export function InteractiveClassroom({
               </span>
             )}
           </div>
+          )}
         </div>
       </div>
 

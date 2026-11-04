@@ -1,0 +1,57 @@
+/* ========================================================
+   SHARED LEARNING CONTROLS — listening focus and "press me next" cue
+   ======================================================== */
+
+.tx-listen-stage { display: flex; justify-content: center; margin: 8px 0 18px; }
+.tx-listen-big {
+  align-items: center; background: #2a6fc4; border: 0; border-radius: 28px;
+  /* Hard lower edge: the same pressable-key language as the home primary button. */
+  box-shadow: 0 7px 0 #1b4f91; color: #fff; cursor: pointer; display: inline-flex; flex-direction: column;
+  font-size: 1.25rem; font-weight: 900; gap: 6px; justify-content: center; min-height: 132px; min-width: 200px; padding: 18px 32px;
+}
+.tx-listen-big:hover { background: #3479cf; }
+.tx-listen-big:active { box-shadow: 0 2px 0 #1b4f91; transform: translateY(5px); }
+.tx-listen-big:focus-visible { outline: 4px solid #f2a516; outline-offset: 4px; }
+
+/* After an answer, the next-step button calls for attention so the child knows what to press. */
+.quiz-next-q-btn.is-calling, .quiz-finish-btn.is-calling, .quiz-nav-btn.is-calling {
+  box-shadow: 0 0 0 4px rgba(242, 165, 22, .55), 0 0 18px rgba(242, 165, 22, .55);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .quiz-next-q-btn.is-calling, .quiz-finish-btn.is-calling, .quiz-nav-btn.is-calling { animation: tx-call 1.1s ease-in-out infinite; }
+  @keyframes tx-call {
+    0%, 100% { transform: translateX(0) scale(1); }
+    10% { transform: translateX(-4px) scale(1.03); }
+    20% { transform: translateX(4px) scale(1.03); }
+    30% { transform: translateX(0) scale(1.03); }
+    60% { transform: scale(1); }
+  }
+}
+
+/* ---------- lesson text (課文) ---------- */
+.tx-lesson-text { margin: 0 auto; max-width: 760px; display: grid; gap: 16px; }
+.tx-lesson-text-hint { color: #6a5c4d; font-weight: 700; margin: 0; text-align: center; }
+.tx-lesson-text-all {
+  align-items: center; align-self: center; background: #e0eeff; border: 0; border-radius: 999px; color: #1b4f91; cursor: pointer;
+  display: inline-flex; font: inherit; font-weight: 800; gap: 8px; justify-self: center; min-height: 48px; padding: 0 22px;
+}
+.tx-lesson-lines { display: grid; gap: 12px; list-style: none; margin: 0; padding: 0; }
+.tx-lesson-line { align-items: flex-start; display: flex; gap: 12px; }
+.tx-lesson-line.is-speaker-b { flex-direction: row-reverse; }
+.tx-lesson-speaker {
+  align-items: center; background: #ffc53d; border-radius: 50%; color: #3a2600; display: inline-flex; flex: none;
+  font-weight: 900; height: 44px; justify-content: center; width: 44px;
+}
+.tx-lesson-line.is-speaker-b .tx-lesson-speaker { background: #a8d8c0; color: #1d4d36; }
+.tx-lesson-line-button {
+  /* Size to the sentence so ruby annotations never squeeze it into one character per line. */
+  max-width: calc(100% - 56px); width: max-content;
+  background: #fffdf7; border: 2px solid #e8dcc6; border-radius: 20px; color: #33261a; cursor: pointer; display: grid; font: inherit;
+  gap: 4px; min-height: 64px; padding: 12px 20px; text-align: left;
+}
+.tx-lesson-line.is-sentence .tx-lesson-line-button { max-width: 100%; width: 100%; }
+.tx-lesson-line-button:hover { border-color: #2a6fc4; }
+.tx-lesson-line-button:focus-visible { outline: 3px solid #1c58b5; outline-offset: 3px; }
+.tx-lesson-line-text { font-size: 1.75rem; font-weight: 800; line-height: 1.9; white-space: nowrap; }
+@media (max-width: 640px) { .tx-lesson-line-text { font-size: 1.4rem; white-space: normal; } }
+.tx-lesson-line-en { color: #6a5c4d; font-size: .95rem; }

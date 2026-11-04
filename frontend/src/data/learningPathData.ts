@@ -1,3 +1,4 @@
+import { toneOptions } from "../lib/tones";
 // Legacy TongXuan-authored prototype practice data. It is not official OCAC curriculum.
 
 export type LevelType = "lesson" | "stage_quiz" | "milestone_exam";
@@ -18,6 +19,8 @@ export interface HanziCharItem {
   exampleSentence: string;
   exampleSentenceHans?: string;
   strokeOrderSteps?: string[];
+  /** False when the lesson only asks the child to recognise this character, not write it. */
+  write?: boolean;
 }
 
 export interface VocabItem {
@@ -54,6 +57,14 @@ export interface QuizQuestionItem {
   explanation: string;
 }
 
+/** One line of lesson text (課文): a dialogue turn or an example sentence. */
+export interface LessonLine {
+  speaker?: string;
+  text: string;
+  textHans: string;
+  en?: string;
+}
+
 export interface CourseLevel {
   levelNumber: number;
   levelId: string;
@@ -68,6 +79,7 @@ export interface CourseLevel {
   characters: HanziCharItem[];
   vocabulary: VocabItem[];
   lessonStory?: string[];
+  lessonText?: LessonLine[];
   idiom?: IdiomItem;
   quizQuestions?: QuizQuestionItem[];
   sourceKind?: "TONGXUAN_AUTHORED";
@@ -849,18 +861,10 @@ export function generateQuizPaper(
 
   // 題型 2: 🔤 看字選拼音/注音 (Tone & Phonetic Match)
   shuffledChars.slice(Math.ceil(questionCount / 3), Math.ceil((questionCount * 2) / 3)).forEach((targetChar, idx) => {
-    const otherChars = allChars.filter((c) => c.char !== targetChar.char);
-    const fakeTones = otherChars.slice(0, 2).map((c) => ({
-      text: `${c.pinyin}`,
-      subText: `${c.zhuyin}`,
-      isCorrect: false
-    }));
-
-    const options: QuizOption[] = [
-      { text: `${targetChar.pinyin}`, subText: `${targetChar.zhuyin}`, isCorrect: true },
-      ...fakeTones,
-      { text: `${targetChar.pinyin} (輕聲)`, subText: "無調號", isCorrect: false }
-    ].sort(() => 0.5 - Math.random());
+    // Distractors are the same syllable in the other tones, so the question tests the tone itself.
+    const options: QuizOption[] = toneOptions(targetChar.pinyin, `${targetChar.zhuyin}${targetChar.zhuyinTone}`)
+      .map((option) => ({ text: option.pinyin, subText: option.zhuyin, isCorrect: option.correct }))
+      .sort(() => 0.5 - Math.random());
 
     questions.push({
       id: `q-tone-${idx}-${targetChar.char}`,
@@ -868,7 +872,7 @@ export function generateQuizPaper(
       title: "🔤 字音聲調辨析",
       prompt: `生字「${targetChar.char}」的正確拼音與注音是？`,
       options,
-      explanation: `「${targetChar.char}」正確讀音為 ${targetChar.pinyin} / ${targetChar.zhuyin}。`
+      explanation: `「${targetChar.char}」正確讀音為 ${targetChar.pinyin} / ${targetChar.zhuyin}${targetChar.zhuyinTone}。`
     });
   });
 

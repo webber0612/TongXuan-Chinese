@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Flame,Star } from "lucide-react";
 import appLogoIcon from "../../assets/app-logo-icon.png";
-import type { CourseLevel } from "../../data/learningPathData";
+import type { CourseLevel, LearnerLevelProgress } from "../../data/learningPathData";
 import type { ChildLearner,DisplayLang,ScriptMode } from "../childPortal/types";
 import { homeTranslator } from "./homeCopy";
 import { completedCount,currentLevelNumber,stageNumbers,statusOf,stopsForStage,visibleStreak } from "./homeModel";
@@ -10,11 +10,12 @@ import { ModeCards,type ModeKey } from "./ModeCards";
 import { StagePath } from "./StagePath";
 import { TodayHero } from "./TodayHero";
 
-type ClassroomMode = "char" | "vocab" | "idiom";
+type ClassroomMode = "text" | "char" | "vocab" | "idiom";
 
 export interface HomeScreenProps {
   learner: ChildLearner;
   levels: readonly CourseLevel[];
+  progress: readonly LearnerLevelProgress[];
   today: string;
   displayLang: DisplayLang;
   scriptMode: ScriptMode;
@@ -35,7 +36,7 @@ const SUPPORT_URL = "https://buymeacoffee.com/webber0612";
 export function HomeScreen(props: HomeScreenProps) {
   const { learner, levels, scriptMode } = props;
   const copy = homeTranslator(props.displayLang);
-  const progress = learner.levelsProgress ?? [];
+  const progress = props.progress;
   const todayLevelNumber = currentLevelNumber(levels, progress);
   const selectedLevel = levels.find((level) => level.levelNumber === props.selectedLevelNumber) ?? null;
   const todayLevel = levels.find((level) => level.levelNumber === todayLevelNumber) ?? null;
@@ -51,7 +52,7 @@ export function HomeScreen(props: HomeScreenProps) {
 
   const startHeroLevel = () => {
     if (!heroLevel) return;
-    if (heroLevel.type === "lesson") props.onStartLevel(heroLevel, "char");
+    if (heroLevel.type === "lesson") props.onStartLevel(heroLevel, heroLevel.lessonText?.length ? "text" : "char");
     else props.onStartQuiz(heroLevel);
   };
 
