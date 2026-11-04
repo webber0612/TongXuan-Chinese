@@ -23,6 +23,11 @@ describe("voice clips", () => {
     expect(clipsFor("你好！。你好不好？。我好。", urls)).toEqual(["/a.mp3", "/b.mp3", "/c.mp3"]);
   });
 
+  it("skips phonetic annotations inside a spoken string", () => {
+    expect(clipsFor("你好。ㄋㄧˇ ㄏㄠˇ。你好不好？", urls)).toEqual(["/a.mp3", "/b.mp3"]);
+    expect(clipsFor("我好。wǒ hǎo", urls)).toEqual(["/c.mp3"]);
+  });
+
   it("falls back when any sentence has no clip, or before the manifest has loaded", () => {
     expect(clipsFor("你好！。我不好。", urls)).toBeNull();
     expect(clipsFor("謝謝", urls)).toBeNull();

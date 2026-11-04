@@ -2595,8 +2595,20 @@
       "publishableArtifactAllowed": false,
       "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "ee14b494a01ecedcf076aa3f65da0421ca8f3320c0e3a9007ed896bc4c25d87a",
-      "sizeBytes": 1106
+      "sha256": "8b8aa01086f080e7f3371e9b3719a1215c26c4a2abadde4b3e409c6985aae8f1",
+      "sizeBytes": 1354
+    },
+    {
+      "path": "frontend/src/lib/voiceClips.ts",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "digestMode": "TEXT_LF_NORMALIZED",
+      "sha256": "5ef27d782a3058583c2329cd6f1e6301563150a90f132aa573e7e9b6c484138c",
+      "sizeBytes": 3396
     },
     {
       "path": "frontend/src/pages/ChildPortalPage.tsx",

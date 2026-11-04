@@ -10,6 +10,7 @@ export type ClipSpeed = "normal" | "listen" | "slow";
 const PLAYBACK_RATE: Record<ClipSpeed, number> = { normal: 1, listen: 0.9, slow: 0.75 };
 // Must match PUNCTUATION in tools/audio/generate_book1_audio.py.
 const PUNCTUATION = /[\s。！？，、：；「」…!?,.:;]/g;
+const HAN = /[㐀-鿿]/;
 const MANIFESTS = ["audio/book1/manifest.json"];
 
 export function clipKey(text: string): string {
@@ -44,8 +45,10 @@ export function clipsFor(text: string, urls: ReadonlyMap<string, string> | null 
   const whole = urls.get(clipKey(text));
   if (whole) return [whole];
   // No lookbehind here: older iPad Safari versions fail to parse it.
-  const parts = (text.match(/[^。！？]+[。！？]?/g) ?? []).map(clipKey).filter(Boolean);
-  if (parts.length < 2) return null;
+  // Segments without any Chinese character are phonetic annotations (ㄋㄧˇ, nǐ) that the
+  // clip already pronounces, so they are skipped instead of forcing the browser voice.
+  const parts = (text.match(/[^。！？]+[。！？]?/g) ?? []).map(clipKey).filter((part) => HAN.test(part));
+  if (parts.length === 0) return null;
   const sequence = parts.map((part) => urls.get(part));
   return sequence.every(Boolean) ? (sequence as string[]) : null;
 }
