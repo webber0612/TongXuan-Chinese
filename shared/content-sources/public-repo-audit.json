@@ -1980,8 +1980,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Tracked UTF-8 text contains literal or escaped CJK and is included conservatively for review. This path signal does not establish curriculum authorship, source, or reuse rights.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "9f86765bbaf60d1eaa489fcdbd73f8f704244212cbcdb3f0ad0ea6abf260fde5",
-      "sizeBytes": 34186,
+      "sha256": "0a41bdafbfe4dce8e0418ba36d1a52c38593b2dd992185fa3597139f6f1e7ee6",
+      "sizeBytes": 34222,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "TRACKED_CJK_TEXT_FAIL_CLOSED"
     },
@@ -2246,8 +2246,8 @@
       "rootMitApplies": false,
       "publishableArtifactAllowed": false,
       "reason": "Legacy data is source-bound or curriculum-like; per-item provenance and public-repository rights are not established.",
-      "sha256": "c85f4b38c868cea4764244abf8450fb66a9386447d049c6b17d6c6855770ae41",
-      "sizeBytes": 65215,
+      "sha256": "86b9062545c188a2e79d19c025dead9e1edf99440b15a47e388785c76930b8e2",
+      "sizeBytes": 65274,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "LEGACY_CURRICULUM_OR_LEARNING_DATA",
       "sourceRelationship": "This legacy path is explicitly tied to OCAC course metadata; item-level rights and content scope are unresolved.",
@@ -2261,8 +2261,8 @@
       "rootMitApplies": false,
       "publishableArtifactAllowed": false,
       "reason": "Legacy learning/sample data has incomplete item-level source/authorship evidence; this audit does not infer TongXuan ownership.",
-      "sha256": "1eae204fdf0d3f86336e344a627089af107bcf976de8afe21ce5015aad0f5b8f",
-      "sizeBytes": 11226,
+      "sha256": "836766aae9c234aaa344bb96e1330c6b127889abf44bc4ecad06ca3857ef242e",
+      "sizeBytes": 11251,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "LEGACY_CURRICULUM_OR_LEARNING_DATA",
       "digestMode": "TEXT_LF_NORMALIZED"
@@ -2300,8 +2300,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "8be23bac3e539bb61df20a2c2fc5aecf0e96e428b322424b423db84540e24baa",
-      "sizeBytes": 51495
+      "sha256": "6024391b78d3cc66c0b2714e2499405f01b8b1a73b66053f9cea2e63f6047b44",
+      "sizeBytes": 51537
     },
     {
       "path": "frontend/src/features/childPortal/dayPlan.ts",
@@ -2444,8 +2444,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "3a63cdf5931ed6bf63c6070956efed90875073f661587b85185ac182e7a3731f",
-      "sizeBytes": 15998
+      "sha256": "19434f9fd7fef1c215bc9f80f4c44ea9c2bcdab4846a1228cae17c3f3f826ef4",
+      "sizeBytes": 16043
     },
     {
       "path": "frontend/src/features/childPortal/uiText.ts",
@@ -2468,8 +2468,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "005653778bfdb7143e0b178f5599fccd8b7aa42aa5ace209daced7aff97c9716",
-      "sizeBytes": 16926
+      "sha256": "9dba22f565f78153f7a7cdc70d9a842aa892777d4575ea01a30d8a2378574e3b",
+      "sizeBytes": 16944
     },
     {
       "path": "frontend/src/features/childPortal/variantLabels.ts",
@@ -2627,8 +2627,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "dea47f3dd92e32f49fff7512b962973f6446fb13d887db7a6dbc3cabf344943a",
-      "sizeBytes": 11798
+      "sha256": "0bd4ee08f8e4db50ddd58498472d965d53f5a0ef63a944838b6421aef8de98f5",
+      "sizeBytes": 11808
     },
     {
       "path": "frontend/src/lib/i18n.tsx",
@@ -2639,8 +2639,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Tracked UTF-8 text contains literal or escaped CJK and is included conservatively for review. This path signal does not establish curriculum authorship, source, or reuse rights.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "c31a4643070f84c03af739cc2ee5af5e5f1567fc4a76cabcaf72eae2055c29dc",
-      "sizeBytes": 33700,
+      "sha256": "c81d00b563e07d913b05141ca705062dd3ba1ca348191102cdeee17efab897b8",
+      "sizeBytes": 33722,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "TRACKED_CJK_TEXT_FAIL_CLOSED"
     },
@@ -2735,10 +2735,22 @@
       "publishableArtifactAllowed": false,
       "reason": "Tracked UTF-8 text contains literal or escaped CJK and is included conservatively for review. This path signal does not establish curriculum authorship, source, or reuse rights.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "9f3a909f9db733e477a51f59be0c7c39a10233909d2e7446ea5a4d9b276c8c91",
-      "sizeBytes": 3679,
+      "sha256": "606d7cdb574e274a9e96098fbbd3281e39fcbbab3998596dc43598a540ad15ec",
+      "sizeBytes": 3715,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "TRACKED_CJK_TEXT_FAIL_CLOSED"
+    },
+    {
+      "path": "frontend/src/lib/storage/storage.test.ts",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "digestMode": "TEXT_LF_NORMALIZED",
+      "sha256": "c84bc74f6750c2f6a75cd0b2ee6292f55a1700a38d1c8dba9cad94c118dce62d",
+      "sizeBytes": 3019
     },
     {
       "path": "frontend/src/lib/tones.test.ts",
@@ -2802,8 +2814,8 @@
       "rootMitApplies": false,
       "publishableArtifactAllowed": false,
       "reason": "Existing public UI/test source contains curriculum-mapped text, assessment data, course metadata, or instructional examples without complete item-level authorship/source/rights evidence. This fail-closed path classification is not a finding of copying or infringement.",
-      "sha256": "91c52097b4456dfbbb3968de3a9ec7e4455a2174ff410696d7de925e48fdd243",
-      "sizeBytes": 12615,
+      "sha256": "2b6851033d19102960dc9d5bcf8c5dbaa10187f600542e53cb5a6eeb913cbb6f",
+      "sizeBytes": 12652,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "EMBEDDED_CURRICULUM_AND_ASSESSMENT_DATA",
       "sourceRelationship": "The component/fixture references the OCAC sequence, lesson titles, or package-backed tasks. The linked source-description evidence establishes source identity only; it does not establish the origin or reuse rights of embedded text.",
@@ -2818,8 +2830,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Tracked UTF-8 text contains literal or escaped CJK and is included conservatively for review. This path signal does not establish curriculum authorship, source, or reuse rights.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "fd82c52f09fff04662d2742944174e3d1263015fa8c235553f076609b85ead48",
-      "sizeBytes": 20982,
+      "sha256": "1bbee11cf05f3efb783786df491929bd2959725cc4e9d8fb728df6e586d3a5cf",
+      "sizeBytes": 21025,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "TRACKED_CJK_TEXT_FAIL_CLOSED"
     },
@@ -2992,8 +3004,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "073a586bfb9798f25fc332a2eb642c6a369eec4a3f1d8fb3753e4bf304a044d9",
-      "sizeBytes": 1560
+      "sha256": "7e1270964ad195b2cd3c53cec44fc804f556a1dcbf6570579dbd1e7eba1cc052",
+      "sizeBytes": 1563
     },
     {
       "path": "scripts/curriculum_check.py",

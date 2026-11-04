@@ -1,3 +1,4 @@
+import { appStorage } from "../../lib/storage";
 import { useState,useEffect,useRef,type ReactNode } from "react";
 import HanziWriter from "hanzi-writer";
 import {
@@ -70,7 +71,7 @@ export function InteractiveClassroom({
   // Practice state is scoped by learner, character, and script variant.
   const [writingProgress, setWritingProgress] = useState<Record<string, WritingProgress>>(() => {
     try {
-      return JSON.parse(localStorage.getItem("tongxuan_writing_progress_v2") || "{}");
+      return JSON.parse(appStorage.getItem("tongxuan_writing_progress_v2") || "{}");
     } catch (e) {
       return {};
     }
@@ -136,7 +137,7 @@ export function InteractiveClassroom({
   const toggleHandMode = () => {
     const next = currentHandMode === "right" ? "left" : "right";
     setCurrentHandMode(next);
-    localStorage.setItem("tongxuan_hand_mode", next);
+    appStorage.setItem("tongxuan_hand_mode", next);
     if (onUpdateHandMode) onUpdateHandMode(next);
   };
 
@@ -183,7 +184,7 @@ export function InteractiveClassroom({
     writingProgressRef.current = next;
     setWritingProgress(next);
     try {
-      localStorage.setItem("tongxuan_writing_progress_v2", JSON.stringify(next));
+      appStorage.setItem("tongxuan_writing_progress_v2", JSON.stringify(next));
     } catch (e) {}
     return next[key];
   };

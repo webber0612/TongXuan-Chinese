@@ -1,3 +1,4 @@
+import { appStorage } from "../lib/storage";
 import { BOOK1_LEVELS } from "../data/book1";
 import { trackDonationClick,trackFeedbackClick,trackLevelPass } from "../lib/analytics";
 import type { PinkyPromisePact } from "../features/childPortal/types";
@@ -206,7 +207,7 @@ export function ChildPortalPage(props: ChildPortalProps) {
           onScriptMode={updateScriptMode}
           onPhoneticAssist={updatePhoneticAssist}
           onHandMode={updateHandMode}
-          onDisplayLang={(lang) => { setDisplayLang(lang); localStorage.setItem("tongxuan_display_lang", lang); }}
+          onDisplayLang={(lang) => { setDisplayLang(lang); appStorage.setItem("tongxuan_display_lang", lang); }}
           onToggleEyeCare={() => setIsDarkEyeCare((prev) => !prev)}
           onNavigate={openFromMenu}
           onClose={() => setMenuOpen(false)}
@@ -219,10 +220,10 @@ export function ChildPortalPage(props: ChildPortalProps) {
           displayLang={displayLang}
           setDisplayLang={(lang) => {
             setDisplayLang(lang);
-            localStorage.setItem("tongxuan_display_lang", lang);
+            appStorage.setItem("tongxuan_display_lang", lang);
           }}
           onClose={() => {
-            localStorage.setItem("tongxuan_onboarded", "true");
+            appStorage.setItem("tongxuan_onboarded", "true");
             setOnboardingOpen(false);
           }}
           onComplete={handleOnboardingComplete}
@@ -279,7 +280,7 @@ export function ChildPortalPage(props: ChildPortalProps) {
           displayLang={displayLang}
           setDisplayLang={(lang) => {
             setDisplayLang(lang);
-            localStorage.setItem("tongxuan_display_lang", lang);
+            appStorage.setItem("tongxuan_display_lang", lang);
           }}
           phoneticAssist={phoneticAssist}
           updatePhoneticAssist={updatePhoneticAssist}

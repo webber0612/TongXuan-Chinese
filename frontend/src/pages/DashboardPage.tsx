@@ -1,3 +1,4 @@
+import { appStorage } from "../lib/storage";
 import { useEffect, useRef, useState } from "react";
 import { buildDashboardPath, buildLearningFlowReportPath, DASHBOARD_SKILLS, dashboardRange, dashboardWindowLabel, DashboardWindow, LearningFlowReport } from "../lib/dashboard";
 import { apiFetch } from "../lib/apiFetch";
@@ -73,7 +74,7 @@ export function DashboardPage() {
       throw new Error("offline");
     } catch (value) {
       try {
-        const raw = localStorage.getItem("tongxuan_learners_list");
+        const raw = appStorage.getItem("tongxuan_learners_list");
         if (raw) {
           const parsed = JSON.parse(raw);
           if (Array.isArray(parsed) && parsed.length > 0) {

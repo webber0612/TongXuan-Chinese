@@ -1,3 +1,4 @@
+import { appStorage } from "./storage";
 /**
  * TongXuan Chinese - Google Drive User-Owned Sync Service
  * 
@@ -64,7 +65,7 @@ export async function ensureGoogleScript(): Promise<void> {
 /** Get stored auth info if valid */
 export function getSavedDriveAuth(): GoogleDriveAuth | null {
   try {
-    const raw = localStorage.getItem(AUTH_STORAGE_KEY);
+    const raw = appStorage.getItem(AUTH_STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as GoogleDriveAuth;
     if (parsed && parsed.accessToken && parsed.expiresAt > Date.now()) {
@@ -79,9 +80,9 @@ export function getSavedDriveAuth(): GoogleDriveAuth | null {
 /** Save auth info to local storage */
 export function saveDriveAuth(auth: GoogleDriveAuth | null): void {
   if (auth) {
-    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(auth));
+    appStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(auth));
   } else {
-    localStorage.removeItem(AUTH_STORAGE_KEY);
+    appStorage.removeItem(AUTH_STORAGE_KEY);
   }
 }
 
@@ -162,19 +163,19 @@ export async function requestDriveAccessToken(): Promise<GoogleDriveAuth> {
 export function getLocalProgressPayload(): SyncPayload {
   let learners: unknown[] = [];
   try {
-    const raw = localStorage.getItem("tongxuan_learners_list");
+    const raw = appStorage.getItem("tongxuan_learners_list");
     if (raw) learners = JSON.parse(raw);
   } catch {}
 
   let writingProgress = {};
   try {
-    const raw = localStorage.getItem("tongxuan_writing_progress_v2");
+    const raw = appStorage.getItem("tongxuan_writing_progress_v2");
     if (raw) writingProgress = JSON.parse(raw);
   } catch {}
 
   let rewardsCatalog = null;
   try {
-    const raw = localStorage.getItem("tongxuan_expert_rewards_catalog");
+    const raw = appStorage.getItem("tongxuan_expert_rewards_catalog");
     if (raw) rewardsCatalog = JSON.parse(raw);
   } catch {}
 
@@ -183,33 +184,33 @@ export function getLocalProgressPayload(): SyncPayload {
     updatedAt: new Date().toISOString(),
     sourceDevice: navigator.userAgent.slice(0, 40),
     learners,
-    activeLearnerId: localStorage.getItem("tongxuan_active_learner_id") || "learner-1",
+    activeLearnerId: appStorage.getItem("tongxuan_active_learner_id") || "learner-1",
     writingProgress,
     rewardsCatalog,
-    displayLang: localStorage.getItem("tongxuan_display_lang") || "zh-Hant",
-    voiceGuide: localStorage.getItem("tongxuan_voice_guide") === "true"
+    displayLang: appStorage.getItem("tongxuan_display_lang") || "zh-Hant",
+    voiceGuide: appStorage.getItem("tongxuan_voice_guide") === "true"
   };
 }
 
 /** Apply remote progress payload to local storage */
 export function applyRemotePayloadToLocal(payload: SyncPayload): void {
   if (Array.isArray(payload.learners) && payload.learners.length > 0) {
-    localStorage.setItem("tongxuan_learners_list", JSON.stringify(payload.learners));
+    appStorage.setItem("tongxuan_learners_list", JSON.stringify(payload.learners));
   }
   if (payload.activeLearnerId) {
-    localStorage.setItem("tongxuan_active_learner_id", payload.activeLearnerId);
+    appStorage.setItem("tongxuan_active_learner_id", payload.activeLearnerId);
   }
   if (payload.writingProgress && typeof payload.writingProgress === "object") {
-    localStorage.setItem("tongxuan_writing_progress_v2", JSON.stringify(payload.writingProgress));
+    appStorage.setItem("tongxuan_writing_progress_v2", JSON.stringify(payload.writingProgress));
   }
   if (payload.rewardsCatalog) {
-    localStorage.setItem("tongxuan_expert_rewards_catalog", JSON.stringify(payload.rewardsCatalog));
+    appStorage.setItem("tongxuan_expert_rewards_catalog", JSON.stringify(payload.rewardsCatalog));
   }
   if (payload.displayLang) {
-    localStorage.setItem("tongxuan_display_lang", payload.displayLang);
+    appStorage.setItem("tongxuan_display_lang", payload.displayLang);
   }
   if (typeof payload.voiceGuide === "boolean") {
-    localStorage.setItem("tongxuan_voice_guide", payload.voiceGuide ? "true" : "false");
+    appStorage.setItem("tongxuan_voice_guide", payload.voiceGuide ? "true" : "false");
   }
 }
 

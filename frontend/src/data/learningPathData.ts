@@ -1,3 +1,4 @@
+import { appStorage } from "../lib/storage";
 import { toneOptions } from "../lib/tones";
 // Legacy TongXuan-authored prototype practice data. It is not official OCAC curriculum.
 
@@ -94,6 +95,7 @@ export interface CourseLevel {
 
 export interface LearnerLevelProgress {
   levelNumber: number;
+  updatedAt?: string;
   status: "completed" | "current" | "locked";
   completedAt: string | null;
   starsEarned: number;
@@ -729,7 +731,7 @@ export const TONGXUAN_AUTHORED_DRAFT_LEVELS: CourseLevel[] =
 export function getLearnerLevelsProgress(learnerId = "default"): LearnerLevelProgress[] {
   const storageKey = `tongxuan_levels_progress:${learnerId}`;
   try {
-    const raw = localStorage.getItem(storageKey) ?? (learnerId === "default" ? localStorage.getItem("tongxuan_levels_progress") : null);
+    const raw = appStorage.getItem(storageKey) ?? (learnerId === "default" ? appStorage.getItem("tongxuan_levels_progress") : null);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length === 25) {
@@ -753,12 +755,12 @@ export function getLearnerLevelsProgress(learnerId = "default"): LearnerLevelPro
     softUnlocked: lvl.levelNumber === 1,
   }));
 
-  localStorage.setItem(storageKey, JSON.stringify(initial));
+  appStorage.setItem(storageKey, JSON.stringify(initial));
   return initial;
 }
 
 export function saveLearnerLevelsProgress(progress: LearnerLevelProgress[], learnerId = "default"): void {
-  localStorage.setItem(`tongxuan_levels_progress:${learnerId}`, JSON.stringify(progress));
+  appStorage.setItem(`tongxuan_levels_progress:${learnerId}`, JSON.stringify(progress));
 }
 
 // Record practice completion; offer an explicit soft unlock without asserting mastery.

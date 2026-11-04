@@ -36,6 +36,6 @@ export function logVersionInfo(): void {
     buildDate: BUILD_DATE,
     codename: APP_CODENAME,
     mode: import.meta.env.MODE,
-    storage: "Google Drive appDataFolder + localStorage fallback"
+    storage: "Google Drive appDataFolder + browser storage fallback"
   });
 }
