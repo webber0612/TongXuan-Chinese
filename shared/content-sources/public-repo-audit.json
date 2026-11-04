@@ -1460,8 +1460,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "a9a0a6f2c0ef01a1c89a100a54ea5d3c441e441f25d54f64d81e284ebe42111e",
-      "sizeBytes": 16588
+      "sha256": "715072ecc00d35e15efb8b8f8b9b80958f1776cd324c2bfc3c518cab34ba18a1",
+      "sizeBytes": 16839
     },
     {
       "path": "frontend/src/features/childPortal/variantLabels.ts",
