@@ -722,6 +722,18 @@
       "sizeBytes": 2834
     },
     {
+      "path": "docs/codex-tasks/2026-11-m1-foundation.md",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "digestMode": "TEXT_LF_NORMALIZED",
+      "sha256": "3f025fb78b260b7cde4c7788e63d063bcc92305147beb4dd0a3871bc39414648",
+      "sizeBytes": 10633
+    },
+    {
       "path": "docs/curriculum-audit-v1.md",
       "classification": "RIGHTS_UNCLEAR",
       "sourceIds": [
@@ -794,8 +806,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "3cf9e7e993bd8c39dc2a5e7b9e834c3c3a736105a871cd4b4c8dc242981f1d7a",
-      "sizeBytes": 5257
+      "sha256": "682472cfffcc8a0628c3ac1dfd1225868d94af6c9e483b2e3160590397251da4",
+      "sizeBytes": 5553
     },
     {
       "path": "docs/learning-path-v2.md",
@@ -900,8 +912,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Tracked UTF-8 text contains literal or escaped CJK and is included conservatively for review. This path signal does not establish curriculum authorship, source, or reuse rights.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "24269e89d7b84aa3741d88de220b573583dc0d8165970234ac5ece1e239bf1f3",
-      "sizeBytes": 5282,
+      "sha256": "2089a27e216b86b14d86e3f22b96fd41f310fe2c9534d395ed5ada5ca85d6247",
+      "sizeBytes": 4520,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "TRACKED_CJK_TEXT_FAIL_CLOSED"
     },
@@ -914,8 +926,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Tracked UTF-8 text contains literal or escaped CJK and is included conservatively for review. This path signal does not establish curriculum authorship, source, or reuse rights.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "c27b12db99e8cb5110a445e775869a960f3f42b854d7b64432be77e07510acef",
-      "sizeBytes": 4209,
+      "sha256": "11e8babb476ba67bbd9b37aa11e0ed8cee96af698e72956c693d8b381be8b662",
+      "sizeBytes": 11650,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "TRACKED_CJK_TEXT_FAIL_CLOSED"
     },

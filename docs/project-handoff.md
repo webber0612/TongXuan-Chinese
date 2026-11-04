@@ -1,93 +1,86 @@
 # 桐軒中文 專案換手
 
 > 這份文件只記錄**已驗證的現況**。每一句都要能用指令或實測重現；做不到就不要寫進來。
-> 歷史紀錄在 `docs/archive/project-handoff-until-2026-10-09.md`，內容已過期，不可當作現況依據。
+> 要做什麼、照什麼順序做，看 `docs/roadmap.md`。歷史紀錄在 `docs/archive/`，內容已過期。
 
-最後驗證：2026-10-10，分支 `rebuild/2026-10`。前端 199 個測試通過、建置通過；後端 335 個測試通過。
+最後驗證：2026-11-04，分支 `rebuild/2026-10`（`main` 已同步到 `5742ece`）。前端 87 個測試通過、建置通過；課程檢查與權利檢查通過。
 
 ## 產品定位
 
-- 正式名稱：**桐軒中文**（TongXuan Chinese）。
-- 對象：初學中文的兒童，家長在旁監督。支援繁體＋注音、簡體＋拼音，顯示語言獨立設定。
-- 運作模式：**GitHub 模式**。前端是唯一的產品；學習紀錄存在瀏覽器 localStorage，並可用 Google Drive（`appDataFolder`）同步。
+- 正式名稱：**桐軒中文**（TongXuan Chinese）。給 5–9 歲初學中文的孩子，家長在旁監督。繁體＋注音、簡體＋拼音，顯示語言另外設定。
+- 運作模式：**GitHub 模式**。前端是唯一的產品；學習紀錄存在瀏覽器 localStorage，可用 Google Drive（`appDataFolder`）同步。不使用 NAS 與後端。
+- 課程：第一冊＝TBCL 第 1 級 246 字，41 關、10 個階段，全部自編。
 
 ## 環境
 
-| 環境 | 網址 | 內容 | 狀態 |
-|---|---|---|---|
-| GitHub Pages | `https://webber0612.github.io/TongXuan-Chinese/` | 前端，推 `main` 自動部署 | 正式版 |
-| 本機 | `http://localhost:5173/TongXuan-Chinese/` | `npm run dev`（`frontend/`） | 開發用 |
-| NAS 後端 | `https://webber0612.synology.me:8443` | FastAPI，`development` 模式 | **未接上前端**，資料為空，應停止對外 |
-| NAS 前端 | `http://webber0612.synology.me:8080` | nginx 預設頁 | 沒有放桐軒 |
-
-前端建置時 `VITE_API_BASE` 為空，所以不會呼叫任何後端。`backend/` 的程式與測試保留在 repo，作為日後把複習與精熟規則移到前端時的規格參考，目前不屬於產品的一部分。
+| 環境 | 網址 | 內容 |
+|---|---|---|
+| GitHub Pages | `https://webber0612.github.io/TongXuan-Chinese/` | 正式版。推 `main` 會自動部署 |
+| 本機 | `http://localhost:5173/TongXuan-Chinese/` | `npm run dev`（`frontend/`） |
+| NAS | `webber0612.synology.me:8443`／`:8080` | 未接上前端，應停止對外（擁有者處理） |
 
 ## 正式前端
 
 ```text
-frontend/src/main.tsx → frontend/src/AppShell.tsx
+frontend/src/main.tsx → AppShell.tsx → pages/ChildPortalPage.tsx
+  → features/childPortal/useChildPortalController.tsx（狀態與動作）
+  → features/home/（首頁）、features/childPortal/InteractiveClassroom.tsx（教室）
 ```
-
-首頁一律是 `features/home/` 的新版畫面。`frontend/src/lib/runtimeMode.ts` 只用來判斷「沒有後端時，哪些舊頁面要改顯示停用提示」。
 
 | 路由 | 內容 |
 |---|---|
-| `/` | 首頁：今日關卡、路線、練習入口、右上角選單 |
-| `/parent-dashboard`、`/me`、`/practice`、`/tutor`、`/diagnostics`、`/admin/commercialization` | 沒有後端時顯示「此路徑已停用」；有設定 `VITE_API_BASE` 時才是原頁面 |
-| `/learning-session`、`/curriculum` | 已隨僑委會教材一起移除，顯示停用提示 |
-
-static 模式的家長功能在首頁選單的「家長專區」（PIN 保護），設定也在同一個選單裡。
+| `/` | 首頁：今日關卡、路線、練習入口、右上角選單（家長專區有 PIN） |
+| `/practice`、`/parent-dashboard`、`/tutor`、`/me`、`/diagnostics`、`/admin/commercialization` | 沒有後端時顯示「此路徑已停用」 |
 
 修改 UI 前仍須依 `docs/frontend-architecture.md` 確認目標在正式 import 鏈上。
+
+## 課程資料
+
+| 檔案 | 內容 |
+|---|---|
+| `shared/curriculum/book1-character-order.json` | 41 關的字序，每關 2–3 個要會寫的字 |
+| `shared/curriculum/book1/stage-01.json` | 第 1 階段（第 1–4 關＋檢核）。**目前只有這一個階段** |
+| `frontend/src/data/book1.ts` | 把課程檔轉成 App 用的關卡；學習進度存在學習者的 `book1Progress` |
+| `shared/voice/feedback-phrases.json` | 固定的鼓勵語（程式透過 `VOICE_PHRASES` 使用） |
+
+## 聲音
+
+- 字、詞、句與鼓勵語用 CosyVoice3 預先錄好，放在 `frontend/public/audio/book1/`、`audio/feedback/`。沒有錄音的文字改用瀏覽器語音。
+- 產生方式、授權與品質檢查：`docs/audio-provenance.md`。新增或修改課程後要重跑 `tools/audio/generate_book1_audio.py`。
 
 ## 驗證方式
 
 ```bash
 cd frontend && npm run test && npm run build
-cd backend && ../.venv/Scripts/python.exe -m pytest -q
+python scripts/tbcl_coverage.py --check-order
+python scripts/curriculum_check.py
 python scripts/open_curriculum_rights_gate.py --check
 ```
 
-檔案有增刪或含中文的檔案有修改時，提交前要同步權利清單（只更新雜湊與新增路徑，不改任何權利分類）：
+檔案有增刪，或含中文、音檔、圖片的檔案有修改時，提交前要同步權利清單：
 
 ```bash
 python scripts/open_curriculum_rights_gate.py --sync-inventory
 ```
 
+新增可發布的資源（音檔、資料檔）時，還要登記到 `data/commercialization-inventory.json` 與 `data/license-registry.json`，並跑 `backend/tests/test_commercialization.py` 與 `test_open_curriculum_rights_gate.py`。
+
 ## 開發規則
 
-1. 一律從 `main` 開分支、走 PR，不直接推 `main`。推 `main` 會立刻部署到正式站。
-2. 同一時間只讓一個 agent 寫同一個分支。
+1. 從 `rebuild/2026-10` 開分支工作。推 `main`＝立刻上線，必須先取得擁有者同意。
+2. 同一時間只讓一個 agent 寫同一個分支。Codex 的工作照 `docs/codex-tasks/` 的任務書進行，由 Claude 驗收。
 3. 改完要在瀏覽器實際走過受影響的畫面；測試通過不等於畫面正確。
-4. 這份文件只改寫、不堆疊。不要在最上面再加一段「最新成果」。
+4. 這份文件只改寫、不堆疊。
 
 ## 已知問題
 
-- **教材授權**：權利清單中絕大多數檔案標為 `RIGHTS_UNCLEAR`，repo 是公開的。擴充課程內容前必須處理。
-- **追蹤碼**：`frontend/src/lib/analytics.ts` 會載入 Google Analytics（GA4），但 `README.md` 與 `.better-web-ui.md` 都寫「零追蹤」。需要擁有者決定保留或移除。
-- **未合併的舊工作**：PR #113、PR #110 與 Issue #116 是依「後端為權威」與僑委會教材寫的，不合併，僅供參考。
-- **僑委會教材**：2026-10-16 已從前端移除（課程路線、會話課與播放器、舊版首頁）。後端與 `shared/validated-curriculum-slice.json`、`shared/lesson-packages/` 仍在，因為後端的學習流程、複習、聽力都依賴它們；如何處理待擁有者決定。
-- **`main` 沒有分支保護**，需在 GitHub 設定中開啟。
-- 實機 iPad Safari 與真實兒童試用都還沒做過。
+詳細缺口與優先順序在 `docs/roadmap.md` 第 4 節。最影響使用的：
 
-## 路線
-
-商業化與課程規劃以 `docs/roadmap.md` 為準，其中「課程標準」一節是硬性目標。下表是這次重整的工程階段。
-
-| 階段 | 內容 | 狀態 |
-|---|---|---|
-| 0 | 備份未提交的工作、定名 | 完成 |
-| 1 | 修復 CI、清除死路由、改寫換手文件 | 完成 |
-| 2 | 學習規則定案（`docs/learning-loop-v1.md`） | 暫定版完成，待擁有者審查 |
-| 3 | 前端結構重構（畫面不變） | 完成；仍有 4 個檔案超過 800 行 |
-| 4 | UX 翻新 | 首頁、選單、會話課入口完成，待擁有者審查畫面 |
-| 5 | 學習規則實作為前端模組 | 未開始 |
-| 6 | 學習內容擴充 | 未開始 |
-
-### 第 4 階段還沒做的畫面
-
-教室（`InteractiveClassroom`）、會話課播放器、新手引導、獎勵舖、成就、學習者切換、家長專區彈窗、階段檢核測驗。它們功能正常，但外觀仍是舊樣式，與新首頁不一致。
-
-### 仍超過 800 行的檔案
-
-`pages/LessonPlayerPage.tsx`（約 2,660）、`features/childPortal/InteractiveClassroom.tsx`（約 1,210）、`features/childPortal/modals/ParentLockModal.tsx`（約 1,050）、`features/childPortal/uiText.ts`（約 990，純文字表）。
+- Google Drive 同步只會上傳，換裝置會蓋掉進度。
+- 離線時沒有聲音，寫字也無法使用（筆畫資料從 CDN 下載）。
+- 仍載入 Google Analytics（GA4），與隱私定位衝突，待擁有者決定。
+- 課程只寫到第 4 關。
+- 教室與各彈窗仍是舊樣式；擁有者選定的任務地圖首頁尚未實作。
+- `backend/`、`shared/validated-curriculum-slice.json`、`shared/lesson-packages/` 仍含僑委會教材，前端已不使用，處理方式待擁有者決定。舊版本留在 tag `archive/before-ocac-removal`。
+- 舊的草稿 PR #113、#110 依舊方向撰寫，不合併。
+- `main` 沒有分支保護。
