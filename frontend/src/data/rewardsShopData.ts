@@ -1,3 +1,4 @@
+import { appStorage } from "../lib/storage";
 // 桐軒中文 · 獎勵品庫與家長核銷帳本 (Rewards Store & Voucher Ledger)
 
 export type RewardCategory = "privilege" | "time" | "food" | "adventure" | "wish" | "stationery" | "badge" | "physical";
@@ -159,7 +160,7 @@ export const REWARDS_CATALOG = DEFAULT_REWARDS;
 // 取得當前獎勵型錄（包含啟用與自訂獎勵）
 export function getRewardsCatalog(): RewardItem[] {
   try {
-    const raw = localStorage.getItem("tongxuan_custom_rewards_catalog");
+    const raw = appStorage.getItem("tongxuan_custom_rewards_catalog");
     if (raw) {
       const parsed: RewardItem[] = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) return parsed;
@@ -170,12 +171,12 @@ export function getRewardsCatalog(): RewardItem[] {
 
 // 儲存獎勵型錄（家長後台自訂與開關）
 export function saveRewardsCatalog(items: RewardItem[]): void {
-  localStorage.setItem("tongxuan_custom_rewards_catalog", JSON.stringify(items));
+  appStorage.setItem("tongxuan_custom_rewards_catalog", JSON.stringify(items));
 }
 
 // 恢復為預設範本
 export function resetRewardsCatalogToDefault(): RewardItem[] {
-  localStorage.setItem("tongxuan_custom_rewards_catalog", JSON.stringify(DEFAULT_REWARDS));
+  appStorage.setItem("tongxuan_custom_rewards_catalog", JSON.stringify(DEFAULT_REWARDS));
   return DEFAULT_REWARDS;
 }
 
@@ -206,7 +207,7 @@ export function deleteRewardItem(itemId: string): RewardItem[] {
 // 取得當前學習者金幣與星星餘額
 export function getLearnerPoints(): { coins: number; stars: number } {
   try {
-    const raw = localStorage.getItem("tongxuan_points_balance");
+    const raw = appStorage.getItem("tongxuan_points_balance");
     if (raw) return JSON.parse(raw);
   } catch (e) {}
   return { coins: 180, stars: 16 };
@@ -214,13 +215,13 @@ export function getLearnerPoints(): { coins: number; stars: number } {
 
 // 儲存金幣與星星餘額
 export function saveLearnerPoints(points: { coins: number; stars: number }): void {
-  localStorage.setItem("tongxuan_points_balance", JSON.stringify(points));
+  appStorage.setItem("tongxuan_points_balance", JSON.stringify(points));
 }
 
 // 取得兌換紀錄清單（獎勵兌換票夾）
 export function getRedemptionHistory(): RedemptionRecord[] {
   try {
-    const raw = localStorage.getItem("tongxuan_redemptions_history");
+    const raw = appStorage.getItem("tongxuan_redemptions_history");
     if (raw) return JSON.parse(raw);
   } catch (e) {}
   return [
@@ -302,7 +303,7 @@ export function redeemRewardItem(
     updatedHistory = [newRecord, ...currentHistory];
   }
 
-  localStorage.setItem("tongxuan_redemptions_history", JSON.stringify(updatedHistory));
+  appStorage.setItem("tongxuan_redemptions_history", JSON.stringify(updatedHistory));
 
   return {
     success: true,
@@ -348,7 +349,7 @@ export function approveOrClaimTicket(recordId: string, _newStatus: "approved" | 
     updated = history.map((r) => (r.id === recordId ? { ...r, status: "claimed" as const } : r));
   }
 
-  localStorage.setItem("tongxuan_redemptions_history", JSON.stringify(updated));
+  appStorage.setItem("tongxuan_redemptions_history", JSON.stringify(updated));
   return updated;
 }
 
@@ -356,12 +357,12 @@ export function approveOrClaimTicket(recordId: string, _newStatus: "approved" | 
 // 家長安全密碼 PIN 管理 (Parent Security PIN)
 // ========================================================
 export function getParentPin(): string {
-  return localStorage.getItem("tongxuan_parent_pin") || "8888";
+  return appStorage.getItem("tongxuan_parent_pin") || "8888";
 }
 
 export function setParentPin(newPin: string): boolean {
   if (/^\d{4}$/.test(newPin)) {
-    localStorage.setItem("tongxuan_parent_pin", newPin);
+    appStorage.setItem("tongxuan_parent_pin", newPin);
     return true;
   }
   return false;

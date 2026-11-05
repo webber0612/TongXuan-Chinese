@@ -5,8 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build && node scripts/assert-canonical-frontend.mjs && node scripts/copy-spa-fallback.mjs",
-    "test": "vitest run",
+    "build": "npm run build:stroke-data && tsc -b && vite build && node scripts/assert-canonical-frontend.mjs && node scripts/copy-spa-fallback.mjs",
+    "build:e2e": "npm run build:stroke-data && tsc -b && vite build --mode test-e2e && node scripts/assert-canonical-frontend.mjs && node scripts/copy-spa-fallback.mjs",
+    "build:stroke-data": "node scripts/build-stroke-data.mjs",
+    "test": "vitest run --exclude e2e/**",
+    "test:e2e": "playwright test",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -17,9 +20,11 @@
     "react-dom": "^19.1.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.56.1",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
     "@vitejs/plugin-react": "^4.4.1",
+    "hanzi-writer-data": "2.0.1",
     "is-callable": "^1.2.7",
     "jsdom": "^26.0.0",
     "typescript": "^5.8.3",

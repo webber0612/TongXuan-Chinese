@@ -1,3 +1,4 @@
+import { appStorage } from "../../../lib/storage";
 import { useState,type ReactNode } from "react";
 import {
 ArrowRight,X
@@ -32,15 +33,15 @@ export function WelcomeOnboardingModal({
   const [selectedScript, setSelectedScript] = useState<ScriptMode>("dual");
   const [selectedHand, setSelectedHand] = useState<HandMode>(() => {
     if (typeof window === "undefined") return "right";
-    const saved = localStorage.getItem("tongxuan_hand_mode");
+    const saved = appStorage.getItem("tongxuan_hand_mode");
     return saved === "left" || saved === "right" ? saved : "right";
   });
 
   const avatars = ["🐼", "🐯", "🐰", "🦁", "🐨", "🦊", "🐶", "🦄"];
 
   const handleFinish = () => {
-    localStorage.setItem("tongxuan_onboarded", "true");
-    localStorage.setItem("tongxuan_hand_mode", selectedHand);
+    appStorage.setItem("tongxuan_onboarded", "true");
+    appStorage.setItem("tongxuan_hand_mode", selectedHand);
     onComplete({
       name: name.trim() || "小明",
       avatar,

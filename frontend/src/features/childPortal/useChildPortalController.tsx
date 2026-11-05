@@ -1,3 +1,5 @@
+import { appStorage, getDeletedLearnerIds, setDeletedLearnerIds } from "../../lib/storage";
+import { autoSyncDrive } from "../../lib/googleDriveSync";
 import { playVoiceClips } from "../../lib/voiceClips";
 import { alignBook1Progress, BOOK1_LEVELS } from "../../data/book1";
 import { useState,useEffect,useRef,type ReactNode } from "react";
@@ -28,7 +30,7 @@ const FALLBACK_SPEECH_RATES: Record<SpeechSpeed, number> = { normal: 0.8, listen
 export function useChildPortalController({ activeChildName }: ChildPortalProps) {
   // Learner Profiles Storage
   const [learners, setLearners] = useState<ChildLearner[]>(() => {
-    const saved = localStorage.getItem("tongxuan_learners_list");
+    const saved = appStorage.getItem("tongxuan_learners_list");
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -39,9 +41,19 @@ export function useChildPortalController({ activeChildName }: ChildPortalProps) 
   });
 
   const [activeLearnerId, setActiveLearnerId] = useState<string>(() => {
-    const saved = localStorage.getItem("tongxuan_active_learner_id");
+    const saved = appStorage.getItem("tongxuan_active_learner_id");
     return saved || "learner-1";
   });
+
+  useEffect(() => {
+    const refreshFromSync = () => {
+      const saved = appStorage.getItem("tongxuan_learners_list");
+      if (saved) setLearners(JSON.parse(saved) as ChildLearner[]);
+      setActiveLearnerId(appStorage.getItem("tongxuan_active_learner_id") || "learner-1");
+    };
+    window.addEventListener("tongxuan-sync-applied", refreshFromSync);
+    return () => window.removeEventListener("tongxuan-sync-applied", refreshFromSync);
+  }, []);
 
   const activeLearner = (activeChildName ? learners.find((l) => l.name.trim().toLowerCase() === activeChildName.trim().toLowerCase()) : null) || learners.find((l) => l.id === activeLearnerId) || learners[0] || DEFAULT_LEARNERS[0];
 
@@ -54,7 +66,7 @@ export function useChildPortalController({ activeChildName }: ChildPortalProps) 
         }
         return l;
       });
-      localStorage.setItem("tongxuan_learners_list", JSON.stringify(updated));
+      appStorage.setItem("tongxuan_learners_list", JSON.stringify(updated));
       return updated;
     });
   };
@@ -75,9 +87,15 @@ export function useChildPortalController({ activeChildName }: ChildPortalProps) 
   const handMode: HandMode = activeLearner.handMode || "right";
   const learnerPoints = activeLearner.points || { coins: 0, stars: 0 };
   const learnerLevelsProgress = alignBook1Progress(activeLearner.book1Progress);
+  const completedCount = activeLearner.book1Progress?.filter((entry) => entry.status === "completed").length || 0;
+  const previousCompletedCount = useRef(completedCount);
+  useEffect(() => {
+    if (completedCount > previousCompletedCount.current) void autoSyncDrive();
+    previousCompletedCount.current = completedCount;
+  }, [completedCount]);
 
   const [displayLang, setDisplayLang] = useState<DisplayLang>(() => {
-    const saved = localStorage.getItem("tongxuan_display_lang");
+    const saved = appStorage.getItem("tongxuan_display_lang");
     if (saved && (saved === "zh-Hant" || saved === "zh-Hans" || saved === "en" || saved === "ja" || saved === "ko" || saved === "es")) {
       return saved as DisplayLang;
     }
@@ -100,7 +118,7 @@ export function useChildPortalController({ activeChildName }: ChildPortalProps) 
   const [onboardingOpen, setOnboardingOpen] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
     if (import.meta.env.MODE === "test") return false;
-    return !localStorage.getItem("tongxuan_onboarded");
+    return !appStorage.getItem("tongxuan_onboarded");
   });
 
   const menuRef = useRef<HTMLDivElement>(null);
@@ -170,14 +188,14 @@ export function useChildPortalController({ activeChildName }: ChildPortalProps) 
 
   // 背景語音導讀開關
   const [isVoiceGuideEnabled, setIsVoiceGuideEnabled] = useState<boolean>(() => {
-    const saved = localStorage.getItem("tongxuan_voice_guide");
+    const saved = appStorage.getItem("tongxuan_voice_guide");
     return saved === "true";
   });
 
   const toggleVoiceGuide = () => {
     setIsVoiceGuideEnabled((prev) => {
       const next = !prev;
-      localStorage.setItem("tongxuan_voice_guide", next ? "true" : "false");
+      appStorage.setItem("tongxuan_voice_guide", next ? "true" : "false");
       return next;
     });
   };
@@ -196,10 +214,10 @@ export function useChildPortalController({ activeChildName }: ChildPortalProps) 
     handMode?: HandMode;
     displayLang: DisplayLang;
   }) => {
-    localStorage.setItem("tongxuan_onboarded", "true");
-    localStorage.setItem("tongxuan_display_lang", config.displayLang);
+    appStorage.setItem("tongxuan_onboarded", "true");
+    appStorage.setItem("tongxuan_display_lang", config.displayLang);
     if (config.handMode) {
-      localStorage.setItem("tongxuan_hand_mode", config.handMode);
+      appStorage.setItem("tongxuan_hand_mode", config.handMode);
     }
     setDisplayLang(config.displayLang);
     updateActiveLearner({
@@ -232,7 +250,7 @@ export function useChildPortalController({ activeChildName }: ChildPortalProps) 
 
   const handleSelectLearner = (id: string) => {
     setActiveLearnerId(id);
-    localStorage.setItem("tongxuan_active_learner_id", id);
+    appStorage.setItem("tongxuan_active_learner_id", id);
     setLoginModalOpen(false);
     const chosen = learners.find((l) => l.id === id);
     if (chosen) {
@@ -250,13 +268,14 @@ export function useChildPortalController({ activeChildName }: ChildPortalProps) 
     const target = learners.find((l) => l.id === id);
     if (!target) return;
     if (confirm(`確定要刪除學習者「${target.name}」的紀錄嗎？刪除後無法恢復。`)) {
+      setDeletedLearnerIds({ ...getDeletedLearnerIds(), [id]: new Date().toISOString() });
       const nextList = learners.filter((l) => l.id !== id);
       setLearners(nextList);
-      localStorage.setItem("tongxuan_learners_list", JSON.stringify(nextList));
+      appStorage.setItem("tongxuan_learners_list", JSON.stringify(nextList));
       if (activeLearnerId === id) {
         const nextActiveId = nextList[0].id;
         setActiveLearnerId(nextActiveId);
-        localStorage.setItem("tongxuan_active_learner_id", nextActiveId);
+        appStorage.setItem("tongxuan_active_learner_id", nextActiveId);
       }
     }
   };
@@ -265,8 +284,8 @@ export function useChildPortalController({ activeChildName }: ChildPortalProps) 
     const updated = [...learners, newLearner];
     setLearners(updated);
     setActiveLearnerId(newLearner.id);
-    localStorage.setItem("tongxuan_learners_list", JSON.stringify(updated));
-    localStorage.setItem("tongxuan_active_learner_id", newLearner.id);
+    appStorage.setItem("tongxuan_learners_list", JSON.stringify(updated));
+    appStorage.setItem("tongxuan_active_learner_id", newLearner.id);
     setSelectedLevelNum(1);
     setLoginModalOpen(false);
     playSound(VOICE_PHRASES.welcomeNew);

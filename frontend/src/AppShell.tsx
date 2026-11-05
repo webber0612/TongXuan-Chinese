@@ -1,3 +1,4 @@
+import { appStorage } from "./lib/storage";
 import { lazy,Suspense,useEffect,useMemo,useRef,useState,type ReactNode } from "react";
 import { BookOpen,ChevronDown,CircleUserRound,House,Languages,Plus,Settings2,Sparkles,UserRound,X } from "lucide-react";
 import { Button as AriaButton,ListBox,ListBoxItem,Popover,Select,SelectValue,Label } from "react-aria-components";
@@ -75,7 +76,7 @@ export function AppShell() {
   const { t, language, setLanguage } = useLocale();
   const [requestedRoute, setRoute] = useState<Route>(() => routeFromPath(window.location.pathname));
   const [profiles, setProfiles] = useState<Profile[]>(() => loadProfiles());
-  const [activeKey, setActiveKey] = useState(() => localStorage.getItem(ACTIVE_PROFILE_STORAGE_KEY) ?? "child-a");
+  const [activeKey, setActiveKey] = useState(() => appStorage.getItem(ACTIVE_PROFILE_STORAGE_KEY) ?? "child-a");
   const [children, setChildren] = useState<Child[]>([]);
   const [childrenLoading, setChildrenLoading] = useState(true);
   const [childrenError, setChildrenError] = useState("");
@@ -104,7 +105,7 @@ export function AppShell() {
 
   useEffect(() => { saveProfiles(profiles); }, [profiles]);
   useEffect(() => {
-    if (profiles.some((profile) => profile.key === activeKey)) localStorage.setItem(ACTIVE_PROFILE_STORAGE_KEY, activeKey);
+    if (profiles.some((profile) => profile.key === activeKey)) appStorage.setItem(ACTIVE_PROFILE_STORAGE_KEY, activeKey);
   }, [activeKey, profiles]);
   useEffect(() => {
     const syncRoute = () => {
@@ -392,8 +393,8 @@ function SettingsPage({ children, activeChildId, parentSession, canManageChildre
   const authCopy = parentAuthCopy(language);
   const [learningLocale, setLearningLocale] = useState<LearningLocale>(currentLearningLocale);
   const [annotation, setAnnotation] = useState<AnnotationMode>(currentAnnotationMode);
-  function setLearning(value: LearningLocale) { setLearningLocale(value); localStorage.setItem(LEARNING_LOCALE_KEY, value); }
-  function setNotation(value: AnnotationMode) { setAnnotation(value); localStorage.setItem(ANNOTATION_MODE_KEY, value); }
+  function setLearning(value: LearningLocale) { setLearningLocale(value); appStorage.setItem(LEARNING_LOCALE_KEY, value); }
+  function setNotation(value: AnnotationMode) { setAnnotation(value); appStorage.setItem(ANNOTATION_MODE_KEY, value); }
   return <main className="app-page settings-page">
     <PageHeading kicker={t("settings")} title={t("settingsTitle")} subtitle={t("settingsIntro")} icon={<Languages/>}/>
     <section className="settings-section"><div className="settings-section-heading"><div><p className="eyebrow">01 · APP LANGUAGE</p><h2>{t("displayLanguage")}</h2></div><Languages/></div><p className="settings-help">{t("beginner")}</p><SettingSelect label={t("displayLanguage")} selectedKey={language} onChange={(value) => { if (value) setLanguage(value as DisplayLanguage); }} options={[["zh-Hant", "繁體中文"], ["zh-Hans", "简体中文"], ["en", "English"], ["ja", "日本語"], ["ko", "한국어"], ["es", "Español"]]} /></section>

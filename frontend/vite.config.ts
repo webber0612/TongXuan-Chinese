@@ -18,9 +18,25 @@ export default defineConfig({
   },
   plugins: [
     react(),
+    // Remove Hanzi Writer's bundled CDN fallback; every production caller supplies
+    // charDataLoader, and an unexpected fallback must remain same-origin.
+    {
+      name: "local-hanzi-writer-fallback",
+      enforce: "pre",
+      transform(code, id) {
+        if (!/[\\/]hanzi-writer[\\/]dist[\\/]index\.esm\.js$/.test(id)) return;
+        const remote = "https://cdn.jsdelivr.net/npm/hanzi-writer-data@${VERSION}/${char}.json";
+        if (!code.includes(remote)) throw new Error("Hanzi Writer CDN fallback changed; update local loader boundary");
+        return code.replace(remote, "/TongXuan-Chinese/hanzi/${char}.json");
+      }
+    },
     VitePWA({
       registerType: "autoUpdate",
       includeAssets: ["favicon.svg"],
+      workbox: {
+        globPatterns: ["**/*.{js,css,html}", "audio/**/*.{mp3,json}", "hanzi/*.json", "manifest.webmanifest"],
+        maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
+      },
       manifest: {
         name: "TongXuan Chinese",
         short_name: "TongXuan",

@@ -1,3 +1,4 @@
+import { appStorage } from "./storage";
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
 export type DisplayLanguage = "zh-Hant" | "zh-Hans" | "en" | "ja" | "ko" | "es";
@@ -144,7 +145,7 @@ const messages: Record<DisplayLanguage, Record<string, string>> = {
 };
 
 function detectedLanguage(): DisplayLanguage {
-  const saved = typeof localStorage !== "undefined" ? (localStorage.getItem(DISPLAY_LANGUAGE_KEY) || localStorage.getItem("tongxuan.display-language")) : null;
+  const saved = typeof appStorage !== "undefined" ? (appStorage.getItem(DISPLAY_LANGUAGE_KEY) || appStorage.getItem("tongxuan.display-language")) : null;
   if (saved && (saved === "zh-Hant" || saved === "zh-Hans" || saved === "en" || saved === "ja" || saved === "ko" || saved === "es")) {
     return saved as DisplayLanguage;
   }
@@ -169,8 +170,8 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<DisplayLanguage>(detectedLanguage);
 
   function setLanguage(next: DisplayLanguage) {
-    localStorage.setItem(DISPLAY_LANGUAGE_KEY, next);
-    localStorage.setItem("tongxuan.display-language", next);
+    appStorage.setItem(DISPLAY_LANGUAGE_KEY, next);
+    appStorage.setItem("tongxuan.display-language", next);
     setLanguageState(next);
   }
 
@@ -202,8 +203,8 @@ export function useLocale() {
   return {
     language,
     setLanguage: (next: DisplayLanguage) => {
-      localStorage.setItem(DISPLAY_LANGUAGE_KEY, next);
-      localStorage.setItem("tongxuan.display-language", next);
+      appStorage.setItem(DISPLAY_LANGUAGE_KEY, next);
+      appStorage.setItem("tongxuan.display-language", next);
     },
     t: (key: string, values: Record<string, string | number> = {}) => {
       const msg = messages[language]?.[key] ?? messages["zh-Hant"]?.[key] ?? key;
@@ -213,11 +214,11 @@ export function useLocale() {
 }
 
 export function currentLearningLocale(): LearningLocale {
-  const saved = localStorage.getItem(LEARNING_LOCALE_KEY);
+  const saved = appStorage.getItem(LEARNING_LOCALE_KEY);
   return saved === "zh-CN" ? "zh-CN" : "zh-TW";
 }
 
 export function currentAnnotationMode(): AnnotationMode {
-  const saved = localStorage.getItem(ANNOTATION_MODE_KEY);
+  const saved = appStorage.getItem(ANNOTATION_MODE_KEY);
   return saved === "BOPOMOFO" || saved === "PINYIN" || saved === "HIDDEN" ? saved : "AUTO";
 }

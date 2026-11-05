@@ -1,3 +1,4 @@
+import { appStorage } from "./storage";
 export type ProfileRole = "child" | "parent";
 
 export type Profile = {
@@ -42,7 +43,7 @@ export const defaultProfiles: Profile[] = [
   { key: "parent", name: "家長管理者", role: "parent", childId: null, color: "navy" },
 ];
 
-export function loadProfiles(storage: Pick<Storage, "getItem"> = localStorage): Profile[] {
+export function loadProfiles(storage: Pick<Storage, "getItem"> = appStorage): Profile[] {
   try {
     const saved = storage.getItem(PROFILE_STORAGE_KEY);
     if (!saved) return defaultProfiles;
@@ -53,7 +54,7 @@ export function loadProfiles(storage: Pick<Storage, "getItem"> = localStorage): 
   }
 }
 
-export function saveProfiles(profiles: Profile[], storage: Pick<Storage, "setItem"> = localStorage) {
+export function saveProfiles(profiles: Profile[], storage: Pick<Storage, "setItem"> = appStorage) {
   storage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profiles));
 }
 

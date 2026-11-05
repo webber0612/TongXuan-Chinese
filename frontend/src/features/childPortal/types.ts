@@ -132,6 +132,7 @@ export interface PinkyPromisePact {
 
 export interface ChildLearner {
   id: string;
+  updatedAt?: string;
   name: string;
   avatar: string;
   role?: "learner" | "parent";

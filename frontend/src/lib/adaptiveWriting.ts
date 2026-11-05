@@ -2,6 +2,7 @@ export type WritingVariant = "trad" | "hans";
 export type WritingPhase = "guided" | "reduced_hint" | "independent";
 
 export type WritingProgress = {
+  updatedAt?: string;
   guidedSuccesses: number;
   reducedHintSuccesses: number;
   independentSuccesses: number;
