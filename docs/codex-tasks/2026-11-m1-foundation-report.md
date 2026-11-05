@@ -8,8 +8,8 @@
 | W2 | `8bb9243` | 預快取音訊和 312 份繁簡筆畫檔，附 Arphic 授權。Build 與離線檢查通過。 |
 | W3 | `4293bf1` | Drive v2、逐學習者／關卡合併、墓碑、自動同步。merge 與假 fetch 測試通過。 |
 | W4 | `6cffa03` | Playwright 桌機與 iPad 尺寸流程、音訊／筆畫請求和離線重載通過。iPad 專案使用 Chromium：Windows Playwright WebKit 雖可安裝，但離線後重載未能完成。E2E 僅在 `MODE === "test-e2e"` 略過實際書寫；正式 `dist` 的 `test-e2e`、`jsdelivr` 搜尋均無結果。 |
-| R1、N1 修正 | 本次 commit | R1 單筆資料修補與覆寫前備份；N1 筆畫載入錯誤訊息使用六語系 i18n。 |
-| W5 | `cf27391` | 將課堂模式畫面抽至 `ClassroomModeScreens.tsx`、生字資訊面板抽至 `CharacterInfoPanel.tsx`；家長鎖狀態和動作抽至 `useParentLockState.ts`，分頁導覽抽至 `ParentLockTabs.tsx`。`InteractiveClassroom.tsx` 為 766 行，`ParentLockModal.tsx` 為 796 行。 |
+| R1、N1 修正 | `eac6a0a` | R1 單筆資料修補與覆寫前備份；N1 筆畫載入錯誤訊息使用六語系 i18n。 |
+| W5 | `16f60dd` | 將課堂模式畫面抽至 `ClassroomModeScreens.tsx`、生字資訊面板抽至 `CharacterInfoPanel.tsx`；家長鎖狀態和動作抽至 `useParentLockState.ts`，分頁導覽抽至 `ParentLockTabs.tsx`。`InteractiveClassroom.tsx` 為 766 行，`ParentLockModal.tsx` 為 796 行。 |
 
 ## R1 驗證
 

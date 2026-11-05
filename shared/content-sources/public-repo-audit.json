@@ -730,8 +730,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "5055ebe26ea5384d562c1b75e6086358044fda4b57990582b2d6d1ed8ad44177",
-      "sizeBytes": 3018
+      "sha256": "8635e06a22b922bd9a02e3f1c3edaf8028b983309517c2650c21a8868fe45c1a",
+      "sizeBytes": 3014
     },
     {
       "path": "docs/codex-tasks/2026-11-m1-foundation.md",
