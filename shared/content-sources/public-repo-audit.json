@@ -734,6 +734,18 @@
       "sizeBytes": 2252
     },
     {
+      "path": "docs/codex-tasks/2026-11-m1-foundation-review.md",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "digestMode": "TEXT_LF_NORMALIZED",
+      "sha256": "bbaefb23acab9af9197d5762f4dee43d29f8a5067833f401ae3c64a5ed78b09c",
+      "sizeBytes": 5832
+    },
+    {
       "path": "docs/codex-tasks/2026-11-m1-foundation.md",
       "classification": "RIGHTS_UNCLEAR",
       "sourceIds": [],
@@ -924,8 +936,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Tracked UTF-8 text contains literal or escaped CJK and is included conservatively for review. This path signal does not establish curriculum authorship, source, or reuse rights.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "2089a27e216b86b14d86e3f22b96fd41f310fe2c9534d395ed5ada5ca85d6247",
-      "sizeBytes": 4520,
+      "sha256": "60458eb9557ebed36d8145c0be82022903f78a7447699700d0e9c3bb2c99fcf0",
+      "sizeBytes": 4969,
       "repositoryStatus": "EXISTING_PUBLIC_BASELINE_REQUIRES_REVIEW",
       "contentKind": "TRACKED_CJK_TEXT_FAIL_CLOSED"
     },

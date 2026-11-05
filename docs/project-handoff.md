@@ -3,7 +3,7 @@
 > 這份文件只記錄**已驗證的現況**。每一句都要能用指令或實測重現；做不到就不要寫進來。
 > 要做什麼、照什麼順序做，看 `docs/roadmap.md`。歷史紀錄在 `docs/archive/`，內容已過期。
 
-最後驗證：2026-11-04，分支 `rebuild/2026-10`（`main` 已同步到 `5742ece`）。前端 87 個測試通過、建置通過；課程檢查與權利檢查通過。
+最後驗證：2026-11-05，分支 `rebuild/2026-10`（`804ac52`；`main` 在 `623d495`，尚未包含第 2 階段與 M1）。前端 106 個測試、建置、e2e（`npm run test:e2e`）通過；課程檢查與權利檢查通過。
 
 ## 產品定位
 
@@ -39,7 +39,7 @@ frontend/src/main.tsx → AppShell.tsx → pages/ChildPortalPage.tsx
 | 檔案 | 內容 |
 |---|---|
 | `shared/curriculum/book1-character-order.json` | 41 關的字序，每關 2–3 個要會寫的字 |
-| `shared/curriculum/book1/stage-01.json` | 第 1 階段（第 1–4 關＋檢核）。**目前只有這一個階段** |
+| `shared/curriculum/book1/stage-01.json`、`stage-02.json` | 第 1–2 階段（第 1–8 關＋各自的檢核）。第 2 階段待擁有者審核 |
 | `frontend/src/data/book1.ts` | 把課程檔轉成 App 用的關卡；學習進度存在學習者的 `book1Progress` |
 | `shared/voice/feedback-phrases.json` | 固定的鼓勵語（程式透過 `VOICE_PHRASES` 使用） |
 
@@ -72,14 +72,18 @@ python scripts/open_curriculum_rights_gate.py --sync-inventory
 3. 改完要在瀏覽器實際走過受影響的畫面；測試通過不等於畫面正確。
 4. 這份文件只改寫、不堆疊。
 
+## 本機資料、離線與同步（M1，2026-11-05）
+
+- 瀏覽器資料一律經過 `frontend/src/lib/storage/`：有版本號（`tongxuan_schema_version`），遷移前備份到 `tongxuan_backup_<版本>`，壞資料逐筆修補，修補前備份。
+- 音檔與 `frontend/public/hanzi/` 的筆畫資料都會預先快取，離線可用；不再連 CDN。
+- Google Drive 同步會下載、逐學習者逐關合併、再上傳（`lib/sync/merge.ts`）。金幣與星星取較新的一方，不相加。
+
 ## 已知問題
 
 詳細缺口與優先順序在 `docs/roadmap.md` 第 4 節。最影響使用的：
 
-- Google Drive 同步只會上傳，換裝置會蓋掉進度。
-- 離線時沒有聲音，寫字也無法使用（筆畫資料從 CDN 下載）。
 - 仍載入 Google Analytics（GA4），與隱私定位衝突，待擁有者決定。
-- 課程只寫到第 4 關。
+- 課程只寫到第 8 關。
 - 教室與各彈窗仍是舊樣式；擁有者選定的任務地圖首頁尚未實作。
 - `backend/`、`shared/validated-curriculum-slice.json`、`shared/lesson-packages/` 仍含僑委會教材，前端已不使用，處理方式待擁有者決定。舊版本留在 tag `archive/before-ocac-removal`。
 - 舊的草稿 PR #113、#110 依舊方向撰寫，不合併。
