@@ -64,27 +64,68 @@ function error(key: string, reason: string): void {
   } catch { /* Storage can be unavailable or full. */ }
 }
 
+/** A finite number, or a numeric string from older data; anything else becomes the fallback. */
+function toNumber(value: unknown, fallback: number): number {
+  if (number(value)) return value;
+  if (text(value) && value.trim() !== "" && Number.isFinite(Number(value))) return Number(value);
+  return fallback;
+}
+
+function repairLevel(key: string, entry: unknown): (LearnerLevelProgress & { updatedAt: string }) | null {
+  const levelNumber = record(entry) ? toNumber(entry.levelNumber, Number.NaN) : Number.NaN;
+  const score = record(entry) ? toNumber(entry.score, Number.NaN) : Number.NaN;
+  if (!record(entry) || !Number.isFinite(levelNumber)) { error(key, "discarded_level_without_number"); return null; }
+  if (!level(entry)) error(key, "repaired_level_fields");
+  return {
+    ...(entry as unknown as LearnerLevelProgress),
+    levelNumber,
+    status: ["completed", "current", "locked"].includes(String(entry.status)) ? entry.status as LearnerLevelProgress["status"] : "locked",
+    starsEarned: toNumber(entry.starsEarned, 0),
+    score: Number.isFinite(score) ? score : null,
+    completedAt: text(entry.completedAt) ? entry.completedAt : null,
+    updatedAt: iso(entry.updatedAt) ? entry.updatedAt : LEGACY_TIME,
+  };
+}
+
+/** Repairs learners one by one; only a record without an id is dropped. */
+function repairLearners(key: string, value: unknown[]): unknown[] {
+  return value.flatMap((item) => {
+    if (!record(item) || !text(item.id)) { error(key, "discarded_record_missing_id"); return []; }
+    if (!learner(item)) error(key, "repaired_learner_fields");
+    const levels = (list: unknown) => (array(list) ? list : []).map((entry) => repairLevel(key, entry)).filter((entry) => entry !== null);
+    const points = record(item.points) ? item.points : {};
+    return [{
+      ...item,
+      name: text(item.name) ? item.name : "小朋友",
+      points: { coins: toNumber(points.coins, 0), stars: toNumber(points.stars, 0) },
+      levelsProgress: levels(item.levelsProgress),
+      book1Progress: levels(item.book1Progress),
+    }];
+  });
+}
+
+/** Repairs each writing record field by field so one bad entry never hides the others. */
+function repairWriting(key: string, value: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(value).flatMap(([id, entry]) => {
+    if (!record(entry)) { error(key, "discarded_invalid_writing_record"); return []; }
+    if (!writing({ [id]: entry })) error(key, "repaired_writing_fields");
+    return [[id, {
+      ...entry,
+      guidedSuccesses: toNumber(entry.guidedSuccesses, 0),
+      reducedHintSuccesses: toNumber(entry.reducedHintSuccesses, 0),
+      independentSuccesses: toNumber(entry.independentSuccesses, 0),
+      independentFailures: toNumber(entry.independentFailures, 0),
+      mastered: entry.mastered === true || entry.mastered === "true",
+      ...(entry.retryPending === undefined ? {} : { retryPending: entry.retryPending === true || entry.retryPending === "true" }),
+    }]];
+  }));
+}
+
 function parse(key: string, raw: string): unknown | null {
   try {
     let value = JSON.parse(raw);
-    if (key === "tongxuan_learners_list" && Array.isArray(value)) value = value.flatMap((item) => {
-      if (!record(item) || !text(item.id)) { error(key, "discarded_record_missing_id"); return []; }
-      const fillLevel = (entry: unknown) => {
-        if (!record(entry)) { error(key, "repaired_invalid_level"); return null; }
-        const repaired = { ...entry, status: ["completed", "current", "locked"].includes(String(entry.status)) ? entry.status : "locked", starsEarned: number(entry.starsEarned) ? entry.starsEarned : 0, score: entry.score === null || number(entry.score) ? entry.score : null, completedAt: entry.completedAt === null || text(entry.completedAt) ? entry.completedAt : null, updatedAt: iso(entry.updatedAt) ? entry.updatedAt : LEGACY_TIME };
-        if (!level(entry)) error(key, "repaired_level_fields");
-        return repaired;
-      };
-      const points = record(item.points) ? { coins: number(item.points.coins) ? item.points.coins : 0, stars: number(item.points.stars) ? item.points.stars : 0 } : { coins: 0, stars: 0 };
-      if (!learner(item)) error(key, "repaired_learner_fields");
-      return [{ ...item, name: text(item.name) ? item.name : "小朋友", points, levelsProgress: (Array.isArray(item.levelsProgress) ? item.levelsProgress : []).map(fillLevel).filter(Boolean), book1Progress: (Array.isArray(item.book1Progress) ? item.book1Progress : []).map(fillLevel).filter(Boolean) }];
-    });
-    if (key === "tongxuan_writing_progress_v2" && record(value)) value = Object.fromEntries(Object.entries(value).flatMap(([id, entry]) => {
-      if (!record(entry)) { error(key, "discarded_invalid_writing_record"); return []; }
-      const repaired = { guidedSuccesses: 0, reducedHintSuccesses: 0, independentSuccesses: 0, independentFailures: 0, mastered: false, ...entry };
-      if (!writing({ [id]: entry })) error(key, "repaired_writing_fields");
-      return [[id, repaired]];
-    }));
+    if (key === "tongxuan_learners_list" && array(value)) value = repairLearners(key, value);
+    if (key === "tongxuan_writing_progress_v2" && record(value)) value = repairWriting(key, value);
     if (!validators[key]?.(value) && !(key.startsWith("tongxuan_levels_progress:") && validators.tongxuan_levels_progress(value))) throw new Error("invalid_shape");
     return value;
   } catch (cause) { error(key, cause instanceof SyntaxError ? "invalid_json" : "invalid_shape"); return null; }
@@ -130,7 +171,10 @@ export const appStorage = {
       const value = parse(key, raw);
       if (value === null) return null;
       const repaired = JSON.stringify(value);
-      if (repaired !== raw) { try { target?.setItem(key, repaired); } catch { error(key, "repair_write_failed"); } }
+      if (repaired !== raw) {
+        // Keep the original text before the repaired copy replaces it.
+        try { target?.setItem(`tongxuan_backup_repaired_${key}`, raw); target?.setItem(key, repaired); } catch { error(key, "repair_write_failed"); }
+      }
       return repaired;
     }
     if (stringValidators[key] && !stringValidators[key](raw)) { error(key, "invalid_shape"); return null; }

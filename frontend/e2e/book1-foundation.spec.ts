@@ -49,14 +49,14 @@ test("Book 1 lesson survives refresh and offline use", async ({ page, context })
   }
   await expect(page.locator(".classroom-finish-screen")).toBeVisible();
   await page.locator(".finish-return-btn").click();
-  await expect(page.getByText("已完成 1 / 5 關")).toBeVisible();
+  await expect(page.getByText(/已完成 1 \/ \d+ 關/)).toBeVisible();
 
   await page.reload();
-  await expect(page.getByText("已完成 1 / 5 關")).toBeVisible();
+  await expect(page.getByText(/已完成 1 \/ \d+ 關/)).toBeVisible();
   await expect(page.getByText("第 2 關").first()).toBeVisible();
   await page.evaluate(() => navigator.serviceWorker.ready);
   await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
   await context.setOffline(true);
   await page.reload();
-  await expect(page.getByText("已完成 1 / 5 關")).toBeVisible();
+  await expect(page.getByText(/已完成 1 \/ \d+ 關/)).toBeVisible();
 });

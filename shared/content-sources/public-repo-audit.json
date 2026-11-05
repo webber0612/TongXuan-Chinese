@@ -952,8 +952,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "1a8b50aab20de4751b5e62c60bb5064d100694c5ea0bc03a29af138d072de2e0",
-      "sizeBytes": 3258
+      "sha256": "b9c2b0ccfbe9c1ed8024b13222d4ac479bb02b3d0b409de27fea70538c472715",
+      "sizeBytes": 3267
     },
     {
       "path": "frontend/index.html",
@@ -7477,8 +7477,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "260e7e887f53d97ae7da3176673d9148a3fe722a6fe81286fbcc3f51c7aa6f3b",
-      "sizeBytes": 18249
+      "sha256": "1b844bd6576c35475d179208378bf2ddfd30481f5cdead1f37a69afdf019d7f6",
+      "sizeBytes": 19661
     },
     {
       "path": "frontend/src/lib/storage/storage.test.ts",
@@ -7489,8 +7489,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "670ee826d92a6724d85d1d6a8c78c948e3697400e4d5c1083fd7dc3879475a65",
-      "sizeBytes": 4472
+      "sha256": "3876eeb602459968b33ea6840774dbaf1b819773ecbdd7f2e7e68e39708771e8",
+      "sizeBytes": 5873
     },
     {
       "path": "frontend/src/lib/tones.test.ts",

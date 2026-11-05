@@ -78,4 +78,29 @@ describe("versioned local storage", () => {
     expect(getWritingProgress().a.updatedAt).toBe(first);
     expect(appStorage.getItem("tongxuan_voice_guide")).toBeNull();
   });
+
+  it("keeps the learner when a lesson has a wrong-typed field", () => {
+    const odd = structuredClone(learner) as unknown as { book1Progress: Array<Record<string, unknown>> };
+    odd.book1Progress.push({ levelNumber: "2", status: "current", starsEarned: "1", score: 0, completedAt: null });
+    odd.book1Progress.push({ status: "locked" });
+    localStorage.setItem("tongxuan_learners_list", JSON.stringify([odd]));
+    const [kept] = getLearners();
+    expect(kept.points.coins).toBe(7);
+    expect(kept.book1Progress?.map((entry) => [entry.levelNumber, entry.starsEarned, entry.score])).toEqual([[1, 3, 95], [2, 1, 0]]);
+  });
+
+  it("keeps other writing records when one has wrong-typed fields", () => {
+    localStorage.setItem("tongxuan_writing_progress_v2", JSON.stringify({ good: EMPTY_WRITING_PROGRESS, odd: { guidedSuccesses: "2", mastered: "true" } }));
+    const progress = getWritingProgress();
+    expect(Object.keys(progress)).toEqual(["good", "odd"]);
+    expect(progress.odd.guidedSuccesses).toBe(2);
+    expect(progress.odd.mastered).toBe(true);
+  });
+
+  it("backs up the original text before writing a repaired copy", () => {
+    const original = JSON.stringify([learner, { name: "no id" }]);
+    localStorage.setItem("tongxuan_learners_list", original);
+    getLearners();
+    expect(localStorage.getItem("tongxuan_backup_repaired_tongxuan_learners_list")).toBe(original);
+  });
 });
