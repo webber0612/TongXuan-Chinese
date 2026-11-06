@@ -730,8 +730,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "cae32a2830cc3d7c0a6391551bec20b531c784d55a98c4cbeeaeec2f593ac805",
-      "sizeBytes": 2252
+      "sha256": "8635e06a22b922bd9a02e3f1c3edaf8028b983309517c2650c21a8868fe45c1a",
+      "sizeBytes": 3014
     },
     {
       "path": "docs/codex-tasks/2026-11-m1-foundation-review.md",
@@ -742,8 +742,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "bbaefb23acab9af9197d5762f4dee43d29f8a5067833f401ae3c64a5ed78b09c",
-      "sizeBytes": 5832
+      "sha256": "e6def3248b6db3889176335a9062b42598d012e9bece29e2d4a9267779d67aa0",
+      "sizeBytes": 7241
     },
     {
       "path": "docs/codex-tasks/2026-11-m1-foundation.md",
@@ -964,8 +964,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "b9c2b0ccfbe9c1ed8024b13222d4ac479bb02b3d0b409de27fea70538c472715",
-      "sizeBytes": 3267
+      "sha256": "740a096c9cf0536447e89676ca9af74ce4cb185f88ff6aae06a52162b9bd8054",
+      "sizeBytes": 4091
     },
     {
       "path": "frontend/index.html",
@@ -7032,6 +7032,30 @@
       "sizeBytes": 592
     },
     {
+      "path": "frontend/src/features/childPortal/CharacterInfoPanel.tsx",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "digestMode": "TEXT_LF_NORMALIZED",
+      "sha256": "da6090cccff78416f01e40422371799f75b943787e1eca15aad51a5ae16ee106",
+      "sizeBytes": 5568
+    },
+    {
+      "path": "frontend/src/features/childPortal/ClassroomModeScreens.tsx",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "digestMode": "TEXT_LF_NORMALIZED",
+      "sha256": "12c60ae454cefa0512aef3a89a69063b2987e9b3a0f312371642fbe7abceccd7",
+      "sizeBytes": 19024
+    },
+    {
       "path": "frontend/src/features/childPortal/InteractiveClassroom.tsx",
       "classification": "RIGHTS_UNCLEAR",
       "sourceIds": [],
@@ -7040,8 +7064,8 @@
       "publishableArtifactAllowed": false,
       "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "b195311e3ff262fa1bda1afdf08ec81aab5276a5daa0690cd97aa42842f85e3e",
-      "sizeBytes": 52241
+      "sha256": "575945024dfad1d796c03287982feb3c171e554c23046931287b55f9daa75b75",
+      "sizeBytes": 31677
     },
     {
       "path": "frontend/src/features/childPortal/dayPlan.ts",
@@ -7136,8 +7160,20 @@
       "publishableArtifactAllowed": false,
       "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
       "digestMode": "TEXT_LF_NORMALIZED",
-      "sha256": "a5f241b3b2b147047aff1e2afe52aa0b5c927b2356ee049bebaa544ddce93ba7",
-      "sizeBytes": 43540
+      "sha256": "afff9ae86e98ba72e4a920a416a9c5b8855e56d216d8582c3e3ab123f0eefb7e",
+      "sizeBytes": 35147
+    },
+    {
+      "path": "frontend/src/features/childPortal/modals/ParentLockTabs.tsx",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "digestMode": "TEXT_LF_NORMALIZED",
+      "sha256": "3955f951b1c968c0a8a1d9fefeefccbc12f165885fdd1c4930550e4e0a93f64f",
+      "sizeBytes": 1622
     },
     {
       "path": "frontend/src/features/childPortal/modals/RewardsStoreModal.tsx",
@@ -7186,6 +7222,18 @@
       "digestMode": "TEXT_LF_NORMALIZED",
       "sha256": "19434f9fd7fef1c215bc9f80f4c44ea9c2bcdab4846a1228cae17c3f3f826ef4",
       "sizeBytes": 16043
+    },
+    {
+      "path": "frontend/src/features/childPortal/modals/useParentLockState.ts",
+      "classification": "RIGHTS_UNCLEAR",
+      "sourceIds": [],
+      "evidenceIds": [],
+      "rootMitApplies": false,
+      "publishableArtifactAllowed": false,
+      "reason": "Unclassified content-sensitive path; blocked until item-level evidence and an explicit policy decision are recorded.",
+      "digestMode": "TEXT_LF_NORMALIZED",
+      "sha256": "d9e9d6c8fe87324ce1a31639c2b2bc22f8e3427b53fb46df1e56306721351eb9",
+      "sizeBytes": 8932
     },
     {
       "path": "frontend/src/features/childPortal/uiText.ts",
